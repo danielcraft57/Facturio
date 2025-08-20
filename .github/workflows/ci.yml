@@ -1,0 +1,32 @@
+﻿name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+      - name: Install dependencies (server)
+        working-directory: server
+        run: npm ci
+      - name: Prepare test database (SQLite)
+        working-directory: server
+        env:
+          DATABASE_URL: file:./prisma/test.db
+        run: npx prisma db push
+      - name: Run e2e tests
+        working-directory: server
+        env:
+          NODE_ENV: test
+          DATABASE_URL: file:./prisma/test.db
+        run: npm run test:e2e
