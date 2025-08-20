@@ -48,6 +48,26 @@ describe('Accounting e2e', () => {
 		expect(typeof res.text).toBe('string');
 		expect(res.text.split('\n')[0]).toContain('JournalCode');
 	});
+
+	it('service purchase then service payment', async () => {
+		// S'assure que les journaux/comptes existent (seed devrait le faire, mais on sécurise)
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '622', name: 'Services exterieurs', type: 'EXPENSE' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '44566', name: 'TVA déductible', type: 'TAX' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '401', name: 'Fournisseurs', type: 'SUPPLIER' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '512', name: 'Banque', type: 'BANK' });
+		await request(app.getHttpServer()).post('/accounting/journals').send({ code: 'OD', name: 'Opérations diverses' });
+		await request(app.getHttpServer()).post('/accounting/journals').send({ code: 'BQ', name: 'Banque' });
+		// Achat services 100 HT, TVA 20 => 622/44566/401
+		await request(app.getHttpServer())
+			.post('/accounting/purchases/service')
+			.send({ amountExclTax: 100, taxRate: 0.2, memo: 'Presta externe' })
+			.expect(201);
+		// Paiement 120 TTC => 401/512
+		await request(app.getHttpServer())
+			.post('/accounting/payments/service')
+			.send({ amount: 120, memo: 'Virement fournisseur' })
+			.expect(201);
+	});
 });
 
 

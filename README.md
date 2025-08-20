@@ -49,3 +49,6 @@ Pour le détail des endpoints, exemples cURL, règles TVA et configuration (CORS
   - Rapports: Balance (`GET /accounting/reports/balance`), Grand livre (`GET /accounting/reports/general-ledger?account=706`)
   - Export FEC: `GET /accounting/exports/fec?start=YYYY-MM-DD&end=YYYY-MM-DD`
 - À venir: périodes verrouillées, achats (6xx/44566/401), paiements fournisseurs (401/512)
+
+- Devis (hors-bilan): à l'envoi d'un devis, une écriture DRAFT est enregistrée dans `OD` (706/44571/411). En cas de rejet/expiration, une contre-passation est créée automatiquement.
+- Prestataires: méthodes internes pour enregistrer un achat de services `622/44566/401` et son paiement `401/512` (exposées en endpoints plus tard).

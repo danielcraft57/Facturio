@@ -8,6 +8,8 @@ API backend pour la gestion de clients, devis, factures, taxes et dépôts (TVA)
 - Écritures auto:
   - Création facture: 411/706/44571 (ventes + TVA)
   - Paiement facture: 512/411 (encaissement)
+- Devis (hors-bilan): à l'envoi d'un devis, une écriture DRAFT est créée dans `OD` (706/44571/411). En cas de rejet/expiration, une contre-passation automatique annule cette écriture.
+- Prestataires (services): helpers internes pour enregistrer un achat `622/44566/401` et son paiement `401/512` (exposition API à venir).
 - Endpoints:
   - `GET /accounting/accounts` - liste
   - `POST /accounting/accounts` - création

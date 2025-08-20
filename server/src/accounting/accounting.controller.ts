@@ -35,6 +35,39 @@ export class AccountingController {
 		return this.accounting.postEntry(body);
 	}
 
+	@Post('purchases/service')
+	postServicePurchase(
+		@Body()
+		body: {
+			reference?: string;
+			amountExclTax: number;
+			taxRate?: number;
+			expenseAccountCode?: string;
+			vatDeductibleAccountCode?: string;
+			vendorAccountCode?: string;
+			journalCode?: string;
+			date?: string;
+			memo?: string;
+		}
+	) {
+		return this.accounting.postServicePurchase(body);
+	}
+
+	@Post('payments/service')
+	postServicePayment(
+		@Body()
+		body: {
+			amount: number;
+			vendorAccountCode?: string;
+			bankAccountCode?: string;
+			reference?: string;
+			date?: string;
+			memo?: string;
+		}
+	) {
+		return this.accounting.postServicePayment(body);
+	}
+
 	// Rapports & exports
 	@Get('exports/fec')
 	async exportFEC(@Query('start') start: string, @Query('end') end: string, @Res({ passthrough: true }) res: Response) {

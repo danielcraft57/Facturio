@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { QuoteStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import * as crypto from 'crypto';
+import { AccountingService } from '../accounting/accounting.service';
 
 export interface QuoteLineDto {
 	description: string;
@@ -29,7 +30,28 @@ export interface UpdateQuoteDto {
 
 @Injectable()
 export class QuotesService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(private readonly prisma: PrismaService, private readonly accounting: AccountingService) {}
+
+	private async contraOffBalanceForQuote(quoteNumber: string): Promise<void> {
+		const entry = await this.prisma.journalEntry.findFirst({
+			where: { journal: { code: 'OD' }, reference: `DEV ${quoteNumber}` },
+			include: { lines: { include: { account: true } }, journal: true },
+			orderBy: { id: 'desc' }
+		});
+		if (!entry) return;
+		const lines = entry.lines.map(l => ({
+			accountCode: l.account.code,
+			debit: (((l.credit as any)?.toNumber?.() ?? Number(l.credit)) || 0),
+			credit: (((l.debit as any)?.toNumber?.() ?? Number(l.debit)) || 0),
+			description: `Annulation ${l.description || ''}`.trim()
+		}));
+		await this.accounting.postEntry({
+			journalCode: 'OD',
+			reference: `ANNUL DEV ${quoteNumber}`,
+			memo: 'Contre-passation devis (rejet/expiration)',
+			lines
+		});
+	}
 
 	private computeTotals(lines: QuoteLineDto[] = []) {
 		let subtotal = 0;
@@ -108,7 +130,7 @@ export class QuotesService {
 		await this.findOne(id);
 		const lines = data.lines ?? [];
 		const totals = this.computeTotals(lines);
-		return this.prisma.quote.update({
+		const updated = await this.prisma.quote.update({
 			where: { id },
 			data: {
 				number: data.number,
@@ -132,6 +154,10 @@ export class QuotesService {
 			},
 			include: { lines: true, client: true }
 		});
+		if (data.status === QuoteStatus.REJECTED || data.status === QuoteStatus.EXPIRED) {
+			try { await this.contraOffBalanceForQuote(updated.number); } catch (_) {}
+		}
+		return updated;
 	}
 
 	async remove(id: number) {
@@ -152,6 +178,19 @@ export class QuotesService {
 			data: { publicToken: token, status: QuoteStatus.SENT, sentAt: new Date() }
 		});
 		await this.prisma.emailEvent.create({ data: { quoteId: id, type: 'sent' } });
+		// Hors-bilan: enregistre une écriture DRAFT dans OD
+		try {
+			await this.accounting.postEntry({
+				journalCode: 'OD',
+				reference: `DEV ${updated.number}`,
+				memo: 'Devis envoyé (hors-bilan)',
+				lines: [
+					{ accountCode: '706', credit: Number(updated.subtotal as any) },
+					{ accountCode: '44571', credit: Number(updated.tax as any) },
+					{ accountCode: '411', debit: Number(updated.total as any) }
+				]
+			});
+		} catch (_) {}
 		return { ok: true, publicUrl: `/public/quotes/${token}` };
 	}
 
@@ -167,6 +206,7 @@ export class QuotesService {
 		const quote = await this.prisma.quote.findUnique({ where: { publicToken: token } });
 		if (!quote) throw new NotFoundException('Devis introuvable');
 		const updated = await this.prisma.quote.update({ where: { id: quote.id }, data: { status: QuoteStatus.ACCEPTED, acceptedAt: new Date(), acceptedIp: ip || null } });
+		// Hors-bilan: marquer l'écriture comme POSTED (facultatif) ou laisser DRAFT jusqu'à facture
 		return { status: 'accepted', id: updated.id } as any;
 	}
 
@@ -174,6 +214,7 @@ export class QuotesService {
 		const quote = await this.prisma.quote.findUnique({ where: { publicToken: token } });
 		if (!quote) throw new NotFoundException('Devis introuvable');
 		await this.prisma.quote.update({ where: { id: quote.id }, data: { status: QuoteStatus.REJECTED } });
+		try { await this.contraOffBalanceForQuote(quote.number); } catch (_) {}
 		return { ok: true };
 	}
 
@@ -193,6 +234,20 @@ export class QuotesService {
 			},
 			include: { client: true, lines: true }
 		});
+
+		// Hors-bilan: enregistre une écriture DRAFT dans OD (comme dans send)
+		try {
+			await this.accounting.postEntry({
+				journalCode: 'OD',
+				reference: `DEV ${updated.number}`,
+				memo: 'Devis envoyé (hors-bilan)',
+				lines: [
+					{ accountCode: '706', credit: Number(updated.subtotal as any) },
+					{ accountCode: '44571', credit: Number(updated.tax as any) },
+					{ accountCode: '411', debit: Number(updated.total as any) }
+				]
+			});
+		} catch (_) {}
 
 		return { ...updated, publicUrl };
 	}

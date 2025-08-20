@@ -14,6 +14,8 @@ describe('Quotes e2e', () => {
 		app.enableCors({ origin: true, credentials: true });
 		await app.init();
 		prisma = app.get(PrismaService);
+		await prisma.$executeRawUnsafe('DELETE FROM JournalLine');
+		await prisma.$executeRawUnsafe('DELETE FROM JournalEntry');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteView');
 		await prisma.$executeRawUnsafe('DELETE FROM EmailEvent');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteLine');
@@ -120,6 +122,54 @@ describe('Quotes e2e', () => {
 
 		expect(res.headers['content-type']).toContain('application/pdf');
 		expect((res.body as Buffer).length).toBeGreaterThan(0);
+	});
+
+	// ========================================
+	// TESTS COMPTA - HORS-BILAN DEVIS
+	// ========================================
+
+	it('off-balance entry created on send and contra on reject', async () => {
+		const client = await prisma.client.create({ data: { name: 'HB Client', email: 'hb@test.com', isCompany: true, countryCode: 'FR' } });
+		const quote = await request(app.getHttpServer())
+			.post('/quotes')
+			.send({ clientId: client.id, lines: [{ description: 'Service', quantity: 1, unitPrice: 100, taxRate: 0.2 }] })
+			.expect(201)
+			.then(r => r.body);
+
+		// Prépare les comptes et le journal OD requis par l'écriture hors-bilan
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '411', name: 'Clients', type: 'CUSTOMER' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '706', name: 'Prestations', type: 'REVENUE' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '44571', name: 'TVA collectée', type: 'TAX' });
+		await request(app.getHttpServer()).post('/accounting/journals').send({ code: 'OD', name: 'Opérations diverses' });
+
+		const send = await request(app.getHttpServer()).post(`/quotes/${quote.id}/send`).expect(201).then(r => r.body);
+		const sentEntry = await prisma.journalEntry.findFirst({
+			where: { journal: { code: 'OD' }, reference: `DEV ${quote.number}` },
+			include: { lines: { include: { account: true } } },
+			orderBy: { id: 'desc' }
+		});
+		expect(sentEntry).toBeTruthy();
+		const debit411 = sentEntry!.lines.find(l => l.account.code === '411');
+		const credit706 = sentEntry!.lines.find(l => l.account.code === '706');
+		const credit44571 = sentEntry!.lines.find(l => l.account.code === '44571');
+		expect(Number((debit411!.debit as any)?.toNumber?.() ?? debit411!.debit)).toBe(120);
+		expect(Number((credit706!.credit as any)?.toNumber?.() ?? credit706!.credit)).toBe(100);
+		expect(Number((credit44571!.credit as any)?.toNumber?.() ?? credit44571!.credit)).toBe(20);
+
+		const token = String(send.publicUrl).split('/').pop()!;
+		await request(app.getHttpServer()).post(`/public/quotes/${token}/reject`).expect(201);
+		const contra = await prisma.journalEntry.findFirst({
+			where: { journal: { code: 'OD' }, reference: `ANNUL DEV ${quote.number}` },
+			include: { lines: { include: { account: true } } },
+			orderBy: { id: 'desc' }
+		});
+		expect(contra).toBeTruthy();
+		const contraDebit706 = contra!.lines.find(l => l.account.code === '706');
+		const contraDebit44571 = contra!.lines.find(l => l.account.code === '44571');
+		const contraCredit411 = contra!.lines.find(l => l.account.code === '411');
+		expect(Number((contraDebit706!.debit as any)?.toNumber?.() ?? contraDebit706!.debit)).toBe(100);
+		expect(Number((contraDebit44571!.debit as any)?.toNumber?.() ?? contraDebit44571!.debit)).toBe(20);
+		expect(Number((contraCredit411!.credit as any)?.toNumber?.() ?? contraCredit411!.credit)).toBe(120);
 	});
 
 	// ========================================

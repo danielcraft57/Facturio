@@ -201,7 +201,7 @@ export class AccountingService {
 		return Object.values(ledger).sort((a: any, b: any) => a.accountCode.localeCompare(b.accountCode));
 	}
 
-	// Poste une écriture de vente: 411/706/44571
+	// Vente: 411/706/44571
 	async postInvoiceSale(params: { invoiceId: number; customerAccountCode?: string; revenueAccountCode?: string; vatCollectedAccountCode?: string }) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
 		if (!invoice) throw new BadRequestException('Facture introuvable');
@@ -218,7 +218,7 @@ export class AccountingService {
 		return this.postEntry({ journalCode: 'VE', reference: `VENTE ${invoice.number}`, lines });
 	}
 
-	// Poste un encaissement: 512/411
+	// Encaissement: 512/411
 	async postInvoicePayment(params: { invoiceId: number; amount: number; bankAccountCode?: string; customerAccountCode?: string }) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
 		if (!invoice) throw new BadRequestException('Facture introuvable');
@@ -227,6 +227,58 @@ export class AccountingService {
 			{ accountCode: params.customerAccountCode ?? '411', credit: params.amount }
 		];
 		return this.postEntry({ journalCode: 'BQ', reference: `PAIEMENT ${invoice.number}`, lines });
+	}
+
+	// Achat services: 622/44566/401
+	async postServicePurchase(params: {
+		reference?: string;
+		amountExclTax: number;
+		taxRate?: number; // ex: 0.2
+		expenseAccountCode?: string; // défaut 622
+		vatDeductibleAccountCode?: string; // défaut 44566
+		vendorAccountCode?: string; // défaut 401
+		journalCode?: string; // défaut OD
+		date?: string | Date;
+		memo?: string;
+	}) {
+		const rate = params.taxRate ?? 0.2;
+		const base = Number(params.amountExclTax || 0);
+		const vat = Number((base * rate).toFixed(2));
+		const total = Number((base + vat).toFixed(2));
+		const lines = [
+			{ accountCode: params.expenseAccountCode ?? '622', description: params.memo, debit: base },
+			{ accountCode: params.vatDeductibleAccountCode ?? '44566', description: 'TVA déductible', debit: vat },
+			{ accountCode: params.vendorAccountCode ?? '401', description: 'Fournisseur', credit: total }
+		];
+		return this.postEntry({
+			journalCode: params.journalCode ?? 'OD',
+			date: params.date as any,
+			reference: params.reference,
+			memo: params.memo,
+			lines
+		});
+	}
+
+	// Paiement fournisseur: 401/512
+	async postServicePayment(params: {
+		amount: number;
+		vendorAccountCode?: string; // défaut 401
+		bankAccountCode?: string; // défaut 512
+		reference?: string;
+		date?: string | Date;
+		memo?: string;
+	}) {
+		const lines = [
+			{ accountCode: params.vendorAccountCode ?? '401', description: params.memo, debit: params.amount },
+			{ accountCode: params.bankAccountCode ?? '512', description: 'Paiement', credit: params.amount }
+		];
+		return this.postEntry({
+			journalCode: 'BQ',
+			date: params.date as any,
+			reference: params.reference,
+			memo: params.memo,
+			lines
+		});
 	}
 }
 
