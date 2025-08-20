@@ -88,7 +88,13 @@ async function seedChartOfAccounts(): Promise<void> {
     { code: '44566', name: 'TVA déductible', type: 'TAX' },
     { code: '606', name: 'Achats non stockés', type: 'EXPENSE' },
     { code: '615', name: 'Entretien et réparations', type: 'EXPENSE' },
-    { code: '622', name: 'Rémunérations d’intermédiaires et honoraires', type: 'EXPENSE' }
+    { code: '622', name: 'Rémunérations d’intermédiaires et honoraires', type: 'EXPENSE' },
+    { code: '641', name: 'Rémunérations du personnel', type: 'EXPENSE' },
+    { code: '645', name: 'Charges de sécurité sociale et de prévoyance', type: 'EXPENSE' },
+    { code: '421', name: 'Personnel - rémunérations dues', type: 'LIABILITY' },
+    { code: '431', name: 'Sécurité sociale', type: 'LIABILITY' },
+    { code: '447', name: 'Autres impôts et taxes à payer', type: 'LIABILITY' },
+    { code: '635', name: 'Autres impôts, taxes et versements assimilés', type: 'EXPENSE' }
   ];
 
   for (const a of accounts) {

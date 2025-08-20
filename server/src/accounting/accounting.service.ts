@@ -26,8 +26,11 @@ export class AccountingService {
 		memo?: string;
 		lines: Array<{ accountCode: string; description?: string; debit?: number; credit?: number }>;
 	}) {
+		console.log('postEntry: Début avec input:', JSON.stringify(input, null, 2));
+		
 		const journal = await this.prisma.journal.findUnique({ where: { code: input.journalCode } });
 		if (!journal) throw new BadRequestException('Journal introuvable');
+		console.log('postEntry: Journal trouvé:', journal);
 
 		if (!input.lines?.length) throw new BadRequestException('Aucune ligne');
 		let totalDebit = 0;
@@ -37,6 +40,8 @@ export class AccountingService {
 			totalDebit += Number(l.debit || 0);
 			totalCredit += Number(l.credit || 0);
 		}
+		console.log('postEntry: Totaux calculés - débit:', totalDebit, 'crédit:', totalCredit);
+		
 		if (Number(totalDebit.toFixed(2)) !== Number(totalCredit.toFixed(2))) {
 			throw new BadRequestException('Écriture non équilibrée');
 		}
@@ -279,6 +284,99 @@ export class AccountingService {
 			memo: params.memo,
 			lines
 		});
+	}
+
+	// Paie: 641 (débit) + 645 (débit) / 421 (crédit) + 431 (crédit)
+	async postPayroll(params: {
+		grossSalary: number; // salaire brut
+		employeeContrib: number; // part salariale
+		employerContrib: number; // part patronale
+		journalCode?: string; // défaut OD
+		date?: string | Date;
+		reference?: string;
+		memo?: string;
+		salaryExpenseAccountCode?: string; // 641
+		employerContribExpenseAccountCode?: string; // 645
+		salaryPayableAccountCode?: string; // 421
+		urssafLiabilityAccountCode?: string; // 431
+	}) {
+		const gross = Number(params.grossSalary || 0);
+		const salPart = Number(params.employeeContrib || 0);
+		const empPart = Number(params.employerContrib || 0);
+		const net = Number((gross - salPart).toFixed(2));
+		const urssafTotal = Number((salPart + empPart).toFixed(2));
+		const lines = [
+			{ accountCode: params.salaryExpenseAccountCode ?? '641', description: 'Salaire brut', debit: gross },
+			{ accountCode: params.employerContribExpenseAccountCode ?? '645', description: 'Charges patronales', debit: empPart },
+			{ accountCode: params.salaryPayableAccountCode ?? '421', description: 'Salaire net à payer', credit: net },
+			{ accountCode: params.urssafLiabilityAccountCode ?? '431', description: 'URSSAF à payer', credit: urssafTotal }
+		];
+		return this.postEntry({
+			journalCode: params.journalCode ?? 'OD',
+			date: params.date as any,
+			reference: params.reference,
+			memo: params.memo ?? 'Écriture de paie',
+			lines
+		});
+	}
+
+	// Paiement salaires: 421/512
+	async postSalaryPayment(params: { amount: number; bankAccountCode?: string; salaryPayableAccountCode?: string; date?: string | Date; reference?: string; memo?: string }) {
+		const lines = [
+			{ accountCode: params.salaryPayableAccountCode ?? '421', description: params.memo, debit: params.amount },
+			{ accountCode: params.bankAccountCode ?? '512', description: 'Paiement salaires', credit: params.amount }
+		];
+		return this.postEntry({
+			journalCode: 'BQ',
+			date: params.date as any,
+			reference: params.reference,
+			memo: params.memo,
+			lines
+		});
+	}
+
+	// Paiement URSSAF: 431/512
+	async postUrssafPayment(params: { amount: number; bankAccountCode?: string; urssafLiabilityAccountCode?: string; date?: string | Date; reference?: string; memo?: string }) {
+		const lines = [
+			{ accountCode: params.urssafLiabilityAccountCode ?? '431', description: params.memo ?? 'URSSAF', debit: params.amount },
+			{ accountCode: params.bankAccountCode ?? '512', description: 'Paiement URSSAF', credit: params.amount }
+		];
+		return this.postEntry({
+			journalCode: 'BQ',
+			date: params.date as any,
+			reference: params.reference,
+			memo: params.memo,
+			lines
+		});
+	}
+
+	// Micro-social (auto-entrepreneur): calcul d'une cotisation sur CA
+	async postMicroSocialContribution(params: { periodStart: string; periodEnd: string; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string }) {
+		const start = new Date(params.periodStart);
+		const end = new Date(params.periodEnd);
+		const invoices = await this.prisma.invoice.findMany({ where: { date: { gte: start, lte: end } } });
+		const ca = invoices.reduce((sum, inv) => sum + Number(inv.total), 0);
+		const amount = Number((ca * params.rate).toFixed(2));
+		const lines = [
+			{ accountCode: params.expenseAccountCode ?? '645', description: params.memo ?? 'Micro-social', debit: amount },
+			{ accountCode: params.liabilityAccountCode ?? '431', description: 'URSSAF', credit: amount }
+		];
+		return this.postEntry({ journalCode: 'OD', reference: params.reference ?? 'MICRO-SOCIAL', memo: params.memo, lines });
+	}
+
+	// C3S: contribution assise sur CA si seuil dépassé
+	async postC3SContribution(params: { year: number; threshold: number; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string }) {
+		const start = new Date(params.year, 0, 1);
+		const end = new Date(params.year, 11, 31, 23, 59, 59);
+		const invoices = await this.prisma.invoice.findMany({ where: { date: { gte: start, lte: end } } });
+		const ca = invoices.reduce((sum, inv) => sum + Number(inv.total), 0);
+		if (ca < params.threshold) return { skipped: true, reason: 'threshold-not-met', ca } as any;
+		const amount = Number((ca * params.rate).toFixed(2));
+		const lines = [
+			{ accountCode: params.expenseAccountCode ?? '635', description: params.memo ?? 'C3S', debit: amount },
+			{ accountCode: params.liabilityAccountCode ?? '447', description: 'C3S à payer', credit: amount }
+		];
+		return this.postEntry({ journalCode: 'OD', reference: params.reference ?? `C3S-${params.year}`, memo: params.memo, lines });
 	}
 }
 

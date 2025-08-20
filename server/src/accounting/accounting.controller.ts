@@ -68,6 +68,46 @@ export class AccountingController {
 		return this.accounting.postServicePayment(body);
 	}
 
+	@Post('payroll/post')
+	postPayroll(
+		@Body()
+		body: {
+			grossSalary: number;
+			employeeContrib: number;
+			employerContrib: number;
+			journalCode?: string;
+			date?: string;
+			reference?: string;
+			memo?: string;
+			salaryExpenseAccountCode?: string;
+			employerContribExpenseAccountCode?: string;
+			salaryPayableAccountCode?: string;
+			urssafLiabilityAccountCode?: string;
+		}
+	) {
+		return this.accounting.postPayroll(body as any);
+	}
+
+	@Post('payments/salary')
+	postSalaryPayment(@Body() body: { amount: number; bankAccountCode?: string; salaryPayableAccountCode?: string; date?: string; reference?: string; memo?: string }) {
+		return this.accounting.postSalaryPayment(body as any);
+	}
+
+	@Post('payments/urssaf')
+	postUrssafPayment(@Body() body: { amount: number; bankAccountCode?: string; urssafLiabilityAccountCode?: string; date?: string; reference?: string; memo?: string }) {
+		return this.accounting.postUrssafPayment(body as any);
+	}
+
+	@Post('contrib/micro-social')
+	postMicroSocial(@Body() body: { periodStart: string; periodEnd: string; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string }) {
+		return this.accounting.postMicroSocialContribution(body);
+	}
+
+	@Post('contrib/c3s')
+	postC3S(@Body() body: { year: number; threshold: number; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string }) {
+		return this.accounting.postC3SContribution(body);
+	}
+
 	// Rapports & exports
 	@Get('exports/fec')
 	async exportFEC(@Query('start') start: string, @Query('end') end: string, @Res({ passthrough: true }) res: Response) {

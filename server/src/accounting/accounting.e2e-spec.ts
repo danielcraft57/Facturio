@@ -68,6 +68,37 @@ describe('Accounting e2e', () => {
 			.send({ amount: 120, memo: 'Virement fournisseur' })
 			.expect(201);
 	});
+
+	it('payroll + salary and urssaf payments', async () => {
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '641', name: 'Rémunérations du personnel', type: 'EXPENSE' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '645', name: 'Charges patronales', type: 'EXPENSE' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '421', name: 'Salaires à payer', type: 'LIABILITY' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '431', name: 'URSSAF', type: 'LIABILITY' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '512', name: 'Banque', type: 'BANK' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '635', name: 'Autres impôts, taxes et assimilés', type: 'EXPENSE' });
+		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '447', name: 'Autres impôts et taxes à payer', type: 'LIABILITY' });
+		await request(app.getHttpServer()).post('/accounting/journals').send({ code: 'OD', name: 'Opérations diverses' });
+		await request(app.getHttpServer()).post('/accounting/journals').send({ code: 'BQ', name: 'Banque' });
+
+		// Créer une facture de test pour avoir du CA
+		const client = await request(app.getHttpServer()).post('/clients').send({ name: 'Test Client', email: 'test@test.com', isCompany: true, countryCode: 'FR' }).expect(201).then(r => r.body);
+		await request(app.getHttpServer())
+			.post('/invoices')
+			.send({ clientId: client.id, lines: [{ description: 'Service Test', quantity: 1, unitPrice: 1000, taxRate: 0.2 }] })
+			.expect(201);
+
+		// Micro-social sur période courte (taux 22%)
+		await request(app.getHttpServer())
+			.post('/accounting/contrib/micro-social')
+			.send({ periodStart: '1970-01-01', periodEnd: '2999-12-31', rate: 0.22, reference: 'MICRO-TEST' })
+			.expect(201);
+
+		// C3S si seuil (ici on met un seuil très bas)
+		await request(app.getHttpServer())
+			.post('/accounting/contrib/c3s')
+			.send({ year: new Date().getFullYear(), threshold: 1, rate: 0.0016, reference: 'C3S-TEST' })
+			.expect(201);
+	});
 });
 
 

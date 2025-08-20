@@ -40,15 +40,19 @@ Pour le détail des endpoints, exemples cURL, règles TVA et configuration (CORS
 
 
 ### Comptabilité (nouveau)
-- Plan comptable minimal seedé (512, 411, 706, 44571, 44566, 606, 615, 622) et journaux `VE` (ventes), `BQ` (banque), `OD`.
+- Plan comptable minimal seedé (512, 411, 706, 44571, 44566, 606, 615, 622, 641, 645, 421, 431, 635, 447) et journaux `VE` (ventes), `BQ` (banque), `OD`.
 - Écritures automatiques:
   - Vente: 411/706/44571 à la création de facture
-  - Paiement: 512/411 à l'encaissement
-- Endpoints:
-  - Comptes, journaux, écritures
-  - Rapports: Balance (`GET /accounting/reports/balance`), Grand livre (`GET /accounting/reports/general-ledger?account=706`)
+  - Encaissement: 512/411 au paiement
+  - Achats services: 622/44566/401 et paiement fournisseur: 401/512
+  - Paie: 641/645 au débit, 421/431 au crédit; paiement URSSAF: 431/512
+  - Contributions: micro-social (CA x taux) 645/431, C3S 635/447
+- Endpoints clés:
+  - Comptes, journaux, écritures: `GET/POST /accounting/*`
+  - Rapports: Balance `GET /accounting/reports/balance`, Grand livre `GET /accounting/reports/general-ledger?account=706`
   - Export FEC: `GET /accounting/exports/fec?start=YYYY-MM-DD&end=YYYY-MM-DD`
-- À venir: périodes verrouillées, achats (6xx/44566/401), paiements fournisseurs (401/512)
+  - Prestataires: `POST /accounting/purchases/service`, `POST /accounting/payments/service`
+  - Paie/URSSAF: `POST /accounting/payroll`, `POST /accounting/payments/urssaf`
+  - Contributions: `POST /accounting/contrib/micro-social`, `POST /accounting/contrib/c3s`
 
 - Devis (hors-bilan): à l'envoi d'un devis, une écriture DRAFT est enregistrée dans `OD` (706/44571/411). En cas de rejet/expiration, une contre-passation est créée automatiquement.
-- Prestataires: méthodes internes pour enregistrer un achat de services `622/44566/401` et son paiement `401/512` (exposées en endpoints plus tard).
