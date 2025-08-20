@@ -1,4 +1,5 @@
 # Facturio - Server
+[![CI](https://github.com/loupix/Facturio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/loupix/Facturio/actions/workflows/ci.yml)
 
 API backend pour la gestion de clients, devis, factures, taxes et dépôts (TVA).
 
