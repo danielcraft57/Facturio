@@ -1,0 +1,23 @@
+version: '3.9'
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      args:
+        - NODE_VERSION=18
+    image: facturio-server:latest
+    container_name: facturio-server
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      # SQLite par défaut. Pour Postgres, remplacez par une URL Postgres.
+      - DATABASE_URL=file:./prisma/dev.db
+    volumes:
+      - ./server/prisma:/app/prisma
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+
