@@ -1,0 +1,291 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Client {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  address   String?
+  // B2B/B2C
+  isCompany Boolean   @default(false)
+  companyName String?
+  vatNumber  String?
+  isVatExempt Boolean  @default(false)
+  taxRateOverrideId Int?
+  taxRateOverride   TaxRate? @relation("ClientTaxOverride", fields: [taxRateOverrideId], references: [id])
+  countryCode String? // ISO 3166-1 alpha-2
+  invoices  Invoice[]
+  quotes    Quote[]
+  subscriptions Subscription[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Invoice {
+  id        Int           @id @default(autoincrement())
+  number    String        @unique
+  date      DateTime      @default(now())
+  dueDate   DateTime?
+  status    InvoiceStatus @default(DRAFT)
+  clientId  Int
+  client    Client        @relation(fields: [clientId], references: [id])
+  subscriptionId Int?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  lines     InvoiceLine[]
+  subtotal  Decimal       @default(0)
+  tax       Decimal       @default(0)
+  total     Decimal       @default(0)
+  balance   Decimal       @default(0)
+  currency  String        @default("EUR")
+  legalMention String?
+  payments  Payment[]
+  emailEvents EmailEvent[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model InvoiceLine {
+  id          Int      @id @default(autoincrement())
+  invoiceId   Int
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0)
+  taxRate     Decimal  @default(0) // ex: 0.2 pour 20%
+  taxAmount   Decimal  @default(0)
+  total       Decimal  @default(0)
+}
+
+model Quote {
+  id        Int          @id @default(autoincrement())
+  number    String       @unique
+  date      DateTime     @default(now())
+  expiryDate DateTime?
+  status    QuoteStatus  @default(DRAFT)
+  clientId  Int
+  client    Client       @relation(fields: [clientId], references: [id])
+  lines     QuoteLine[]
+  subtotal  Decimal      @default(0)
+  tax       Decimal      @default(0)
+  total     Decimal      @default(0)
+  publicToken String?    @unique
+  sentAt     DateTime?
+  acceptedAt DateTime?
+  acceptedIp String?
+  views     QuoteView[]
+  emailEvents EmailEvent[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model QuoteLine {
+  id          Int     @id @default(autoincrement())
+  quoteId     Int
+  quote       Quote   @relation(fields: [quoteId], references: [id])
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Decimal @default(0)
+  taxRate     Decimal @default(0)
+  taxAmount   Decimal @default(0)
+  total       Decimal @default(0)
+}
+
+model TaxRate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  rate      Decimal  // ex: 0.2 pour 20%
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // back-relations
+  clientsOverride Client[] @relation("ClientTaxOverride")
+  productsDefault Product[] @relation("ProductDefaultTaxRate")
+}
+
+enum ProductKind {
+  SAAS
+  APP
+  SERVICE
+  GOOD
+}
+
+model Product {
+  id               Int      @id @default(autoincrement())
+  name             String
+  sku              String?  @unique
+  kind             ProductKind @default(SERVICE)
+  unitPrice        Decimal?  // optionnel si via plan
+  defaultTaxRateId Int?
+  defaultTaxRate   TaxRate? @relation("ProductDefaultTaxRate", fields: [defaultTaxRateId], references: [id])
+  plans            Plan[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+model Plan {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id])
+  name       String
+  amount     Decimal  @default(0)
+  currency   String   @default("EUR")
+  interval   BillingInterval
+  trialDays  Int?
+  metered    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  subscriptions Subscription[]
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model Subscription {
+  id                 Int       @id @default(autoincrement())
+  clientId           Int
+  client             Client    @relation(fields: [clientId], references: [id])
+  planId             Int
+  plan               Plan      @relation(fields: [planId], references: [id])
+  status             SubscriptionStatus @default(ACTIVE)
+  quantity           Int       @default(1)
+  startDate          DateTime  @default(now())
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean   @default(false)
+  canceledAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  invoices           Invoice[]
+}
+
+enum AuthorityType {
+  URSSAF
+  DGFIP
+  CUSTOMS
+  OTHER
+}
+
+enum FilingType {
+  VAT_CA3
+  VAT_CA12
+  URSSAF_MONTHLY
+  URSSAF_QUARTERLY
+  IS
+  CFE
+}
+
+enum FilingStatus {
+  DRAFT
+  CALCULATED
+  FILED
+  PAID
+}
+
+model Filing {
+  id          Int           @id @default(autoincrement())
+  type        FilingType
+  authority   AuthorityType
+  periodStart DateTime
+  periodEnd   DateTime
+  dueDate     DateTime
+  status      FilingStatus  @default(DRAFT)
+  notes       String?
+  lines       FilingLine[]
+  amountDue   Decimal       @default(0)
+  amountPaid  Decimal       @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  payments    AuthorityPayment[]
+}
+
+model FilingLine {
+  id          Int      @id @default(autoincrement())
+  filingId    Int
+  filing      Filing   @relation(fields: [filingId], references: [id])
+  taxRate     Decimal  @default(0)
+  taxableBase Decimal  @default(0)
+  taxAmount   Decimal  @default(0)
+}
+
+model AuthorityPayment {
+  id        Int           @id @default(autoincrement())
+  filingId  Int?
+  filing    Filing?       @relation(fields: [filingId], references: [id])
+  authority AuthorityType
+  amount    Decimal       @default(0)
+  date      DateTime      @default(now())
+  reference String?
+  notes     String?
+  createdAt DateTime      @default(now())
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+  amount    Decimal  @default(0)
+  date      DateTime @default(now())
+  method    String?
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model Counter {
+  id      Int    @id @default(autoincrement())
+  scope   String @unique // ex: "invoice-2025" ou "quote-2025"
+  current Int    @default(0)
+}
+
+model EmailEvent {
+  id         Int      @id @default(autoincrement())
+  quoteId    Int?
+  invoiceId  Int?
+  type       String   // delivered | opened | clicked | bounced | sent
+  providerId String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+  quote      Quote?   @relation(fields: [quoteId], references: [id])
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
+}
+
+model QuoteView {
+  id        Int      @id @default(autoincrement())
+  quoteId   Int
+  quote     Quote    @relation(fields: [quoteId], references: [id])
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+

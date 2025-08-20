@@ -1,0 +1,11 @@
+# Force LF for all text files
+* text=auto eol=lf
+
+# Binaries
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+# SVG as text but keep LF
+*.svg text eol=lf
