@@ -39,3 +39,10 @@ Facturio/
 Pour le détail des endpoints, exemples cURL, règles TVA et configuration (CORS, env, Postgres), référez-vous à `server/README.md`. 
 
 
+### Comptabilité (nouveau)
+- Plan comptable minimal seedé (512, 411, 706, 44571, 44566, 606, 615, 622) et journaux `VE` (ventes), `BQ` (banque), `OD`.
+- Écritures automatiques:
+  - Vente: 411/706/44571 à la création de facture
+  - Paiement: 512/411 à l'encaissement
+- Endpoints de base: comptes, journaux, écritures.
+- Bientôt: export FEC, rapports Balance et Grand livre, verrouillage de périodes.

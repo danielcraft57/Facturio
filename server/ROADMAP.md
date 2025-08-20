@@ -42,6 +42,13 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - [ ] Export CSV (factures, lignes)
 - [ ] Intégration paiement (Stripe) optionnelle
 
+### v0.8 - Comptabilité
+- [x] Plan comptable minimal seedé (comptes 512/411/706/44571/44566/606/615/622; journaux VE/BQ/OD)
+- [x] Écritures auto ventes (411/706/44571) et paiements (512/411)
+- [ ] Export FEC (format officiel)
+- [ ] Rapports: Balance, Grand livre
+- [ ] Verrouillage de périodes et contre-passations
+
 ### v0.8 - Suivi d'envoi devis/factures
 - [x] Envoi email de devis (mock) et lien public
 - [x] Webhooks provider (delivered/open)

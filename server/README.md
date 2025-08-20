@@ -3,6 +3,18 @@
 
 API backend pour la gestion de clients, devis, factures, taxes et dépôts (TVA).
 
+## Comptabilité
+- Plan comptable seedé: comptes clés (512 Banque, 411 Clients, 706 Prestations, 44571 TVA collectée, 44566 TVA déductible, 606/615/622 charges) et journaux (VE ventes, BQ banque, OD divers).
+- Écritures auto:
+  - Création facture: 411/706/44571 (ventes + TVA)
+  - Paiement facture: 512/411 (encaissement)
+- Endpoints:
+  - `GET /accounting/accounts` - liste
+  - `POST /accounting/accounts` - création
+  - `POST /accounting/journals` - création
+  - `POST /accounting/entries` - écriture équilibrée
+- À venir: export FEC, balance, grand livre, périodes verrouillées, achats (6xx/44566/401) et paiements fournisseurs (401/512).
+
 ## Stack
 - Node.js + TypeScript
 - NestJS
