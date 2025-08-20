@@ -71,6 +71,34 @@ async function seedProductsAndPlans(defaultTaxIds: { def20Id: number; def10Id: n
 	return { productSaas, productService, planMonthly, planYearly };
 }
 
+async function seedChartOfAccounts(): Promise<void> {
+  // Journaux de base
+  await prisma.journal.upsert({ where: { code: 'VE' }, update: {}, create: { code: 'VE', name: 'Ventes' } });
+  await prisma.journal.upsert({ where: { code: 'BQ' }, update: {}, create: { code: 'BQ', name: 'Banque' } });
+  await prisma.journal.upsert({ where: { code: 'OD' }, update: {}, create: { code: 'OD', name: 'Opérations diverses' } });
+
+  // Comptes de base (PCG minimal)
+  const accounts: Array<{ code: string; name: string; type: any }> = [
+    { code: '512', name: 'Banque', type: 'BANK' },
+    { code: '411', name: 'Clients', type: 'CUSTOMER' },
+    { code: '401', name: 'Fournisseurs', type: 'SUPPLIER' },
+    { code: '706', name: 'Prestations de services', type: 'REVENUE' },
+    { code: '707', name: 'Ventes de marchandises', type: 'REVENUE' },
+    { code: '44571', name: 'TVA collectée', type: 'TAX' },
+    { code: '44566', name: 'TVA déductible', type: 'TAX' },
+    { code: '606', name: 'Achats non stockés', type: 'EXPENSE' },
+    { code: '615', name: 'Entretien et réparations', type: 'EXPENSE' },
+    { code: '622', name: 'Rémunérations d’intermédiaires et honoraires', type: 'EXPENSE' }
+  ];
+
+  for (const a of accounts) {
+    const existing = await prisma.account.findFirst({ where: { code: a.code } });
+    if (!existing) {
+      await prisma.account.create({ data: a as any });
+    }
+  }
+}
+
 async function seedClients(defaultTaxIds: { def10Id: number }) {
 	const frCompany = await prisma.client.upsert({
 		where: { email: 'fr@acme.test' },
@@ -275,6 +303,9 @@ async function main(): Promise<void> {
 
 	const taxIds = await seedTaxRates();
 	console.log('Taux de TVA seeds ok');
+
+	await seedChartOfAccounts();
+	console.log('Plan comptable seeds ok');
 
 	const { productSaas, productService, planMonthly, planYearly } = await seedProductsAndPlans(taxIds);
 	console.log('Produits et plans seeds ok');

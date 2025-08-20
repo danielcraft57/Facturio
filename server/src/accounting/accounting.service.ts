@@ -70,6 +70,34 @@ export class AccountingService {
 			return entry;
 		});
 	}
+
+	// Poste une écriture de vente: 411/706/44571
+	async postInvoiceSale(params: { invoiceId: number; customerAccountCode?: string; revenueAccountCode?: string; vatCollectedAccountCode?: string }) {
+		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
+		if (!invoice) throw new BadRequestException('Facture introuvable');
+		const subtotal = Number((invoice.subtotal as any)?.toNumber?.() ?? invoice.subtotal);
+		const tax = Number((invoice.tax as any)?.toNumber?.() ?? invoice.tax);
+		const total = Number((invoice.total as any)?.toNumber?.() ?? invoice.total);
+		const journal = await this.prisma.journal.findUnique({ where: { code: 'VE' } });
+		if (!journal) throw new BadRequestException('Journal VE manquant');
+		const lines = [
+			{ accountCode: params.customerAccountCode ?? '411', debit: total },
+			{ accountCode: params.revenueAccountCode ?? '706', credit: subtotal },
+			{ accountCode: params.vatCollectedAccountCode ?? '44571', credit: tax }
+		];
+		return this.postEntry({ journalCode: 'VE', reference: `VENTE ${invoice.number}`, lines });
+	}
+
+	// Poste un encaissement: 512/411
+	async postInvoicePayment(params: { invoiceId: number; amount: number; bankAccountCode?: string; customerAccountCode?: string }) {
+		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
+		if (!invoice) throw new BadRequestException('Facture introuvable');
+		const lines = [
+			{ accountCode: params.bankAccountCode ?? '512', debit: params.amount },
+			{ accountCode: params.customerAccountCode ?? '411', credit: params.amount }
+		];
+		return this.postEntry({ journalCode: 'BQ', reference: `PAIEMENT ${invoice.number}`, lines });
+	}
 }
 
 

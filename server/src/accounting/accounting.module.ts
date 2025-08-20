@@ -6,7 +6,8 @@ import { AccountingController } from './accounting.controller';
 @Module({
 	imports: [PrismaModule],
 	controllers: [AccountingController],
-	providers: [AccountingService]
+	providers: [AccountingService],
+	exports: [AccountingService]
 })
 export class AccountingModule {}
 
