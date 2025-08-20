@@ -44,8 +44,8 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 ### v0.8 - Comptabilité
 - [x] Plan comptable minimal seedé (comptes clés + journaux VE/BQ/OD)
 - [x] Écritures auto ventes (411/706/44571) et paiements (512/411)
-- [ ] Export FEC (format officiel)
-- [ ] Rapports: Balance, Grand livre
+- [x] Rapports: Balance, Grand livre
+- [x] Export FEC (première version texte)
 - [ ] Verrouillage de périodes et contre-passations
 
 ### Technique & Ops

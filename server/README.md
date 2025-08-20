@@ -13,7 +13,10 @@ API backend pour la gestion de clients, devis, factures, taxes et dépôts (TVA)
   - `POST /accounting/accounts` - création
   - `POST /accounting/journals` - création
   - `POST /accounting/entries` - écriture équilibrée
-- À venir: export FEC, balance, grand livre, périodes verrouillées, achats (6xx/44566/401) et paiements fournisseurs (401/512).
+  - `GET /accounting/reports/balance` - balance par compte sur période
+  - `GET /accounting/reports/general-ledger?account=706` - grand livre (filtre optionnel par compte)
+  - `GET /accounting/exports/fec?start=YYYY-MM-DD&end=YYYY-MM-DD` - export FEC texte
+- À venir: périodes verrouillées, achats (6xx/44566/401) et paiements fournisseurs (401/512).
 
 ## Stack
 - Node.js + TypeScript

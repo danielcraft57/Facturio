@@ -29,6 +29,25 @@ describe('Accounting e2e', () => {
 			})
 			.expect(201);
 	});
+
+	it('balance report returns totals', async () => {
+		const res = await request(app.getHttpServer()).get('/accounting/reports/balance').expect(200).then(r => r.body);
+		expect(Array.isArray(res)).toBe(true);
+		expect(res.find((r: any) => r.accountCode === '706')).toBeDefined();
+	});
+
+	it('general ledger returns lines', async () => {
+		const res = await request(app.getHttpServer()).get('/accounting/reports/general-ledger?account=706').expect(200).then(r => r.body);
+		expect(Array.isArray(res)).toBe(true);
+		const acc = res.find((x: any) => x.accountCode === '706');
+		expect(acc).toBeDefined();
+	});
+
+	it('export FEC returns text data', async () => {
+		const res = await request(app.getHttpServer()).get('/accounting/exports/fec').expect(200);
+		expect(typeof res.text).toBe('string');
+		expect(res.text.split('\n')[0]).toContain('JournalCode');
+	});
 });
 
 

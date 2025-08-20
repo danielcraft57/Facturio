@@ -44,5 +44,8 @@ Pour le détail des endpoints, exemples cURL, règles TVA et configuration (CORS
 - Écritures automatiques:
   - Vente: 411/706/44571 à la création de facture
   - Paiement: 512/411 à l'encaissement
-- Endpoints de base: comptes, journaux, écritures.
-- Bientôt: export FEC, rapports Balance et Grand livre, verrouillage de périodes.
+- Endpoints:
+  - Comptes, journaux, écritures
+  - Rapports: Balance (`GET /accounting/reports/balance`), Grand livre (`GET /accounting/reports/general-ledger?account=706`)
+  - Export FEC: `GET /accounting/exports/fec?start=YYYY-MM-DD&end=YYYY-MM-DD`
+- À venir: périodes verrouillées, achats (6xx/44566/401), paiements fournisseurs (401/512)

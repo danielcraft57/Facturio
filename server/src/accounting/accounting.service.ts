@@ -71,6 +71,136 @@ export class AccountingService {
 		});
 	}
 
+	private toDate(input?: string | Date): Date | undefined {
+		if (!input) return undefined;
+		return typeof input === 'string' ? new Date(input) : input;
+	}
+
+	private formatYyyyMmDd(d: Date): string {
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, '0');
+		const day = String(d.getDate()).padStart(2, '0');
+		return `${y}${m}${day}`;
+	}
+
+	private toNumber(n: any): number {
+		if (n == null) return 0;
+		return (n as any)?.toNumber?.() ?? Number(n);
+	}
+
+	async exportFEC(params: { start?: string; end?: string }): Promise<string> {
+		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
+		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
+		const entries = await this.prisma.journalEntry.findMany({
+			where: { date: { gte: start, lte: end }, status: 'POSTED' },
+			include: { journal: true, lines: { include: { account: true } } },
+			orderBy: [{ date: 'asc' }, { id: 'asc' }]
+		});
+		const header = [
+			'JournalCode',
+			'JournalLib',
+			'EcritureNum',
+			'EcritureDate',
+			'CompteNum',
+			'CompteLib',
+			'PieceRef',
+			'PieceDate',
+			'EcritureLib',
+			'Debit',
+			'Credit',
+			'EcritureLet',
+			'DateLet',
+			'ValidDate',
+			'Montantdevise',
+			'Idevise'
+		].join('|');
+		const lines: string[] = [header];
+		for (const e of entries) {
+			for (const l of e.lines) {
+				const row = [
+					e.journal.code,
+					e.journal.name,
+					String(e.id),
+					this.formatYyyyMmDd(new Date(e.date)),
+					l.account.code,
+					l.account.name,
+					e.reference ?? '',
+					e.date ? this.formatYyyyMmDd(new Date(e.date)) : '',
+					l.description ?? e.memo ?? '',
+					this.toNumber(l.debit).toFixed(2),
+					this.toNumber(l.credit).toFixed(2),
+					'',
+					'',
+					this.formatYyyyMmDd(new Date(e.date)),
+					'',
+					''
+				].join('|');
+				lines.push(row);
+			}
+		}
+		return lines.join('\n');
+	}
+
+	async getTrialBalance(params: { start?: string; end?: string }) {
+		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
+		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
+		const grouped = await this.prisma.journalLine.groupBy({
+			by: ['accountId'],
+			where: { entry: { date: { gte: start, lte: end }, status: 'POSTED' } },
+			_sum: { debit: true, credit: true }
+		});
+		const accountIds = grouped.map(g => g.accountId);
+		const accounts = await this.prisma.account.findMany({ where: { id: { in: accountIds } } });
+		return grouped
+			.map(g => {
+				const acc = accounts.find(a => a.id === g.accountId)!;
+				const debit = this.toNumber(g._sum.debit);
+				const credit = this.toNumber(g._sum.credit);
+				return {
+					accountCode: acc.code,
+					accountName: acc.name,
+					debit,
+					credit,
+					balance: Number((debit - credit).toFixed(2))
+				};
+			})
+			.sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+	}
+
+	async getGeneralLedger(params: { start?: string; end?: string; accountCode?: string }) {
+		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
+		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
+		let accountFilter: any = {};
+		if (params.accountCode) {
+			const acc = await this.prisma.account.findFirst({ where: { code: params.accountCode } });
+			if (!acc) throw new BadRequestException('Compte introuvable');
+			accountFilter = { accountId: acc.id };
+		}
+		const lines = await this.prisma.journalLine.findMany({
+			where: { ...accountFilter, entry: { date: { gte: start, lte: end }, status: 'POSTED' } },
+			include: { account: true, entry: { include: { journal: true } } },
+			orderBy: [{ entry: { date: 'asc' } }, { id: 'asc' }]
+		});
+		const ledger: Record<string, any> = {};
+		for (const l of lines) {
+			const code = l.account.code;
+			if (!ledger[code]) ledger[code] = { accountCode: code, accountName: l.account.name, lines: [], totalDebit: 0, totalCredit: 0 };
+			const debit = this.toNumber(l.debit);
+			const credit = this.toNumber(l.credit);
+			ledger[code].lines.push({
+				date: l.entry.date,
+				journalCode: l.entry.journal.code,
+				reference: l.entry.reference,
+				memo: l.description ?? l.entry.memo,
+				debit,
+				credit
+			});
+			ledger[code].totalDebit += debit;
+			ledger[code].totalCredit += credit;
+		}
+		return Object.values(ledger).sort((a: any, b: any) => a.accountCode.localeCompare(b.accountCode));
+	}
+
 	// Poste une écriture de vente: 411/706/44571
 	async postInvoiceSale(params: { invoiceId: number; customerAccountCode?: string; revenueAccountCode?: string; vatCollectedAccountCode?: string }) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
