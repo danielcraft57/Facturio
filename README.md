@@ -1,4 +1,4 @@
-## FactuFlow
+## Facturio
 
 API de facturation pensée pour SaaS et apps. On gère clients, produits, abonnements, devis, factures, paiements, TVA (FR/UE) et déclarations.
 
@@ -26,7 +26,7 @@ Une démo statique des thèmes est disponible dans `ui/`:
 
 ### Structure
 ```
-FactuFlow/
+Facturio/
   server/
     src/...
     prisma/...

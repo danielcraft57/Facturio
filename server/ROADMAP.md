@@ -1,4 +1,4 @@
-# Roadmap - FactuFlow Server
+# Roadmap - Facturio Server
 
 Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 

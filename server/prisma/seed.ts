@@ -57,7 +57,7 @@ async function seedTaxRates(): Promise<{ def20Id: number; def10Id: number; zeroI
 
 async function seedProductsAndPlans(defaultTaxIds: { def20Id: number; def10Id: number }) {
 	const productSaas = await prisma.product.create({
-		data: { name: 'FactuFlow Pro', sku: 'FF-PRO', kind: 'SAAS', defaultTaxRateId: defaultTaxIds.def20Id }
+		data: { name: 'Facturio Pro', sku: 'FF-PRO', kind: 'SAAS', defaultTaxRateId: defaultTaxIds.def20Id }
 	});
 	const productService = await prisma.product.create({
 		data: { name: 'Audit fiscal', sku: 'AUDIT-SERV', kind: 'SERVICE', defaultTaxRateId: defaultTaxIds.def10Id }

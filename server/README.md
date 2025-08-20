@@ -1,4 +1,4 @@
-# FactuFlow - Server
+# Facturio - Server
 
 API backend pour la gestion de clients, devis, factures, taxes et dépôts (TVA).
 
