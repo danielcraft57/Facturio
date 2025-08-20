@@ -1,5 +1,5 @@
 # Facturio - Server
-[![CI](https://github.com/loupix/Facturio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/loupix/Facturio/actions/workflows/ci.yml)
+[![CI](https://github.com/loupix/Facturio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/loupix/Facturio/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/codecov/c/github/loupix/Facturio?token=&branch=main)](https://app.codecov.io/gh/loupix/Facturio) [![Node](https://img.shields.io/badge/node-18.x-339933?logo=nodedotjs&logoColor=white)](https://github.com/loupix/Facturio/actions/workflows/ci.yml)
 
 API backend pour la gestion de clients, devis, factures, taxes et dépôts (TVA).
 
@@ -48,6 +48,25 @@ npm run build
 npm start
 ```
 Le build génère `dist/` et `npm start` exécute `dist/main.js`.
+
+## Docker
+### Lancer en local (SQLite)
+```bash
+docker compose up --build
+```
+API disponible sur `http://localhost:3000`.
+
+### Variables utiles
+- `DATABASE_URL`: par défaut `file:./prisma/dev.db` (SQLite). Pour Postgres, mettez une URL Postgres.
+
+### Image manuelle
+```bash
+cd server
+docker build -t facturio-server:latest .
+docker run --rm -p 3000:3000 -e DATABASE_URL=file:./prisma/dev.db facturio-server:latest
+```
+
+L'entrypoint applique `prisma db push` au démarrage si `DATABASE_URL` est défini.
 
 ## Base de données (Prisma)
 - Schéma: `prisma/schema.prisma`
