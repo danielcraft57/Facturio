@@ -16,11 +16,7 @@ describe('Accounting e2e', () => {
 		await app.close();
 	});
 
-	it('create accounts, journal and balanced entry', async () => {
-		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '512', name: 'Banque', type: 'BANK' }).expect(201);
-		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '706', name: 'Prestations', type: 'REVENUE' }).expect(201);
-		await request(app.getHttpServer()).post('/accounting/accounts').send({ code: '44571', name: 'TVA collectée', type: 'TAX' }).expect(201);
-		await request(app.getHttpServer()).post('/accounting/journals').send({ code: 'VE', name: 'Ventes' }).expect(201);
+	it('post a balanced entry using seeded accounts/journal', async () => {
 		await request(app.getHttpServer())
 			.post('/accounting/entries')
 			.send({

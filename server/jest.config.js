@@ -2,9 +2,9 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  collectCoverage: true,
+  collectCoverage: false,
   coverageDirectory: '<rootDir>/coverage',
-  coverageReporters: ['text', 'lcov'],
+  coverageReporters: ['lcov'],
   roots: ['<rootDir>/src'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: { '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
