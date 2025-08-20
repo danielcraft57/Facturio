@@ -289,3 +289,67 @@ model QuoteView {
 }
 
 
+
+// Comptabilité
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+  TAX
+  BANK
+  CUSTOMER
+  SUPPLIER
+}
+
+model Account {
+  id        Int         @id @default(autoincrement())
+  code      String      @unique
+  name      String
+  type      AccountType
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  lines     JournalLine[]
+}
+
+model Journal {
+  id        Int           @id @default(autoincrement())
+  code      String        @unique
+  name      String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  entries   JournalEntry[]
+}
+
+enum EntryStatus {
+  DRAFT
+  POSTED
+}
+
+model JournalEntry {
+  id         Int          @id @default(autoincrement())
+  journalId  Int
+  journal    Journal      @relation(fields: [journalId], references: [id])
+  date       DateTime     @default(now())
+  reference  String?
+  memo       String?
+  status     EntryStatus  @default(DRAFT)
+  totalDebit Decimal      @default(0)
+  totalCredit Decimal     @default(0)
+  createdAt  DateTime     @default(now())
+  lines      JournalLine[]
+}
+
+model JournalLine {
+  id         Int           @id @default(autoincrement())
+  entryId    Int
+  entry      JournalEntry  @relation(fields: [entryId], references: [id])
+  accountId  Int
+  account    Account       @relation(fields: [accountId], references: [id])
+  description String?
+  debit      Decimal       @default(0)
+  credit     Decimal       @default(0)
+}

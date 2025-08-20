@@ -3,6 +3,46 @@
 
 API backend pour la gestion de clients, devis, factures, taxes et dépôts (TVA).
 
+## Comptabilité
+- Plan comptable seedé: comptes clés (512 Banque, 411 Clients, 706 Prestations, 44571 TVA collectée, 44566 TVA déductible, 606/615/622 charges, 641/645 paie, 421/431 dettes paie/URSSAF, 635/447 contributions) et journaux (VE ventes, BQ banque, OD divers).
+- Écritures auto:
+  - Création facture: 411/706/44571 (ventes + TVA)
+  - Paiement facture: 512/411 (encaissement)
+  - Achats services: 622/44566/401, paiement fournisseur: 401/512
+  - Paie: 641/645 au débit, 421/431 au crédit; paiement URSSAF: 431/512
+  - Contributions: micro-social (CA x taux) 645/431, C3S 635/447
+- Devis (hors-bilan): à l'envoi d'un devis, une écriture DRAFT est créée dans `OD` (706/44571/411). En cas de rejet/expiration, une contre-passation automatique annule cette écriture.
+- Endpoints:
+  - `GET /accounting/accounts` - liste
+  - `POST /accounting/accounts` - création
+  - `POST /accounting/journals` - création
+  - `POST /accounting/entries` - écriture équilibrée
+  - `GET /accounting/reports/balance` - balance par compte sur période
+  - `GET /accounting/reports/general-ledger?account=706` - grand livre (filtre optionnel par compte)
+  - `GET /accounting/exports/fec?start=YYYY-MM-DD&end=YYYY-MM-DD` - export FEC texte
+  - `POST /accounting/purchases/service`, `POST /accounting/payments/service`
+  - `POST /accounting/payroll`, `POST /accounting/payments/urssaf`
+  - `POST /accounting/contrib/micro-social`, `POST /accounting/contrib/c3s`
+ - À venir: périodes verrouillées.
+
+### Écritures comptables types
+
+| Opération | Débit | Crédit | Journal | Description |
+|-----------|-------|--------|---------|-------------|
+| **Vente** | 411 Clients | 706 Prestations + 44571 TVA | VE | Création facture |
+| **Encaissement** | 512 Banque | 411 Clients | BQ | Paiement facture |
+| **Achat service** | 622 Services + 44566 TVA | 401 Fournisseurs | OD | Prestation externe |
+| **Paiement fournisseur** | 401 Fournisseurs | 512 Banque | BQ | Virement fournisseur |
+| **Paie** | 641 Salaires + 645 Charges | 421 Salaires à payer + 431 URSSAF | OD | Calcul paie |
+| **Paiement salaires** | 421 Salaires à payer | 512 Banque | BQ | Virement salaires |
+| **Paiement URSSAF** | 431 URSSAF | 512 Banque | BQ | Virement URSSAF |
+| **Micro-social** | 645 Charges | 431 URSSAF | OD | CA × taux (auto-entrepreneur) |
+| **C3S** | 635 Autres impôts | 447 C3S à payer | OD | CA × 0,16% si seuil dépassé |
+| **Devis envoyé** | 411 Clients | 706 Prestations + 44571 TVA | OD | Hors-bilan (DRAFT) |
+| **Devis rejeté** | 706 Prestations + 44571 TVA | 411 Clients | OD | Contre-passation |
+
+*Note: Les montants sont automatiquement équilibrés. Les comptes 635 et 447 sont ajoutés au seed.*
+
 ## Stack
 - Node.js + TypeScript
 - NestJS

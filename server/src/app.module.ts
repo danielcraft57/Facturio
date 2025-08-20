@@ -8,10 +8,11 @@ import { QuotesModule } from './quotes/quotes.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { FilingsModule } from './filings/filings.module';
 import { WebhooksController } from './webhooks.controller';
+import { AccountingModule } from './accounting/accounting.module';
 import { CommonModule } from './common/common.module';
 
 @Module({
-	imports: [PrismaModule, CommonModule, ClientsModule, InvoicesModule, TaxesModule, ProductsModule, QuotesModule, SubscriptionsModule, FilingsModule],
+	imports: [PrismaModule, CommonModule, ClientsModule, InvoicesModule, TaxesModule, ProductsModule, QuotesModule, SubscriptionsModule, FilingsModule, AccountingModule],
 	controllers: [WebhooksController],
 	providers: []
 })

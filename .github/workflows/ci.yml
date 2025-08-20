@@ -29,4 +29,4 @@ jobs:
         env:
           NODE_ENV: test
           DATABASE_URL: file:./prisma/test.db
-        run: npm run test:e2e
+        run: npm run test:e2e -- --coverage

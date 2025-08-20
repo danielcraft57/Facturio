@@ -41,6 +41,17 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - [ ] Export CSV (factures, lignes)
 - [ ] Intégration paiement (Stripe) optionnelle
 
+### v0.8 - Comptabilité
+- [x] Plan comptable minimal seedé (comptes clés + journaux VE/BQ/OD)
+- [x] Écritures auto ventes (411/706/44571) et paiements (512/411)
+- [x] Achats services (622/44566/401) et paiements fournisseurs (401/512)
+- [x] Devis hors-bilan + contre-passation auto
+- [x] Paie (641/645/421/431) et paiement URSSAF (431/512)
+- [x] Contributions micro-social (645/431) et C3S (635/447)
+- [x] Rapports: Balance, Grand livre
+- [x] Export FEC (première version texte)
+- [ ] Verrouillage de périodes et contre-passations
+
 ### Technique & Ops
 - [x] Script de seed Prisma (TVA FR)
 - [ ] Tests e2e sur endpoints critiques

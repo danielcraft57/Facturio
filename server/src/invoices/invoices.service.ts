@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InvoiceStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
+import { AccountingService } from '../accounting/accounting.service';
 
 export interface InvoiceLineInput {
 	description: string;
@@ -30,7 +31,7 @@ export interface UpdateInvoiceInput {
 
 @Injectable()
 export class InvoicesService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(private readonly prisma: PrismaService, private readonly accounting: AccountingService) {}
 
   private async getDefaultTaxRate(): Promise<number> {
     const def = await this.prisma.taxRate.findFirst({ where: { isDefault: true } });
@@ -112,7 +113,7 @@ export class InvoicesService {
 		const linesWithTax = lines.map(l => ({ ...l, taxRate: l.taxRate ?? effectiveRate }));
 		const totals = await this.computeTotals(linesWithTax);
 		const number = data.number ?? (await this.nextInvoiceNumber());
-		return this.prisma.invoice.create({
+		const created = await this.prisma.invoice.create({
 			data: {
 				number,
 				clientId: data.clientId,
@@ -137,6 +138,12 @@ export class InvoicesService {
 			},
 			include: { lines: true, client: true, payments: true }
 		});
+
+		// Comptabilisation automatique de la vente (411/706/44571)
+		try {
+			await this.accounting.postInvoiceSale({ invoiceId: created.id });
+		} catch (_) {}
+		return created;
 	}
 
 	async findAll(query: ListQueryDto) {
@@ -249,6 +256,10 @@ export class InvoicesService {
 			data: { balance: newBalance, status: newStatus },
 			include: { lines: true, client: true, payments: true }
 		});
+		// Comptabilisation de l'encaissement (512/411)
+		try {
+			await this.accounting.postInvoicePayment({ invoiceId: id, amount });
+		} catch (_) {}
 		// Retourner le paiement en nombre pour .toBe(250)
 		return { ...payment, amount: (payment.amount as any)?.toNumber?.() ?? Number(payment.amount) } as any;
 	}

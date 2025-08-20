@@ -2,12 +2,13 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  collectCoverage: true,
+  collectCoverage: false,
   coverageDirectory: '<rootDir>/coverage',
-  coverageReporters: ['text', 'lcov'],
+  coverageReporters: ['lcov'],
   roots: ['<rootDir>/src'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: { '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }] },
   testMatch: ['**/*.e2e-spec.ts', '**/*.spec.ts', '**/*.test.ts'],
-  testTimeout: 30000
+  testTimeout: 30000,
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts']
 };
