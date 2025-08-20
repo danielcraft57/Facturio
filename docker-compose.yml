@@ -6,7 +6,7 @@ services:
       context: ./server
       dockerfile: Dockerfile
       args:
-        - NODE_VERSION=18
+        - NODE_VERSION=20
     image: facturio-server:latest
     container_name: facturio-server
     environment:
