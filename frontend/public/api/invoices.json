@@ -1,0 +1,226 @@
+{
+  "success": true,
+  "data": {
+    "invoices": [
+      {
+        "id": "1",
+        "number": "FAC-2024-001",
+        "clientId": "1",
+        "client": {
+          "id": "1",
+          "name": "Entreprise ABC",
+          "email": "contact@abc.fr"
+        },
+        "status": "paid",
+        "issueDate": "2024-03-01T00:00:00Z",
+        "dueDate": "2024-03-31T00:00:00Z",
+        "items": [
+          {
+            "id": "1",
+            "description": "Développement site web",
+            "quantity": 1,
+            "unitPrice": 5000,
+            "taxRate": 20,
+            "total": 5000,
+            "totalWithTax": 6000
+          },
+          {
+            "id": "2",
+            "description": "Formation équipe",
+            "quantity": 2,
+            "unitPrice": 800,
+            "taxRate": 20,
+            "total": 1600,
+            "totalWithTax": 1920
+          }
+        ],
+        "subtotal": 6600,
+        "taxTotal": 1320,
+        "total": 7920,
+        "currency": "EUR",
+        "notes": "Facture pour développement site web et formation",
+        "createdAt": "2024-03-01T10:00:00Z",
+        "updatedAt": "2024-03-15T14:30:00Z",
+        "paidAt": "2024-03-15T14:30:00Z"
+      },
+      {
+        "id": "2",
+        "number": "FAC-2024-002",
+        "clientId": "2",
+        "client": {
+          "id": "2",
+          "name": "Startup Innovante",
+          "email": "hello@startup.fr"
+        },
+        "status": "sent",
+        "issueDate": "2024-03-05T00:00:00Z",
+        "dueDate": "2024-04-05T00:00:00Z",
+        "items": [
+          {
+            "id": "3",
+            "description": "Consulting stratégique",
+            "quantity": 10,
+            "unitPrice": 150,
+            "taxRate": 20,
+            "total": 1500,
+            "totalWithTax": 1800
+          }
+        ],
+        "subtotal": 1500,
+        "taxTotal": 300,
+        "total": 1800,
+        "currency": "EUR",
+        "notes": "Consulting stratégique - 10 heures",
+        "createdAt": "2024-03-05T09:30:00Z",
+        "updatedAt": "2024-03-05T09:30:00Z"
+      },
+      {
+        "id": "3",
+        "number": "FAC-2024-003",
+        "clientId": "3",
+        "client": {
+          "id": "3",
+          "name": "Boutique Mode",
+          "email": "info@boutiquemode.fr"
+        },
+        "status": "overdue",
+        "issueDate": "2024-02-15T00:00:00Z",
+        "dueDate": "2024-03-15T00:00:00Z",
+        "items": [
+          {
+            "id": "4",
+            "description": "Création logo",
+            "quantity": 1,
+            "unitPrice": 800,
+            "taxRate": 20,
+            "total": 800,
+            "totalWithTax": 960
+          },
+          {
+            "id": "5",
+            "description": "Charte graphique",
+            "quantity": 1,
+            "unitPrice": 1200,
+            "taxRate": 20,
+            "total": 1200,
+            "totalWithTax": 1440
+          }
+        ],
+        "subtotal": 2000,
+        "taxTotal": 400,
+        "total": 2400,
+        "currency": "EUR",
+        "notes": "Création identité visuelle complète",
+        "createdAt": "2024-02-15T11:00:00Z",
+        "updatedAt": "2024-03-20T16:45:00Z"
+      },
+      {
+        "id": "4",
+        "number": "FAC-2024-004",
+        "clientId": "5",
+        "client": {
+          "id": "5",
+          "name": "Restaurant Gastronomique",
+          "email": "reservation@restaurant.fr"
+        },
+        "status": "draft",
+        "issueDate": "2024-03-20T00:00:00Z",
+        "dueDate": "2024-04-20T00:00:00Z",
+        "items": [
+          {
+            "id": "6",
+            "description": "Maintenance site web",
+            "quantity": 1,
+            "unitPrice": 300,
+            "taxRate": 20,
+            "total": 300,
+            "totalWithTax": 360
+          }
+        ],
+        "subtotal": 300,
+        "taxTotal": 60,
+        "total": 360,
+        "currency": "EUR",
+        "notes": "Maintenance mensuelle site web",
+        "createdAt": "2024-03-20T14:00:00Z",
+        "updatedAt": "2024-03-20T14:00:00Z"
+      },
+      {
+        "id": "5",
+        "number": "FAC-2024-005",
+        "clientId": "7",
+        "client": {
+          "id": "7",
+          "name": "Clinique Médicale",
+          "email": "contact@clinique.fr"
+        },
+        "status": "paid",
+        "issueDate": "2024-03-10T00:00:00Z",
+        "dueDate": "2024-04-10T00:00:00Z",
+        "items": [
+          {
+            "id": "7",
+            "description": "Système de gestion patients",
+            "quantity": 1,
+            "unitPrice": 15000,
+            "taxRate": 20,
+            "total": 15000,
+            "totalWithTax": 18000
+          },
+          {
+            "id": "8",
+            "description": "Formation utilisateurs",
+            "quantity": 3,
+            "unitPrice": 500,
+            "taxRate": 20,
+            "total": 1500,
+            "totalWithTax": 1800
+          }
+        ],
+        "subtotal": 16500,
+        "taxTotal": 3300,
+        "total": 19800,
+        "currency": "EUR",
+        "notes": "Système de gestion patients avec formation",
+        "createdAt": "2024-03-10T08:30:00Z",
+        "updatedAt": "2024-03-25T10:15:00Z",
+        "paidAt": "2024-03-25T10:15:00Z"
+      },
+      {
+        "id": "6",
+        "number": "FAC-2024-006",
+        "clientId": "8",
+        "client": {
+          "id": "8",
+          "name": "École de Formation",
+          "email": "info@ecole.fr"
+        },
+        "status": "sent",
+        "issueDate": "2024-03-18T00:00:00Z",
+        "dueDate": "2024-04-18T00:00:00Z",
+        "items": [
+          {
+            "id": "9",
+            "description": "Plateforme e-learning",
+            "quantity": 1,
+            "unitPrice": 8000,
+            "taxRate": 20,
+            "total": 8000,
+            "totalWithTax": 9600
+          }
+        ],
+        "subtotal": 8000,
+        "taxTotal": 1600,
+        "total": 9600,
+        "currency": "EUR",
+        "notes": "Développement plateforme e-learning",
+        "createdAt": "2024-03-18T15:45:00Z",
+        "updatedAt": "2024-03-18T15:45:00Z"
+      }
+    ],
+    "total": 6,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 1
+  }
+}

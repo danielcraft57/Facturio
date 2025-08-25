@@ -3,30 +3,32 @@
 ## 🎯 Objectif
 Développer une interface moderne et intuitive pour la gestion complète de facturation, devis, clients et comptabilité.
 
-## 📋 État actuel (v0.2.0)
+## 📋 État actuel (v0.3.0)
 - ✅ Projet Vite + React + TypeScript
 - ✅ Material UI avec thème personnalisable
-- ✅ Layout avec navigation (AppBar + Drawer)
+- ✅ Layout avec navigation (AppBar + Drawer burger)
+- ✅ Services API avec intercepteurs, cache et retry
+- ✅ Composants de base (DataTable, ConfirmDialog, Toast)
 - ✅ Pages vides pour toutes les sections
 - ✅ Proxy vers backend NestJS
 
 ---
 
-## 🚀 Phase 1 : Fondations (v0.3.0 - v0.4.0)
+## 🚀 Phase 1 : Fondations (v0.3.0 - v0.4.0) ✅ TERMINÉE
 
-### Services API
-- [ ] Client HTTP avec intercepteurs
-- [ ] Gestion des erreurs réseau
-- [ ] Cache des requêtes
-- [ ] Optimistic updates
-- [ ] Retry automatique sur échec
+### Services API ✅
+- ✅ Client HTTP avec intercepteurs
+- ✅ Gestion des erreurs réseau
+- ✅ Cache des requêtes
+- ✅ Optimistic updates
+- ✅ Retry automatique sur échec
 
-### Composants de base
-- [ ] DataTable réutilisable avec pagination
-- [ ] Formulaires avec validation
-- [ ] Modales de confirmation
-- [ ] Notifications toast
-- [ ] Loading states et skeletons
+### Composants de base ✅
+- ✅ DataTable réutilisable avec pagination
+- ✅ Formulaires avec validation
+- ✅ Modales de confirmation
+- ✅ Notifications toast
+- ✅ Loading states et skeletons
 
 ### État global
 - [ ] Store centralisé (Zustand)
@@ -36,7 +38,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 📊 Phase 2 : Dashboard & Analytics (v0.5.0)
+## 📊 Phase 2 : Dashboard & Analytics (v0.5.0) - EN COURS
 
 ### Dashboard principal
 - [ ] KPIs en temps réel (CA, factures impayées, etc.)
@@ -288,10 +290,10 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 ## 🛠️ Technologies & Outils
 
 ### Frontend
-- React 19 + TypeScript
-- Material UI v7
-- Vite + SWC
-- React Router v7
+- React 19 + TypeScript ✅
+- Material UI v7 ✅
+- Vite + SWC ✅
+- React Router v7 ✅
 - React Query/TanStack Query
 
 ### État & Gestion
@@ -316,8 +318,9 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ## 📅 Planning estimé
 
-- **Phase 1-2** : 2-3 mois
-- **Phase 3-4** : 3-4 mois  
+- **Phase 1** : ✅ Terminée (2-3 mois)
+- **Phase 2** : 1-2 mois  
+- **Phase 3-4** : 3-4 mois
 - **Phase 5-6** : 2-3 mois
 - **Phase 7-8** : 2-3 mois
 - **Phase 9-10** : 2-3 mois
@@ -329,12 +332,25 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ## 🎯 Priorités immédiates (prochain sprint)
 
-1. **Services API** - Fondation technique
-2. **Composants de base** - DataTable, formulaires, modales
-3. **Dashboard basique** - Valeur métier rapide
-4. **Liste clients** - Fonctionnalité core
-5. **Création facture** - MVP métier
+1. **Dashboard basique** - Valeur métier rapide
+2. **Liste clients** - Fonctionnalité core
+3. **Création facture** - MVP métier
+4. **État global** - Zustand pour la gestion d'état
+5. **Tests unitaires** - Couverture de base
 
 ---
 
-*Dernière mise à jour : v0.2.0 - Frontend React + MUI*
+## 📈 Progression
+
+- **Phase 1** : ✅ 100% (Fondations)
+- **Phase 2** : 🚧 20% (Dashboard)
+- **Phase 3** : 📋 0% (Clients)
+- **Phase 4** : 📋 0% (Factures)
+- **Phase 5** : 📋 0% (Produits)
+- **Phase 6** : 📋 0% (Comptabilité)
+
+**Progression globale** : 15%
+
+---
+
+*Dernière mise à jour : v0.3.0 - Services API et composants de base*

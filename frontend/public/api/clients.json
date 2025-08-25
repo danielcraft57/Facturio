@@ -1,0 +1,171 @@
+{
+  "success": true,
+  "data": {
+    "clients": [
+      {
+        "id": "1",
+        "name": "Entreprise ABC",
+        "email": "contact@abc.fr",
+        "phone": "01 23 45 67 89",
+        "address": {
+          "street": "123 Rue de la Paix",
+          "city": "Paris",
+          "postalCode": "75001",
+          "country": "France"
+        },
+        "company": {
+          "name": "Entreprise ABC SARL",
+          "siret": "12345678901234",
+          "tva": "FR12345678901"
+        },
+        "status": "active",
+        "createdAt": "2024-01-15T10:30:00Z",
+        "updatedAt": "2024-03-20T14:45:00Z"
+      },
+      {
+        "id": "2",
+        "name": "Startup Innovante",
+        "email": "hello@startup.fr",
+        "phone": "04 56 78 90 12",
+        "address": {
+          "street": "456 Avenue des Entrepreneurs",
+          "city": "Lyon",
+          "postalCode": "69001",
+          "country": "France"
+        },
+        "company": {
+          "name": "Startup Innovante SAS",
+          "siret": "98765432109876",
+          "tva": "FR98765432109"
+        },
+        "status": "active",
+        "createdAt": "2024-02-10T09:15:00Z",
+        "updatedAt": "2024-03-18T16:20:00Z"
+      },
+      {
+        "id": "3",
+        "name": "Boutique Mode",
+        "email": "info@boutiquemode.fr",
+        "phone": "02 34 56 78 90",
+        "address": {
+          "street": "789 Boulevard de la Mode",
+          "city": "Marseille",
+          "postalCode": "13001",
+          "country": "France"
+        },
+        "company": {
+          "name": "Boutique Mode EURL",
+          "siret": "11223344556677",
+          "tva": "FR11223344556"
+        },
+        "status": "active",
+        "createdAt": "2024-01-20T11:00:00Z",
+        "updatedAt": "2024-03-15T10:30:00Z"
+      },
+      {
+        "id": "4",
+        "name": "Cabinet Conseil",
+        "email": "contact@cabinet.fr",
+        "phone": "03 45 67 89 01",
+        "address": {
+          "street": "321 Rue du Conseil",
+          "city": "Toulouse",
+          "postalCode": "31000",
+          "country": "France"
+        },
+        "company": {
+          "name": "Cabinet Conseil SARL",
+          "siret": "99887766554433",
+          "tva": "FR99887766554"
+        },
+        "status": "inactive",
+        "createdAt": "2023-12-05T08:45:00Z",
+        "updatedAt": "2024-02-28T17:15:00Z"
+      },
+      {
+        "id": "5",
+        "name": "Restaurant Gastronomique",
+        "email": "reservation@restaurant.fr",
+        "phone": "05 67 89 01 23",
+        "address": {
+          "street": "654 Avenue des Saveurs",
+          "city": "Bordeaux",
+          "postalCode": "33000",
+          "country": "France"
+        },
+        "company": {
+          "name": "Restaurant Gastronomique SAS",
+          "siret": "55443322110099",
+          "tva": "FR55443322110"
+        },
+        "status": "active",
+        "createdAt": "2024-03-01T12:30:00Z",
+        "updatedAt": "2024-03-22T19:00:00Z"
+      },
+      {
+        "id": "6",
+        "name": "Agence Web",
+        "email": "hello@agenceweb.fr",
+        "phone": "06 78 90 12 34",
+        "address": {
+          "street": "987 Rue du Digital",
+          "city": "Nantes",
+          "postalCode": "44000",
+          "country": "France"
+        },
+        "company": {
+          "name": "Agence Web SARL",
+          "siret": "66778899001122",
+          "tva": "FR66778899001"
+        },
+        "status": "prospect",
+        "createdAt": "2024-03-10T15:20:00Z",
+        "updatedAt": "2024-03-21T11:45:00Z"
+      },
+      {
+        "id": "7",
+        "name": "Clinique Médicale",
+        "email": "contact@clinique.fr",
+        "phone": "07 89 01 23 45",
+        "address": {
+          "street": "147 Avenue de la Santé",
+          "city": "Strasbourg",
+          "postalCode": "67000",
+          "country": "France"
+        },
+        "company": {
+          "name": "Clinique Médicale SAS",
+          "siret": "77889900112233",
+          "tva": "FR77889900112"
+        },
+        "status": "active",
+        "createdAt": "2024-01-25T13:45:00Z",
+        "updatedAt": "2024-03-19T14:30:00Z"
+      },
+      {
+        "id": "8",
+        "name": "École de Formation",
+        "email": "info@ecole.fr",
+        "phone": "08 90 12 34 56",
+        "address": {
+          "street": "258 Rue de l'Éducation",
+          "city": "Lille",
+          "postalCode": "59000",
+          "country": "France"
+        },
+        "company": {
+          "name": "École de Formation SARL",
+          "siret": "88990011223344",
+          "tva": "FR88990011223"
+        },
+        "status": "active",
+        "createdAt": "2024-02-15T10:00:00Z",
+        "updatedAt": "2024-03-17T16:45:00Z"
+      }
+    ],
+    "total": 8,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 1
+  }
+}
