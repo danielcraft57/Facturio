@@ -19,22 +19,19 @@ export const THEME_PRESETS: Array<Pick<ThemeSettings, 'primary' | 'secondary' | 
 export function createCustomTheme(settings: ThemeSettings) {
   const { mode, primary, secondary, radius, density } = settings
   return createTheme({
-    cssVariables: true,
-    colorSchemes: {
-      light: {
-        palette: {
-          primary: { main: primary },
-          secondary: { main: secondary },
-        },
+    palette: {
+      mode,
+      primary: {
+        main: primary,
       },
-      dark: {
-        palette: {
-          primary: { main: primary },
-          secondary: { main: secondary },
-        },
+      secondary: {
+        main: secondary,
+      },
+      background: {
+        default: mode === 'light' ? '#f5f5f5' : '#121212',
+        paper: mode === 'light' ? '#ffffff' : '#1e1e1e',
       },
     },
-    palette: { mode },
     shape: { borderRadius: radius },
     spacing: density === 'compact' ? 6 : 8,
     typography: {
@@ -52,6 +49,27 @@ export function createCustomTheme(settings: ThemeSettings) {
       },
       MuiSelect: {
         defaultProps: { size: density === 'compact' ? 'small' : 'medium' },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === 'light' ? '#ffffff' : '#1e1e1e',
+          },
+        },
+      },
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === 'light' ? '#1976d2' : '#1e1e1e',
+          },
+        },
+      },
+      MuiDrawer: {
+        styleOverrides: {
+          paper: {
+            backgroundColor: mode === 'light' ? '#ffffff' : '#1e1e1e',
+          },
+        },
       },
     },
   })
