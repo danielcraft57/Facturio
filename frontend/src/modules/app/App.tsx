@@ -1,10 +1,12 @@
-import { CssBaseline, ThemeProvider } from '@mui/material'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import { useMemo, useState } from 'react'
-import { createCustomTheme } from '../../theme/theme'
-import type { ThemeSettings } from '../../theme/theme'
+import type { ReactNode } from 'react'
+import { BrowserRouter, Route, Routes as RouterRoutes } from 'react-router-dom'
+import { ThemeProvider } from '@mui/material/styles'
+import { CssBaseline } from '@mui/material'
+import { useState, useEffect } from 'react'
+import { createCustomTheme, type ThemeSettings } from '../../theme/theme'
 import { AppLayout } from './components/AppLayout'
 import { ThemeSettingsDrawer } from './components/ThemeSettingsDrawer'
+import { ToastContainer, useToast } from '../../components/Toast'
 import { DashboardPage } from '../dashboard/DashboardPage'
 import { ClientsPage } from '../clients/ClientsPage'
 import { QuotesPage } from '../quotes/QuotesPage'
@@ -15,47 +17,97 @@ import { SubscriptionsPage } from '../subscriptions/SubscriptionsPage'
 import { FilingsPage } from '../filings/FilingsPage'
 import { AccountingPage } from '../accounting/AccountingPage'
 
-export default function App() {
+// Composant pour gérer les toasts globaux
+function AppWithToasts({ children }: { children: ReactNode }) {
+  const toast = useToast()
+
+  // Exposer le toast globalement pour les tests
+  if (typeof window !== 'undefined') {
+    ;(window as any).toast = toast
+  }
+
+  return (
+    <>
+      <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
+      {children}
+    </>
+  )
+}
+
+export function App() {
+  // État des paramètres du thème
   const [settings, setSettings] = useState<ThemeSettings>(() => {
-    const raw = localStorage.getItem('theme-settings')
-    return raw ? JSON.parse(raw) as ThemeSettings : { mode: 'light', primary: '#1976d2', secondary: '#9c27b0', radius: 10, density: 'comfortable' }
+    const saved = localStorage.getItem('theme-settings')
+    return saved ? JSON.parse(saved) : {
+      mode: 'light',
+      primary: '#1976d2',
+      secondary: '#9c27b0',
+      radius: 10,
+      density: 'comfortable' as const,
+    }
   })
 
-  const theme = useMemo(() => createCustomTheme(settings), [settings])
+  // État du drawer des paramètres
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const toggleMode = () => {
+  // Sauvegarder les paramètres dans localStorage
+  useEffect(() => {
+    localStorage.setItem('theme-settings', JSON.stringify(settings))
+  }, [settings])
+
+  // Créer le thème personnalisé
+  const theme = createCustomTheme(settings)
+
+  // Gestionnaires d'événements
+  const handleToggleMode = () => {
     const next = settings.mode === 'light' ? 'dark' : 'light'
     const newSettings: ThemeSettings = { ...settings, mode: next }
     setSettings(newSettings)
-    localStorage.setItem('theme-settings', JSON.stringify(newSettings))
   }
 
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const handleOpenSettings = () => {
+    setSettingsOpen(true)
+  }
 
-  const handleChangeSettings = (next: ThemeSettings) => {
-    setSettings(next)
-    localStorage.setItem('theme-settings', JSON.stringify(next))
+  const handleCloseSettings = () => {
+    setSettingsOpen(false)
+  }
+
+  const handleSettingsChange = (newSettings: ThemeSettings) => {
+    setSettings(newSettings)
   }
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter>
-        <AppLayout mode={settings.mode} onToggleMode={toggleMode} onOpenSettings={() => setDrawerOpen(true)}>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/clients" element={<ClientsPage />} />
-            <Route path="/devis" element={<QuotesPage />} />
-            <Route path="/factures" element={<InvoicesPage />} />
-            <Route path="/produits" element={<ProductsPage />} />
-            <Route path="/taxes" element={<TaxesPage />} />
-            <Route path="/abonnements" element={<SubscriptionsPage />} />
-            <Route path="/declarations" element={<FilingsPage />} />
-            <Route path="/comptabilite" element={<AccountingPage />} />
-          </Routes>
-        </AppLayout>
-        <ThemeSettingsDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} settings={settings} onChange={handleChangeSettings} />
-      </BrowserRouter>
+      <AppWithToasts>
+        <BrowserRouter>
+          <AppLayout
+            mode={settings.mode}
+            onToggleMode={handleToggleMode}
+            onOpenSettings={handleOpenSettings}
+          >
+            <RouterRoutes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/clients" element={<ClientsPage />} />
+              <Route path="/devis" element={<QuotesPage />} />
+              <Route path="/factures" element={<InvoicesPage />} />
+              <Route path="/produits" element={<ProductsPage />} />
+              <Route path="/taxes" element={<TaxesPage />} />
+              <Route path="/abonnements" element={<SubscriptionsPage />} />
+              <Route path="/declarations" element={<FilingsPage />} />
+              <Route path="/comptabilite" element={<AccountingPage />} />
+            </RouterRoutes>
+          </AppLayout>
+
+          <ThemeSettingsDrawer
+            open={settingsOpen}
+            onClose={handleCloseSettings}
+            settings={settings}
+            onChange={handleSettingsChange}
+          />
+        </BrowserRouter>
+      </AppWithToasts>
     </ThemeProvider>
   )
 }

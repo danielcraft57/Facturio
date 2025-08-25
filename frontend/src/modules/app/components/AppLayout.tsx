@@ -16,7 +16,6 @@ import {
   Tooltip,
   Avatar,
   Chip,
-  useMediaQuery,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import DashboardIcon from '@mui/icons-material/Dashboard'
@@ -45,7 +44,6 @@ const drawerWidth = 280
 export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppLayoutProps) {
   const theme = useTheme()
   const location = useLocation()
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const items = [
