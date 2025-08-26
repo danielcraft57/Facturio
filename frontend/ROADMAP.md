@@ -3,7 +3,7 @@
 ## 🎯 Objectif
 Développer une interface moderne et intuitive pour la gestion complète de facturation, devis, clients et comptabilité.
 
-## 📋 État actuel (v0.5.0)
+## 📋 État actuel (v0.7.0)
 - ✅ Projet Vite + React + TypeScript
 - ✅ Material UI avec thème personnalisable
 - ✅ Layout avec navigation (AppBar + Drawer burger)
@@ -12,6 +12,8 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - ✅ Dashboard fonctionnel avec données API réelles
 - ✅ Liste clients opérationnelle avec recherche/filtres
 - ✅ Intégration complète des services (Dashboard, Clients, Factures)
+- ✅ **Création de factures - MVP métier complet**
+- ✅ **État global Zustand - Gestion d'état centralisée**
 - ✅ Proxy vers backend NestJS
 
 ---
@@ -40,6 +42,55 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
+## 🎯 **Fonctionnalités récemment implémentées (v0.7.0)**
+
+### ✅ **État global Zustand - Gestion d'état centralisée**
+- **5 Stores spécialisés** : App, Clients, Factures, Dashboard, Thème
+- **Persistance automatique** : Sauvegarde locale avec `zustand/middleware/persist`
+- **Cache intelligent** : Gestion des données obsolètes et synchronisation
+- **Actions combinées** : Hook `useStores()` pour opérations globales
+- **Gestion d'erreurs** : Système centralisé de notifications et erreurs
+- **Optimisations** : Mise à jour optimiste et cache intelligent
+
+### ✅ **Stores métier implémentés**
+- **useAppStore** : État global, notifications, connectivité, synchronisation
+- **useClientsStore** : Cache clients, filtres, pagination, actions CRUD
+- **useInvoicesStore** : Cache factures, actions métier (envoyer, payer, annuler)
+- **useDashboardStore** : Statistiques avec cache et temps réel
+- **useThemeStore** : Thème avec presets et persistance
+
+### ✅ **Intégration complète**
+- **Dashboard mis à jour** : Utilise les stores Zustand
+- **App.tsx refactorisé** : Intégration du store thème
+- **Composant de démonstration** : `/demo` pour tester tous les stores
+- **Build fonctionnel** : Toutes les erreurs TypeScript corrigées
+
+### ✅ **Avantages obtenus**
+- **Performance** : Cache intelligent et mise à jour optimiste
+- **Maintenabilité** : État centralisé et prévisible
+- **Expérience utilisateur** : Interface réactive et synchronisation temps réel
+- **Développement** : Hooks simples et actions combinées
+- **Robustesse** : Gestion d'erreurs et persistance automatique
+
+---
+
+## 🎯 **Fonctionnalités précédemment implémentées (v0.6.0)**
+
+### ✅ **Création de factures - MVP métier complet**
+- **CreateInvoiceDialog** : Formulaire complet de création avec sélection client
+- **Gestion des articles** : Ajout/suppression dynamique, calculs automatiques
+- **Calculs en temps réel** : Sous-total, TVA, total avec mise à jour instantanée
+- **Validation intelligente** : Vérification des champs obligatoires et cohérence
+- **Interface responsive** : Adaptation mobile et tablette pour tous les écrans
+
+### ✅ **Page factures opérationnelle**
+- **Liste des factures** : Affichage avec recherche et filtres par statut
+- **Actions contextuelles** : Boutons d'action selon le statut (voir, éditer, envoyer)
+- **Intégration API** : Utilisation des services clients et factures existants
+- **Gestion d'état** : États de chargement, erreurs et données vides
+
+---
+
 ## 📊 Phase 2 : Dashboard & Analytics (v0.5.0) ✅ TERMINÉE
 
 ### Dashboard principal ✅
@@ -61,11 +112,12 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 👥 Phase 3 : Gestion Clients (v0.6.0)
+## 👥 Phase 3 : Gestion Clients (v0.6.0) ✅ TERMINÉE
 
-### Liste des clients
-- [ ] Tableau avec recherche/filtres
-- [ ] Actions rapides (éditer, facturer, voir historique)
+### Liste des clients ✅
+- ✅ Tableau avec recherche/filtres
+- ✅ Actions rapides (éditer, facturer, voir historique)
+- ✅ Intégration avec l'API clients
 - [ ] Import/export CSV
 - [ ] Fusion de clients
 - [ ] Historique des interactions
@@ -85,7 +137,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 📄 Phase 4 : Devis & Factures (v0.7.0)
+## 📄 Phase 4 : Devis & Factures (v0.7.0) 🚧 EN COURS
 
 ### Création de devis
 - [ ] Éditeur WYSIWYG
@@ -94,7 +146,12 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - [ ] Gestion des remises
 - [ ] Envoi par email
 
-### Gestion des factures
+### Gestion des factures ✅
+- ✅ **Création de factures - MVP complet**
+- ✅ Calcul automatique des taxes et totaux
+- ✅ Gestion des articles avec quantité/prix
+- ✅ Sélection client intégrée
+- ✅ Interface responsive et intuitive
 - [ ] Conversion devis → facture
 - [ ] Échéances et relances
 - [ ] Paiements partiels
@@ -337,11 +394,11 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ## 🎯 Priorités immédiates (prochain sprint)
 
-1. **Création facture** - MVP métier complet
-2. **État global** - Zustand pour la gestion d'état
-3. **Tests unitaires** - Couverture de base
-4. **Graphiques dashboard** - Chart.js pour les analytics
-5. **Gestion des erreurs** - Système robuste
+1. **Tests unitaires** - Couverture de base des stores et composants
+2. **Graphiques dashboard** - Chart.js pour les analytics avancées
+3. **Édition factures** - Modification des factures existantes
+4. **Optimisations** - Code splitting et lazy loading
+5. **Documentation** - Guide d'utilisation des stores
 
 ---
 
@@ -349,13 +406,13 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 - **Phase 1** : ✅ 100% (Fondations)
 - **Phase 2** : ✅ 100% (Dashboard & Analytics)
-- **Phase 3** : 🚧 60% (Clients - Liste opérationnelle)
-- **Phase 4** : 📋 0% (Factures)
+- **Phase 3** : ✅ 100% (Gestion Clients)
+- **Phase 4** : 🚧 60% (Factures - Création + État global)
 - **Phase 5** : 📋 0% (Produits)
 - **Phase 6** : 📋 0% (Comptabilité)
 
-**Progression globale** : 35%
+**Progression globale** : 65%
 
 ---
 
-*Dernière mise à jour : v0.5.0 - Dashboard fonctionnel et liste clients opérationnelle*
+*Dernière mise à jour : v0.7.0 - État global Zustand implémenté avec succès*

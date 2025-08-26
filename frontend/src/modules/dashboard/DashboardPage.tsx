@@ -26,42 +26,25 @@ import {
   Visibility,
   Edit
 } from '@mui/icons-material'
-import { useEffect, useState } from 'react'
-import { dashboardService } from '../../services/dashboard'
-import { clientService } from '../../services/clients'
-import { invoiceService } from '../../services/invoices'
-import type { DashboardStats } from '../../services/dashboard'
-import type { Client } from '../../services/clients'
-import type { Invoice } from '../../services/invoices'
+import { useEffect } from 'react'
+import { useDashboard, useClients, useInvoices } from '../../hooks/useStores'
 
 export function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [recentClients, setRecentClients] = useState<Client[]>([])
-  const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const dashboardStore = useDashboard()
+  const clientsStore = useClients()
+  const invoicesStore = useInvoices()
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        setLoading(true)
-        setError(null)
-        
         // Charger les données en parallèle
-        const [statsData, clientsData, invoicesData] = await Promise.all([
-          dashboardService.getStats(),
-          clientService.getClients({ page: 1, limit: 5 }),
-          invoiceService.getInvoices({ page: 1, limit: 5 })
+        await Promise.all([
+          dashboardStore.fetchStats(),
+          clientsStore.fetchClients({ page: 1, limit: 5 }),
+          invoicesStore.fetchInvoices({ page: 1, limit: 5 })
         ])
-        
-        setStats(statsData.data)
-        setRecentClients(clientsData.data?.clients || [])
-        setRecentInvoices(invoicesData.data?.invoices || [])
       } catch (err) {
-        setError('Erreur lors du chargement des données')
         console.error('Dashboard error:', err)
-      } finally {
-        setLoading(false)
       }
     }
 
@@ -95,7 +78,7 @@ export function DashboardPage() {
     }
   }
 
-  if (loading) {
+  if (dashboardStore.isLoading) {
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -109,17 +92,7 @@ export function DashboardPage() {
     )
   }
 
-  if (error) {
-    return (
-      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      </Box>
-    )
-  }
-
-  if (!stats) {
+  if (!dashboardStore.stats) {
     return (
       <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
         <Alert severity="warning">
@@ -154,12 +127,12 @@ export function DashboardPage() {
                   Chiffre d'affaires
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {formatCurrency(stats.revenue.total)}
+                  {formatCurrency(dashboardStore.stats.revenue.total)}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                   <TrendingUp sx={{ fontSize: 16, mr: 0.5 }} />
                   <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    +{stats.revenue.growth}% ce mois
+                    +{dashboardStore.stats.revenue.growth}% ce mois
                   </Typography>
                 </Box>
               </Box>
@@ -176,10 +149,10 @@ export function DashboardPage() {
                   Factures impayées
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {formatCurrency(stats.invoices.total - stats.invoices.paid)}
+                  {formatCurrency(dashboardStore.stats.invoices.total - dashboardStore.stats.invoices.paid)}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                  {stats.invoices.overdue} en retard
+                  {dashboardStore.stats.invoices.overdue} en retard
                 </Typography>
               </Box>
               <Receipt sx={{ fontSize: { xs: 32, sm: 48 }, opacity: 0.3 }} />
@@ -195,10 +168,10 @@ export function DashboardPage() {
                   Clients actifs
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {stats.clients.active}
+                  {dashboardStore.stats.clients.active}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                  +{stats.clients.newThisMonth} ce mois
+                  +{dashboardStore.stats.clients.newThisMonth} ce mois
                 </Typography>
               </Box>
               <People sx={{ fontSize: { xs: 32, sm: 48 }, opacity: 0.3 }} />
@@ -214,7 +187,7 @@ export function DashboardPage() {
                   Taux de conversion
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {Math.round((stats.invoices.paid / stats.invoices.total) * 100)}%
+                  {Math.round((dashboardStore.stats.invoices.paid / dashboardStore.stats.invoices.total) * 100)}%
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   Devis → Factures
@@ -243,7 +216,7 @@ export function DashboardPage() {
                 Factures récentes
               </Typography>
               <Chip 
-                label={`${recentInvoices.length} factures`} 
+                label={`${invoicesStore.invoices.length} factures`} 
                 size="small" 
                 color="primary" 
                 variant="outlined"
@@ -262,7 +235,7 @@ export function DashboardPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {recentInvoices.map((invoice) => (
+                  {invoicesStore.invoices.map((invoice) => (
                     <TableRow key={invoice.id} hover>
                       <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -337,7 +310,7 @@ export function DashboardPage() {
                 Clients récents
               </Typography>
               <Chip 
-                label={`${recentClients.length} clients`} 
+                label={`${clientsStore.clients.length} clients`} 
                 size="small" 
                 color="secondary" 
                 variant="outlined"
@@ -345,7 +318,7 @@ export function DashboardPage() {
             </Box>
             
             <Stack spacing={2}>
-              {recentClients.map((client) => (
+              {clientsStore.clients.map((client) => (
                 <Box key={client.id} sx={{ 
                   display: 'flex', 
                   alignItems: 'center', 
