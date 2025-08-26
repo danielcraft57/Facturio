@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Box,
   Card,
@@ -27,7 +27,9 @@ import {
   InputLabel,
   Select,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  CircularProgress,
+  Alert
 } from '@mui/material'
 import {
   Add,
@@ -40,13 +42,17 @@ import {
   Phone,
   FilterList
 } from '@mui/icons-material'
-import { DEMO_CLIENTS } from '../../data/demo'
+import { clientService } from '../../services/clients'
+import type { Client } from '../../services/clients'
 
 export function ClientsPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.down('md'))
   
+  const [clients, setClients] = useState<Client[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -77,7 +83,25 @@ export function ClientsPage() {
     }
   }
 
-  const filteredClients = DEMO_CLIENTS.filter(client => {
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await clientService.getClients({ page: 1, limit: 100 })
+        setClients(response.data?.clients || [])
+      } catch (err) {
+        setError('Erreur lors du chargement des clients')
+        console.error('Clients error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchClients()
+  }, [])
+
+  const filteredClients = clients.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          client.email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || client.status === statusFilter
@@ -90,6 +114,30 @@ export function ClientsPage() {
 
   const handleMenuClose = () => {
     setAnchorEl(null)
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '50vh',
+        p: { xs: 1, sm: 2, md: 3 }
+      }}>
+        <CircularProgress size={60} />
+      </Box>
+    )
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      </Box>
+    )
   }
 
   return (
@@ -199,7 +247,7 @@ export function ClientsPage() {
                             {client.name}
                           </Typography>
                           <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
-                            {client.address}
+                            {client.address ? `${client.address.street}, ${client.address.city}` : 'Non renseignée'}
                           </Typography>
                           {isMobile && (
                             <Stack spacing={0.5} sx={{ mt: 1 }}>
@@ -249,14 +297,14 @@ export function ClientsPage() {
                     {!isMobile && (
                       <TableCell align="right">
                         <Typography variant="body2" fontWeight="medium" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          {formatCurrency(client.totalRevenue)}
+                          {formatCurrency(0)}
                         </Typography>
                       </TableCell>
                     )}
                     {!isTablet && (
                       <TableCell>
                         <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          {client.lastInvoice ? new Date(client.lastInvoice).toLocaleDateString('fr-FR') : 'Aucune'}
+                          Aucune
                         </Typography>
                       </TableCell>
                     )}

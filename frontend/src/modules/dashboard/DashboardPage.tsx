@@ -14,8 +14,8 @@ import {
   Tooltip,
   Avatar,
   Stack,
-  useTheme,
-  useMediaQuery
+  CircularProgress,
+  Alert
 } from '@mui/material'
 import {
   TrendingUp,
@@ -26,11 +26,47 @@ import {
   Visibility,
   Edit
 } from '@mui/icons-material'
-import { DEMO_STATS, DEMO_INVOICES, DEMO_CLIENTS } from '../../data/demo'
+import { useEffect, useState } from 'react'
+import { dashboardService } from '../../services/dashboard'
+import { clientService } from '../../services/clients'
+import { invoiceService } from '../../services/invoices'
+import type { DashboardStats } from '../../services/dashboard'
+import type { Client } from '../../services/clients'
+import type { Invoice } from '../../services/invoices'
 
 export function DashboardPage() {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [recentClients, setRecentClients] = useState<Client[]>([])
+  const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // Charger les données en parallèle
+        const [statsData, clientsData, invoicesData] = await Promise.all([
+          dashboardService.getStats(),
+          clientService.getClients({ page: 1, limit: 5 }),
+          invoiceService.getInvoices({ page: 1, limit: 5 })
+        ])
+        
+        setStats(statsData.data)
+        setRecentClients(clientsData.data?.clients || [])
+        setRecentInvoices(invoicesData.data?.invoices || [])
+      } catch (err) {
+        setError('Erreur lors du chargement des données')
+        console.error('Dashboard error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -59,6 +95,40 @@ export function DashboardPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '50vh',
+        p: { xs: 1, sm: 2, md: 3 }
+      }}>
+        <CircularProgress size={60} />
+      </Box>
+    )
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      </Box>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+        <Alert severity="warning">
+          Aucune donnée disponible
+        </Alert>
+      </Box>
+    )
+  }
+
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       <Typography variant="h4" gutterBottom sx={{ mb: 4, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
@@ -84,12 +154,12 @@ export function DashboardPage() {
                   Chiffre d'affaires
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {formatCurrency(DEMO_STATS.totalRevenue)}
+                  {formatCurrency(stats.revenue.total)}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                   <TrendingUp sx={{ fontSize: 16, mr: 0.5 }} />
                   <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    +{DEMO_STATS.monthlyGrowth}% ce mois
+                    +{stats.revenue.growth}% ce mois
                   </Typography>
                 </Box>
               </Box>
@@ -103,13 +173,13 @@ export function DashboardPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box>
                 <Typography variant="h6" sx={{ opacity: 0.8, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                  Factures en attente
+                  Factures impayées
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {formatCurrency(DEMO_STATS.pendingInvoices)}
+                  {formatCurrency(stats.invoices.total - stats.invoices.paid)}
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                  {DEMO_INVOICES.filter(inv => inv.status === 'sent').length} factures
+                <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                  {stats.invoices.overdue} en retard
                 </Typography>
               </Box>
               <Receipt sx={{ fontSize: { xs: 32, sm: 48 }, opacity: 0.3 }} />
@@ -125,10 +195,10 @@ export function DashboardPage() {
                   Clients actifs
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {DEMO_STATS.activeClients}
+                  {stats.clients.active}
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                  sur {DEMO_STATS.totalClients} clients
+                <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                  +{stats.clients.newThisMonth} ce mois
                 </Typography>
               </Box>
               <People sx={{ fontSize: { xs: 32, sm: 48 }, opacity: 0.3 }} />
@@ -144,10 +214,10 @@ export function DashboardPage() {
                   Taux de conversion
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {DEMO_STATS.conversionRate}%
+                  {Math.round((stats.invoices.paid / stats.invoices.total) * 100)}%
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                  devis → factures
+                <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                  Devis → Factures
                 </Typography>
               </Box>
               <TrendingUp sx={{ fontSize: { xs: 32, sm: 48 }, opacity: 0.3 }} />
@@ -156,85 +226,101 @@ export function DashboardPage() {
         </Card>
       </Box>
 
-      {/* Tableaux de données */}
+      {/* Contenu principal */}
       <Box sx={{ 
         display: 'grid', 
         gridTemplateColumns: { 
           xs: '1fr', 
-          md: 'repeat(2, 1fr)' 
+          lg: '2fr 1fr' 
         }, 
-        gap: { xs: 2, sm: 3 } 
+        gap: { xs: 3, lg: 4 } 
       }}>
+        {/* Factures récentes */}
         <Card>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
               <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                Dernières factures
+                Factures récentes
               </Typography>
-              <IconButton size="small">
-                <MoreVert />
-              </IconButton>
+              <Chip 
+                label={`${recentInvoices.length} factures`} 
+                size="small" 
+                color="primary" 
+                variant="outlined"
+              />
             </Box>
-            <TableContainer sx={{ maxHeight: 400 }}>
-              <Table size={isMobile ? "small" : "medium"}>
+            
+            <TableContainer>
+              <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Numéro</TableCell>
-                    {!isMobile && <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Client</TableCell>}
-                    <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Montant</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>N° Facture</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Client</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Montant</TableCell>
                     <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Statut</TableCell>
-                    {!isMobile && <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Actions</TableCell>}
+                    <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {DEMO_INVOICES.slice(0, isMobile ? 3 : 4).map((invoice) => (
+                  {recentInvoices.map((invoice) => (
                     <TableRow key={invoice.id} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="medium" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                      <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
                           {invoice.number}
                         </Typography>
-                        {isMobile && (
-                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                            {invoice.clientName}
-                          </Typography>
-                        )}
-                      </TableCell>
-                      {!isMobile && (
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                            {invoice.clientName}
-                          </Typography>
-                        </TableCell>
-                      )}
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight="medium" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          {formatCurrency(invoice.amount)}
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(invoice.issueDate).toLocaleDateString('fr-FR')}
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={getStatusLabel(invoice.status)}
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Avatar 
+                            sx={{ 
+                              width: { xs: 24, sm: 32 }, 
+                              height: { xs: 24, sm: 32 }, 
+                              mr: 1,
+                              fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                            }}
+                          >
+                            {invoice.client.name.charAt(0)}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                              {invoice.client.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
+                              {invoice.client.email}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                          {formatCurrency(invoice.total)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={getStatusLabel(invoice.status)} 
                           color={getStatusColor(invoice.status) as any}
-                          size={isMobile ? "small" : "medium"}
-                          sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                          size="small"
+                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}
                         />
                       </TableCell>
-                      {!isMobile && (
-                        <TableCell align="center">
-                          <Stack direction="row" spacing={0.5}>
-                            <Tooltip title="Voir">
-                              <IconButton size="small">
-                                <Visibility fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Modifier">
-                              <IconButton size="small">
-                                <Edit fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Stack>
-                        </TableCell>
-                      )}
+                      <TableCell>
+                        <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="Voir">
+                            <IconButton size="small" sx={{ p: 0.5 }}>
+                              <Visibility sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Éditer">
+                            <IconButton size="small" sx={{ p: 0.5 }}>
+                              <Edit sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -243,38 +329,64 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* Clients récents */}
         <Card>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
               <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                Top clients
+                Clients récents
               </Typography>
-              <IconButton size="small">
-                <MoreVert />
-              </IconButton>
+              <Chip 
+                label={`${recentClients.length} clients`} 
+                size="small" 
+                color="secondary" 
+                variant="outlined"
+              />
             </Box>
-            <Stack spacing={isMobile ? 1 : 2}>
-              {DEMO_CLIENTS.slice(0, isMobile ? 3 : 4).map((client) => (
-                <Box key={client.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 }, mr: { xs: 1, sm: 2 }, bgcolor: 'primary.main' }}>
-                      {client.name.charAt(0)}
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" fontWeight="medium" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        {client.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
-                        {formatCurrency(client.totalRevenue)}
-                      </Typography>
+            
+            <Stack spacing={2}>
+              {recentClients.map((client) => (
+                <Box key={client.id} sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  p: 1.5, 
+                  borderRadius: 1, 
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  '&:hover': {
+                    backgroundColor: 'action.hover'
+                  }
+                }}>
+                  <Avatar 
+                    sx={{ 
+                      width: { xs: 32, sm: 40 }, 
+                      height: { xs: 32, sm: 40 }, 
+                      mr: 2,
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }}
+                  >
+                    {client.name.charAt(0)}
+                  </Avatar>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                      {client.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
+                      {client.email}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                      <Chip 
+                        label={client.status === 'active' ? 'Actif' : client.status === 'inactive' ? 'Inactif' : 'Prospect'} 
+                        size="small"
+                        color={client.status === 'active' ? 'success' : client.status === 'inactive' ? 'default' : 'warning'}
+                        variant="outlined"
+                        sx={{ fontSize: '0.625rem' }}
+                      />
                     </Box>
                   </Box>
-                  <Chip
-                    label={client.status === 'active' ? 'Actif' : client.status === 'prospect' ? 'Prospect' : 'Inactif'}
-                    color={client.status === 'active' ? 'success' : client.status === 'prospect' ? 'warning' : 'default'}
-                    size={isMobile ? "small" : "medium"}
-                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                  />
+                  <IconButton size="small" sx={{ p: 0.5 }}>
+                    <MoreVert sx={{ fontSize: 16 }} />
+                  </IconButton>
                 </Box>
               ))}
             </Stack>

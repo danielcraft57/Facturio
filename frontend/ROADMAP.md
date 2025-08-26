@@ -3,13 +3,15 @@
 ## 🎯 Objectif
 Développer une interface moderne et intuitive pour la gestion complète de facturation, devis, clients et comptabilité.
 
-## 📋 État actuel (v0.3.0)
+## 📋 État actuel (v0.5.0)
 - ✅ Projet Vite + React + TypeScript
 - ✅ Material UI avec thème personnalisable
 - ✅ Layout avec navigation (AppBar + Drawer burger)
 - ✅ Services API avec intercepteurs, cache et retry
 - ✅ Composants de base (DataTable, ConfirmDialog, Toast)
-- ✅ Pages vides pour toutes les sections
+- ✅ Dashboard fonctionnel avec données API réelles
+- ✅ Liste clients opérationnelle avec recherche/filtres
+- ✅ Intégration complète des services (Dashboard, Clients, Factures)
 - ✅ Proxy vers backend NestJS
 
 ---
@@ -38,10 +40,13 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 📊 Phase 2 : Dashboard & Analytics (v0.5.0) - EN COURS
+## 📊 Phase 2 : Dashboard & Analytics (v0.5.0) ✅ TERMINÉE
 
-### Dashboard principal
-- [ ] KPIs en temps réel (CA, factures impayées, etc.)
+### Dashboard principal ✅
+- ✅ KPIs en temps réel (CA, factures impayées, etc.)
+- ✅ Tableau des factures récentes
+- ✅ Liste des clients récents
+- ✅ États de chargement et gestion d'erreurs
 - [ ] Graphiques (Chart.js ou Recharts)
 - [ ] Widgets personnalisables
 - [ ] Filtres par période
@@ -332,25 +337,25 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ## 🎯 Priorités immédiates (prochain sprint)
 
-1. **Dashboard basique** - Valeur métier rapide
-2. **Liste clients** - Fonctionnalité core
-3. **Création facture** - MVP métier
-4. **État global** - Zustand pour la gestion d'état
-5. **Tests unitaires** - Couverture de base
+1. **Création facture** - MVP métier complet
+2. **État global** - Zustand pour la gestion d'état
+3. **Tests unitaires** - Couverture de base
+4. **Graphiques dashboard** - Chart.js pour les analytics
+5. **Gestion des erreurs** - Système robuste
 
 ---
 
 ## 📈 Progression
 
 - **Phase 1** : ✅ 100% (Fondations)
-- **Phase 2** : 🚧 20% (Dashboard)
-- **Phase 3** : 📋 0% (Clients)
+- **Phase 2** : ✅ 100% (Dashboard & Analytics)
+- **Phase 3** : 🚧 60% (Clients - Liste opérationnelle)
 - **Phase 4** : 📋 0% (Factures)
 - **Phase 5** : 📋 0% (Produits)
 - **Phase 6** : 📋 0% (Comptabilité)
 
-**Progression globale** : 15%
+**Progression globale** : 35%
 
 ---
 
-*Dernière mise à jour : v0.3.0 - Services API et composants de base*
+*Dernière mise à jour : v0.5.0 - Dashboard fonctionnel et liste clients opérationnelle*

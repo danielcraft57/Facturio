@@ -2,12 +2,21 @@ export interface DemoClient {
   id: string
   name: string
   email: string
-  phone: string
-  address: string
+  phone?: string
+  address?: {
+    street: string
+    city: string
+    postalCode: string
+    country: string
+  }
+  company?: {
+    name: string
+    siret?: string
+    tva?: string
+  }
   status: 'active' | 'inactive' | 'prospect'
-  totalRevenue: number
-  lastInvoice: string
   createdAt: string
+  updatedAt: string
 }
 
 export interface DemoInvoice {
@@ -46,55 +55,100 @@ export const DEMO_CLIENTS: DemoClient[] = [
     name: 'TechCorp Solutions',
     email: 'contact@techcorp.com',
     phone: '+33 1 23 45 67 89',
-    address: '123 Rue de la Tech, 75001 Paris',
+    address: {
+      street: '123 Rue de la Tech',
+      city: 'Paris',
+      postalCode: '75001',
+      country: 'France'
+    },
+    company: {
+      name: 'TechCorp Solutions SARL',
+      siret: '12345678901234',
+      tva: 'FR12345678901'
+    },
     status: 'active',
-    totalRevenue: 45000,
-    lastInvoice: '2024-01-15',
-    createdAt: '2023-06-01'
+    createdAt: '2023-06-01T10:00:00Z',
+    updatedAt: '2024-01-15T14:30:00Z'
   },
   {
     id: '2',
     name: 'Design Studio Pro',
     email: 'hello@designstudio.com',
     phone: '+33 1 98 76 54 32',
-    address: '456 Avenue des Arts, 75008 Paris',
+    address: {
+      street: '456 Avenue des Arts',
+      city: 'Paris',
+      postalCode: '75008',
+      country: 'France'
+    },
+    company: {
+      name: 'Design Studio Pro SAS',
+      siret: '98765432109876',
+      tva: 'FR98765432109'
+    },
     status: 'active',
-    totalRevenue: 32000,
-    lastInvoice: '2024-01-10',
-    createdAt: '2023-08-15'
+    createdAt: '2023-08-15T09:00:00Z',
+    updatedAt: '2024-01-10T16:20:00Z'
   },
   {
     id: '3',
     name: 'Green Energy Co',
     email: 'info@greenenergy.com',
     phone: '+33 1 55 44 33 22',
-    address: '789 Boulevard Écologique, 75016 Paris',
+    address: {
+      street: '789 Boulevard Écologique',
+      city: 'Paris',
+      postalCode: '75016',
+      country: 'France'
+    },
+    company: {
+      name: 'Green Energy Co EURL',
+      siret: '11223344556677',
+      tva: 'FR11223344556'
+    },
     status: 'prospect',
-    totalRevenue: 0,
-    lastInvoice: '',
-    createdAt: '2024-01-05'
+    createdAt: '2024-01-05T11:00:00Z',
+    updatedAt: '2024-01-05T11:00:00Z'
   },
   {
     id: '4',
     name: 'Restaurant Le Gourmet',
     email: 'reservation@legourmet.com',
     phone: '+33 1 11 22 33 44',
-    address: '321 Rue Gastronomique, 75006 Paris',
+    address: {
+      street: '321 Rue Gastronomique',
+      city: 'Paris',
+      postalCode: '75006',
+      country: 'France'
+    },
+    company: {
+      name: 'Restaurant Le Gourmet SAS',
+      siret: '55443322110099',
+      tva: 'FR55443322110'
+    },
     status: 'active',
-    totalRevenue: 28000,
-    lastInvoice: '2024-01-12',
-    createdAt: '2023-09-20'
+    createdAt: '2023-09-20T12:00:00Z',
+    updatedAt: '2024-01-12T10:30:00Z'
   },
   {
     id: '5',
     name: 'Consulting Experts',
     email: 'contact@consultingexperts.com',
     phone: '+33 1 66 77 88 99',
-    address: '654 Place des Affaires, 75002 Paris',
+    address: {
+      street: '654 Place des Affaires',
+      city: 'Paris',
+      postalCode: '75002',
+      country: 'France'
+    },
+    company: {
+      name: 'Consulting Experts SARL',
+      siret: '99887766554433',
+      tva: 'FR99887766554'
+    },
     status: 'inactive',
-    totalRevenue: 15000,
-    lastInvoice: '2023-12-20',
-    createdAt: '2023-03-10'
+    createdAt: '2023-03-10T08:00:00Z',
+    updatedAt: '2023-12-20T17:15:00Z'
   }
 ]
 
@@ -143,6 +197,122 @@ export const DEMO_INVOICES: DemoInvoice[] = [
     status: 'sent',
     dueDate: '2024-02-20',
     createdAt: '2024-01-18'
+  }
+]
+
+// Nouvelles données de démo pour les factures avec la structure Invoice
+export const DEMO_INVOICES_FULL = [
+  {
+    id: '1',
+    number: 'FAC-2024-001',
+    clientId: '1',
+    client: {
+      id: '1',
+      name: 'TechCorp Solutions',
+      email: 'contact@techcorp.com'
+    },
+    status: 'paid',
+    issueDate: '2024-01-01T00:00:00Z',
+    dueDate: '2024-01-15T00:00:00Z',
+    items: [
+      {
+        id: '1',
+        description: 'Développement site web',
+        quantity: 1,
+        unitPrice: 5000,
+        taxRate: 20,
+        total: 5000,
+        totalWithTax: 6000
+      },
+      {
+        id: '2',
+        description: 'Formation équipe',
+        quantity: 2,
+        unitPrice: 800,
+        taxRate: 20,
+        total: 1600,
+        totalWithTax: 1920
+      }
+    ],
+    subtotal: 6600,
+    taxTotal: 1320,
+    total: 7920,
+    currency: 'EUR',
+    notes: 'Facture pour développement site web et formation',
+    createdAt: '2024-01-01T10:00:00Z',
+    updatedAt: '2024-01-15T14:30:00Z',
+    paidAt: '2024-01-15T14:30:00Z'
+  },
+  {
+    id: '2',
+    number: 'FAC-2024-002',
+    clientId: '2',
+    client: {
+      id: '2',
+      name: 'Design Studio Pro',
+      email: 'hello@designstudio.com'
+    },
+    status: 'sent',
+    issueDate: '2024-01-10T00:00:00Z',
+    dueDate: '2024-02-10T00:00:00Z',
+    items: [
+      {
+        id: '3',
+        description: 'Création logo',
+        quantity: 1,
+        unitPrice: 800,
+        taxRate: 20,
+        total: 800,
+        totalWithTax: 960
+      },
+      {
+        id: '4',
+        description: 'Charte graphique',
+        quantity: 1,
+        unitPrice: 1200,
+        taxRate: 20,
+        total: 1200,
+        totalWithTax: 1440
+      }
+    ],
+    subtotal: 2000,
+    taxTotal: 400,
+    total: 2400,
+    currency: 'EUR',
+    notes: 'Création identité visuelle complète',
+    createdAt: '2024-01-10T11:00:00Z',
+    updatedAt: '2024-01-10T11:00:00Z'
+  },
+  {
+    id: '3',
+    number: 'FAC-2024-003',
+    clientId: '4',
+    client: {
+      id: '4',
+      name: 'Restaurant Le Gourmet',
+      email: 'reservation@legourmet.com'
+    },
+    status: 'overdue',
+    issueDate: '2024-01-12T00:00:00Z',
+    dueDate: '2024-01-12T00:00:00Z',
+    items: [
+      {
+        id: '5',
+        description: 'Maintenance site web',
+        quantity: 1,
+        unitPrice: 300,
+        taxRate: 20,
+        total: 300,
+        totalWithTax: 360
+      }
+    ],
+    subtotal: 300,
+    taxTotal: 60,
+    total: 360,
+    currency: 'EUR',
+    notes: 'Maintenance mensuelle site web',
+    createdAt: '2024-01-12T14:00:00Z',
+    updatedAt: '2024-01-12T14:00:00Z'
   }
 ]
 
@@ -234,11 +404,58 @@ export const DEMO_PRODUCTS: DemoProduct[] = [
 ]
 
 export const DEMO_STATS = {
-  totalRevenue: 120000,
-  pendingInvoices: 18900,
-  overdueInvoices: 3200,
-  activeClients: 4,
-  totalClients: 5,
-  monthlyGrowth: 12.5,
-  conversionRate: 68.2
+  revenue: {
+    total: 120000,
+    thisMonth: 45000,
+    lastMonth: 40000,
+    growth: 12.5
+  },
+  invoices: {
+    total: 25,
+    paid: 18,
+    overdue: 3,
+    draft: 2,
+    sent: 2,
+    thisMonth: 8,
+    lastMonth: 6
+  },
+  clients: {
+    total: 5,
+    active: 4,
+    inactive: 1,
+    prospects: 1,
+    newThisMonth: 1
+  },
+  topClients: [
+    {
+      client: { id: '1', name: 'TechCorp Solutions' },
+      revenue: 45000
+    },
+    {
+      client: { id: '2', name: 'Design Studio Pro' },
+      revenue: 32000
+    },
+    {
+      client: { id: '4', name: 'Restaurant Le Gourmet' },
+      revenue: 28000
+    }
+  ],
+  recentActivity: [
+    {
+      type: 'invoice_paid',
+      message: 'Facture FAC-2024-001 payée',
+      amount: 5000,
+      date: '2024-01-15T10:30:00Z'
+    },
+    {
+      type: 'new_client',
+      message: 'Nouveau client : Green Energy Co',
+      date: '2024-01-05T14:20:00Z'
+    }
+  ],
+  monthlyRevenue: [
+    { month: 'Jan 2024', revenue: 45000 },
+    { month: 'Dec 2023', revenue: 40000 },
+    { month: 'Nov 2023', revenue: 38000 }
+  ]
 }
