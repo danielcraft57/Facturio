@@ -12,6 +12,15 @@ export const MOCK_PACKS: Pack[] = [
     products: ['prod-1', 'prod-2', 'prod-3'],
     totalHours: 80,
     totalPrice: 12000,
+    features: [
+      'Design sur mesure',
+      'Animations et transitions',
+      'Blog intégré',
+      'Espace client privé',
+      'Analytics avancés',
+      'Optimisation SEO complète'
+    ],
+    deliveryTime: 25,
     createdAt: '2024-01-15T10:00:00Z',
     updatedAt: '2024-01-15T10:00:00Z'
   },
@@ -24,6 +33,15 @@ export const MOCK_PACKS: Pack[] = [
     products: ['prod-4', 'prod-5', 'prod-6'],
     totalHours: 120,
     totalPrice: 18000,
+    features: [
+      'Catalogue produits illimité',
+      'Panier d\'achat',
+      'Paiement sécurisé',
+      'Gestion des commandes',
+      'Tableau de bord admin',
+      'Emails automatiques'
+    ],
+    deliveryTime: 20,
     createdAt: '2024-01-20T14:30:00Z',
     updatedAt: '2024-01-20T14:30:00Z'
   },
@@ -36,6 +54,15 @@ export const MOCK_PACKS: Pack[] = [
     products: ['prod-7', 'prod-8', 'prod-9'],
     totalHours: 200,
     totalPrice: 35000,
+    features: [
+      'Gestion des rôles et permissions',
+      'Facturation intégrée',
+      'Analytics et rapports',
+      'Webhooks et API',
+      'Multi-tenants',
+      'Support technique 24/7'
+    ],
+    deliveryTime: 40,
     createdAt: '2024-02-01T09:15:00Z',
     updatedAt: '2024-02-01T09:15:00Z'
   },
@@ -48,6 +75,15 @@ export const MOCK_PACKS: Pack[] = [
     products: ['prod-1', 'prod-3', 'prod-10'],
     totalHours: 100,
     totalPrice: 15000,
+    features: [
+      'Pages institutionnelles complètes',
+      'Espace client privé',
+      'Blog intégré',
+      'Intégration CRM',
+      'Support multi-langues',
+      'Interface d\'administration'
+    ],
+    deliveryTime: 30,
     createdAt: '2024-02-10T16:45:00Z',
     updatedAt: '2024-02-10T16:45:00Z'
   }
@@ -104,6 +140,8 @@ export class MockPackService {
       products: data.products,
       totalHours,
       totalPrice,
+      features: data.features,
+      deliveryTime: data.deliveryTime,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };

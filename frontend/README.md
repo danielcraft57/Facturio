@@ -29,7 +29,9 @@ Application de gestion commerciale moderne avec interface React et Material UI.
 #### **Pages & Navigation**
 - ✅ Dashboard avec statistiques et données de démonstration
 - ✅ Page clients avec tableau et actions
-- ✅ Pages vides pour toutes les sections (devis, factures, produits, etc.)
+- ✅ Page produits avec gestion des modules web/SaaS
+- ✅ Page packs avec templates prédéfinis et gestion avancée
+- ✅ Pages vides pour toutes les sections (devis, factures, etc.)
 
 ## 🛠️ Technologies
 
@@ -79,11 +81,14 @@ src/
 │   ├── dashboard/     # Dashboard principal
 │   ├── clients/       # Gestion des clients
 │   ├── invoices/      # Gestion des factures
+│   ├── products/      # Gestion des produits et packs
 │   └── ...           # Autres modules
 ├── services/          # Services API
 │   ├── api.ts        # Client HTTP principal
 │   ├── clients.ts    # Service clients
-│   └── invoices.ts   # Service factures
+│   ├── invoices.ts   # Service factures
+│   ├── products.ts   # Service produits
+│   └── packService.ts # Service packs
 ├── theme/            # Configuration du thème
 └── data/             # Données de démonstration
 ```
@@ -117,7 +122,8 @@ L'application inclut des données de démonstration réalistes pour :
 - Clients avec informations complètes
 - Factures avec différents statuts
 - Statistiques de dashboard
-- Produits et services
+- Produits et services (modules web/SaaS)
+- Packs avec templates prédéfinis (Sites Web, E-commerce, SaaS)
 
 ## 🎯 Prochaines étapes
 

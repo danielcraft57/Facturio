@@ -3,7 +3,7 @@
 ## 🎯 Objectif
 Développer une interface moderne et intuitive pour la gestion complète de facturation, devis, clients et comptabilité.
 
-## 📋 État actuel (v0.8.2)
+## 📋 État actuel (v0.9.0)
 - ✅ Projet Vite + React + TypeScript
 - ✅ Material UI avec thème personnalisable
 - ✅ Layout avec navigation (AppBar + Drawer burger)
@@ -15,7 +15,8 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - ✅ **Création de factures - MVP métier complet**
 - ✅ **État global Zustand - Gestion d'état centralisée**
 - ✅ Proxy vers backend NestJS
- - ✅ Produits modules web/SaaS avec détails, filtres (type/but/langage), édition, panneau de détails animé
+- ✅ **Produits modules web/SaaS avec détails, filtres (type/but/langage), édition, panneau de détails animé**
+- ✅ **Bundles de produits - Templates prédéfinis et gestion avancée**
 
 ---
 
@@ -58,12 +59,15 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - **Hooks spécialisés** : `useApp`, `useCache`, `useSync` pour un accès optimisé aux stores
 
 ### ✅ **Module Packs - Gestion des packs de produits**
-- **Types TypeScript** : `Pack`, `PackType`, interfaces CRUD complètes
+- **Types TypeScript** : `Pack`, `PackType`, interfaces CRUD complètes avec fonctionnalités et délai de livraison
 - **Service API** : `packService` avec mock et calculs automatiques (heures/prix)
 - **Store Zustand** : `packsStore` avec cache, filtres, pagination
 - **UI complète** : `EditPackDialog` avec sélection de produits et résumé dynamique
 - **Intégration** : Onglet dédié dans `ProductsPage` avec CRUD complet
 - **Calculs automatiques** : Total heures et prix basé sur les produits sélectionnés
+- **Templates prédéfinis** : 9 templates réalistes (Sites Web, E-commerce, SaaS) avec interface de sélection
+- **Gestion des fonctionnalités** : Ajout/suppression dynamique de fonctionnalités personnalisées
+- **Interface améliorée** : Sélecteur de templates avec onglets par type et affichage enrichi
 
 ## 🎯 **Fonctionnalités précédemment implémentées (v0.8.2)**
 
@@ -226,7 +230,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - [ ] Tarifs horaires
 - [ ] Gestion des temps
 - [ ] Services récurrents
-- [ ] Packages et bundles (bundles Website/Ecommerce/SaaS)
+- ✅ **Packages et bundles** (bundles Website/Ecommerce/SaaS avec templates prédéfinis)
 
 ### Tarification
 - [ ] Prix par client
@@ -440,7 +444,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ## 🎯 Priorités immédiates (prochain sprint)
 
-1. **Produits - catégories & bundles** (Website/Ecommerce/SaaS)
+1. ✅ **Produits - bundles** (Website/Ecommerce/SaaS avec templates prédéfinis)
 2. **Produits - multi-devises** et affichage formats monétaires
 3. **Graphiques dashboard** - Chart.js/Recharts (CA, impayés, top produits)
 4. **Optimisations** - Code splitting et lazy loading (routes/pages)
@@ -454,11 +458,11 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - **Phase 2** : ✅ 100% (Dashboard & Analytics)
 - **Phase 3** : ✅ 100% (Gestion Clients)
 - **Phase 4** : ✅ 100% (Devis & Factures)
-- **Phase 5** : 🚧 75% (Produits - liste, filtres, détails, édition)
+- **Phase 5** : ✅ 90% (Produits - liste, filtres, détails, édition, bundles avec templates)
 - **Phase 6** : 📋 0% (Comptabilité)
 
-**Progression globale** : 82%
+**Progression globale** : 85%
 
 ---
 
-*Dernière mise à jour : v0.8.2 - Produits web/SaaS avec détails et édition*
+*Dernière mise à jour : v0.9.0 - Bundles de produits avec templates prédéfinis*

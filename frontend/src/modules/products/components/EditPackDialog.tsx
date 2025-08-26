@@ -15,10 +15,18 @@ import {
   Box,
   Typography,
   Chip,
-  Divider
+  Divider,
+  IconButton,
+  Tooltip
 } from '@mui/material';
+import {
+  ViewModule as TemplateIcon,
+  Add as AddIcon,
+  Remove as RemoveIcon
+} from '@mui/icons-material';
 import type { Pack, CreatePackData, UpdatePackData, PackType } from '../../../types/pack';
 import { MOCK_PRODUCTS } from '../../../services/productService.mock';
+import { PackTemplateSelector } from './PackTemplateSelector';
 
 interface EditPackDialogProps {
   open: boolean;
@@ -46,10 +54,14 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
     type: 'WEBSITE',
     description: '',
     details: '',
-    products: []
+    products: [],
+    features: [],
+    deliveryTime: 15
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
+  const [customFeature, setCustomFeature] = useState('');
 
   // Initialiser le formulaire avec les données du pack existant
   useEffect(() => {
@@ -59,7 +71,9 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
         type: pack.type,
         description: pack.description,
         details: pack.details,
-        products: pack.products
+        products: pack.products,
+        features: pack.features || [],
+        deliveryTime: pack.deliveryTime || 15
       });
     } else {
       setFormData({
@@ -67,7 +81,9 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
         type: 'WEBSITE',
         description: '',
         details: '',
-        products: []
+        products: [],
+        features: [],
+        deliveryTime: 15
       });
     }
     setErrors({});
@@ -120,15 +136,62 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
     }));
   };
 
+  const handleTemplateSelect = (template: any) => {
+    setFormData(prev => ({
+      ...prev,
+      name: template.name,
+      type: template.type,
+      description: template.description,
+      details: template.details,
+      products: template.suggestedProducts,
+      features: template.features,
+      deliveryTime: template.deliveryTime
+    }));
+    setTemplateSelectorOpen(false);
+  };
+
+  const handleAddFeature = () => {
+    if (customFeature.trim() && !formData.features?.includes(customFeature.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        features: [...(prev.features || []), customFeature.trim()]
+      }));
+      setCustomFeature('');
+    }
+  };
+
+  const handleRemoveFeature = (feature: string) => {
+    setFormData(prev => ({
+      ...prev,
+      features: prev.features?.filter(f => f !== feature) || []
+    }));
+  };
+
   const selectedProducts = MOCK_PRODUCTS.filter((p: any) => formData.products.includes(p.id));
   const totalHours = selectedProducts.reduce((sum, p) => sum + (p.estimatedHours || 0), 0);
   const totalPrice = selectedProducts.reduce((sum, p) => sum + (p.unitPrice || 0), 0);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        {pack ? 'Modifier le pack' : 'Nouveau pack'}
-      </DialogTitle>
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              {pack ? 'Modifier le pack' : 'Nouveau pack'}
+            </Typography>
+            {!pack && (
+              <Tooltip title="Utiliser un template">
+                <IconButton 
+                  onClick={() => setTemplateSelectorOpen(true)}
+                  color="primary"
+                  size="small"
+                >
+                  <TemplateIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+        </DialogTitle>
       
       <form onSubmit={handleSubmit}>
         <DialogContent>
@@ -185,6 +248,57 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
               required
               sx={{ gridColumn: '1 / -1' }}
             />
+
+            {/* Délai de livraison */}
+            <TextField
+              label="Délai de livraison (jours)"
+              type="number"
+              value={formData.deliveryTime}
+              onChange={(e) => setFormData(prev => ({ ...prev, deliveryTime: parseInt(e.target.value) || 15 }))}
+              fullWidth
+              inputProps={{ min: 1, max: 365 }}
+            />
+          </Box>
+
+          <Divider sx={{ my: 3 }} />
+
+          {/* Fonctionnalités */}
+          <Typography variant="h6" gutterBottom>
+            Fonctionnalités incluses
+          </Typography>
+          
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <TextField
+                label="Ajouter une fonctionnalité"
+                value={customFeature}
+                onChange={(e) => setCustomFeature(e.target.value)}
+                size="small"
+                sx={{ flexGrow: 1 }}
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
+              />
+              <Button
+                variant="outlined"
+                onClick={handleAddFeature}
+                disabled={!customFeature.trim()}
+                startIcon={<AddIcon />}
+              >
+                Ajouter
+              </Button>
+            </Box>
+            
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {formData.features?.map((feature, index) => (
+                <Chip
+                  key={index}
+                  label={feature}
+                  onDelete={() => handleRemoveFeature(feature)}
+                  deleteIcon={<RemoveIcon />}
+                  color="primary"
+                  variant="outlined"
+                />
+              ))}
+            </Box>
           </Box>
 
           <Divider sx={{ my: 3 }} />
@@ -246,11 +360,22 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
               <Typography variant="h6" gutterBottom>
                 Résumé du pack
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
                 <Chip label={`${selectedProducts.length} produits`} color="primary" />
                 <Chip label={`${totalHours}h total`} color="secondary" />
                 <Chip label={`${totalPrice.toLocaleString('fr-FR')}€`} color="success" />
+                <Chip label={`${formData.deliveryTime} jours`} color="info" />
               </Box>
+              {formData.features && formData.features.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Fonctionnalités ({formData.features.length}) :
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {formData.features.join(', ')}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           )}
         </DialogContent>
@@ -269,5 +394,13 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
         </DialogActions>
       </form>
     </Dialog>
+
+    {/* Sélecteur de templates */}
+    <PackTemplateSelector
+      open={templateSelectorOpen}
+      onClose={() => setTemplateSelectorOpen(false)}
+      onSelectTemplate={handleTemplateSelect}
+    />
+    </>
   );
 };

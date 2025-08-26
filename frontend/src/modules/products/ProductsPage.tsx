@@ -110,7 +110,9 @@ export function ProductsPage() {
     { id: 'name' as keyof Pack, label: 'Nom', minWidth: 200 },
     { id: 'type' as keyof Pack, label: 'Type', minWidth: 120, render: (p: Pack) => <Chip size="small" label={p.type} /> },
     { id: 'description' as keyof Pack, label: 'Description', minWidth: 250 },
+    { id: 'features' as keyof Pack, label: 'Fonctionnalités', minWidth: 150, render: (p: Pack) => p.features ? `${p.features.length} fonctionnalités` : '-' },
     { id: 'products' as keyof Pack, label: 'Produits', minWidth: 120, render: (p: Pack) => `${p.products.length} produits` },
+    { id: 'deliveryTime' as keyof Pack, label: 'Délai', minWidth: 90, render: (p: Pack) => p.deliveryTime ? `${p.deliveryTime} jours` : '-' },
     { id: 'totalHours' as keyof Pack, label: 'Heures', minWidth: 90, render: (p: Pack) => p.totalHours + ' h' },
     { id: 'totalPrice' as keyof Pack, label: 'Prix', minWidth: 110, render: (p: Pack) => p.totalPrice.toFixed(2) + ' €' },
   ];
@@ -170,7 +172,19 @@ export function ProductsPage() {
               showPagination={false}
               renderExpanded={(row) => (
                 <Box>
-                  <Typography variant="body2" sx={{ mb: 1 }}>{row.details}</Typography>
+                  <Typography variant="body2" sx={{ mb: 2 }}>{row.details}</Typography>
+                  
+                  {row.features && row.features.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1 }}>Fonctionnalités incluses :</Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {row.features.map((feature, index) => (
+                          <Chip key={index} label={feature} size="small" variant="outlined" />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                  
                   <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Produits inclus :</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {getPackProductNames(row)}
