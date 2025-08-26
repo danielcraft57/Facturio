@@ -42,10 +42,19 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 🎯 **Fonctionnalités récemment implémentées (v0.7.0)**
+## 🎯 **Fonctionnalités récemment implémentées (v0.8.0)**
 
-### ✅ **État global Zustand - Gestion d'état centralisée**
-- **5 Stores spécialisés** : App, Clients, Factures, Dashboard, Thème
+### ✅ **Module Devis - Gestion complète des devis**
+- **Types TypeScript** : `Quote`, `QuoteLine`, `QuoteStatus`, interfaces CRUD
+- **Service API** : `quoteService` avec mock en développement
+- **Store Zustand** : `quotesStore` avec cache, filtres et pagination
+- **Page principale** : `QuotesPage` avec liste, filtres, statistiques
+- **Actions métier** : Envoyer, accepter, rejeter, convertir en facture
+- **Intégration** : Ajouté aux stores globaux et hooks combinés
+- **Mock data** : 4 devis de démonstration avec différents statuts
+
+### ✅ **État global Zustand - Gestion d'état centralisée (v0.7.0)**
+- **6 Stores spécialisés** : App, Clients, Factures, Devis, Dashboard, Thème
 - **Persistance automatique** : Sauvegarde locale avec `zustand/middleware/persist`
 - **Cache intelligent** : Gestion des données obsolètes et synchronisation
 - **Actions combinées** : Hook `useStores()` pour opérations globales
@@ -56,6 +65,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - **useAppStore** : État global, notifications, connectivité, synchronisation
 - **useClientsStore** : Cache clients, filtres, pagination, actions CRUD
 - **useInvoicesStore** : Cache factures, actions métier (envoyer, payer, annuler)
+- **useQuotesStore** : Cache devis, actions métier (envoyer, accepter, rejeter, convertir)
 - **useDashboardStore** : Statistiques avec cache et temps réel
 - **useThemeStore** : Thème avec presets et persistance
 
@@ -74,7 +84,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 🎯 **Fonctionnalités précédemment implémentées (v0.6.0)**
+## 🎯 **Fonctionnalités précédemment implémentées (v0.7.0)**
 
 ### ✅ **Création de factures - MVP métier complet**
 - **CreateInvoiceDialog** : Formulaire complet de création avec sélection client
@@ -170,6 +180,10 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 ## 📦 Phase 5 : Produits & Services (v0.8.0)
 
 ### Catalogue produits
+- ✅ Types `Product` et filtres
+- ✅ Services API + mock en dev
+- ✅ Store Zustand `productsStore`
+- ✅ Page liste `ProductsPage` avec recherche/filtres
 - [ ] Gestion des catégories
 - [ ] Images et descriptions
 - [ ] Prix et devises
@@ -407,12 +421,12 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - **Phase 1** : ✅ 100% (Fondations)
 - **Phase 2** : ✅ 100% (Dashboard & Analytics)
 - **Phase 3** : ✅ 100% (Gestion Clients)
-- **Phase 4** : 🚧 60% (Factures - Création + État global)
-- **Phase 5** : 📋 0% (Produits)
+- **Phase 4** : ✅ 100% (Devis - Module complet + État global)
+- **Phase 5** : 🚧 40% (Produits - Base liste + store)
 - **Phase 6** : 📋 0% (Comptabilité)
 
-**Progression globale** : 65%
+**Progression globale** : 78%
 
 ---
 
-*Dernière mise à jour : v0.7.0 - État global Zustand implémenté avec succès*
+*Dernière mise à jour : v0.8.0 - Module devis implémenté avec succès*

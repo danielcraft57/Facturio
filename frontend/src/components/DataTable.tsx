@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import {
   Table,
   TableBody,
@@ -18,6 +19,7 @@ import {
   Alert,
   useTheme,
   useMediaQuery,
+  Collapse,
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -69,6 +71,7 @@ export interface DataTableProps<T = any> {
   selectedRows?: T[]
   onSelectionChange?: (selectedRows: T[]) => void
   getRowId?: (row: T) => string | number
+  renderExpanded?: (row: T) => ReactNode
 }
 
 export function DataTable<T = any>({
@@ -98,9 +101,11 @@ export function DataTable<T = any>({
   selectedRows = [],
   onSelectionChange,
   getRowId,
+  renderExpanded,
 }: DataTableProps<T>) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const [expandedRowId, setExpandedRowId] = useState<any>(null)
 
   // Gestion du tri
   const handleSort = (column: keyof T) => {
@@ -289,12 +294,20 @@ export function DataTable<T = any>({
                 const rowId = getRowId ? getRowId(row) : index
                 const isSelected = selectable && selectedRows.some(r => getRowId?.(r) === rowId)
 
-                return (
+                const handleRowClick = () => {
+                  if (renderExpanded) {
+                    setExpandedRowId(expandedRowId === rowId ? null : rowId)
+                  } else if (selectable) {
+                    handleRowSelect(row)
+                  }
+                }
+
+                const rowElement = (
                   <TableRow
                     key={rowId}
                     hover
                     selected={isSelected}
-                    onClick={() => selectable && handleRowSelect(row)}
+                    onClick={handleRowClick}
                     sx={{
                       cursor: selectable ? 'pointer' : 'default',
                       '&:hover': {
@@ -323,6 +336,26 @@ export function DataTable<T = any>({
                       </TableCell>
                     ))}
                   </TableRow>
+                )
+
+                if (!renderExpanded) return rowElement
+
+                const colSpan = columns.length + (selectable ? 1 : 0)
+                const expanded = expandedRowId === rowId
+
+                return (
+                  <>
+                    {rowElement}
+                    <TableRow>
+                      <TableCell colSpan={colSpan} sx={{ p: 0, border: 0 }}>
+                        <Collapse in={expanded} timeout="auto" unmountOnExit>
+                          <Box sx={{ px: 2, py: 2, bgcolor: theme.palette.mode === 'light' ? 'grey.50' : 'grey.900', borderTop: 1, borderColor: 'divider' }}>
+                            {renderExpanded(row)}
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </>
                 )
               })
             )}
