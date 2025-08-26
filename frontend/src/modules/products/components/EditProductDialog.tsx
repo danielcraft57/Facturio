@@ -12,13 +12,13 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
-import type { Product, ProductKind, ProductPurpose, UpdateProductData } from '../../../types/product';
+import type { Product, ProductKind, ProductPurpose, ProductCategory, UpdateProductData, CreateProductData } from '../../../types/product';
 
 type Props = {
   open: boolean;
   product: Product | null;
   onClose: () => void;
-  onSave: (data: UpdateProductData) => Promise<void> | void;
+  onSave: (data: UpdateProductData | CreateProductData) => Promise<void> | void;
   isSaving?: boolean;
 };
 
@@ -27,9 +27,12 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
   const [sku, setSku] = useState('');
   const [kind, setKind] = useState<ProductKind>('SERVICE');
   const [purpose, setPurpose] = useState<ProductPurpose | ''>('');
+  const [category, setCategory] = useState<ProductCategory | ''>('');
   const [unitPrice, setUnitPrice] = useState<number | ''>('');
   const [estimatedHours, setEstimatedHours] = useState<number | ''>('');
   const [languages, setLanguages] = useState('');
+  const [description, setDescription] = useState('');
+  const [detailsText, setDetailsText] = useState('');
 
   const [errors, setErrors] = useState<{ [k: string]: string }>({});
 
@@ -39,9 +42,25 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       setSku(product.sku || '');
       setKind(product.kind || 'SERVICE');
       setPurpose(product.purpose || '');
+      setCategory(product.category || '');
       setUnitPrice(product.unitPrice ?? '');
       setEstimatedHours(product.estimatedHours ?? '');
       setLanguages((product.languages || []).join(', '));
+      setDescription(product.description || '');
+      setDetailsText((product.details || []).join('\n'));
+      setErrors({});
+    }
+    if (open && !product) {
+      setName('');
+      setSku('');
+      setKind('SERVICE');
+      setPurpose('');
+      setCategory('');
+      setUnitPrice('');
+      setEstimatedHours('');
+      setLanguages('');
+      setDescription('');
+      setDetailsText('');
       setErrors({});
     }
   }, [open, product]);
@@ -58,19 +77,25 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
 
   const handleSave = async () => {
     if (!isValid) return;
-    const data: UpdateProductData = {
+    const base = {
       name: name.trim(),
       sku: sku.trim() || undefined,
       kind,
       purpose: purpose || undefined,
+      category: category || undefined,
       unitPrice: unitPrice === '' ? undefined : Number(unitPrice),
       estimatedHours: estimatedHours === '' ? undefined : Number(estimatedHours),
       languages: languages
         .split(',')
         .map(s => s.trim())
         .filter(Boolean),
+      description: description.trim() || undefined,
+      details: detailsText
+        .split(/\r?\n|,/)
+        .map(s => s.trim())
+        .filter(Boolean),
     };
-    await onSave(data);
+    await onSave(product ? (base as UpdateProductData) : (base as CreateProductData));
   };
 
   return (
@@ -109,6 +134,25 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
             </Select>
           </FormControl>
 
+          <FormControl fullWidth>
+            <InputLabel>Catégorie</InputLabel>
+            <Select label="Catégorie" value={category} onChange={(e) => setCategory(e.target.value as ProductCategory | '')}>
+              <MenuItem value="">Non défini</MenuItem>
+              <MenuItem value="SETUP">SETUP</MenuItem>
+              <MenuItem value="THEME">THEME</MenuItem>
+              <MenuItem value="DEV">DEV</MenuItem>
+              <MenuItem value="ECOMMERCE">ECOMMERCE</MenuItem>
+              <MenuItem value="PAYMENT">PAYMENT</MenuItem>
+              <MenuItem value="CONTENT">CONTENT</MenuItem>
+              <MenuItem value="SEO">SEO</MenuItem>
+              <MenuItem value="HOSTING">HOSTING</MenuItem>
+              <MenuItem value="CI_CD">CI_CD</MenuItem>
+              <MenuItem value="MAINTENANCE">MAINTENANCE</MenuItem>
+              <MenuItem value="MOBILE">MOBILE</MenuItem>
+              <MenuItem value="API">API</MenuItem>
+            </Select>
+          </FormControl>
+
           <TextField
             label="Prix unitaire (€)"
             type="number"
@@ -137,6 +181,24 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
             onChange={(e) => setLanguages(e.target.value)}
             fullWidth
             sx={{ gridColumn: { xs: '1', sm: '1 / -1' } }}
+          />
+        </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mt: 2 }}>
+          <TextField
+            label="Description"
+            multiline
+            minRows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Détails (une ligne par point ou séparés par des virgules)"
+            multiline
+            minRows={3}
+            value={detailsText}
+            onChange={(e) => setDetailsText(e.target.value)}
+            fullWidth
           />
         </Box>
       </DialogContent>

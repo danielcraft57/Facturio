@@ -1,5 +1,18 @@
 export type ProductKind = 'SAAS' | 'APP' | 'SERVICE' | 'GOOD';
 export type ProductPurpose = 'WEBSITE' | 'SAAS' | 'ECOMMERCE' | 'SHOWCASE';
+export type ProductCategory =
+  | 'SETUP'
+  | 'THEME'
+  | 'DEV'
+  | 'ECOMMERCE'
+  | 'PAYMENT'
+  | 'CONTENT'
+  | 'SEO'
+  | 'HOSTING'
+  | 'CI_CD'
+  | 'MAINTENANCE'
+  | 'MOBILE'
+  | 'API';
 
 export interface Product {
   id: number;
@@ -9,6 +22,7 @@ export interface Product {
   unitPrice?: number;
   defaultTaxRateId?: number;
   purpose?: ProductPurpose; // but: site web, saas, ecommerce, vitrine
+  category?: ProductCategory; // catégorie fonctionnelle (setup, theme, dev, ...)
   languages?: string[];     // langages/technos principales (ex: ts, react, nest)
   estimatedHours?: number;  // temps de conception estimé
   description?: string;     // détails du module/prestation
@@ -24,6 +38,7 @@ export interface CreateProductData {
   unitPrice?: number;
   defaultTaxRateId?: number;
   purpose?: ProductPurpose;
+  category?: ProductCategory;
   languages?: string[];
   estimatedHours?: number;
   description?: string;
@@ -37,6 +52,7 @@ export interface UpdateProductData {
   unitPrice?: number;
   defaultTaxRateId?: number;
   purpose?: ProductPurpose;
+  category?: ProductCategory;
   languages?: string[];
   estimatedHours?: number;
   description?: string;
@@ -49,6 +65,7 @@ export interface ProductFilters {
   minPrice?: number;
   maxPrice?: number;
   purpose?: ProductPurpose;
+  category?: ProductCategory;
   language?: string; // contient dans languages
   minHours?: number;
   maxHours?: number;

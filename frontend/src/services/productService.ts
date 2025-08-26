@@ -13,6 +13,7 @@ class ProductService {
     const params = new URLSearchParams();
     if (filters?.kind) params.append('kind', filters.kind);
     if (filters?.purpose) params.append('purpose', filters.purpose);
+    if (filters?.category) params.append('category', filters.category);
     if (filters?.search) params.append('search', filters.search);
     if (filters?.minPrice !== undefined) params.append('minPrice', String(filters.minPrice));
     if (filters?.maxPrice !== undefined) params.append('maxPrice', String(filters.maxPrice));

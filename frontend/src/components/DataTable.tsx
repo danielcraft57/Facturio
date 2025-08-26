@@ -1,5 +1,5 @@
+import React, { useState } from 'react'
 import type { ReactNode } from 'react'
-import { useState } from 'react'
 import {
   Table,
   TableBody,
@@ -188,15 +188,16 @@ export function DataTable<T = any>({
 
   // Rendu d'une cellule
   const renderCell = (column: Column<T>, row: T) => {
+    // Priorité au rendu personnalisé si fourni
+    if (column.render) {
+      return column.render(row)
+    }
+    // Sinon, colonne actions par défaut
     if (column.id === 'actions') {
       return renderActions(row)
     }
 
     const value = row[column.id as keyof T]
-    
-    if (column.render) {
-      return column.render(row)
-    }
 
     if (column.format) {
       return column.format(value, row)
@@ -344,9 +345,9 @@ export function DataTable<T = any>({
                 const expanded = expandedRowId === rowId
 
                 return (
-                  <>
+                  <React.Fragment key={`${rowId}-fragment`}>
                     {rowElement}
-                    <TableRow>
+                    <TableRow key={`${rowId}-expanded`}>
                       <TableCell colSpan={colSpan} sx={{ p: 0, border: 0 }}>
                         <Collapse in={expanded} timeout="auto" unmountOnExit>
                           <Box sx={{ px: 2, py: 2, bgcolor: theme.palette.mode === 'light' ? 'grey.50' : 'grey.900', borderTop: 1, borderColor: 'divider' }}>
@@ -355,7 +356,7 @@ export function DataTable<T = any>({
                         </Collapse>
                       </TableCell>
                     </TableRow>
-                  </>
+                  </React.Fragment>
                 )
               })
             )}

@@ -5,6 +5,7 @@ import { useInvoicesStore } from '../stores/invoicesStore';
 import { useQuotesStore } from '../stores/quotesStore';
 import { useDashboardStore } from '../stores/dashboardStore';
 import { useProductsStore } from '../stores/productsStore';
+import { usePacksStore } from '../stores/packsStore';
 import { useThemeStore } from '../stores/themeStore';
 
 // Hook pour utiliser tous les stores de manière optimisée
@@ -17,6 +18,7 @@ export const useStores = () => {
   const invoicesStore = useInvoicesStore();
   const quotesStore = useQuotesStore();
   const productsStore = useProductsStore();
+  const packsStore = usePacksStore();
   const dashboardStore = useDashboardStore();
   const themeStore = useThemeStore();
 
@@ -31,6 +33,7 @@ export const useStores = () => {
         invoicesStore.fetchInvoices(),
         quotesStore.fetchQuotes(),
         productsStore.fetchProducts(),
+        packsStore.fetchPacks(),
       ]);
       
       appStore.setLastSync(new Date());
@@ -50,7 +53,7 @@ export const useStores = () => {
     } finally {
       appStore.setLoading(false);
     }
-  }, [appStore, dashboardStore, clientsStore, invoicesStore, quotesStore, productsStore]);
+  }, [appStore, dashboardStore, clientsStore, invoicesStore, quotesStore, productsStore, packsStore]);
 
   // Actions combinées pour le nettoyage
   const clearAllCache = useCallback(() => {
@@ -58,6 +61,7 @@ export const useStores = () => {
     invoicesStore.clearCache();
     quotesStore.clearCache();
     productsStore.clearCache();
+    packsStore.clearCurrentPack();
     dashboardStore.clearCache();
     
     appStore.addNotification({
@@ -66,7 +70,7 @@ export const useStores = () => {
       message: 'Toutes les données en cache ont été supprimées',
       duration: 3000,
     });
-  }, [appStore, clientsStore, invoicesStore, quotesStore, productsStore, dashboardStore]);
+  }, [appStore, clientsStore, invoicesStore, quotesStore, productsStore, packsStore, dashboardStore]);
 
   // Actions combinées pour marquer comme obsolète
   const markAllAsStale = useCallback(() => {
@@ -74,8 +78,9 @@ export const useStores = () => {
     invoicesStore.markAsStale();
     quotesStore.markAsStale();
     productsStore.markAsStale();
+    packsStore.markAsStale();
     dashboardStore.markAsStale();
-  }, [clientsStore, invoicesStore, quotesStore, productsStore, dashboardStore]);
+  }, [clientsStore, invoicesStore, quotesStore, productsStore, packsStore, dashboardStore]);
 
   return {
     // Stores
@@ -84,6 +89,7 @@ export const useStores = () => {
     invoices: invoicesStore,
     quotes: quotesStore,
     products: productsStore,
+    packs: packsStore,
     dashboard: dashboardStore,
     theme: themeStore,
     
@@ -108,6 +114,9 @@ export const useQuotes = () => useQuotesStore();
 
 // Hook pour utiliser uniquement le store des produits
 export const useProducts = () => useProductsStore();
+
+// Hook pour utiliser uniquement le store des packs
+export const usePacks = () => usePacksStore();
 
 // Hook pour utiliser uniquement le store du dashboard
 export const useDashboard = () => useDashboardStore();

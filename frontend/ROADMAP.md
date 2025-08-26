@@ -3,7 +3,7 @@
 ## 🎯 Objectif
 Développer une interface moderne et intuitive pour la gestion complète de facturation, devis, clients et comptabilité.
 
-## 📋 État actuel (v0.7.0)
+## 📋 État actuel (v0.8.2)
 - ✅ Projet Vite + React + TypeScript
 - ✅ Material UI avec thème personnalisable
 - ✅ Layout avec navigation (AppBar + Drawer burger)
@@ -11,10 +11,11 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - ✅ Composants de base (DataTable, ConfirmDialog, Toast)
 - ✅ Dashboard fonctionnel avec données API réelles
 - ✅ Liste clients opérationnelle avec recherche/filtres
-- ✅ Intégration complète des services (Dashboard, Clients, Factures)
+- ✅ Intégration complète des services (Dashboard, Clients, Factures, Devis, Produits)
 - ✅ **Création de factures - MVP métier complet**
 - ✅ **État global Zustand - Gestion d'état centralisée**
 - ✅ Proxy vers backend NestJS
+ - ✅ Produits modules web/SaaS avec détails, filtres (type/but/langage), édition, panneau de détails animé
 
 ---
 
@@ -42,9 +43,16 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 🎯 **Fonctionnalités récemment implémentées (v0.8.0)**
+## 🎯 **Fonctionnalités récemment implémentées (v0.8.2)**
 
 ### ✅ **Module Devis - Gestion complète des devis**
+### ✅ **Module Produits - Modules site web / SaaS**
+- **Types TypeScript** : `Product` étendu (purpose, languages, estimatedHours, description, details)
+- **Service API** : `productService` avec mock enrichi d'exemples concrets (WP, Woo, Symfony, RN, API)
+- **Store Zustand** : `productsStore` (cache, filtres, pagination)
+- **Page** : `ProductsPage` avec colonnes Type, But, Langages, Heures, Prix + recherche/filtres (type, but, langage)
+- **UX** : Panneau de détails animé au clic (description + bullets), modale d'édition avec validation
+- **Nettoyage** : retrait startDate/endDate
 - **Types TypeScript** : `Quote`, `QuoteLine`, `QuoteStatus`, interfaces CRUD
 - **Service API** : `quoteService` avec mock en développement
 - **Store Zustand** : `quotesStore` avec cache, filtres et pagination
@@ -147,7 +155,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 📄 Phase 4 : Devis & Factures (v0.7.0) 🚧 EN COURS
+## 📄 Phase 4 : Devis & Factures (v0.7.0) ✅ TERMINÉE
 
 ### Création de devis
 - [ ] Éditeur WYSIWYG
@@ -180,13 +188,15 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 ## 📦 Phase 5 : Produits & Services (v0.8.0)
 
 ### Catalogue produits
-- ✅ Types `Product` et filtres
-- ✅ Services API + mock en dev
+- ✅ Types `Product` étendus (purpose/languages/estimatedHours/description/details)
+- ✅ Services API + mock enrichi (exemples issus de devis)
 - ✅ Store Zustand `productsStore`
-- ✅ Page liste `ProductsPage` avec recherche/filtres
+- ✅ Page `ProductsPage` avec recherche/filtres (type, but, langage)
+- ✅ Panneau de détails animé au clic (description + bullets)
+- ✅ Modale d'édition produit avec validation
 - [ ] Gestion des catégories
-- [ ] Images et descriptions
-- [ ] Prix et devises
+- [ ] Images produits
+- [ ] Multi-devises
 - [ ] Stock (optionnel)
 - [ ] Codes-barres
 
@@ -194,7 +204,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - [ ] Tarifs horaires
 - [ ] Gestion des temps
 - [ ] Services récurrents
-- [ ] Packages et bundles
+- [ ] Packages et bundles (bundles Website/Ecommerce/SaaS)
 
 ### Tarification
 - [ ] Prix par client
@@ -395,8 +405,8 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 ## 📅 Planning estimé
 
 - **Phase 1** : ✅ Terminée (2-3 mois)
-- **Phase 2** : 1-2 mois  
-- **Phase 3-4** : 3-4 mois
+- **Phase 2** : ✅ Terminée (1-2 mois)
+- **Phase 3-4** : ✅ Terminées (3-4 mois)
 - **Phase 5-6** : 2-3 mois
 - **Phase 7-8** : 2-3 mois
 - **Phase 9-10** : 2-3 mois
@@ -408,11 +418,11 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ## 🎯 Priorités immédiates (prochain sprint)
 
-1. **Tests unitaires** - Couverture de base des stores et composants
-2. **Graphiques dashboard** - Chart.js pour les analytics avancées
-3. **Édition factures** - Modification des factures existantes
-4. **Optimisations** - Code splitting et lazy loading
-5. **Documentation** - Guide d'utilisation des stores
+1. **Produits - catégories & bundles** (Website/Ecommerce/SaaS)
+2. **Produits - multi-devises** et affichage formats monétaires
+3. **Graphiques dashboard** - Chart.js/Recharts (CA, impayés, top produits)
+4. **Optimisations** - Code splitting et lazy loading (routes/pages)
+5. **Tests unitaires** - Couverture de base stores/composants (DataTable, Products)
 
 ---
 
@@ -421,12 +431,12 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - **Phase 1** : ✅ 100% (Fondations)
 - **Phase 2** : ✅ 100% (Dashboard & Analytics)
 - **Phase 3** : ✅ 100% (Gestion Clients)
-- **Phase 4** : ✅ 100% (Devis - Module complet + État global)
-- **Phase 5** : 🚧 40% (Produits - Base liste + store)
+- **Phase 4** : ✅ 100% (Devis & Factures)
+- **Phase 5** : 🚧 75% (Produits - liste, filtres, détails, édition)
 - **Phase 6** : 📋 0% (Comptabilité)
 
-**Progression globale** : 78%
+**Progression globale** : 82%
 
 ---
 
-*Dernière mise à jour : v0.8.0 - Module devis implémenté avec succès*
+*Dernière mise à jour : v0.8.2 - Produits web/SaaS avec détails et édition*
