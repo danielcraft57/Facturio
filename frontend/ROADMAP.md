@@ -35,15 +35,37 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - ✅ Notifications toast
 - ✅ Loading states et skeletons
 
-### État global
-- [ ] Store centralisé (Zustand)
-- [ ] Gestion des données en cache
-- [ ] Synchronisation multi-onglets
-- [ ] Persistance locale
+### État global ✅ TERMINÉ
+- ✅ Store centralisé (Zustand) - 6 stores spécialisés
+- ✅ Gestion des données en cache - Cache intelligent avec expiration
+- ✅ Synchronisation multi-onglets - BroadcastChannel + localStorage fallback
+- ✅ Persistance locale - Zustand persist middleware
+- ✅ Gestionnaire de cache avancé - TTL, priorité, nettoyage automatique
+- ✅ Gestionnaire de synchronisation - Événements, file d'attente, retry
+- ✅ Composant de démonstration - `/demo` pour tester toutes les fonctionnalités
 
 ---
 
-## 🎯 **Fonctionnalités récemment implémentées (v0.8.2)**
+## 🎯 **Fonctionnalités récemment implémentées (v0.9.0)**
+
+### ✅ **État global avancé - Gestion d'état complète**
+- **Store principal amélioré** : `appStore` avec gestion multi-onglets, cache intelligent, notifications
+- **Gestionnaire de cache** : `cacheManager` avec TTL, priorité, nettoyage automatique, statistiques
+- **Gestionnaire de synchronisation** : `syncManager` avec événements, file d'attente, retry automatique
+- **Synchronisation multi-onglets** : BroadcastChannel + localStorage fallback, heartbeat, détection d'onglets
+- **Persistance locale avancée** : Cache versionné, expiration automatique, nettoyage périodique
+- **Composant de démonstration** : `/demo` pour tester toutes les fonctionnalités d'état global
+- **Hooks spécialisés** : `useApp`, `useCache`, `useSync` pour un accès optimisé aux stores
+
+### ✅ **Module Packs - Gestion des packs de produits**
+- **Types TypeScript** : `Pack`, `PackType`, interfaces CRUD complètes
+- **Service API** : `packService` avec mock et calculs automatiques (heures/prix)
+- **Store Zustand** : `packsStore` avec cache, filtres, pagination
+- **UI complète** : `EditPackDialog` avec sélection de produits et résumé dynamique
+- **Intégration** : Onglet dédié dans `ProductsPage` avec CRUD complet
+- **Calculs automatiques** : Total heures et prix basé sur les produits sélectionnés
+
+## 🎯 **Fonctionnalités précédemment implémentées (v0.8.2)**
 
 ### ✅ **Module Devis - Gestion complète des devis**
 ### ✅ **Module Produits - Modules site web / SaaS**

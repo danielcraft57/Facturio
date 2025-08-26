@@ -7,3 +7,6 @@ export { useProductsStore } from './productsStore';
 export { usePacksStore } from './packsStore';
 export { useDashboardStore } from './dashboardStore';
 export { useThemeStore } from './themeStore';
+
+// Export des nouveaux managers
+export { useSyncManager } from './syncManager';

@@ -16,6 +16,9 @@ import { TaxesPage } from '../taxes/TaxesPage'
 import { SubscriptionsPage } from '../subscriptions/SubscriptionsPage'
 import { FilingsPage } from '../filings/FilingsPage'
 import { AccountingPage } from '../accounting/AccountingPage'
+import { GlobalStateDemo } from '../../components/GlobalStateDemo'
+import { ModernPageLoader } from '../../components/AdvancedPageLoader'
+import { LoaderDemo } from '../../components/LoaderDemo'
 
 // Composant pour gérer les toasts globaux
 function AppWithToasts({ children }: { children: ReactNode }) {
@@ -82,6 +85,13 @@ export function App() {
       <CssBaseline />
       <AppWithToasts>
         <BrowserRouter>
+          {/* Barre de chargement entre les pages */}
+          <ModernPageLoader 
+            height={3}
+            duration={800}
+            color="primary"
+          />
+          
           <AppLayout
             mode={settings.mode}
             onToggleMode={handleToggleMode}
@@ -97,6 +107,8 @@ export function App() {
               <Route path="/abonnements" element={<SubscriptionsPage />} />
               <Route path="/declarations" element={<FilingsPage />} />
               <Route path="/comptabilite" element={<AccountingPage />} />
+              <Route path="/demo" element={<GlobalStateDemo />} />
+              <Route path="/loaders" element={<LoaderDemo />} />
             </RouterRoutes>
           </AppLayout>
 

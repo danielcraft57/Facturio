@@ -44,11 +44,12 @@ export const useStores = () => {
         duration: 3000,
       });
     } catch (error) {
-      appStore.addError({
+      appStore.setError({
         type: 'api',
         title: 'Erreur de synchronisation',
         message: 'Impossible de synchroniser les données',
         details: error,
+        retryable: true,
       });
     } finally {
       appStore.setLoading(false);

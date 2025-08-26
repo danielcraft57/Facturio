@@ -46,8 +46,8 @@ export function StoreDemo() {
               color={app.isOnline ? 'success' : 'error'}
             />
             <Chip 
-              label={app.isLoading ? 'Chargement...' : 'Prêt'} 
-              color={app.isLoading ? 'warning' : 'success'}
+                            label={app.loading ? 'Chargement...' : 'Prêt'}
+              color={app.loading ? 'warning' : 'success'}
             />
             {app.lastSync && (
               <Chip 
@@ -57,7 +57,7 @@ export function StoreDemo() {
             )}
           </Stack>
           <Stack direction="row" spacing={2}>
-            <Button variant="contained" onClick={syncAllData} disabled={app.isLoading}>
+            <Button variant="contained" onClick={syncAllData} disabled={app.loading}>
               Synchroniser
             </Button>
             <Button variant="outlined" onClick={clearAllCache}>
@@ -231,27 +231,25 @@ export function StoreDemo() {
         </Card>
       )}
 
-      {/* Erreurs */}
-      {app.errors.length > 0 && (
+      {/* Erreur */}
+      {app.lastError && (
         <Card sx={{ mt: 3, borderColor: 'error.main' }}>
           <CardContent>
             <Typography variant="h6" gutterBottom color="error">
-              Erreurs ({app.errors.length})
+              Erreur
             </Typography>
             <Stack spacing={1}>
-              {app.errors.map((error) => (
-                <Box key={error.id} sx={{ p: 1, border: 1, borderColor: 'error.main', borderRadius: 1 }}>
-                  <Typography variant="body2" fontWeight="bold" color="error">
-                    {error.title}
+              <Box sx={{ p: 1, border: 1, borderColor: 'error.main', borderRadius: 1 }}>
+                <Typography variant="body2" fontWeight="bold" color="error">
+                  {app.lastError.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {app.lastError.message}
+                </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                    {app.lastError.timestamp ? new Date(app.lastError.timestamp).toLocaleTimeString() : 'Maintenant'}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {error.message}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {new Date(error.timestamp).toLocaleTimeString()}
-                  </Typography>
-                </Box>
-              ))}
+              </Box>
             </Stack>
           </CardContent>
         </Card>
