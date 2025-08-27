@@ -26,13 +26,18 @@ import {
   Visibility,
   Edit
 } from '@mui/icons-material'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDashboard, useClients, useInvoices } from '../../hooks/useStores'
+import { RevenueChart } from './components/RevenueChart'
+import { TopClientsChart } from './components/TopClientsChart'
+import { InvoiceStatusChart } from './components/InvoiceStatusChart'
+import { PeriodFilter } from './components/PeriodFilter'
 
 export function DashboardPage() {
   const dashboardStore = useDashboard()
   const clientsStore = useClients()
   const invoicesStore = useInvoices()
+  const [period, setPeriod] = useState('1y')
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -107,6 +112,8 @@ export function DashboardPage() {
       <Typography variant="h4" gutterBottom sx={{ mb: 4, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
         Tableau de bord
       </Typography>
+
+      <PeriodFilter period={period} onPeriodChange={setPeriod} />
 
       {/* Statistiques principales */}
       <Box sx={{ 
@@ -198,6 +205,48 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </Box>
+
+      {/* Graphiques */}
+      {dashboardStore.stats?.chartData ? (
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { 
+            xs: '1fr', 
+            md: 'repeat(2, 1fr)', 
+            lg: 'repeat(3, 1fr)' 
+          }, 
+          gap: { xs: 2, sm: 3 }, 
+          mb: 4 
+        }}>
+          <RevenueChart data={dashboardStore.stats.chartData.revenueEvolution} />
+          <TopClientsChart data={dashboardStore.stats.chartData.topClients} />
+          <InvoiceStatusChart data={dashboardStore.stats.chartData.invoiceStatus} />
+        </Box>
+      ) : dashboardStore.isLoading ? (
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { 
+            xs: '1fr', 
+            md: 'repeat(2, 1fr)', 
+            lg: 'repeat(3, 1fr)' 
+          }, 
+          gap: { xs: 2, sm: 3 }, 
+          mb: 4 
+        }}>
+          {[1, 2, 3].map((i) => (
+            <Card key={i} sx={{ height: 400 }}>
+              <CardContent sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                height: '100%'
+              }}>
+                <CircularProgress />
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
+      ) : null}
 
       {/* Contenu principal */}
       <Box sx={{ 

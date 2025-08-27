@@ -84,6 +84,42 @@
       { "month": "Oct", "revenue": 0 },
       { "month": "Nov", "revenue": 0 },
       { "month": "Déc", "revenue": 0 }
-    ]
+    ],
+    "chartData": {
+      "revenueEvolution": {
+        "labels": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"],
+        "datasets": [
+          {
+            "label": "Chiffre d'affaires",
+            "data": [12500, 15800, 19800, 14200, 18900, 22100, 18500, 16200, 23400, 19800, 25600, 28900],
+            "borderColor": "#667eea",
+            "backgroundColor": "rgba(102, 126, 234, 0.1)"
+          }
+        ]
+      },
+      "topClients": {
+        "labels": ["Clinique Médicale", "Entreprise ABC", "École de Formation"],
+        "datasets": [
+          {
+            "label": "CA par client",
+            "data": [19800, 7920, 9600],
+            "backgroundColor": ["#667eea", "#f093fb", "#4facfe"],
+            "borderColor": ["#667eea", "#f093fb", "#4facfe"],
+            "borderWidth": 1
+          }
+        ]
+      },
+      "invoiceStatus": {
+        "labels": ["Payées", "Envoyées", "En retard", "Brouillons"],
+        "datasets": [
+          {
+            "data": [2, 2, 1, 1],
+            "backgroundColor": ["#43e97b", "#4facfe", "#f5576c", "#f093fb"],
+            "borderColor": ["#43e97b", "#4facfe", "#f5576c", "#f093fb"],
+            "borderWidth": 2
+          }
+        ]
+      }
+    }
   }
 }

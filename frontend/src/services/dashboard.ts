@@ -41,6 +41,37 @@ export interface DashboardStats {
     month: string
     revenue: number
   }>
+  // Nouvelles données pour les graphiques
+  chartData: {
+    revenueEvolution: {
+      labels: string[]
+      datasets: Array<{
+        label: string
+        data: number[]
+        borderColor: string
+        backgroundColor: string
+      }>
+    }
+    topClients: {
+      labels: string[]
+      datasets: Array<{
+        label: string
+        data: number[]
+        backgroundColor: string[]
+        borderColor: string[]
+        borderWidth: number
+      }>
+    }
+    invoiceStatus: {
+      labels: string[]
+      datasets: Array<{
+        data: number[]
+        backgroundColor: string[]
+        borderColor: string[]
+        borderWidth: number
+      }>
+    }
+  }
 }
 
 // Service pour le dashboard

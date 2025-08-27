@@ -142,14 +142,15 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - ✅ Tableau des factures récentes
 - ✅ Liste des clients récents
 - ✅ États de chargement et gestion d'erreurs
-- [ ] Graphiques (Chart.js ou Recharts)
+- ✅ **Graphiques (Chart.js)** - Évolution CA, Top clients, Répartition factures
+- ✅ **Filtres par période** - Sélection de périodes prédéfinies
 - [ ] Widgets personnalisables
-- [ ] Filtres par période
 - [ ] Export PDF des rapports
 
-### Analytics avancées
-- [ ] Évolution du CA
-- [ ] Top clients
+### Analytics avancées ✅
+- ✅ **Évolution du CA** - Graphique linéaire avec données mensuelles
+- ✅ **Top clients** - Graphique en barres des meilleurs clients
+- ✅ **Répartition des factures** - Graphique circulaire par statut
 - [ ] Produits les plus vendus
 - [ ] Analyse des impayés
 - [ ] Prévisions de trésorerie
@@ -445,8 +446,8 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 ## 🎯 Priorités immédiates (prochain sprint)
 
 1. ✅ **Produits - bundles** (Website/Ecommerce/SaaS avec templates prédéfinis)
-2. **Produits - multi-devises** et affichage formats monétaires
-3. **Graphiques dashboard** - Chart.js/Recharts (CA, impayés, top produits)
+2. ✅ **Graphiques dashboard** - Chart.js (CA, top clients, répartition factures)
+3. **Produits - multi-devises** et affichage formats monétaires
 4. **Optimisations** - Code splitting et lazy loading (routes/pages)
 5. **Tests unitaires** - Couverture de base stores/composants (DataTable, Products)
 
@@ -455,14 +456,14 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 ## 📈 Progression
 
 - **Phase 1** : ✅ 100% (Fondations)
-- **Phase 2** : ✅ 100% (Dashboard & Analytics)
+- **Phase 2** : ✅ 100% (Dashboard & Analytics avec graphiques)
 - **Phase 3** : ✅ 100% (Gestion Clients)
 - **Phase 4** : ✅ 100% (Devis & Factures)
 - **Phase 5** : ✅ 90% (Produits - liste, filtres, détails, édition, bundles avec templates)
 - **Phase 6** : 📋 0% (Comptabilité)
 
-**Progression globale** : 85%
+**Progression globale** : 87%
 
 ---
 
-*Dernière mise à jour : v0.9.0 - Bundles de produits avec templates prédéfinis*
+*Dernière mise à jour : v0.9.1 - Phase 2 terminée avec graphiques dashboard*

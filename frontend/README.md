@@ -27,7 +27,7 @@ Application de gestion commerciale moderne avec interface React et Material UI.
 - ✅ Thème personnalisable (couleurs, densité, arrondis)
 
 #### **Pages & Navigation**
-- ✅ Dashboard avec statistiques et données de démonstration
+- ✅ Dashboard avec statistiques, graphiques et filtres par période
 - ✅ Page clients avec tableau et actions
 - ✅ Page produits avec gestion des modules web/SaaS
 - ✅ Page packs avec templates prédéfinis et gestion avancée
@@ -78,7 +78,7 @@ src/
 │   └── Toast.tsx       # Système de notifications
 ├── modules/            # Modules de l'application
 │   ├── app/           # Layout et configuration
-│   ├── dashboard/     # Dashboard principal
+│   ├── dashboard/     # Dashboard principal avec graphiques
 │   ├── clients/       # Gestion des clients
 │   ├── invoices/      # Gestion des factures
 │   ├── products/      # Gestion des produits et packs

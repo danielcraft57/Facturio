@@ -405,57 +405,114 @@ export const DEMO_PRODUCTS: DemoProduct[] = [
 
 export const DEMO_STATS = {
   revenue: {
-    total: 120000,
-    thisMonth: 45000,
-    lastMonth: 40000,
-    growth: 12.5
+    total: 61580,
+    thisMonth: 19800,
+    lastMonth: 9720,
+    growth: 103.7
   },
   invoices: {
-    total: 25,
-    paid: 18,
-    overdue: 3,
-    draft: 2,
+    total: 6,
+    paid: 2,
+    overdue: 1,
+    draft: 1,
     sent: 2,
-    thisMonth: 8,
-    lastMonth: 6
+    thisMonth: 3,
+    lastMonth: 2
   },
   clients: {
-    total: 5,
-    active: 4,
+    total: 8,
+    active: 6,
     inactive: 1,
     prospects: 1,
-    newThisMonth: 1
+    newThisMonth: 2
   },
   topClients: [
     {
-      client: { id: '1', name: 'TechCorp Solutions' },
-      revenue: 45000
+      client: { id: '7', name: 'Clinique Médicale' },
+      revenue: 19800
     },
     {
-      client: { id: '2', name: 'Design Studio Pro' },
-      revenue: 32000
+      client: { id: '1', name: 'Entreprise ABC' },
+      revenue: 7920
     },
     {
-      client: { id: '4', name: 'Restaurant Le Gourmet' },
-      revenue: 28000
+      client: { id: '8', name: 'École de Formation' },
+      revenue: 9600
     }
   ],
   recentActivity: [
     {
       type: 'invoice_paid',
-      message: 'Facture FAC-2024-001 payée',
-      amount: 5000,
-      date: '2024-01-15T10:30:00Z'
+      message: 'Facture FAC-2024-005 payée',
+      amount: 19800,
+      date: '2024-03-25T10:15:00Z'
     },
     {
-      type: 'new_client',
-      message: 'Nouveau client : Green Energy Co',
-      date: '2024-01-05T14:20:00Z'
+      type: 'invoice_sent',
+      message: 'Facture FAC-2024-006 envoyée',
+      amount: 9600,
+      date: '2024-03-18T15:45:00Z'
+    },
+    {
+      type: 'client_created',
+      message: 'Nouveau client : Agence Web',
+      date: '2024-03-10T15:20:00Z'
+    },
+    {
+      type: 'invoice_overdue',
+      message: 'Facture FAC-2024-003 en retard',
+      amount: 2400,
+      date: '2024-03-15T00:00:00Z'
     }
   ],
   monthlyRevenue: [
-    { month: 'Jan 2024', revenue: 45000 },
-    { month: 'Dec 2023', revenue: 40000 },
-    { month: 'Nov 2023', revenue: 38000 }
-  ]
+    { month: 'Jan', revenue: 0 },
+    { month: 'Fév', revenue: 0 },
+    { month: 'Mar', revenue: 19800 },
+    { month: 'Avr', revenue: 0 },
+    { month: 'Mai', revenue: 0 },
+    { month: 'Juin', revenue: 0 },
+    { month: 'Juil', revenue: 0 },
+    { month: 'Août', revenue: 0 },
+    { month: 'Sep', revenue: 0 },
+    { month: 'Oct', revenue: 0 },
+    { month: 'Nov', revenue: 0 },
+    { month: 'Déc', revenue: 0 }
+  ],
+  chartData: {
+    revenueEvolution: {
+      labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
+      datasets: [
+        {
+          label: 'Chiffre d\'affaires',
+          data: [12500, 15800, 19800, 14200, 18900, 22100, 18500, 16200, 23400, 19800, 25600, 28900],
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.1)'
+        }
+      ]
+    },
+    topClients: {
+      labels: ['Clinique Médicale', 'Entreprise ABC', 'École de Formation'],
+      datasets: [
+        {
+          label: 'CA par client',
+          data: [19800, 7920, 9600],
+          backgroundColor: ['#667eea', '#f093fb', '#4facfe'],
+          borderColor: ['#667eea', '#f093fb', '#4facfe'],
+          borderWidth: 1
+        }
+      ]
+    },
+    invoiceStatus: {
+      labels: ['Payées', 'Envoyées', 'En retard', 'Brouillons'],
+      datasets: [
+        {
+          data: [2, 2, 1, 1],
+          backgroundColor: ['#43e97b', '#4facfe', '#f5576c', '#f093fb'],
+          borderColor: ['#43e97b', '#4facfe', '#f5576c', '#f093fb'],
+          borderWidth: 2
+        }
+      ]
+    }
+  }
 }
