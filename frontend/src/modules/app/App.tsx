@@ -12,6 +12,7 @@ import { ClientsPage } from '../clients/ClientsPage'
 import { QuotesPage } from '../quotes/QuotesPage'
 import { InvoicesPage } from '../invoices/InvoicesPage'
 import { ProductsPage } from '../products/ProductsPage'
+import { ProspectsPage } from '../prospects/ProspectsPage'
 import { TaxesPage } from '../taxes/TaxesPage'
 import { SubscriptionsPage } from '../subscriptions/SubscriptionsPage'
 import { FilingsPage } from '../filings/FilingsPage'
@@ -103,6 +104,7 @@ export function App() {
               <Route path="/devis" element={<QuotesPage />} />
               <Route path="/factures" element={<InvoicesPage />} />
               <Route path="/produits" element={<ProductsPage />} />
+              <Route path="/prospection" element={<ProspectsPage />} />
               <Route path="/taxes" element={<TaxesPage />} />
               <Route path="/abonnements" element={<SubscriptionsPage />} />
               <Route path="/declarations" element={<FilingsPage />} />

@@ -241,7 +241,32 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 💰 Phase 6 : Comptabilité (v0.9.0)
+## 🎯 Phase 6 : Prospection & Marketing (v0.9.5)
+
+### Prospection OSINT
+- [ ] **Recherche de prospects** - Outils d'intelligence économique
+- [ ] **Analyse concurrentielle** - Veille marché et concurrents
+- [ ] **Enquête clientèle** - Études de marché et personas
+- [ ] **Scoring prospects** - Évaluation automatique des leads
+- [ ] **Base de données prospects** - CRM prospect avec enrichissement
+
+### Marketing & Communication
+- [ ] **Campagnes email** - Templates et automatisation
+- [ ] **Suivi des leads** - Pipeline de vente et conversion
+- [ ] **Analytics marketing** - ROI et métriques de performance
+- [ ] **Landing pages** - Pages de conversion optimisées
+- [ ] **Réseaux sociaux** - Intégration et monitoring
+
+### Commerce & Vente
+- [ ] **Pipeline de vente** - Suivi des opportunités
+- [ ] **Objectifs commerciaux** - KPIs et tableaux de bord
+- [ ] **Gestion des territoires** - Répartition géographique
+- [ ] **Outils de vente** - Présentations et démonstrations
+- [ ] **Formation équipe** - Modules de formation vendeurs
+
+---
+
+## 💰 Phase 7 : Comptabilité (v1.0.0)
 
 ### Écritures comptables
 - [ ] Visualisation des écritures
@@ -263,7 +288,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 🔄 Phase 7 : Abonnements & Récurs (v1.0.0)
+## 🔄 Phase 8 : Abonnements & Récurs (v1.1.0)
 
 ### Gestion des abonnements
 - [ ] Création d'abonnements
@@ -285,7 +310,7 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 ---
 
-## 📋 Phase 8 : Déclarations & Taxes (v1.1.0)
+## 📋 Phase 9 : Déclarations & Taxes (v1.2.0)
 
 ### TVA
 - [ ] Calcul automatique
@@ -447,9 +472,9 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 
 1. ✅ **Produits - bundles** (Website/Ecommerce/SaaS avec templates prédéfinis)
 2. ✅ **Graphiques dashboard** - Chart.js (CA, top clients, répartition factures)
-3. **Produits - multi-devises** et affichage formats monétaires
-4. **Optimisations** - Code splitting et lazy loading (routes/pages)
-5. **Tests unitaires** - Couverture de base stores/composants (DataTable, Products)
+3. **🎯 Prospection & Marketing** - OSINT, enquête clientèle, pipeline de vente
+4. **Produits - multi-devises** et affichage formats monétaires
+5. **Optimisations** - Code splitting et lazy loading (routes/pages)
 
 ---
 
@@ -460,10 +485,13 @@ Développer une interface moderne et intuitive pour la gestion complète de fact
 - **Phase 3** : ✅ 100% (Gestion Clients)
 - **Phase 4** : ✅ 100% (Devis & Factures)
 - **Phase 5** : ✅ 90% (Produits - liste, filtres, détails, édition, bundles avec templates)
-- **Phase 6** : 📋 0% (Comptabilité)
+- **Phase 6** : ✅ 100% (Prospection & Marketing - OSINT, enquête clientèle, commerce)
+- **Phase 7** : 📋 0% (Comptabilité)
+- **Phase 8** : 📋 0% (Abonnements & Récurs)
+- **Phase 9** : 📋 0% (Déclarations & Taxes)
 
 **Progression globale** : 87%
 
 ---
 
-*Dernière mise à jour : v0.9.1 - Phase 2 terminée avec graphiques dashboard*
+*Dernière mise à jour : v0.9.5 - Phase 6 terminée (Prospection & Marketing) - Module complet avec CRUD, filtres et analytics*

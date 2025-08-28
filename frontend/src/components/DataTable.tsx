@@ -107,6 +107,12 @@ export function DataTable<T = any>({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [expandedRowId, setExpandedRowId] = useState<any>(null)
 
+  const safeRowsPerPageOptions = React.useMemo(() => {
+    const set = new Set<number>(rowsPerPageOptions)
+    set.add(rowsPerPage)
+    return Array.from(set).sort((a, b) => a - b)
+  }, [rowsPerPageOptions, rowsPerPage])
+
   // Gestion du tri
   const handleSort = (column: keyof T) => {
     if (!onSort) return
@@ -367,7 +373,7 @@ export function DataTable<T = any>({
       {/* Pagination */}
       {showPagination && (onPageChange || onRowsPerPageChange) && (
         <TablePagination
-          rowsPerPageOptions={rowsPerPageOptions}
+          rowsPerPageOptions={safeRowsPerPageOptions}
           component="div"
           count={total}
           rowsPerPage={rowsPerPage}

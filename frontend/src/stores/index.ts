@@ -5,6 +5,7 @@ export { useInvoicesStore } from './invoicesStore';
 export { useQuotesStore } from './quotesStore';
 export { useProductsStore } from './productsStore';
 export { usePacksStore } from './packsStore';
+export { useProspectsStore } from './prospectsStore';
 export { useDashboardStore } from './dashboardStore';
 export { useThemeStore } from './themeStore';
 

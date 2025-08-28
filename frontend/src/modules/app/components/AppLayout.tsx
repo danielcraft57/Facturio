@@ -23,6 +23,7 @@ import PeopleIcon from '@mui/icons-material/People'
 import DescriptionIcon from '@mui/icons-material/Description'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
+import SearchIcon from '@mui/icons-material/Search'
 import LocalAtmIcon from '@mui/icons-material/LocalAtm'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
 import GavelIcon from '@mui/icons-material/Gavel'
@@ -76,6 +77,12 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
       label: 'Produits', 
       icon: <Inventory2Icon />,
       description: 'Catalogue produits'
+    },
+    { 
+      to: '/prospection', 
+      label: 'Prospection', 
+      icon: <SearchIcon />,
+      description: 'Gestion des prospects'
     },
     { 
       to: '/taxes', 
