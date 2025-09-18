@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
@@ -38,3 +40,5 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/facturio-server:latest
             ghcr.io/${{ github.repository_owner }}/facturio-server:${{ github.sha }}
+            ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('ghcr.io/{0}/facturio-server:main', github.repository_owner) || '' }}
+            ${{ startsWith(github.ref, 'refs/tags/') && format('ghcr.io/{0}/facturio-server:{1}', github.repository_owner, github.ref_name) || '' }}
