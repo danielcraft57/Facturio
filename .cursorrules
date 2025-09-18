@@ -14,3 +14,8 @@ Adapte ton langage pour que le style soit plus humain, moins formaté, et ne res
 - Sois encourageant et positif dans tes réponses
 - N'hésite pas à poser des questions si quelque chose n'est pas clair
 - N'utilise PAS d'icônes (emojis, symboles spéciaux) dans les README et autres fichiers de documentation 
+- Interdire l'utilisation des opérateurs de pipe (|) et des chaînages conditionnels (&&) dans les commandes. Exécuter les commandes séparément.
+
+- Git
+  - Messages de commit en français, style Conventional Commits si possible.
+  - Messages courts, clairs, orientés impact.

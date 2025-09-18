@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InvoiceStatus, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { AccountingService } from '../accounting/accounting.service';
@@ -15,7 +15,7 @@ export interface CreateInvoiceInput {
 	number?: string;
 	clientId: number;
 	dueDate?: string | Date | null;
-	status?: InvoiceStatus;
+	status?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 	lines?: InvoiceLineInput[];
   currency?: string;
 }
@@ -24,7 +24,7 @@ export interface UpdateInvoiceInput {
 	number?: string;
 	clientId?: number;
 	dueDate?: string | Date | null;
-	status?: InvoiceStatus;
+	status?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 	lines?: InvoiceLineInput[];
   currency?: string;
 }
@@ -39,7 +39,7 @@ export class InvoicesService {
       // Fallback a 20% si aucun taux n'est present dans la base de test
       return 0.2;
     }
-    const value = (def.rate as unknown as Prisma.Decimal).toNumber?.() ?? Number(def.rate);
+    const value = (def.rate as any)?.toNumber?.() ?? Number(def.rate);
     return value || 0.2;
   }
 
@@ -118,7 +118,7 @@ export class InvoicesService {
 				number,
 				clientId: data.clientId,
 				dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-				status: data.status ?? InvoiceStatus.DRAFT,
+				status: data.status ?? 'DRAFT',
 				currency: data.currency ?? 'EUR',
 				subtotal: totals.subtotal,
 				tax: totals.tax,
@@ -250,7 +250,7 @@ export class InvoicesService {
 		const paid = agg?._sum?.amount ? (agg._sum.amount as any).toNumber?.() ?? Number(agg._sum.amount) : 0;
 		const subtotalNumber = (invoice.subtotal as any)?.toNumber?.() ?? Number(invoice.subtotal);
 		const newBalance = subtotalNumber - paid;
-		const newStatus = newBalance <= 0 ? InvoiceStatus.PAID : invoice.status;
+		const newStatus = newBalance <= 0 ? 'PAID' : (invoice.status as any);
 		await this.prisma.invoice.update({
 			where: { id },
 			data: { balance: newBalance, status: newStatus },

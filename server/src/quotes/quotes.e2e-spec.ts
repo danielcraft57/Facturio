@@ -149,9 +149,9 @@ describe('Quotes e2e', () => {
 			orderBy: { id: 'desc' }
 		});
 		expect(sentEntry).toBeTruthy();
-		const debit411 = sentEntry!.lines.find(l => l.account.code === '411');
-		const credit706 = sentEntry!.lines.find(l => l.account.code === '706');
-		const credit44571 = sentEntry!.lines.find(l => l.account.code === '44571');
+		const debit411 = sentEntry!.lines.find((l: any) => l.account.code === '411');
+		const credit706 = sentEntry!.lines.find((l: any) => l.account.code === '706');
+		const credit44571 = sentEntry!.lines.find((l: any) => l.account.code === '44571');
 		expect(Number((debit411!.debit as any)?.toNumber?.() ?? debit411!.debit)).toBe(120);
 		expect(Number((credit706!.credit as any)?.toNumber?.() ?? credit706!.credit)).toBe(100);
 		expect(Number((credit44571!.credit as any)?.toNumber?.() ?? credit44571!.credit)).toBe(20);
@@ -164,9 +164,9 @@ describe('Quotes e2e', () => {
 			orderBy: { id: 'desc' }
 		});
 		expect(contra).toBeTruthy();
-		const contraDebit706 = contra!.lines.find(l => l.account.code === '706');
-		const contraDebit44571 = contra!.lines.find(l => l.account.code === '44571');
-		const contraCredit411 = contra!.lines.find(l => l.account.code === '411');
+		const contraDebit706 = contra!.lines.find((l: any) => l.account.code === '706');
+		const contraDebit44571 = contra!.lines.find((l: any) => l.account.code === '44571');
+		const contraCredit411 = contra!.lines.find((l: any) => l.account.code === '411');
 		expect(Number((contraDebit706!.debit as any)?.toNumber?.() ?? contraDebit706!.debit)).toBe(100);
 		expect(Number((contraDebit44571!.debit as any)?.toNumber?.() ?? contraDebit44571!.debit)).toBe(20);
 		expect(Number((contraCredit411!.credit as any)?.toNumber?.() ?? contraCredit411!.credit)).toBe(120);

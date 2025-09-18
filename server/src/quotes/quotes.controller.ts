@@ -47,7 +47,7 @@ export class QuotesController {
 		const quote = await this.quotes.findOne(id);
 		return this.invoices.create({
 			clientId: quote.clientId,
-			lines: quote.lines.map(l => ({ description: l.description, quantity: l.quantity, unitPrice: Number(l.unitPrice), taxRate: Number(l.taxRate) }))
+			lines: quote.lines.map((l: any) => ({ description: l.description, quantity: l.quantity, unitPrice: Number(l.unitPrice), taxRate: Number(l.taxRate) }))
 		});
 	}
 

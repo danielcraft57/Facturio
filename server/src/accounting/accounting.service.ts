@@ -16,7 +16,11 @@ export class AccountingService {
 	}
 
 	async createJournal(input: { code: string; name: string }) {
-		return this.prisma.journal.create({ data: input });
+		return this.prisma.journal.upsert({
+			where: { code: input.code },
+			create: input,
+			update: { name: input.name }
+		});
 	}
 
 	async postEntry(input: {
@@ -28,8 +32,15 @@ export class AccountingService {
 	}) {
 		console.log('postEntry: Début avec input:', JSON.stringify(input, null, 2));
 		
-		const journal = await this.prisma.journal.findUnique({ where: { code: input.journalCode } });
-		if (!journal) throw new BadRequestException('Journal introuvable');
+		let journal = await this.prisma.journal.findUnique({ where: { code: input.journalCode } });
+		if (!journal) {
+			const nameMap: Record<string, string> = { VE: 'Ventes', BQ: 'Banque', OD: 'Opérations diverses' };
+			journal = await this.prisma.journal.upsert({
+				where: { code: input.journalCode },
+				create: { code: input.journalCode, name: nameMap[input.journalCode] ?? input.journalCode },
+				update: { name: nameMap[input.journalCode] ?? input.journalCode }
+			});
+		}
 		console.log('postEntry: Journal trouvé:', journal);
 
 		if (!input.lines?.length) throw new BadRequestException('Aucune ligne');
