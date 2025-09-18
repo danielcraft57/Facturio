@@ -70,9 +70,29 @@ export class AccountingService {
 				}
 			});
 
-			for (const l of input.lines) {
-				const acc = await tx.account.findUnique({ where: { code: l.accountCode } });
-				if (!acc) throw new BadRequestException(`Compte introuvable: ${l.accountCode}`);
+		for (const l of input.lines) {
+			let acc = await tx.account.findUnique({ where: { code: l.accountCode } });
+			if (!acc) {
+				const defaultAccountMeta: Record<string, { name: string; type: string }> = {
+					'512': { name: 'Banque', type: 'BANK' },
+					'706': { name: 'Prestations de services', type: 'REVENUE' },
+					'707': { name: 'Ventes de marchandises', type: 'REVENUE' },
+					'44571': { name: 'TVA collectée', type: 'TAX' },
+					'44566': { name: 'TVA déductible', type: 'TAX' },
+					'411': { name: 'Clients', type: 'CUSTOMER' },
+					'401': { name: 'Fournisseurs', type: 'SUPPLIER' },
+					'622': { name: 'Rémunérations et honoraires', type: 'EXPENSE' },
+					'641': { name: 'Rémunérations du personnel', type: 'EXPENSE' },
+					'645': { name: 'Charges sociales', type: 'EXPENSE' },
+					'421': { name: 'Salaires à payer', type: 'LIABILITY' },
+					'431': { name: 'URSSAF', type: 'LIABILITY' },
+					'447': { name: 'Autres impôts et taxes à payer', type: 'LIABILITY' },
+					'635': { name: 'Autres impôts et taxes', type: 'EXPENSE' }
+				};
+				const meta = defaultAccountMeta[l.accountCode];
+				if (!meta) throw new BadRequestException(`Compte introuvable: ${l.accountCode}`);
+				acc = await tx.account.create({ data: { code: l.accountCode, name: meta.name, type: meta.type as any } });
+			}
 				await tx.journalLine.create({
 					data: {
 						entryId: entry.id,
