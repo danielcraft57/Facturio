@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Box,
   Card,
@@ -41,6 +42,7 @@ import { CreateInvoiceDialog } from './components/CreateInvoiceDialog'
 import type { Invoice } from '../../services/invoices'
 
 export function InvoicesPage() {
+  const navigate = useNavigate()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.down('md'))
@@ -321,7 +323,12 @@ export function InvoicesPage() {
                     )}
                     <TableCell align="center">
                       <Stack direction="row" spacing={0.5} justifyContent="center">
-                        <IconButton size="small" sx={{ p: 0.5 }} title="Voir">
+                        <IconButton 
+                          size="small" 
+                          sx={{ p: 0.5 }} 
+                          title="Voir"
+                          onClick={() => navigate(`/factures/${invoice.id}`)}
+                        >
                           <Visibility sx={{ fontSize: 16 }} />
                         </IconButton>
                         <IconButton size="small" sx={{ p: 0.5 }} title="Éditer">

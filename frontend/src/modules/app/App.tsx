@@ -1,25 +1,29 @@
 import type { ReactNode } from 'react'
 import { BrowserRouter, Route, Routes as RouterRoutes } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
-import { CssBaseline } from '@mui/material'
-import { useState, useEffect } from 'react'
+import { CssBaseline, CircularProgress, Box } from '@mui/material'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { createCustomTheme, type ThemeSettings } from '../../theme/theme'
 import { AppLayout } from './components/AppLayout'
 import { ThemeSettingsDrawer } from './components/ThemeSettingsDrawer'
 import { ToastContainer, useToast } from '../../components/Toast'
-import { DashboardPage } from '../dashboard/DashboardPage'
-import { ClientsPage } from '../clients/ClientsPage'
-import { QuotesPage } from '../quotes/QuotesPage'
-import { InvoicesPage } from '../invoices/InvoicesPage'
-import { ProductsPage } from '../products/ProductsPage'
-import { ProspectsPage } from '../prospects/ProspectsPage'
-import { TaxesPage } from '../taxes/TaxesPage'
-import { SubscriptionsPage } from '../subscriptions/SubscriptionsPage'
-import { FilingsPage } from '../filings/FilingsPage'
-import { AccountingPage } from '../accounting/AccountingPage'
-import { GlobalStateDemo } from '../../components/GlobalStateDemo'
 import { ModernPageLoader } from '../../components/AdvancedPageLoader'
-import { LoaderDemo } from '../../components/LoaderDemo'
+
+// Lazy loading des pages pour optimiser les performances
+const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const ClientsPage = lazy(() => import('../clients/ClientsPage').then(m => ({ default: m.ClientsPage })))
+const ClientDetailPage = lazy(() => import('../clients/ClientDetailPage').then(m => ({ default: m.ClientDetailPage })))
+const QuotesPage = lazy(() => import('../quotes/QuotesPage').then(m => ({ default: m.QuotesPage })))
+const InvoicesPage = lazy(() => import('../invoices/InvoicesPage').then(m => ({ default: m.InvoicesPage })))
+const InvoiceDetailPage = lazy(() => import('../invoices/InvoiceDetailPage').then(m => ({ default: m.InvoiceDetailPage })))
+const ProductsPage = lazy(() => import('../products/ProductsPage').then(m => ({ default: m.ProductsPage })))
+const ProspectsPage = lazy(() => import('../prospects/ProspectsPage').then(m => ({ default: m.ProspectsPage })))
+const TaxesPage = lazy(() => import('../taxes/TaxesPage').then(m => ({ default: m.TaxesPage })))
+const SubscriptionsPage = lazy(() => import('../subscriptions/SubscriptionsPage').then(m => ({ default: m.SubscriptionsPage })))
+const FilingsPage = lazy(() => import('../filings/FilingsPage').then(m => ({ default: m.FilingsPage })))
+const AccountingPage = lazy(() => import('../accounting/AccountingPage').then(m => ({ default: m.AccountingPage })))
+const GlobalStateDemo = lazy(() => import('../../components/GlobalStateDemo').then(m => ({ default: m.GlobalStateDemo })))
+const LoaderDemo = lazy(() => import('../../components/LoaderDemo').then(m => ({ default: m.LoaderDemo })))
 
 // Composant pour gérer les toasts globaux
 function AppWithToasts({ children }: { children: ReactNode }) {
@@ -98,11 +102,18 @@ export function App() {
             onToggleMode={handleToggleMode}
             onOpenSettings={handleOpenSettings}
           >
+            <Suspense fallback={
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <CircularProgress />
+              </Box>
+            }>
             <RouterRoutes>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/clients" element={<ClientsPage />} />
+                <Route path="/clients/:id" element={<ClientDetailPage />} />
               <Route path="/devis" element={<QuotesPage />} />
               <Route path="/factures" element={<InvoicesPage />} />
+                <Route path="/factures/:id" element={<InvoiceDetailPage />} />
               <Route path="/produits" element={<ProductsPage />} />
               <Route path="/prospection" element={<ProspectsPage />} />
               <Route path="/taxes" element={<TaxesPage />} />
@@ -112,6 +123,7 @@ export function App() {
               <Route path="/demo" element={<GlobalStateDemo />} />
               <Route path="/loaders" element={<LoaderDemo />} />
             </RouterRoutes>
+            </Suspense>
           </AppLayout>
 
           <ThemeSettingsDrawer

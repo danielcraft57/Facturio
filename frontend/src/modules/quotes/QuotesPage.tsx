@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -52,6 +53,7 @@ const QUOTE_STATUS_LABELS = {
 } as const;
 
 export function QuotesPage() {
+  const navigate = useNavigate();
   const quotesStore = useQuotes();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<QuoteStatus | ''>('');
@@ -104,7 +106,7 @@ export function QuotesPage() {
     const invoiceId = await quotesStore.convertToInvoice(quote.id);
     if (invoiceId) {
       // Rediriger vers la facture créée
-      console.log('Facture créée:', invoiceId);
+      navigate(`/factures/${invoiceId}`);
     }
   };
 

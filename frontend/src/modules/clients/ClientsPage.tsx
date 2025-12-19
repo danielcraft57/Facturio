@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Box,
   Card,
@@ -40,12 +41,15 @@ import {
   Visibility,
   Email,
   Phone,
-  FilterList
+  FilterList,
+  Upload,
+  Download
 } from '@mui/icons-material'
 import { clientService } from '../../services/clients'
 import type { Client } from '../../services/clients'
 
 export function ClientsPage() {
+  const navigate = useNavigate()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.down('md'))
@@ -56,7 +60,11 @@ export function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [openDialog, setOpenDialog] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importProgress, setImportProgress] = useState(0)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -116,6 +124,48 @@ export function ClientsPage() {
     setAnchorEl(null)
   }
 
+  const handleExportClients = async () => {
+    try {
+      const blob = await clientService.exportClients({
+        search: searchTerm || undefined,
+        status: statusFilter !== 'all' ? statusFilter as any : undefined
+      })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `clients_${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'export')
+    }
+  }
+
+  const handleImportClients = async () => {
+    if (!importFile) return
+    
+    try {
+      setError(null)
+      const importResponse = await clientService.importClients(importFile, (progress) => {
+        setImportProgress(progress)
+      })
+      
+      if (importResponse.data) {
+        alert(`Import réussi: ${importResponse.data.imported} client(s) importé(s)${importResponse.data.errors.length > 0 ? `, ${importResponse.data.errors.length} erreur(s)` : ''}`)
+        setImportDialogOpen(false)
+        setImportFile(null)
+        setImportProgress(0)
+        // Recharger la liste
+        const listResponse = await clientService.getClients({ page: 1, limit: 100 })
+        setClients(listResponse.data?.clients || [])
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'import')
+    }
+  }
+
   if (loading) {
     return (
       <Box sx={{ 
@@ -153,6 +203,23 @@ export function ClientsPage() {
         <Typography variant="h4" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
           Clients
         </Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Button
+            variant="outlined"
+            startIcon={<Upload />}
+            onClick={() => setImportDialogOpen(true)}
+            sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+          >
+            Importer CSV
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Download />}
+            onClick={handleExportClients}
+            sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+          >
+            Exporter CSV
+          </Button>
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -161,6 +228,7 @@ export function ClientsPage() {
         >
           Nouveau client
         </Button>
+        </Stack>
       </Box>
 
       {/* Filtres */}
@@ -311,7 +379,10 @@ export function ClientsPage() {
                     <TableCell align="center">
                       <IconButton
                         size={isMobile ? "small" : "medium"}
-                        onClick={handleMenuClick}
+                        onClick={(e) => {
+                          setSelectedClientId(client.id)
+                          handleMenuClick(e)
+                        }}
                       >
                         <MoreVert fontSize={isMobile ? "small" : "medium"} />
                       </IconButton>
@@ -330,7 +401,12 @@ export function ClientsPage() {
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem onClick={() => {
+          handleMenuClose()
+          if (selectedClientId) {
+            navigate(`/clients/${selectedClientId}`)
+          }
+        }}>
           <Visibility sx={{ mr: 1 }} />
           Voir détails
         </MenuItem>
@@ -347,6 +423,68 @@ export function ClientsPage() {
           Supprimer
         </MenuItem>
       </Menu>
+
+      {/* Dialog import CSV */}
+      <Dialog 
+        open={importDialogOpen} 
+        onClose={() => {
+          setImportDialogOpen(false)
+          setImportFile(null)
+          setImportProgress(0)
+        }} 
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>Importer des clients depuis CSV</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="info">
+              Le fichier CSV doit contenir les colonnes: name, email, phone, address (optionnel)
+            </Alert>
+            <Button
+              variant="outlined"
+              component="label"
+              fullWidth
+              startIcon={<Upload />}
+            >
+              {importFile ? importFile.name : 'Sélectionner un fichier CSV'}
+              <input
+                type="file"
+                hidden
+                accept=".csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) setImportFile(file)
+                }}
+              />
+            </Button>
+            {importProgress > 0 && importProgress < 100 && (
+              <Box>
+                <Typography variant="body2" gutterBottom>
+                  Import en cours: {importProgress}%
+                </Typography>
+                <CircularProgress variant="determinate" value={importProgress} />
+              </Box>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setImportDialogOpen(false)
+            setImportFile(null)
+            setImportProgress(0)
+          }}>
+            Annuler
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={handleImportClients}
+            disabled={!importFile || importProgress > 0}
+          >
+            Importer
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Dialog nouveau client */}
       <Dialog 

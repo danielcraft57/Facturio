@@ -78,15 +78,33 @@ class ApiClient {
 
     // Intercepteur de réponse
     this.client.interceptors.response.use(
-      (response: AxiosResponse<ApiResponse>) => {
+      (response: AxiosResponse<any>) => {
         console.log(`✅ API Response: ${response.status} ${response.config.url}`)
         
-        // Extraire les données de la réponse standardisée
-        if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-          return response
+        // NestJS retourne directement les données, pas dans un wrapper { data: ... }
+        // On normalise la réponse pour avoir toujours le format { data: ..., success: true }
+        if (response.data && typeof response.data === 'object') {
+          // Si c'est déjà un format ApiResponse, on le garde tel quel
+          if ('data' in response.data && 'success' in response.data) {
+            return response
+          }
+          // Sinon, on wrap la réponse dans le format attendu
+          return {
+            ...response,
+            data: {
+              success: true,
+              data: response.data
+            }
+          }
         }
         
-        return response
+        return {
+          ...response,
+          data: {
+            success: true,
+            data: response.data
+          }
+        }
       },
       async (error: any) => {
         const { response, config } = error
