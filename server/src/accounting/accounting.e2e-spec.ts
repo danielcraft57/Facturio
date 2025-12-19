@@ -3,6 +3,11 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../app.module';
 
+function uniqueEmail(base: string): string {
+	const [local, domain] = base.split('@');
+	return `${local}+${Date.now()}-${Math.random().toString(36).slice(2)}@${domain}`;
+}
+
 describe('Accounting e2e', () => {
 	let app: INestApplication;
 
@@ -81,7 +86,11 @@ describe('Accounting e2e', () => {
 		await request(app.getHttpServer()).post('/accounting/journals').send({ code: 'BQ', name: 'Banque' });
 
 		// Créer une facture de test pour avoir du CA
-		const client = await request(app.getHttpServer()).post('/clients').send({ name: 'Test Client', email: 'test@test.com', isCompany: true, countryCode: 'FR' }).expect(201).then(r => r.body);
+		const client = await request(app.getHttpServer())
+			.post('/clients')
+			.send({ name: 'Test Client', email: uniqueEmail('test@test.com'), isCompany: true, countryCode: 'FR' })
+			.expect(201)
+			.then(r => r.body);
 		await request(app.getHttpServer())
 			.post('/invoices')
 			.send({ clientId: client.id, lines: [{ description: 'Service Test', quantity: 1, unitPrice: 1000, taxRate: 0.2 }] })

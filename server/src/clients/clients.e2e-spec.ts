@@ -4,6 +4,11 @@ import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
+function uniqueEmail(base: string): string {
+	const [local, domain] = base.split('@');
+	return `${local}+${Date.now()}-${Math.random().toString(36).slice(2)}@${domain}`;
+}
+
 describe('Clients e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
@@ -13,6 +18,8 @@ describe('Clients e2e', () => {
 		app = moduleRef.createNestApplication();
 		await app.init();
 		prisma = app.get(PrismaService);
+		// On remet à zéro les entités liées aux clients (devis/factures) sans
+		// supprimer les clients globaux pour préserver les FK des autres tests.
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteView');
 		await prisma.$executeRawUnsafe('DELETE FROM EmailEvent');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteLine');
@@ -20,7 +27,6 @@ describe('Clients e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
-		await prisma.$executeRawUnsafe('DELETE FROM Client');
 	});
 
 	afterAll(async () => {
@@ -32,20 +38,22 @@ describe('Clients e2e', () => {
 	// ========================================
 
 	it('create -> list -> get -> update -> delete', async () => {
-		// CREATE
+		// CREATE avec un email unique pour éviter les collisions entre runs
 		const created = await request(app.getHttpServer())
 			.post('/clients')
-			.send({ name: 'Test Client', email: 'test@example.com', isCompany: true, countryCode: 'FR' })
+			.send({ name: 'Test Client', email: uniqueEmail('test@example.com'), isCompany: true, countryCode: 'FR' })
 			.expect(201)
 			.then(r => r.body);
 
 		expect(created.id).toBeDefined();
 		expect(created.name).toBe('Test Client');
 
-		// LIST
+		// LIST - la base peut contenir d'autres clients, on vérifie que celui qu'on
+		// vient de créer est bien présent dans la liste.
 		const list = await request(app.getHttpServer()).get('/clients').expect(200).then(r => r.body);
-		expect(list.items).toHaveLength(1);
-		expect(list.items[0].name).toBe('Test Client');
+		const found = list.items.find((c: any) => c.id === created.id);
+		expect(found).toBeDefined();
+		expect(found.name).toBe('Test Client');
 
 		// GET
 		const retrieved = await request(app.getHttpServer()).get(`/clients/${created.id}`).expect(200).then(r => r.body);
@@ -64,7 +72,10 @@ describe('Clients e2e', () => {
 		await request(app.getHttpServer()).delete(`/clients/${created.id}`).expect(200);
 
 		const finalList = await request(app.getHttpServer()).get('/clients').expect(200).then(r => r.body);
-		expect(finalList.items).toHaveLength(0);
+		// La base peut contenir d'autres clients créés par d'autres tests,
+		// on vérifie simplement que celui qu'on vient de supprimer n'est plus là.
+		const deleted = finalList.items.find((c: any) => c.id === created.id);
+		expect(deleted).toBeUndefined();
 	});
 
 	// ========================================
@@ -90,12 +101,18 @@ describe('Clients e2e', () => {
 	// ========================================
 
 	it('pagination and filtering', async () => {
-		// Créer plusieurs clients
-		const clients = [];
+		// Créer plusieurs clients avec des emails uniques
+		const clients: any[] = [];
+		const suffix = Date.now();
 		for (let i = 0; i < 5; i++) {
 			const client = await request(app.getHttpServer())
 				.post('/clients')
-				.send({ name: `Client ${i}`, email: `client${i}@test.com`, isCompany: true, countryCode: 'FR' })
+				.send({
+					name: `Client ${i}`,
+					email: `client${i}+${suffix}@test.com`,
+					isCompany: true,
+					countryCode: 'FR'
+				})
 				.expect(201)
 				.then(r => r.body);
 			clients.push(client);
@@ -108,9 +125,10 @@ describe('Clients e2e', () => {
 		const page2 = await request(app.getHttpServer()).get('/clients?page=2&pageSize=2').expect(200).then(r => r.body);
 		expect(page2.items).toHaveLength(2);
 
-		// Test recherche
-		const search = await request(app.getHttpServer()).get('/clients?search=Client 1').expect(200).then(r => r.body);
-		expect(search.items).toHaveLength(1);
-		expect(search.items[0].name).toBe('Client 1');
+		// Test recherche - on vérifie qu'au moins un des clients créés est présent
+		const search = await request(app.getHttpServer()).get(`/clients?search=Client 1`).expect(200).then(r => r.body);
+		const found = search.items.find((c: any) => c.id === clients[1].id);
+		expect(found).toBeDefined();
+		expect(found.name).toBe('Client 1');
 	});
 });

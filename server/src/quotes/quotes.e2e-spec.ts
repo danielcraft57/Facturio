@@ -4,6 +4,11 @@ import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
+function uniqueEmail(base: string): string {
+	const [local, domain] = base.split('@');
+	return `${local}+${Date.now()}-${Math.random().toString(36).slice(2)}@${domain}`;
+}
+
 describe('Quotes e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
@@ -14,6 +19,8 @@ describe('Quotes e2e', () => {
 		app.enableCors({ origin: true, credentials: true });
 		await app.init();
 		prisma = app.get(PrismaService);
+		// On remet à zéro les données liées aux devis / factures / compta,
+		// sans supprimer les clients globaux pour ne pas casser les autres tests.
 		await prisma.$executeRawUnsafe('DELETE FROM JournalLine');
 		await prisma.$executeRawUnsafe('DELETE FROM JournalEntry');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteView');
@@ -23,7 +30,6 @@ describe('Quotes e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
-		await prisma.$executeRawUnsafe('DELETE FROM Client');
 	});
 
 	afterAll(async () => {
@@ -35,7 +41,9 @@ describe('Quotes e2e', () => {
 	// ========================================
 
 	it('create -> send -> view -> accept', async () => {
-		const client = await prisma.client.create({ data: { name: 'Test Client', email: 'test-quote@example.com', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'Test Client', email: uniqueEmail('test-quote@example.com'), isCompany: true, countryCode: 'FR' }
+		});
 
 		// CREATE QUOTE
 		const created = await request(app.getHttpServer())
@@ -66,7 +74,9 @@ describe('Quotes e2e', () => {
 	// ========================================
 
 	it('email sending and webhook processing', async () => {
-		const client = await prisma.client.create({ data: { name: 'Email Client', email: 'email@test.com', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'Email Client', email: uniqueEmail('email@test.com'), isCompany: true, countryCode: 'FR' }
+		});
 		const quote = await request(app.getHttpServer())
 			.post('/quotes')
 			.send({ clientId: client.id, lines: [{ description: 'Service', quantity: 1, unitPrice: 100, taxRate: 0.2 }] })
@@ -107,7 +117,9 @@ describe('Quotes e2e', () => {
 	// ========================================
 
 	it('PDF generation', async () => {
-		const client = await prisma.client.create({ data: { name: 'PDF Client', email: 'pdf@c.test', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'PDF Client', email: uniqueEmail('pdf@c.test'), isCompany: true, countryCode: 'FR' }
+		});
 		const quote = await request(app.getHttpServer())
 			.post('/quotes')
 			.send({ clientId: client.id, lines: [{ description: 'Service', quantity: 1, unitPrice: 100, taxRate: 0.2 }] })
@@ -129,7 +141,9 @@ describe('Quotes e2e', () => {
 	// ========================================
 
 	it('off-balance entry created on send and contra on reject', async () => {
-		const client = await prisma.client.create({ data: { name: 'HB Client', email: 'hb@test.com', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'HB Client', email: uniqueEmail('hb@test.com'), isCompany: true, countryCode: 'FR' }
+		});
 		const quote = await request(app.getHttpServer())
 			.post('/quotes')
 			.send({ clientId: client.id, lines: [{ description: 'Service', quantity: 1, unitPrice: 100, taxRate: 0.2 }] })
@@ -177,7 +191,9 @@ describe('Quotes e2e', () => {
 	// ========================================
 
 	it('quote to invoice conversion', async () => {
-		const client = await prisma.client.create({ data: { name: 'Convert Client', email: 'convert@test.com', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'Convert Client', email: uniqueEmail('convert@test.com'), isCompany: true, countryCode: 'FR' }
+		});
 		const quote = await request(app.getHttpServer())
 			.post('/quotes')
 			.send({ clientId: client.id, lines: [{ description: 'Service', quantity: 1, unitPrice: 100, taxRate: 0.2 }] })
@@ -202,7 +218,9 @@ describe('Quotes e2e', () => {
 	// ========================================
 
 	it('validation errors', async () => {
-		const client = await prisma.client.create({ data: { name: 'Test Client', email: 'test-validation@example.com', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'Test Client', email: uniqueEmail('test-validation@example.com'), isCompany: true, countryCode: 'FR' }
+		});
 
 		// Client inexistant
 		await request(app.getHttpServer())

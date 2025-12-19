@@ -4,6 +4,11 @@ import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
+function uniqueEmail(base: string): string {
+	const [local, domain] = base.split('@');
+	return `${local}+${Date.now()}-${Math.random().toString(36).slice(2)}@${domain}`;
+}
+
 describe('Invoices e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
@@ -13,6 +18,9 @@ describe('Invoices e2e', () => {
 		app = moduleRef.createNestApplication();
 		await app.init();
 		prisma = app.get(PrismaService);
+		// On nettoie les entités directement liées aux factures pour isoler les tests,
+		// mais on ne supprime plus les clients globaux pour éviter les erreurs de FK
+		// avec les autres suites e2e.
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteView');
 		await prisma.$executeRawUnsafe('DELETE FROM EmailEvent');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteLine');
@@ -20,7 +28,6 @@ describe('Invoices e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
-		await prisma.$executeRawUnsafe('DELETE FROM Client');
 	});
 
 	afterAll(async () => {
@@ -32,7 +39,9 @@ describe('Invoices e2e', () => {
 	// ========================================
 
 	it('create invoice then add payment -> status paid', async () => {
-		const client = await prisma.client.create({ data: { name: 'Test Client', email: 'test-invoice@example.com', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'Test Client', email: uniqueEmail('test-invoice@example.com'), isCompany: true, countryCode: 'FR' }
+		});
 
 		// CREATE INVOICE
 		const invoice = await request(app.getHttpServer())
@@ -72,7 +81,9 @@ describe('Invoices e2e', () => {
 	// ========================================
 
 	it('VAT calculations and policies', async () => {
-		const client = await prisma.client.create({ data: { name: 'VAT Client', email: 'vat-invoice@test.com', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'VAT Client', email: uniqueEmail('vat-invoice@test.com'), isCompany: true, countryCode: 'FR' }
+		});
 
 		// Test TVA française (20%)
 		const invoiceFR = await request(app.getHttpServer())
@@ -89,7 +100,15 @@ describe('Invoices e2e', () => {
 		expect(Number(invoiceFR.total)).toBe(120);
 
 		// Test client UE B2B (0% TVA)
-		const clientUE = await prisma.client.create({ data: { name: 'UE Client', email: 'ue-invoice@test.com', isCompany: true, countryCode: 'DE', vatNumber: 'DE123456789' } });
+		const clientUE = await prisma.client.create({
+			data: {
+				name: 'UE Client',
+				email: uniqueEmail('ue-invoice@test.com'),
+				isCompany: true,
+				countryCode: 'DE',
+				vatNumber: 'DE123456789'
+			}
+		});
 		const invoiceUE = await request(app.getHttpServer())
 			.post('/invoices')
 			.send({
@@ -109,7 +128,9 @@ describe('Invoices e2e', () => {
 	// ========================================
 
 	it('PDF generation', async () => {
-		const client = await prisma.client.create({ data: { name: 'PDF Client INV', email: 'pdf-inv@test.com', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'PDF Client INV', email: uniqueEmail('pdf-inv@test.com'), isCompany: true, countryCode: 'FR' }
+		});
 		const invoice = await request(app.getHttpServer())
 			.post('/invoices')
 			.send({ clientId: client.id, lines: [{ description: 'Service', quantity: 2, unitPrice: 150 }] })
@@ -131,7 +152,9 @@ describe('Invoices e2e', () => {
 	// ========================================
 
 	it('validation errors', async () => {
-		const client = await prisma.client.create({ data: { name: 'Test Client', email: 'test-invoice2@example.com', isCompany: true, countryCode: 'FR' } });
+		const client = await prisma.client.create({
+			data: { name: 'Test Client', email: uniqueEmail('test-invoice2@example.com'), isCompany: true, countryCode: 'FR' }
+		});
 
 		// Client inexistant
 		await request(app.getHttpServer())

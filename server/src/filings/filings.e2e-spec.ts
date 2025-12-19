@@ -13,6 +13,9 @@ describe('Filings e2e', () => {
 		app = moduleRef.createNestApplication();
 		await app.init();
 		prisma = app.get(PrismaService);
+		// Nettoyage des entités liées aux déclarations et factures.
+		// On garde les clients et les taux de TVA partagés pour éviter les erreurs de FK
+		// avec les autres suites de tests.
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteView');
 		await prisma.$executeRawUnsafe('DELETE FROM EmailEvent');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteLine');
@@ -23,8 +26,6 @@ describe('Filings e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM FilingLine');
 		await prisma.$executeRawUnsafe('DELETE FROM AuthorityPayment');
 		await prisma.$executeRawUnsafe('DELETE FROM Filing');
-		await prisma.$executeRawUnsafe('DELETE FROM TaxRate');
-		await prisma.$executeRawUnsafe('DELETE FROM Client');
 	});
 
 	afterAll(async () => {
@@ -75,9 +76,15 @@ describe('Filings e2e', () => {
 	// ========================================
 
 	it('complex VAT calculations with multiple invoices', async () => {
-		// Créer des clients et factures
-		const client1 = await prisma.client.create({ data: { name: 'Client 1', email: 'client1@test.com', isCompany: true, countryCode: 'FR' } });
-		const client2 = await prisma.client.create({ data: { name: 'Client 2', email: 'client2@test.com', isCompany: true, countryCode: 'DE' } });
+		// Créer des clients et factures avec des emails uniques pour éviter
+		// les collisions de contrainte d'unicité entre plusieurs runs.
+		const suffix = Date.now();
+		const client1 = await prisma.client.create({
+			data: { name: 'Client 1', email: `client1+${suffix}@test.com`, isCompany: true, countryCode: 'FR' }
+		});
+		const client2 = await prisma.client.create({
+			data: { name: 'Client 2', email: `client2+${suffix}@test.com`, isCompany: true, countryCode: 'DE' }
+		});
 
 		// Facture avec TVA française (20%)
 		const invoice1 = await request(app.getHttpServer())
