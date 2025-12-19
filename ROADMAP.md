@@ -64,4 +64,172 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - [ ] OSS (TVA B2C UE par pays) et logique pays du client
 - [ ] Comptabilité: export FEC simplifié
 
+---
+
+## 🔍 OSINT d'Entreprise & Intelligence (v1.6.0)
+
+### Veille économique & concurrentielle
+- [ ] **Scraping des données publiques** : INSEE, registres du commerce, OpenCorporates
+- [ ] **Analyse des patterns de paiement** : détection de difficultés financières
+- [ ] **Surveillance des changements** : modification d'adresse, statut légal, TVA
+- [ ] **Analyse sectorielle** : performance par domaine d'activité
+- [ ] **Veille concurrentielle** : nouveaux acteurs, évolution des prix
+
+### Intelligence des risques
+- [ ] **Scoring de risque client** : probabilité de défaut de paiement
+- [ ] **Détection de fraude** : patterns suspects dans les factures
+- [ ] **Surveillance réglementaire** : changements de TVA, nouvelles obligations
+- [ ] **Analyse de solvabilité** : croisement avec données publiques
+- [ ] **Alertes automatiques** : notifications sur changements significatifs
+
+### Enrichissement des données
+- [ ] **Profils d'entreprises enrichis** : CA, effectifs, secteur, statut légal
+- [ ] **Corrélation données internes/externes** : historique + données publiques
+- [ ] **Base de connaissances** : informations consolidées sur le marché
+- [ ] **API d'intelligence** : endpoints pour enrichir les profils clients
+
+---
+
+## 🤖 Machine Learning & IA Avancée (v1.7.0)
+
+### Modèles prédictifs
+- [ ] **Prédiction de trésorerie** : quand les clients vont payer (TensorFlow.js)
+- [ ] **Scoring de risque avancé** : modèles ML sur historique + données externes
+- [ ] **Détection d'anomalies** : factures suspectes, patterns étranges
+- [ ] **Prédiction de churn** : probabilité de résiliation d'abonnement
+- [ ] **Forecasting des ventes** : tendances et saisonnalité
+
+### Natural Language Processing
+- [ ] **Analyse des descriptions** : catégorisation automatique des factures
+- [ ] **Sentiment analysis** : analyse des emails et interactions clients
+- [ ] **Extraction d'entités** : dates, montants, références automatiques
+- [ ] **Génération automatique** : descriptions de factures, emails de relance
+- [ ] **Classification des demandes** : routage automatique des tickets
+
+### Optimisation & Recommandations
+- [ ] **Pricing dynamique** : ajustement des prix basé sur l'historique
+- [ ] **Suggestions de produits** : recommandations personnalisées
+- [ ] **Optimisation des échéances** : meilleurs délais de paiement
+- [ ] **Segmentation client** : clustering automatique des profils
+- [ ] **Prédiction de besoins** : anticipation des demandes clients
+
+---
+
+## 📊 Sources de Données & Intégrations OSINT (v1.8.0)
+
+### Données internes Facturio
+- [ ] **Historique financier** : factures, paiements, échéances, statuts
+- [ ] **Données d'interaction** : emails, vues de devis, utilisation plateforme
+- [ ] **Comportement client** : patterns d'achat, préférences, satisfaction
+- [ ] **Données transactionnelles** : produits/services, quantités, prix, remises
+- [ ] **Support & réclamations** : tickets, types de problèmes, résolution
+
+### Sources de données publiques (OSINT)
+- [ ] **INSEE** : chiffre d'affaires, effectifs, secteur d'activité, évolution
+- [ ] **Registre du commerce** : statut légal, dirigeants, capital social, modifications
+- [ ] **Infogreffe** : bilans, comptes de résultat, ratios financiers, santé économique
+- [ ] **SIRENE** : informations générales, adresses, activités, codes NAF
+- [ ] **BDF (Banque de France)** : incidents de paiement, scoring de crédit
+- [ ] **BODACC** : avis de procédures collectives, liquidations, difficultés
+- [ ] **Journal officiel** : nominations, changements de statut, événements légaux
+
+### APIs & Services tiers
+- [ ] **OpenCorporates** : données d'entreprises internationales, liens entre sociétés
+- [ ] **Company House** : données UK, informations financières détaillées
+- [ ] **Dun & Bradstreet** : scoring de crédit, informations financières, risques
+- [ ] **Bureau van Dijk** : bases de données d'entreprises, analyses sectorielles
+- [ ] **APIs bancaires** : scoring de crédit, analyse de solvabilité (avec autorisation)
+
+### Données sectorielles & marché
+- [ ] **Chambres de commerce** : études sectorielles, tendances, difficultés
+- [ ] **Fédérations professionnelles** : statistiques du secteur, évolutions
+- [ ] **Presse spécialisée** : actualités, innovations, difficultés, opportunités
+- [ ] **Rapports d'analystes** : études de marché, prévisions, analyses
+- [ ] **Google Trends** : évolution de la notoriété, tendances de recherche
+
+### Surveillance & veille
+- [ ] **Sites web clients** : changements de contenu, nouvelles offres, difficultés
+- [ ] **Scraping des équipes** : photos, noms, postes des collaborateurs et dirigeants
+- [ ] **Analyse des organigrammes** : structure organisationnelle, hiérarchie
+- [ ] **Surveillance des changements** : nouveaux employés, départs, promotions
+- [ ] **Réseaux sociaux** : LinkedIn, changements d'emploi, croissance entreprise
+- [ ] **Presse locale** : actualités, événements, difficultés, succès
+- [ ] **Forums spécialisés** : réputation, retours d'expérience, signaux faibles
+- [ ] **Sites d'emploi** : offres d'emploi, évolution des effectifs, recrutements
+
+### Infrastructure de collecte
+- [ ] **Scraping automatisé** : Puppeteer/Playwright pour sites dynamiques
+- [ ] **Parsing HTML** : Cheerio pour sites statiques, extraction structurée
+- [ ] **Jobs programmés** : surveillance continue avec Node-cron, alertes automatiques
+- [ ] **APIs officielles** : requêtes HTTP structurées, rate limiting, cache intelligent
+- [ ] **Webhooks & notifications** : alertes temps réel, intégrations tierces
+
+### Scraping avancé des sites web
+- [ ] **Extraction des équipes** : photos, noms, postes, emails des collaborateurs
+- [ ] **Analyse des organigrammes** : structure hiérarchique, départements
+- [ ] **Surveillance des changements** : nouveaux employés, départs, promotions
+- [ ] **Détection de difficultés** : fermetures, réductions d'effectifs, changements d'adresse
+- [ ] **Analyse du contenu** : nouvelles offres, changements de services, actualités
+- [ ] **Gestion des cookies/sessions** : authentification pour sites protégés
+- [ ] **Rotation des User-Agents** : évitement de la détection anti-bot
+- [ ] **Proxy rotation** : IPs multiples pour éviter le blocage
+
+---
+
+## 🛠️ Technologies OSINT & ML
+
+### Web Scraping & APIs
+- **Puppeteer/Playwright** : sites dynamiques, JavaScript rendering
+- **Cheerio** : parsing HTML statique, extraction structurée
+- **Axios/Node-fetch** : APIs publiques, rate limiting
+- **Node-cron** : jobs programmés, surveillance continue
+- **Puppeteer-extra** : plugins anti-détection, stealth mode
+- **Proxy-chain** : rotation automatique des proxies
+- **User-agents** : rotation des User-Agents pour éviter la détection
+- **Cookie management** : gestion des sessions et authentification
+
+*Voir le fichier `OSINT_TOOLS.md` pour la liste complète des outils OSINT*
+
+### Machine Learning
+- **TensorFlow.js** : modèles prédictifs côté serveur
+- **Natural** : traitement du langage naturel
+- **Clustering algorithms** : segmentation automatique des clients
+- **Feature engineering** : préparation des données pour les modèles
+
+### Infrastructure
+- **Bull/Agenda** : queues pour tâches lourdes
+- **Lodash/Ramda** : manipulation des données
+- **Cache intelligent** : évitement des requêtes redondantes
+- **Monitoring** : performance, alertes, métriques
+
+---
+
+## 📈 Métriques de succès Intelligence
+
+- [ ] **Précision des prédictions** : > 85% pour le scoring de risque
+- [ ] **Détection d'anomalies** : < 5% de faux positifs
+- [ ] **Enrichissement des données** : > 90% des profils clients enrichis
+- [ ] **Réduction des impayés** : > 40% grâce aux alertes précoces
+- [ ] **ROI de l'intelligence** : > 300% sur les investissements ML
+
+## 🎯 Cas d'usage Scraping des Équipes
+
+### Analyse des risques
+- [ ] **Détection de départs clés** : patrons, comptables, responsables financiers
+- [ ] **Surveillance des effectifs** : réduction d'équipe = signe de difficultés
+- [ ] **Changements d'adresse** : déménagement = possible restructuration
+- [ ] **Fermeture de sites** : fermeture de bureaux = problèmes financiers
+
+### Intelligence commerciale
+- [ ] **Nouveaux contacts** : nouveaux décideurs, nouvelles opportunités
+- [ ] **Évolution des services** : nouvelles offres, changements de stratégie
+- [ ] **Expansion/réduction** : ouverture/fermeture de bureaux, filiales
+- [ ] **Partnerships** : nouveaux partenaires, alliances stratégiques
+
+### Conformité & surveillance
+- [ ] **Changements légaux** : nouveaux dirigeants, modifications statutaires
+- [ ] **Surveillance sectorielle** : évolution du marché, nouveaux concurrents
+- [ ] **Alertes précoces** : signaux faibles de difficultés financières
+- [ ] **Veille concurrentielle** : stratégies des concurrents, innovations
+
 
