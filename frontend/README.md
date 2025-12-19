@@ -1,8 +1,8 @@
-# Facturio - Frontend
+## Facturio - Frontend
 
 Application de gestion commerciale moderne avec interface React et Material UI.
 
-## 🚀 État actuel
+## État actuel
 
 ### ✅ Fonctionnalités implémentées
 
@@ -33,7 +33,7 @@ Application de gestion commerciale moderne avec interface React et Material UI.
 - ✅ Page packs avec templates prédéfinis et gestion avancée
 - ✅ Pages vides pour toutes les sections (devis, factures, etc.)
 
-## 🛠️ Technologies
+## Technologies
 
 - **Frontend** : React 19 + TypeScript
 - **UI** : Material UI v7
@@ -42,7 +42,7 @@ Application de gestion commerciale moderne avec interface React et Material UI.
 - **HTTP Client** : Axios avec intercepteurs
 - **État** : React Hooks + localStorage
 
-## 📦 Installation
+## Installation
 
 ```bash
 # Installer les dépendances
@@ -55,7 +55,7 @@ npm run dev
 npm run build
 ```
 
-## 🎨 Personnalisation
+## Personnalisation
 
 ### Thème
 - Mode clair/sombre
@@ -68,7 +68,7 @@ npm run build
 - Navigation par sections
 - Paramètres intégrés
 
-## 📁 Structure du projet
+## Structure du projet
 
 ```
 src/
@@ -93,17 +93,35 @@ src/
 └── data/             # Données de démonstration
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Variables d'environnement
+
+Créer un fichier `.env` à la racine de `frontend/`:
+
 ```env
+# URL de l'API NestJS
 VITE_API_URL=http://localhost:3000/api
+
+# Utiliser les mocks frontend au lieu du backend NestJS
+# false par défaut - mettre explicitement à true pour forcer le mode démo
+VITE_USE_MOCK=false
 ```
 
-### Proxy de développement
-Le proxy est configuré pour rediriger `/api/*` vers le backend NestJS.
+#### Comment ça marche
 
-## 🚀 Développement
+- `VITE_API_URL` est utilisée par le client HTTP (`services/api.ts`) comme `baseURL`.
+- `VITE_USE_MOCK` contrôle l'utilisation des mocks:
+  - `false` (valeur par défaut): tous les services parlent au vrai serveur Nest (`/clients`, `/invoices`, `/accounting`, `/filings`, `/subscriptions`, `/dashboard`...).
+  - `true`: certains endpoints passent par `mockApi` et les données de `data/demo.ts` pour un mode démo sans backend.
+
+Assure-toi que le backend est démarré sur `http://localhost:3000` (voir `server/README.md`) ou adapte `VITE_API_URL`.
+
+### Proxy de développement
+
+Le proxy Vite est configuré pour rediriger `/api/*` vers le backend NestJS (voir `vite.config.ts`).
+
+## Développement
 
 ### Scripts disponibles
 - `npm run dev` - Serveur de développement
@@ -116,7 +134,7 @@ Le proxy est configuré pour rediriger `/api/*` vers le backend NestJS.
 - ESLint configuré
 - Proxy API automatique
 
-## 📊 Données de démonstration
+## Données de démonstration
 
 L'application inclut des données de démonstration réalistes pour :
 - Clients avec informations complètes
@@ -125,11 +143,11 @@ L'application inclut des données de démonstration réalistes pour :
 - Produits et services (modules web/SaaS)
 - Packs avec templates prédéfinis (Sites Web, E-commerce, SaaS)
 
-## 🎯 Prochaines étapes
+## Prochaines étapes
 
 Voir le fichier `ROADMAP.md` pour le planning détaillé des prochaines fonctionnalités.
 
-## 🤝 Contribution
+## Contribution
 
 1. Fork le projet
 2. Créer une branche feature
@@ -137,6 +155,6 @@ Voir le fichier `ROADMAP.md` pour le planning détaillé des prochaines fonction
 4. Pousser vers la branche
 5. Ouvrir une Pull Request
 
-## 📄 Licence
+## Licence
 
 Ce projet est sous licence MIT.

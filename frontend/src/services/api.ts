@@ -16,7 +16,9 @@ export interface ApiError {
 
 // Configuration par défaut
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-const USE_MOCK = import.meta.env.DEV // Utiliser le mock en mode développement
+// Utilisation des mocks contrôlée par une variable d'env explicite.
+// Par défaut on parle au vrai serveur, même en dev.
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 // Classe pour gérer les erreurs API
 export class ApiError extends Error {
