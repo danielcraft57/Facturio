@@ -14,9 +14,22 @@ npm run start:dev
 ```
 Plus de détails: voir `server/README.md`.
 
-### Docs utiles
+### Documentation
+
+Toute la documentation est disponible dans le dossier `docs/` :
+
+- [Documentation complète](docs/README.md) - Index de toute la documentation
+- [Architecture](docs/ARCHITECTURE.md) - Vue d'ensemble de l'architecture
+- [Installation](docs/INSTALLATION.md) - Guide d'installation
+- [API](docs/API.md) - Documentation des endpoints
+- [Développement](docs/DEVELOPMENT.md) - Guide de développement
+- [OSINT](docs/OSINT.md) - Intégration OSINT
+- [Scraper](docs/SCRAPER.md) - Module de scraping
+- [Roadmap](docs/ROADMAP.md) - Roadmap globale
+
+Documentation par composant :
 - Backend: `server/README.md`
-- Roadmap globale: `ROADMAP.md`
+- Frontend: `frontend/README.md`
 - Roadmap serveur: `server/ROADMAP.md`
 
 ### UI & thèmes

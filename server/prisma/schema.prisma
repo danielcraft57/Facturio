@@ -353,3 +353,108 @@ model JournalLine {
   debit      Decimal       @default(0)
   credit     Decimal       @default(0)
 }
+
+// Prospects
+enum ProspectStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+  DISQUALIFIED
+}
+
+enum CompanySize {
+  STARTUP
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+enum BudgetRange {
+  LOW
+  MEDIUM
+  HIGH
+  ENTERPRISE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SourceType {
+  ORGANIC
+  PAID
+  REFERRAL
+  PARTNERSHIP
+  EVENT
+  SOCIAL
+  DIRECT
+}
+
+model Prospect {
+  id            Int            @id @default(autoincrement())
+  companyName   String
+  industry      String
+  size          CompanySize
+  website       String?
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  country       String
+  revenue       Decimal?
+  employees     Int?
+  description   String?
+  painPoints    String?        // JSON array
+  budget        BudgetRange?
+  decisionMakerName String?
+  decisionMakerPosition String?
+  decisionMakerEmail String?
+  decisionMakerPhone String?
+  decisionMakerLinkedin String?
+  status        ProspectStatus @default(NEW)
+  sourceType    SourceType     @default(DIRECT)
+  sourceName    String?
+  sourceCost    Decimal?
+  sourceConversionRate Decimal?
+  score         Int            @default(50) // 0-100
+  priority      Priority       @default(MEDIUM)
+  assignedTo   String?
+  lastContact   DateTime?
+  nextFollowUp  DateTime?
+  notes         String?        // JSON array
+  tags          String?        // JSON array
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// Packs
+enum PackType {
+  WEBSITE
+  ECOMMERCE
+  SAAS
+}
+
+model Pack {
+  id          Int       @id @default(autoincrement())
+  name        String
+  type        PackType
+  description String
+  details     String
+  products    String?   // JSON array of product IDs
+  totalHours  Int       @default(0)
+  totalPrice  Decimal   @default(0)
+  isTemplate  Boolean   @default(false)
+  templateId  String?
+  features    String?   // JSON array
+  deliveryTime Int?     // days
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}

@@ -1,25 +1,48 @@
+import { ApiClient } from './apiClient';
 import type { Pack, CreatePackData, UpdatePackData, PackFilters, PackListResponse } from '../types/pack';
-import { mockPackService } from './packService.mock';
 
 export class PackService {
+  private apiClient = ApiClient.getInstance();
+  private baseUrl = '/packs';
+
   async getPacks(filters?: PackFilters, page = 1, limit = 10): Promise<PackListResponse> {
-    return mockPackService.getPacks(filters, page, limit);
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('pageSize', String(limit));
+    if (filters?.search) params.set('search', filters.search);
+    
+    const response = await this.apiClient.get<PackListResponse>(`${this.baseUrl}?${params.toString()}`);
+    return response;
   }
 
   async getPack(id: string): Promise<Pack | null> {
-    return mockPackService.getPack(id);
+    try {
+      const response = await this.apiClient.get<Pack>(`${this.baseUrl}/${id}`);
+      return response;
+    } catch (error: any) {
+      if (error?.status === 404) return null;
+      throw error;
+    }
   }
 
   async createPack(data: CreatePackData): Promise<Pack> {
-    return mockPackService.createPack(data);
+    const response = await this.apiClient.post<Pack>(this.baseUrl, data);
+    return response;
   }
 
   async updatePack(id: string, data: UpdatePackData): Promise<Pack | null> {
-    return mockPackService.updatePack(id, data);
+    try {
+      const response = await this.apiClient.patch<Pack>(`${this.baseUrl}/${id}`, data);
+      return response;
+    } catch (error: any) {
+      if (error?.status === 404) return null;
+      throw error;
+    }
   }
 
   async deletePack(id: string): Promise<boolean> {
-    return mockPackService.deletePack(id);
+    await this.apiClient.delete(`${this.baseUrl}/${id}`);
+    return true;
   }
 }
 

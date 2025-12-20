@@ -10,9 +10,28 @@ import { FilingsModule } from './filings/filings.module';
 import { WebhooksController } from './webhooks.controller';
 import { AccountingModule } from './accounting/accounting.module';
 import { CommonModule } from './common/common.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { PaymentsModule } from './payments/payments.module';
+import { ProspectsModule } from './prospects/prospects.module';
+import { PacksModule } from './packs/packs.module';
 
 @Module({
-	imports: [PrismaModule, CommonModule, ClientsModule, InvoicesModule, TaxesModule, ProductsModule, QuotesModule, SubscriptionsModule, FilingsModule, AccountingModule],
+	imports: [
+		PrismaModule,
+		CommonModule,
+		ClientsModule,
+		InvoicesModule,
+		TaxesModule,
+		ProductsModule,
+		QuotesModule,
+		SubscriptionsModule,
+		FilingsModule,
+		AccountingModule,
+		DashboardModule,
+		PaymentsModule,
+		ProspectsModule,
+		PacksModule
+	],
 	controllers: [WebhooksController],
 	providers: []
 })
