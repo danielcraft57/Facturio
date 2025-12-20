@@ -9,32 +9,39 @@ export class DashboardService {
 		const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 		const end = endDate ? new Date(endDate) : new Date();
 
-		// Revenus
-		const allInvoices = await this.prisma.invoice.findMany({
-			where: {
-				status: { in: ['PAID', 'SENT'] },
-				date: { gte: start, lte: end }
-			},
-			include: { client: true }
-		});
-
+		// Revenus (optimisé: agrégations SQL au lieu de charger toutes les factures)
 		const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 		const thisMonthEnd = new Date();
 		const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
 		const lastMonthEnd = new Date(new Date().getFullYear(), new Date().getMonth(), 0);
 
-		const thisMonthInvoices = allInvoices.filter(inv => {
-			const d = new Date(inv.date);
-			return d >= thisMonthStart && d <= thisMonthEnd;
-		});
-		const lastMonthInvoices = allInvoices.filter(inv => {
-			const d = new Date(inv.date);
-			return d >= lastMonthStart && d <= lastMonthEnd;
-		});
+		const [totalRevenueData, thisMonthRevenueData, lastMonthRevenueData] = await Promise.all([
+			this.prisma.invoice.aggregate({
+				where: {
+					status: { in: ['PAID', 'SENT'] },
+					date: { gte: start, lte: end }
+				},
+				_sum: { total: true }
+			}),
+			this.prisma.invoice.aggregate({
+				where: {
+					status: { in: ['PAID', 'SENT'] },
+					date: { gte: thisMonthStart, lte: thisMonthEnd }
+				},
+				_sum: { total: true }
+			}),
+			this.prisma.invoice.aggregate({
+				where: {
+					status: { in: ['PAID', 'SENT'] },
+					date: { gte: lastMonthStart, lte: lastMonthEnd }
+				},
+				_sum: { total: true }
+			})
+		]);
 
-		const totalRevenue = allInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
-		const thisMonthRevenue = thisMonthInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
-		const lastMonthRevenue = lastMonthInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
+		const totalRevenue = Number(totalRevenueData._sum.total || 0);
+		const thisMonthRevenue = Number(thisMonthRevenueData._sum.total || 0);
+		const lastMonthRevenue = Number(lastMonthRevenueData._sum.total || 0);
 		const revenueGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
 
 		// Factures
@@ -65,7 +72,7 @@ export class DashboardService {
 			where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd } }
 		});
 
-		// Top clients par revenus
+		// Top clients par revenus (optimisé: une seule requête au lieu de N+1)
 		const topClientsData = await this.prisma.invoice.groupBy({
 			by: ['clientId'],
 			_sum: { total: true },
@@ -74,21 +81,35 @@ export class DashboardService {
 			take: 5
 		});
 
-		const topClients = await Promise.all(
-			topClientsData.map(async (item) => {
-				const client = await this.prisma.client.findUnique({ where: { id: item.clientId } });
-				return {
-					client: { id: String(client?.id), name: client?.name || '' },
-					revenue: Number(item._sum.total || 0)
-				};
-			})
-		);
+		const clientIds = topClientsData.map((item) => item.clientId);
+		const clients = await this.prisma.client.findMany({
+			where: { id: { in: clientIds } },
+			select: { id: true, name: true }
+		});
+		const clientMap = new Map(clients.map((c) => [c.id, c]));
+		const topClients = topClientsData.map((item) => ({
+			client: {
+				id: String(item.clientId),
+				name: clientMap.get(item.clientId)?.name || ''
+			},
+			revenue: Number(item._sum.total || 0)
+		}));
 
-		// Activité récente
+		// Activité récente (optimisé: select au lieu de include)
 		const recentInvoices = await this.prisma.invoice.findMany({
 			take: 10,
 			orderBy: { createdAt: 'desc' },
-			include: { client: true }
+			select: {
+				id: true,
+				number: true,
+				total: true,
+				createdAt: true,
+				client: {
+					select: {
+						name: true
+					}
+				}
+			}
 		});
 
 		const recentActivity = recentInvoices.map((inv) => ({
@@ -98,23 +119,25 @@ export class DashboardService {
 			date: inv.createdAt.toISOString()
 		}));
 
-		// Revenus mensuels (12 derniers mois)
-		const monthlyRevenue = [];
+		// Revenus mensuels (12 derniers mois) - optimisé avec agrégations
+		const monthlyRevenuePromises = [];
 		for (let i = 11; i >= 0; i--) {
 			const monthStart = new Date(new Date().getFullYear(), new Date().getMonth() - i, 1);
 			const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() - i + 1, 0);
-			const monthInvoices = await this.prisma.invoice.findMany({
-				where: {
-					status: { in: ['PAID', 'SENT'] },
-					date: { gte: monthStart, lte: monthEnd }
-				}
-			});
-			const monthRev = monthInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
-			monthlyRevenue.push({
-				month: monthStart.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
-				revenue: monthRev
-			});
+			monthlyRevenuePromises.push(
+				this.prisma.invoice.aggregate({
+					where: {
+						status: { in: ['PAID', 'SENT'] },
+						date: { gte: monthStart, lte: monthEnd }
+					},
+					_sum: { total: true }
+				}).then((result) => ({
+					month: monthStart.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
+					revenue: Number(result._sum.total || 0)
+				}))
+			);
 		}
+		const monthlyRevenue = await Promise.all(monthlyRevenuePromises);
 
 		// Données pour graphiques
 		const chartData = {

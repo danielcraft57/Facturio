@@ -1,67 +1,58 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { quoteService } from './quoteService'
-import { mockQuoteService } from './mockQuoteService'
+import { ApiClient } from './apiClient'
 
-vi.mock('./mockQuoteService', () => ({
-  mockQuoteService: {
-    getQuotes: vi.fn(),
-    getQuote: vi.fn(),
-    createQuote: vi.fn(),
-    updateQuote: vi.fn(),
-    deleteQuote: vi.fn(),
-    sendQuote: vi.fn(),
-    acceptQuote: vi.fn(),
-    rejectQuote: vi.fn(),
-    convertToInvoice: vi.fn(),
+vi.mock('./apiClient', () => ({
+  ApiClient: {
+    getInstance: vi.fn(() => ({
+      get: vi.fn(),
+      post: vi.fn(),
+      patch: vi.fn(),
+      delete: vi.fn(),
+    })),
   },
 }))
 
-describe('quoteService (mode mock en dev)', () => {
+describe('quoteService', () => {
+  let mockApiClient: any
+
   beforeEach(() => {
+    mockApiClient = ApiClient.getInstance()
     vi.clearAllMocks()
   })
 
-  it('délègue à mockQuoteService.getQuotes en dev', async () => {
-    ;(mockQuoteService.getQuotes as any).mockResolvedValue({
+  it('appelle l\'API pour getQuotes', async () => {
+    const mockResponse = {
       success: true,
       data: { data: [], total: 0, page: 1, limit: 10 },
-    })
+    }
+    ;(mockApiClient.get as any).mockResolvedValue(mockResponse)
 
     const filters = { status: 'SENT', search: 'DEV-2025' } as any
     await quoteService.getQuotes(filters, 2, 5)
 
-    expect(mockQuoteService.getQuotes).toHaveBeenCalledWith(filters, 2, 5)
+    expect(mockApiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining('/quotes')
+    )
   })
 
-  it('délègue aux méthodes mock pour les actions de cycle de vie', async () => {
-    ;(mockQuoteService.createQuote as any).mockResolvedValue({
-      success: true,
-      data: { id: 1 },
-    })
-    ;(mockQuoteService.sendQuote as any).mockResolvedValue({
-      success: true,
-      data: { id: 1 },
-    })
-    ;(mockQuoteService.acceptQuote as any).mockResolvedValue({
-      success: true,
-      data: { id: 1, status: 'ACCEPTED' },
-    })
-    ;(mockQuoteService.convertToInvoice as any).mockResolvedValue({
-      success: true,
-      data: { invoiceId: 99 },
-    })
+  it('appelle l\'API pour les actions CRUD', async () => {
+    const mockResponse = { success: true, data: { id: 1 } }
+    ;(mockApiClient.post as any).mockResolvedValue(mockResponse)
+    ;(mockApiClient.patch as any).mockResolvedValue(mockResponse)
+    ;(mockApiClient.delete as any).mockResolvedValue({ success: true, data: true })
 
     await quoteService.createQuote({ clientId: 1 } as any)
-    expect(mockQuoteService.createQuote).toHaveBeenCalled()
+    expect(mockApiClient.post).toHaveBeenCalledWith('/quotes', expect.any(Object))
+
+    await quoteService.updateQuote(1, {} as any)
+    expect(mockApiClient.patch).toHaveBeenCalledWith('/quotes/1', expect.any(Object))
+
+    await quoteService.deleteQuote(1)
+    expect(mockApiClient.delete).toHaveBeenCalledWith('/quotes/1')
 
     await quoteService.sendQuote(1)
-    expect(mockQuoteService.sendQuote).toHaveBeenCalledWith(1)
-
-    await quoteService.acceptQuote(1)
-    expect(mockQuoteService.acceptQuote).toHaveBeenCalledWith(1)
-
-    await quoteService.convertToInvoice(1)
-    expect(mockQuoteService.convertToInvoice).toHaveBeenCalledWith(1)
+    expect(mockApiClient.post).toHaveBeenCalledWith('/quotes/1/send', undefined)
   })
 })
 

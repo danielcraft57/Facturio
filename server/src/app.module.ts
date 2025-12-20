@@ -14,9 +14,11 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ProspectsModule } from './prospects/prospects.module';
 import { PacksModule } from './packs/packs.module';
+import { ConfigModule } from './config/config.module';
 
 @Module({
 	imports: [
+		ConfigModule,
 		PrismaModule,
 		CommonModule,
 		ClientsModule,

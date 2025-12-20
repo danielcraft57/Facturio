@@ -1,5 +1,4 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
-import { mockApi } from './mockApi'
 
 // Types pour les réponses API
 export interface ApiResponse<T = any> {
@@ -16,9 +15,6 @@ export interface ApiError {
 
 // Configuration par défaut
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-// Utilisation des mocks contrôlée par une variable d'env explicite.
-// Par défaut on parle au vrai serveur, même en dev.
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 // Classe pour gérer les erreurs API
 export class ApiError extends Error {
@@ -151,60 +147,29 @@ class ApiClient {
     )
   }
 
-  // Méthodes HTTP génériques avec fallback vers mock
+  // Méthodes HTTP génériques
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    if (USE_MOCK) {
-      console.log(`🔄 Using mock API for GET ${url}`)
-      return mockApi.get<ApiResponse<T>>(url)
-    }
     return this.client.get(url, config)
   }
 
   async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    if (USE_MOCK) {
-      console.log(`🔄 Using mock API for POST ${url}`)
-      return mockApi.post<ApiResponse<T>>(url, data)
-    }
     return this.client.post(url, data, config)
   }
 
   async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    if (USE_MOCK) {
-      console.log(`🔄 Using mock API for PUT ${url}`)
-      return mockApi.put<ApiResponse<T>>(url, data)
-    }
     return this.client.put(url, data, config)
   }
 
   async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    if (USE_MOCK) {
-      console.log(`🔄 Using mock API for PATCH ${url}`)
-      return mockApi.put<ApiResponse<T>>(url, data) // Utiliser PUT pour le mock
-    }
     return this.client.patch(url, data, config)
   }
 
   async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    if (USE_MOCK) {
-      console.log(`🔄 Using mock API for DELETE ${url}`)
-      return mockApi.delete<ApiResponse<T>>(url)
-    }
     return this.client.delete(url, config)
   }
 
   // Méthodes spécialisées
   async upload<T = any>(url: string, file: File, onProgress?: (progress: number) => void): Promise<ApiResponse<T>> {
-    if (USE_MOCK) {
-      console.log(`🔄 Using mock API for UPLOAD ${url}`)
-      // Simuler un upload
-      if (onProgress) {
-        for (let i = 0; i <= 100; i += 10) {
-          setTimeout(() => onProgress(i), i * 10)
-        }
-      }
-      return mockApi.post<ApiResponse<T>>(url, { filename: file.name, size: file.size })
-    }
-
     const formData = new FormData()
     formData.append('file', file)
 

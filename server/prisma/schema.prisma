@@ -41,6 +41,9 @@ model Client {
   subscriptions Subscription[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([email])
+  @@index([name])
 }
 
 model Invoice {
@@ -64,6 +67,10 @@ model Invoice {
   emailEvents EmailEvent[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+
+  @@index([status, date])
+  @@index([clientId])
+  @@index([number])
 }
 
 model InvoiceLine {
@@ -433,6 +440,10 @@ model Prospect {
   tags          String?        // JSON array
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+
+  @@index([companyName])
+  @@index([industry])
+  @@index([status])
 }
 
 // Packs

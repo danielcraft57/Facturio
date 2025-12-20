@@ -1,0 +1,22 @@
+{
+  "name": "facturio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Application de facturation complète",
+  "scripts": {
+    "start:all": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run start:dev --prefix server\" \"npm run dev --prefix frontend\"",
+    "start:all:prod": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run start:prod --prefix server\" \"npm run preview --prefix frontend\"",
+    "build:all": "npm run build --prefix server && npm run build --prefix frontend",
+    "install:all": "npm install --prefix server && npm install --prefix frontend",
+    "test:all": "npm run test --prefix server && npm run test --prefix frontend",
+    "test:e2e": "npm run test:e2e --prefix server",
+    "seed:dev": "npm run seed:dev --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

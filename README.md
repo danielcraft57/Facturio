@@ -5,14 +5,30 @@ API de facturation pensée pour SaaS et apps. On gère clients, produits, abonne
 
 ### Démarrage rapide
 Pré-requis: Node 20+ et npm.
+
+**Option 1 : Démarrer tout (backend + frontend)**
 ```bash
+npm install
+npm run install:all  # Installer les dépendances backend et frontend
+npm run start:all    # Démarrer backend (port 3000) et frontend (port 5173)
+```
+
+**Option 2 : Démarrer séparément**
+```bash
+# Backend
 cd server
 npm i
 npx prisma migrate dev
-npm run seed # optionnel (taux de TVA FR)
+npm run seed:dev  # optionnel (taux de TVA FR)
 npm run start:dev
+
+# Frontend (dans un autre terminal)
+cd frontend
+npm i
+npm run dev
 ```
-Plus de détails: voir `server/README.md`.
+
+Plus de détails: voir `server/README.md` et `docs/ENVIRONMENTS.md`.
 
 ### Documentation
 

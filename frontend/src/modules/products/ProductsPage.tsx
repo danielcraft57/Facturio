@@ -11,7 +11,6 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { EditProductDialog } from './components/EditProductDialog';
 import { EditPackDialog } from './components/EditPackDialog';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { MOCK_PRODUCTS } from '../../services/productService.mock';
 
 export function ProductsPage() {
   const productsStore = useProducts();
@@ -120,7 +119,7 @@ export function ProductsPage() {
   // Fonction pour obtenir les noms des produits d'un pack
   const getPackProductNames = (pack: Pack) => {
     return pack.products
-      .map(id => MOCK_PRODUCTS.find((p: any) => p.id === id)?.name)
+      .map(id => productsStore.products.find((p: any) => String(p.id) === id)?.name)
       .filter(Boolean)
       .join(', ');
   };

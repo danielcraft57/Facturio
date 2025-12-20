@@ -1,335 +1,79 @@
-import { PrismaClient, InvoiceStatus, QuoteStatus, FilingStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { purgeAll, seedTaxRates, seedChartOfAccounts, type SeedContext } from './seeds/base.seed';
+import { seedProducts, seedPlans } from './seeds/products.seed';
+import { seedClients } from './seeds/clients.seed';
+import { seedInvoices } from './seeds/invoices.seed';
+import { seedQuotes } from './seeds/quotes.seed';
+import { seedSubscriptions } from './seeds/subscriptions.seed';
+import { seedFilings } from './seeds/filings.seed';
+import { seedProspects } from './seeds/prospects.seed';
+import { seedPacks } from './seeds/packs.seed';
 
 const prisma = new PrismaClient();
 
-function getYear(): number {
-	return new Date().getFullYear();
-}
-
-function quarterFromDate(d: Date): { periodStart: Date; periodEnd: Date; dueDate: Date; label: string } {
-	const y = d.getFullYear();
-	const q = Math.floor(d.getMonth() / 3) + 1;
-	const monthStart = (q - 1) * 3;
-	const periodStart = new Date(y, monthStart, 1);
-	const periodEnd = new Date(y, monthStart + 3, 0);
-	const dueDate = new Date(y, monthStart + 3, 0);
-	return { periodStart, periodEnd, dueDate, label: `${y}-Q${q}` };
-}
-
-async function purgeAll(): Promise<void> {
-	// Purge dans l'ordre pour respecter les FK
-	await prisma.quoteView.deleteMany();
-	await prisma.emailEvent.deleteMany();
-	await prisma.quoteLine.deleteMany();
-	await prisma.quote.deleteMany();
-	await prisma.invoiceLine.deleteMany();
-	await prisma.payment.deleteMany();
-	await prisma.invoice.deleteMany();
-	await prisma.filingLine.deleteMany();
-	await prisma.authorityPayment.deleteMany();
-	await prisma.filing.deleteMany();
-	await prisma.subscription.deleteMany();
-	await prisma.plan.deleteMany();
-	await prisma.product.deleteMany();
-	// On garde TaxRate mais on forcera les valeurs après
-	await prisma.counter.deleteMany();
-}
-
-async function seedTaxRates(): Promise<{ def20Id: number; def10Id: number; zeroId: number }> {
-	// Mettre isDefault: false partout puis positionner une seule valeur par défaut
-	await prisma.taxRate.updateMany({ data: { isDefault: false } });
-
-	async function upsertByName(name: string, rate: number, isDefault: boolean) {
-		const existing = await prisma.taxRate.findFirst({ where: { name } });
-		if (existing) {
-			return prisma.taxRate.update({ where: { id: existing.id }, data: { rate, isDefault } });
-		}
-		return prisma.taxRate.create({ data: { name, rate, isDefault } });
-	}
-
-	const t20 = await upsertByName('TVA 20%', 0.2, true);
-	const t10 = await upsertByName('TVA 10%', 0.1, false);
-	await upsertByName('TVA 5.5%', 0.055, false);
-	await upsertByName('TVA 2.1%', 0.021, false);
-	const t0 = await upsertByName('TVA 0% (exonération / export / intracom B2B)', 0, false);
-	return { def20Id: t20.id, def10Id: t10.id, zeroId: t0.id };
-}
-
-async function seedProductsAndPlans(defaultTaxIds: { def20Id: number; def10Id: number }) {
-	const productSaas = await prisma.product.create({
-		data: { name: 'Facturio Pro', sku: 'FF-PRO', kind: 'SAAS', defaultTaxRateId: defaultTaxIds.def20Id }
-	});
-	const productService = await prisma.product.create({
-		data: { name: 'Audit fiscal', sku: 'AUDIT-SERV', kind: 'SERVICE', defaultTaxRateId: defaultTaxIds.def10Id }
-	});
-	const planMonthly = await prisma.plan.create({
-		data: { productId: productSaas.id, name: 'Pro mensuel', amount: 29, currency: 'EUR', interval: 'MONTH' }
-	});
-	const planYearly = await prisma.plan.create({
-		data: { productId: productSaas.id, name: 'Pro annuel', amount: 290, currency: 'EUR', interval: 'YEAR' }
-	});
-	return { productSaas, productService, planMonthly, planYearly };
-}
-
-async function seedChartOfAccounts(): Promise<void> {
-  // Journaux de base
-  await prisma.journal.upsert({ where: { code: 'VE' }, update: {}, create: { code: 'VE', name: 'Ventes' } });
-  await prisma.journal.upsert({ where: { code: 'BQ' }, update: {}, create: { code: 'BQ', name: 'Banque' } });
-  await prisma.journal.upsert({ where: { code: 'OD' }, update: {}, create: { code: 'OD', name: 'Opérations diverses' } });
-
-  // Comptes de base (PCG minimal)
-  const accounts: Array<{ code: string; name: string; type: any }> = [
-    { code: '512', name: 'Banque', type: 'BANK' },
-    { code: '411', name: 'Clients', type: 'CUSTOMER' },
-    { code: '401', name: 'Fournisseurs', type: 'SUPPLIER' },
-    { code: '706', name: 'Prestations de services', type: 'REVENUE' },
-    { code: '707', name: 'Ventes de marchandises', type: 'REVENUE' },
-    { code: '44571', name: 'TVA collectée', type: 'TAX' },
-    { code: '44566', name: 'TVA déductible', type: 'TAX' },
-    { code: '606', name: 'Achats non stockés', type: 'EXPENSE' },
-    { code: '615', name: 'Entretien et réparations', type: 'EXPENSE' },
-    { code: '622', name: 'Rémunérations d’intermédiaires et honoraires', type: 'EXPENSE' },
-    { code: '641', name: 'Rémunérations du personnel', type: 'EXPENSE' },
-    { code: '645', name: 'Charges de sécurité sociale et de prévoyance', type: 'EXPENSE' },
-    { code: '421', name: 'Personnel - rémunérations dues', type: 'LIABILITY' },
-    { code: '431', name: 'Sécurité sociale', type: 'LIABILITY' },
-    { code: '447', name: 'Autres impôts et taxes à payer', type: 'LIABILITY' },
-    { code: '635', name: 'Autres impôts, taxes et versements assimilés', type: 'EXPENSE' }
-  ];
-
-  for (const a of accounts) {
-    const existing = await prisma.account.findFirst({ where: { code: a.code } });
-    if (!existing) {
-      await prisma.account.create({ data: a as any });
-    }
-  }
-}
-
-async function seedClients(defaultTaxIds: { def10Id: number }) {
-	const frCompany = await prisma.client.upsert({
-		where: { email: 'fr@acme.test' },
-		update: { name: 'ACME France', isCompany: true, countryCode: 'FR' },
-		create: { name: 'ACME France', email: 'fr@acme.test', isCompany: true, countryCode: 'FR' }
-	});
-	const deCompany = await prisma.client.upsert({
-		where: { email: 'de@eu-b2b.test' },
-		update: { name: 'EU GmbH', isCompany: true, countryCode: 'DE', vatNumber: 'DE123456789' },
-		create: { name: 'EU GmbH', email: 'de@eu-b2b.test', isCompany: true, countryCode: 'DE', vatNumber: 'DE123456789' }
-	});
-	const usCompany = await prisma.client.upsert({
-		where: { email: 'us@export.test' },
-		update: { name: 'US Corp', isCompany: true, countryCode: 'US' },
-		create: { name: 'US Corp', email: 'us@export.test', isCompany: true, countryCode: 'US' }
-	});
-	const frB2C = await prisma.client.upsert({
-		where: { email: 'b2c@home.test' },
-		update: { name: 'Jean Client', isCompany: false, countryCode: 'FR', taxRateOverrideId: defaultTaxIds.def10Id },
-		create: { name: 'Jean Client', email: 'b2c@home.test', isCompany: false, countryCode: 'FR', taxRateOverrideId: defaultTaxIds.def10Id }
-	});
-	const vatExempt = await prisma.client.upsert({
-		where: { email: 'exempt@company.test' },
-		update: { name: 'Exempt SARL', isCompany: true, countryCode: 'FR', isVatExempt: true },
-		create: { name: 'Exempt SARL', email: 'exempt@company.test', isCompany: true, countryCode: 'FR', isVatExempt: true }
-	});
-	return { frCompany, deCompany, usCompany, frB2C, vatExempt };
-}
-
-function computeInvoiceTotals(lines: Array<{ quantity: number; unitPrice: number; taxRate: number }>) {
-	let subtotal = 0;
-	let tax = 0;
-	for (const l of lines) {
-		const base = l.quantity * l.unitPrice;
-		subtotal += base;
-		tax += base * l.taxRate;
-	}
-	const total = subtotal + tax;
-	return { subtotal, tax, total };
-}
-
-async function seedInvoicesAndPayments(clients: any) {
-	const year = getYear();
-	// Facture FR (20%)
-	const lines1 = [
-		{ description: 'Service A', quantity: 2, unitPrice: 100, taxRate: 0.2 },
-		{ description: 'Service B', quantity: 1, unitPrice: 50, taxRate: 0.2 }
-	];
-	const t1 = computeInvoiceTotals(lines1);
-	const inv1 = await prisma.invoice.create({
-		data: {
-			number: `FAC-${year}-0001`,
-			clientId: clients.frCompany.id,
-			status: InvoiceStatus.DRAFT,
-			subtotal: t1.subtotal,
-			tax: t1.tax,
-			total: t1.total,
-			balance: t1.total,
-			currency: 'EUR',
-			lines: { create: lines1.map(l => ({ ...l, taxAmount: l.quantity * l.unitPrice * l.taxRate, total: l.quantity * l.unitPrice * (1 + l.taxRate) })) }
-		}
-	});
-	// Paiement partiel puis solde
-	await prisma.payment.create({ data: { invoiceId: inv1.id, amount: 250, method: 'bank_transfer' } });
-	await prisma.payment.create({ data: { invoiceId: inv1.id, amount: t1.subtotal - 250, method: 'card' } });
-	await prisma.invoice.update({ where: { id: inv1.id }, data: { status: InvoiceStatus.PAID, balance: 0 } });
-
-	// Facture EU B2B (0%)
-	const lines2 = [{ description: 'Consulting', quantity: 1, unitPrice: 1000, taxRate: 0 }];
-	const t2 = computeInvoiceTotals(lines2);
-	await prisma.invoice.create({
-		data: {
-			number: `FAC-${year}-0002`,
-			clientId: clients.deCompany.id,
-			status: InvoiceStatus.SENT,
-			subtotal: t2.subtotal,
-			tax: t2.tax,
-			total: t2.total,
-			balance: t2.total,
-			currency: 'EUR',
-			lines: { create: lines2.map(l => ({ ...l, taxAmount: 0, total: l.quantity * l.unitPrice })) }
-		}
-	});
-
-	// Facture export US (0%)
-	const lines3 = [{ description: 'Support', quantity: 3, unitPrice: 80, taxRate: 0 }];
-	const t3 = computeInvoiceTotals(lines3);
-	await prisma.invoice.create({
-		data: {
-			number: `FAC-${year}-0003`,
-			clientId: clients.usCompany.id,
-			status: InvoiceStatus.DRAFT,
-			subtotal: t3.subtotal,
-			tax: t3.tax,
-			total: t3.total,
-			balance: t3.total,
-			currency: 'EUR',
-			lines: { create: lines3.map(l => ({ ...l, taxAmount: 0, total: l.quantity * l.unitPrice })) }
-		}
-	});
-
-	// Mettre a jour le compteur facture
-	await prisma.counter.upsert({ where: { scope: `invoice-${year}` }, create: { scope: `invoice-${year}`, current: 3 }, update: { current: 3 } });
-}
-
-async function seedQuotes(clients: any) {
-	const year = getYear();
-	const q1 = await prisma.quote.create({
-		data: {
-			number: `DEV-${year}-0001`,
-			clientId: clients.frCompany.id,
-			status: QuoteStatus.DRAFT,
-			subtotal: 100,
-			tax: 20,
-			total: 120,
-			lines: { create: [{ description: 'Service', quantity: 1, unitPrice: 100, taxRate: 0.2, taxAmount: 20, total: 120 }] }
-		}
-	});
-	const publicToken = 'seed-token-' + Math.random().toString(36).slice(2);
-	const q2 = await prisma.quote.create({
-		data: {
-			number: `DEV-${year}-0002`,
-			clientId: clients.frB2C.id,
-			status: QuoteStatus.SENT,
-			sentAt: new Date(),
-			publicToken,
-			subtotal: 200,
-			tax: 40,
-			total: 240,
-			lines: { create: [{ description: 'Pack', quantity: 2, unitPrice: 100, taxRate: 0.2, taxAmount: 40, total: 240 }] }
-		}
-	});
-	await prisma.emailEvent.createMany({ data: [
-		{ quoteId: q2.id, type: 'sent' },
-		{ quoteId: q2.id, type: 'delivered' },
-		{ quoteId: q2.id, type: 'opened' }
-	] });
-	await prisma.quoteView.create({ data: { quoteId: q2.id, ip: '127.0.0.1', userAgent: 'seed-agent' } });
-
-	await prisma.quote.create({
-		data: {
-			number: `DEV-${year}-0003`,
-			clientId: clients.vatExempt.id,
-			status: QuoteStatus.ACCEPTED,
-			acceptedAt: new Date(),
-			acceptedIp: '127.0.0.1',
-			subtotal: 300,
-			tax: 0,
-			total: 300,
-			lines: { create: [{ description: 'Exempt', quantity: 3, unitPrice: 100, taxRate: 0, taxAmount: 0, total: 300 }] }
-		}
-	});
-
-	// Mettre a jour le compteur devis
-	await prisma.counter.upsert({ where: { scope: `quote-${year}` }, create: { scope: `quote-${year}`, current: 3 }, update: { current: 3 } });
-}
-
-async function seedSubscriptions(clients: any, plans: any) {
-	const now = new Date();
-	const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-	await prisma.subscription.create({
-		data: {
-			clientId: clients.frCompany.id,
-			planId: plans.planMonthly.id,
-			status: 'ACTIVE',
-			quantity: 5,
-			startDate: now,
-			currentPeriodStart: now,
-			currentPeriodEnd: nextMonth
-		}
-	});
-}
-
-async function seedFilings(): Promise<void> {
-	const { periodStart, periodEnd, dueDate } = quarterFromDate(new Date(getYear(), 0, 15)); // Q1
-	// Agreger TVA depuis factures existantes (simplifie: toutes FR)
-	const invoices = await prisma.invoice.findMany();
-	const taxableBase = invoices.reduce((acc, i) => acc + Number(i.subtotal), 0);
-	const taxAmount = invoices.reduce((acc, i) => acc + Number(i.tax), 0);
-	const filing = await prisma.filing.create({
-		data: {
-			type: 'VAT_CA3',
-			authority: 'DGFIP',
-			periodStart,
-			periodEnd,
-			dueDate,
-			status: FilingStatus.CALCULATED,
-			amountDue: taxAmount,
-			lines: { create: [{ taxRate: 0, taxableBase, taxAmount }] }
-		}
-	});
-	await prisma.authorityPayment.create({ data: { filingId: filing.id, authority: 'DGFIP', amount: taxAmount } as any });
-	await prisma.filing.update({ where: { id: filing.id }, data: { amountPaid: taxAmount, status: FilingStatus.PAID } });
-}
-
 async function main(): Promise<void> {
 	const purge = String(process.env.SEED_PURGE || 'true').toLowerCase() !== 'false';
+	
+	console.log('🌱 Démarrage des seeds...\n');
+
 	if (purge) {
-		await purgeAll();
-		console.log('Base purgee');
+		console.log('🗑️  Purge de la base de données...');
+		await purgeAll(prisma);
+		console.log('✅ Base purgée\n');
 	}
 
-	const taxIds = await seedTaxRates();
-	console.log('Taux de TVA seeds ok');
+	// 1. Taux de TVA
+	console.log('📊 Seeds des taux de TVA...');
+	const taxIds = await seedTaxRates(prisma);
+	console.log('✅ Taux de TVA créés\n');
 
-	await seedChartOfAccounts();
-	console.log('Plan comptable seeds ok');
+	// 2. Plan comptable
+	console.log('📚 Seeds du plan comptable...');
+	const { accounts, journals } = await seedChartOfAccounts(prisma);
+	console.log('✅ Plan comptable créé\n');
 
-	const { productSaas, productService, planMonthly, planYearly } = await seedProductsAndPlans(taxIds);
-	console.log('Produits et plans seeds ok');
+	// 3. Produits et plans
+	console.log('📦 Seeds des produits et plans...');
+	const products = await seedProducts(prisma, taxIds);
+	const plans = await seedPlans(prisma, products.productSaas);
+	console.log('✅ Produits et plans créés\n');
 
-	const clients = await seedClients({ def10Id: taxIds.def10Id });
-	console.log('Clients seeds ok');
+	// 4. Clients
+	console.log('👥 Seeds des clients...');
+	const clients = await seedClients(prisma, { def10Id: taxIds.def10Id });
+	console.log(`✅ ${clients.length} clients créés\n`);
 
-	await seedSubscriptions(clients, { planMonthly, planYearly });
-	console.log('Abonnements seeds ok');
+	// 5. Abonnements
+	console.log('🔄 Seeds des abonnements...');
+	await seedSubscriptions(prisma, clients, plans);
+	console.log('✅ Abonnements créés\n');
 
-	await seedInvoicesAndPayments(clients);
-	console.log('Factures et paiements seeds ok');
+	// 6. Factures et paiements
+	console.log('🧾 Seeds des factures et paiements...');
+	await seedInvoices(prisma, clients, Object.values(products));
+	console.log('✅ Factures et paiements créés\n');
 
-	await seedQuotes(clients);
-	console.log('Devis et evenements email seeds ok');
+	// 7. Devis
+	console.log('📄 Seeds des devis...');
+	await seedQuotes(prisma, clients);
+	console.log('✅ Devis créés\n');
 
-	await seedFilings();
-	console.log('Declarations seeds ok');
+	// 8. Déclarations
+	console.log('📋 Seeds des déclarations...');
+	await seedFilings(prisma);
+	console.log('✅ Déclarations créées\n');
+
+	// 9. Prospects
+	console.log('🎯 Seeds des prospects...');
+	await seedProspects(prisma);
+	console.log('✅ Prospects créés\n');
+
+	// 10. Packs
+	console.log('📦 Seeds des packs...');
+	await seedPacks(prisma, products);
+	console.log('✅ Packs créés\n');
+
+	console.log('🎉 Seeds terminés avec succès !');
 }
 
 main()
@@ -337,9 +81,7 @@ main()
 		await prisma.$disconnect();
 	})
 	.catch(async (e) => {
-		console.error(e);
+		console.error('❌ Erreur lors des seeds:', e);
 		await prisma.$disconnect();
 		process.exit(1);
 	});
-
-

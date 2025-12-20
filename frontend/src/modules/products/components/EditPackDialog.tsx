@@ -25,8 +25,8 @@ import {
   Remove as RemoveIcon
 } from '@mui/icons-material';
 import type { Pack, CreatePackData, UpdatePackData, PackType } from '../../../types/pack';
-import { MOCK_PRODUCTS } from '../../../services/productService.mock';
 import { PackTemplateSelector } from './PackTemplateSelector';
+import { useProducts } from '../../../hooks/useStores';
 
 interface EditPackDialogProps {
   open: boolean;
@@ -49,6 +49,7 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
   onSave,
   loading = false
 }) => {
+  const productsStore = useProducts();
   const [formData, setFormData] = useState<CreatePackData>({
     name: '',
     type: 'WEBSITE',
@@ -62,6 +63,13 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
   const [customFeature, setCustomFeature] = useState('');
+
+  // Charger les produits si nécessaire
+  useEffect(() => {
+    if (open && productsStore.isStale) {
+      productsStore.fetchProducts();
+    }
+  }, [open, productsStore]);
 
   // Initialiser le formulaire avec les données du pack existant
   useEffect(() => {
@@ -167,9 +175,9 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
     }));
   };
 
-  const selectedProducts = MOCK_PRODUCTS.filter((p: any) => formData.products.includes(p.id));
+  const selectedProducts = productsStore.products.filter((p: any) => formData.products.includes(String(p.id)));
   const totalHours = selectedProducts.reduce((sum, p) => sum + (p.estimatedHours || 0), 0);
-  const totalPrice = selectedProducts.reduce((sum, p) => sum + (p.unitPrice || 0), 0);
+  const totalPrice = selectedProducts.reduce((sum, p) => sum + (Number(p.unitPrice) || 0), 0);
 
   return (
     <>
@@ -315,12 +323,12 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
           )}
 
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-            {MOCK_PRODUCTS.map((product: any) => (
+            {productsStore.products.map((product: any) => (
               <Box
                 key={product.id}
                 sx={{
                   border: '1px solid',
-                  borderColor: formData.products.includes(product.id) ? 'primary.main' : 'divider',
+                  borderColor: formData.products.includes(String(product.id)) ? 'primary.main' : 'divider',
                   borderRadius: 1,
                   p: 2,
                   cursor: 'pointer',
@@ -329,13 +337,13 @@ export const EditPackDialog: React.FC<EditPackDialogProps> = ({
                     bgcolor: 'action.hover'
                   }
                 }}
-                onClick={() => handleProductToggle(product.id)}
+                onClick={() => handleProductToggle(String(product.id))}
               >
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={formData.products.includes(product.id)}
-                      onChange={() => handleProductToggle(product.id)}
+                      checked={formData.products.includes(String(product.id))}
+                      onChange={() => handleProductToggle(String(product.id))}
                     />
                   }
                   label={
