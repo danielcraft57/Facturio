@@ -1,33 +1,53 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { BillingInterval, ProductKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-
-export interface CreateProductDto {
-	name: string;
-	sku?: string | null;
-	kind?: ProductKind;
-	unitPrice?: number | null;
-	defaultTaxRateId?: number | null;
-}
-
-export interface UpdateProductDto {
-	name?: string;
-	sku?: string | null;
-	kind?: ProductKind;
-	unitPrice?: number | null;
-	defaultTaxRateId?: number | null;
-}
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { ListQueryDto } from '../common/dto/list-query.dto';
 
 @Injectable()
 export class ProductsService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	create(data: CreateProductDto) {
-		return this.prisma.product.create({ data });
+		return this.prisma.product.create({ 
+			data,
+			include: { defaultTaxRate: true }
+		});
 	}
 
-	findAll() {
-		return this.prisma.product.findMany({ orderBy: { createdAt: 'desc' }, include: { defaultTaxRate: true } });
+	async findAll(query?: ListQueryDto) {
+		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
+		const pageSize = query?.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
+		const skip = (page - 1) * pageSize;
+
+		const where = query?.search
+			? {
+				OR: [
+					{ name: { contains: query.search } },
+					{ sku: { contains: query.search } }
+				]
+			}
+			: undefined;
+
+		const [items, total] = await this.prisma.$transaction([
+			this.prisma.product.findMany({
+				skip,
+				take: pageSize,
+				where,
+				orderBy: query?.sortBy
+					? { [query.sortBy]: (query.order ?? 'desc') as any }
+					: { createdAt: 'desc' },
+				include: { defaultTaxRate: true }
+			}),
+			this.prisma.product.count({ where })
+		]);
+
+		return {
+			items,
+			total,
+			page,
+			pageSize
+		};
 	}
 
 	async findOne(id: number) {

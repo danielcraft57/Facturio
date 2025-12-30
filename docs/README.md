@@ -68,6 +68,9 @@ Liste exhaustive de toutes les tâches restantes, organisée par priorité et do
 ### [Changelog - Priorités hautes](./changelog/CHANGELOG_PRIORITES_HAUTES.md)
 Changelog détaillé des fonctionnalités prioritaires implémentées.
 
+### [Changelog - DTOs et Pagination](./changelog/CHANGELOG_DTO_PAGINATION.md)
+Changelog des fonctionnalités DTOs, pagination, tri et recherche.
+
 ### [Notes de développement](./changelog/NOTES_DEVELOPPEMENT.md)
 Notes techniques et décisions de développement pour les fonctionnalités prioritaires.
 

@@ -34,7 +34,7 @@ export class PdfService {
 				const chunks: Buffer[] = [];
 				doc.on('data', (c: Buffer) => chunks.push(c));
 				doc.on('end', () => resolve(Buffer.concat(chunks)));
-				doc.on('error', (err) => {
+				doc.on('error', (err: Error) => {
 					this.logger.error('Erreur génération PDF', err);
 					reject(err);
 				});
@@ -64,7 +64,7 @@ export class PdfService {
 				const chunks: Buffer[] = [];
 				doc.on('data', (c: Buffer) => chunks.push(c));
 				doc.on('end', () => resolve(Buffer.concat(chunks)));
-				doc.on('error', (err) => {
+				doc.on('error', (err: Error) => {
 					this.logger.error('Erreur génération PDF', err);
 					reject(err);
 				});

@@ -61,7 +61,7 @@ export class QuotesController {
 				quoteNumber: quote.number,
 				quoteDate: quote.createdAt,
 				clientName: quote.client.name || quote.client.companyName || '',
-				total: quote.total,
+				total: Number(quote.total),
 				expiryDate: quote.expiryDate || undefined,
 				pdfBuffer: pdf
 			});

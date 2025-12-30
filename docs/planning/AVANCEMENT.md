@@ -243,6 +243,15 @@
 ## Dernière mise à jour
 
 **Date** : Décembre 2024  
-**Version** : v0.9.5  
-**Focus** : Module prospection terminé, préparation OSINT
+**Version** : v0.9.6  
+**Focus** : Priorités hautes implémentées (Exception Filter, PDF, Email, DTOs, Pagination, Tests)
+
+### Récemment implémenté
+
+- ✅ Exception Filter global pour normalisation des erreurs
+- ✅ Service PDF amélioré avec modèle professionnel
+- ✅ Service Email avec templates HTML
+- ✅ DTOs avec validation class-validator (Products)
+- ✅ Pagination, tri et recherche sur Products
+- ✅ Tests unitaires et E2E complets (35 tests)
 

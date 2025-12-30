@@ -1,91 +1,194 @@
 import * as request from 'supertest';
 import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('Products e2e', () => {
-  let app: INestApplication;
-  let prisma: PrismaService;
+	let app: INestApplication;
+	let prisma: PrismaService;
 
-  beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+	beforeAll(async () => {
+		const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+		app = moduleRef.createNestApplication();
+		app.setGlobalPrefix('api');
+		app.useGlobalPipes(
+			new ValidationPipe({
+				whitelist: true,
+				transform: true,
+				forbidUnknownValues: false
+			})
+		);
+		await app.init();
+		prisma = app.get(PrismaService);
+	});
 
-    app = moduleRef.createNestApplication();
-    await app.init();
+	afterAll(async () => {
+		await app.close();
+	});
 
-    prisma = app.get(PrismaService);
+	beforeEach(async () => {
+		// Nettoyer la base avant chaque test
+		await prisma.product.deleteMany({});
+	});
 
-    // Nettoyage minimal des données liées
-    await prisma.subscription.deleteMany();
-    await prisma.plan.deleteMany();
-    await prisma.product.deleteMany();
-  });
+	describe('POST /products', () => {
+		it('devrait créer un produit valide', () => {
+			return request(app.getHttpServer())
+				.post('/api/products')
+				.send({
+					name: 'Test Product',
+					sku: 'TEST-001',
+					unitPrice: 100
+				})
+				.expect(201)
+				.expect((res) => {
+					expect(res.body).toHaveProperty('id');
+					expect(res.body.name).toBe('Test Product');
+					expect(res.body.sku).toBe('TEST-001');
+					expect(Number(res.body.unitPrice)).toBe(100);
+				});
+		});
 
-  afterAll(async () => {
-    await app.close();
-  });
+		it('devrait rejeter un produit sans nom', () => {
+			return request(app.getHttpServer())
+				.post('/api/products')
+				.send({
+					sku: 'TEST-001',
+					unitPrice: 100
+				})
+				.expect(400)
+				.expect((res) => {
+					expect(res.body.statusCode).toBe(400);
+					expect(res.body.message || res.body.errors).toBeDefined();
+				});
+		});
 
-  it('create -> list -> get -> update -> delete', async () => {
-    // CREATE
-    const created = await request(app.getHttpServer())
-      .post('/products')
-      .send({
-        name: 'Produit test',
-        sku: 'TEST-PROD',
-        unitPrice: 99,
-      })
-      .expect(201)
-      .then((r) => r.body);
+		it('devrait rejeter un prix négatif', () => {
+			return request(app.getHttpServer())
+				.post('/api/products')
+				.send({
+					name: 'Test Product',
+					unitPrice: -10
+				})
+				.expect(400);
+		});
+	});
 
-    expect(created.id).toBeDefined();
-    expect(created.name).toBe('Produit test');
+	describe('GET /products', () => {
+		beforeEach(async () => {
+			// Créer des produits de test
+			await prisma.product.createMany({
+				data: [
+					{ name: 'Product 1', sku: 'P1', unitPrice: 100 },
+					{ name: 'Product 2', sku: 'P2', unitPrice: 200 },
+					{ name: 'Product 3', sku: 'P3', unitPrice: 300 },
+					{ name: 'Test Product', sku: 'TEST', unitPrice: 150 }
+				]
+			});
+		});
 
-    // LIST
-    const list = await request(app.getHttpServer())
-      .get('/products')
-      .expect(200)
-      .then((r) => r.body);
+		it('devrait retourner tous les produits avec pagination', () => {
+			return request(app.getHttpServer())
+				.get('/api/products')
+				.query({ page: 1, pageSize: 2 })
+				.expect(200)
+				.expect((res) => {
+					expect(res.body).toHaveProperty('items');
+					expect(res.body).toHaveProperty('total');
+					expect(res.body).toHaveProperty('page');
+					expect(res.body).toHaveProperty('pageSize');
+					expect(res.body.items).toHaveLength(2);
+					expect(res.body.total).toBe(4);
+					expect(res.body.page).toBe(1);
+					expect(res.body.pageSize).toBe(2);
+				});
+		});
 
-    expect(Array.isArray(list)).toBe(true);
-    expect(list.length).toBeGreaterThanOrEqual(1);
+		it('devrait rechercher par nom ou SKU', () => {
+			return request(app.getHttpServer())
+				.get('/api/products')
+				.query({ search: 'Test' })
+				.expect(200)
+				.expect((res) => {
+					expect(res.body.items.length).toBeGreaterThan(0);
+					expect(res.body.items.some((p: any) => p.name.includes('Test') || p.sku.includes('Test'))).toBe(true);
+				});
+		});
 
-    // GET
-    const retrieved = await request(app.getHttpServer())
-      .get(`/products/${created.id}`)
-      .expect(200)
-      .then((r) => r.body);
+		it('devrait trier par nom ascendant', () => {
+			return request(app.getHttpServer())
+				.get('/api/products')
+				.query({ sortBy: 'name', order: 'asc' })
+				.expect(200)
+				.expect((res) => {
+					const names = res.body.items.map((p: any) => p.name);
+					const sorted = [...names].sort();
+					expect(names).toEqual(sorted);
+				});
+		});
 
-    expect(retrieved.id).toBe(created.id);
-    expect(retrieved.name).toBe('Produit test');
+		it('devrait utiliser les valeurs par défaut si aucun paramètre', () => {
+			return request(app.getHttpServer())
+				.get('/api/products')
+				.expect(200)
+				.expect((res) => {
+					expect(res.body.page).toBe(1);
+					expect(res.body.pageSize).toBe(20);
+				});
+		});
+	});
 
-    // UPDATE
-    const updated = await request(app.getHttpServer())
-      .patch(`/products/${created.id}`)
-      .send({ name: 'Produit modifie' })
-      .expect(200)
-      .then((r) => r.body);
+	describe('GET /products/:id', () => {
+		it('devrait retourner un produit existant', async () => {
+			const product = await prisma.product.create({
+				data: { name: 'Test Product', unitPrice: 100 }
+			});
 
-    expect(updated.name).toBe('Produit modifie');
+			return request(app.getHttpServer())
+				.get(`/api/products/${product.id}`)
+				.expect(200)
+				.expect((res) => {
+					expect(res.body.id).toBe(product.id);
+					expect(res.body.name).toBe('Test Product');
+				});
+		});
 
-    // DELETE
-    await request(app.getHttpServer())
-      .delete(`/products/${created.id}`)
-      .expect(200);
+		it('devrait retourner 404 pour un produit inexistant', () => {
+			return request(app.getHttpServer())
+				.get('/api/products/99999')
+				.expect(404);
+		});
+	});
 
-    // Vérifier qu'il n'existe plus
-    await request(app.getHttpServer())
-      .get(`/products/${created.id}`)
-      .expect(404);
-  });
+	describe('PATCH /products/:id', () => {
+		it('devrait mettre à jour un produit', async () => {
+			const product = await prisma.product.create({
+				data: { name: 'Old Name', unitPrice: 100 }
+			});
 
-  it('returns 404 for unknown product', async () => {
-    await request(app.getHttpServer())
-      .get('/products/999999')
-      .expect(404);
-  });
+			return request(app.getHttpServer())
+				.patch(`/api/products/${product.id}`)
+				.send({ name: 'New Name' })
+				.expect(200)
+				.expect((res) => {
+					expect(res.body.name).toBe('New Name');
+				});
+		});
+	});
+
+	describe('DELETE /products/:id', () => {
+		it('devrait supprimer un produit', async () => {
+			const product = await prisma.product.create({
+				data: { name: 'To Delete', unitPrice: 100 }
+			});
+
+			return request(app.getHttpServer())
+				.delete(`/api/products/${product.id}`)
+				.expect(200)
+				.expect((res) => {
+					expect(res.body).toHaveProperty('success', true);
+				});
+		});
+	});
 });
-
-

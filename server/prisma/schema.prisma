@@ -24,49 +24,52 @@ enum QuoteStatus {
 }
 
 model Client {
-  id        Int       @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  address   String?
+  id                Int            @id @default(autoincrement())
+  name              String
+  email             String         @unique
+  address           String?
   // B2B/B2C
-  isCompany Boolean   @default(false)
-  companyName String?
-  vatNumber  String?
-  isVatExempt Boolean  @default(false)
+  isCompany         Boolean        @default(false)
+  companyName       String?
+  vatNumber         String?
+  isVatExempt       Boolean        @default(false)
   taxRateOverrideId Int?
-  taxRateOverride   TaxRate? @relation("ClientTaxOverride", fields: [taxRateOverrideId], references: [id])
-  countryCode String? // ISO 3166-1 alpha-2
-  invoices  Invoice[]
-  quotes    Quote[]
-  subscriptions Subscription[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  taxRateOverride   TaxRate?       @relation("ClientTaxOverride", fields: [taxRateOverrideId], references: [id])
+  countryCode       String? // ISO 3166-1 alpha-2
+  invoices          Invoice[]
+  quotes            Quote[]
+  subscriptions     Subscription[]
+  creditNotes       CreditNote[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@index([email])
   @@index([name])
 }
 
 model Invoice {
-  id        Int           @id @default(autoincrement())
-  number    String        @unique
-  date      DateTime      @default(now())
-  dueDate   DateTime?
-  status    InvoiceStatus @default(DRAFT)
-  clientId  Int
-  client    Client        @relation(fields: [clientId], references: [id])
-  subscriptionId Int?
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  lines     InvoiceLine[]
-  subtotal  Decimal       @default(0)
-  tax       Decimal       @default(0)
-  total     Decimal       @default(0)
-  balance   Decimal       @default(0)
-  currency  String        @default("EUR")
-  legalMention String?
-  payments  Payment[]
-  emailEvents EmailEvent[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id                 Int                     @id @default(autoincrement())
+  number             String                  @unique
+  date               DateTime                @default(now())
+  dueDate            DateTime?
+  status             InvoiceStatus           @default(DRAFT)
+  clientId           Int
+  client             Client                  @relation(fields: [clientId], references: [id])
+  subscriptionId     Int?
+  subscription       Subscription?           @relation(fields: [subscriptionId], references: [id])
+  lines              InvoiceLine[]
+  subtotal           Decimal                 @default(0)
+  tax                Decimal                 @default(0)
+  total              Decimal                 @default(0)
+  balance            Decimal                 @default(0)
+  currency           String                  @default("EUR")
+  legalMention       String?
+  payments           Payment[]
+  emailEvents        EmailEvent[]
+  creditNotes        CreditNote[]            @relation("InvoiceCreditNotes")
+  appliedCreditNotes CreditNoteApplication[] @relation("AppliedCreditNotes")
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
 
   @@index([status, date])
   @@index([clientId])
@@ -74,37 +77,98 @@ model Invoice {
 }
 
 model InvoiceLine {
-  id          Int      @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   invoiceId   Int
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
   description String
-  quantity    Int      @default(1)
-  unitPrice   Decimal  @default(0)
-  taxRate     Decimal  @default(0) // ex: 0.2 pour 20%
-  taxAmount   Decimal  @default(0)
-  total       Decimal  @default(0)
+  quantity    Int     @default(1)
+  unitPrice   Decimal @default(0)
+  taxRate     Decimal @default(0) // ex: 0.2 pour 20%
+  taxAmount   Decimal @default(0)
+  total       Decimal @default(0)
+}
+
+enum CreditNoteStatus {
+  DRAFT
+  SENT
+  APPLIED
+  CANCELLED
+}
+
+model CreditNote {
+  id                Int                     @id @default(autoincrement())
+  number            String                  @unique
+  date              DateTime                @default(now())
+  status            CreditNoteStatus        @default(DRAFT)
+  invoiceId         Int // Facture d'origine
+  invoice           Invoice                 @relation("InvoiceCreditNotes", fields: [invoiceId], references: [id])
+  clientId          Int
+  client            Client                  @relation(fields: [clientId], references: [id])
+  lines             CreditNoteLine[]
+  subtotal          Decimal                 @default(0)
+  tax               Decimal                 @default(0)
+  total             Decimal                 @default(0) // Montant négatif
+  appliedAmount     Decimal                 @default(0) // Montant déjà imputé
+  currency          String                  @default("EUR")
+  legalMention      String?
+  accountingEntryId Int?
+  accountingEntry   JournalEntry?           @relation(fields: [accountingEntryId], references: [id])
+  applications      CreditNoteApplication[] // Factures sur lesquelles l'avoir a été imputé
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@index([status, date])
+  @@index([clientId])
+  @@index([invoiceId])
+  @@index([number])
+}
+
+model CreditNoteLine {
+  id           Int        @id @default(autoincrement())
+  creditNoteId Int
+  creditNote   CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  description  String
+  quantity     Int        @default(1)
+  unitPrice    Decimal    @default(0)
+  taxRate      Decimal    @default(0)
+  taxAmount    Decimal    @default(0)
+  total        Decimal    @default(0)
+}
+
+model CreditNoteApplication {
+  id           Int        @id @default(autoincrement())
+  creditNoteId Int
+  creditNote   CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  invoiceId    Int
+  invoice      Invoice    @relation("AppliedCreditNotes", fields: [invoiceId], references: [id])
+  amount       Decimal    @default(0) // Montant imputé sur cette facture
+  appliedAt    DateTime   @default(now())
+  createdAt    DateTime   @default(now())
+
+  @@index([creditNoteId])
+  @@index([invoiceId])
 }
 
 model Quote {
-  id        Int          @id @default(autoincrement())
-  number    String       @unique
-  date      DateTime     @default(now())
-  expiryDate DateTime?
-  status    QuoteStatus  @default(DRAFT)
-  clientId  Int
-  client    Client       @relation(fields: [clientId], references: [id])
-  lines     QuoteLine[]
-  subtotal  Decimal      @default(0)
-  tax       Decimal      @default(0)
-  total     Decimal      @default(0)
-  publicToken String?    @unique
-  sentAt     DateTime?
-  acceptedAt DateTime?
-  acceptedIp String?
-  views     QuoteView[]
+  id          Int          @id @default(autoincrement())
+  number      String       @unique
+  date        DateTime     @default(now())
+  expiryDate  DateTime?
+  status      QuoteStatus  @default(DRAFT)
+  clientId    Int
+  client      Client       @relation(fields: [clientId], references: [id])
+  lines       QuoteLine[]
+  subtotal    Decimal      @default(0)
+  tax         Decimal      @default(0)
+  total       Decimal      @default(0)
+  publicToken String?      @unique
+  sentAt      DateTime?
+  acceptedAt  DateTime?
+  acceptedIp  String?
+  views       QuoteView[]
   emailEvents EmailEvent[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model QuoteLine {
@@ -120,14 +184,14 @@ model QuoteLine {
 }
 
 model TaxRate {
-  id        Int      @id @default(autoincrement())
-  name      String
-  rate      Decimal  // ex: 0.2 pour 20%
-  isDefault Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              Int       @id @default(autoincrement())
+  name            String
+  rate            Decimal // ex: 0.2 pour 20%
+  isDefault       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   // back-relations
-  clientsOverride Client[] @relation("ClientTaxOverride")
+  clientsOverride Client[]  @relation("ClientTaxOverride")
   productsDefault Product[] @relation("ProductDefaultTaxRate")
 }
 
@@ -139,16 +203,16 @@ enum ProductKind {
 }
 
 model Product {
-  id               Int      @id @default(autoincrement())
+  id               Int         @id @default(autoincrement())
   name             String
-  sku              String?  @unique
+  sku              String?     @unique
   kind             ProductKind @default(SERVICE)
-  unitPrice        Decimal?  // optionnel si via plan
+  unitPrice        Decimal? // optionnel si via plan
   defaultTaxRateId Int?
-  defaultTaxRate   TaxRate? @relation("ProductDefaultTaxRate", fields: [defaultTaxRateId], references: [id])
+  defaultTaxRate   TaxRate?    @relation("ProductDefaultTaxRate", fields: [defaultTaxRateId], references: [id])
   plans            Plan[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
 enum BillingInterval {
@@ -157,17 +221,17 @@ enum BillingInterval {
 }
 
 model Plan {
-  id         Int      @id @default(autoincrement())
-  productId  Int
-  product    Product  @relation(fields: [productId], references: [id])
-  name       String
-  amount     Decimal  @default(0)
-  currency   String   @default("EUR")
-  interval   BillingInterval
-  trialDays  Int?
-  metered    Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            Int             @id @default(autoincrement())
+  productId     Int
+  product       Product         @relation(fields: [productId], references: [id])
+  name          String
+  amount        Decimal         @default(0)
+  currency      String          @default("EUR")
+  interval      BillingInterval
+  trialDays     Int?
+  metered       Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   subscriptions Subscription[]
 }
 
@@ -179,20 +243,20 @@ enum SubscriptionStatus {
 }
 
 model Subscription {
-  id                 Int       @id @default(autoincrement())
+  id                 Int                @id @default(autoincrement())
   clientId           Int
-  client             Client    @relation(fields: [clientId], references: [id])
+  client             Client             @relation(fields: [clientId], references: [id])
   planId             Int
-  plan               Plan      @relation(fields: [planId], references: [id])
+  plan               Plan               @relation(fields: [planId], references: [id])
   status             SubscriptionStatus @default(ACTIVE)
-  quantity           Int       @default(1)
-  startDate          DateTime  @default(now())
+  quantity           Int                @default(1)
+  startDate          DateTime           @default(now())
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
-  cancelAtPeriodEnd  Boolean   @default(false)
+  cancelAtPeriodEnd  Boolean            @default(false)
   canceledAt         DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
   invoices           Invoice[]
 }
 
@@ -220,29 +284,29 @@ enum FilingStatus {
 }
 
 model Filing {
-  id          Int           @id @default(autoincrement())
+  id          Int                @id @default(autoincrement())
   type        FilingType
   authority   AuthorityType
   periodStart DateTime
   periodEnd   DateTime
   dueDate     DateTime
-  status      FilingStatus  @default(DRAFT)
+  status      FilingStatus       @default(DRAFT)
   notes       String?
   lines       FilingLine[]
-  amountDue   Decimal       @default(0)
-  amountPaid  Decimal       @default(0)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  amountDue   Decimal            @default(0)
+  amountPaid  Decimal            @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
   payments    AuthorityPayment[]
 }
 
 model FilingLine {
-  id          Int      @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   filingId    Int
-  filing      Filing   @relation(fields: [filingId], references: [id])
-  taxRate     Decimal  @default(0)
-  taxableBase Decimal  @default(0)
-  taxAmount   Decimal  @default(0)
+  filing      Filing  @relation(fields: [filingId], references: [id])
+  taxRate     Decimal @default(0)
+  taxableBase Decimal @default(0)
+  taxAmount   Decimal @default(0)
 }
 
 model AuthorityPayment {
@@ -278,7 +342,7 @@ model EmailEvent {
   id         Int      @id @default(autoincrement())
   quoteId    Int?
   invoiceId  Int?
-  type       String   // delivered | opened | clicked | bounced | sent
+  type       String // delivered | opened | clicked | bounced | sent
   providerId String?
   meta       Json?
   createdAt  DateTime @default(now())
@@ -295,8 +359,6 @@ model QuoteView {
   createdAt DateTime @default(now())
 }
 
-
-
 // Comptabilité
 
 enum AccountType {
@@ -312,22 +374,22 @@ enum AccountType {
 }
 
 model Account {
-  id        Int         @id @default(autoincrement())
-  code      String      @unique
+  id        Int           @id @default(autoincrement())
+  code      String        @unique
   name      String
   type      AccountType
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   lines     JournalLine[]
 }
 
 model Journal {
-  id        Int           @id @default(autoincrement())
-  code      String        @unique
+  id        Int            @id @default(autoincrement())
+  code      String         @unique
   name      String
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   entries   JournalEntry[]
 }
 
@@ -337,28 +399,29 @@ enum EntryStatus {
 }
 
 model JournalEntry {
-  id         Int          @id @default(autoincrement())
-  journalId  Int
-  journal    Journal      @relation(fields: [journalId], references: [id])
-  date       DateTime     @default(now())
-  reference  String?
-  memo       String?
-  status     EntryStatus  @default(DRAFT)
-  totalDebit Decimal      @default(0)
-  totalCredit Decimal     @default(0)
-  createdAt  DateTime     @default(now())
-  lines      JournalLine[]
+  id          Int           @id @default(autoincrement())
+  journalId   Int
+  journal     Journal       @relation(fields: [journalId], references: [id])
+  date        DateTime      @default(now())
+  reference   String?
+  memo        String?
+  status      EntryStatus   @default(DRAFT)
+  totalDebit  Decimal       @default(0)
+  totalCredit Decimal       @default(0)
+  creditNotes CreditNote[]
+  createdAt   DateTime      @default(now())
+  lines       JournalLine[]
 }
 
 model JournalLine {
-  id         Int           @id @default(autoincrement())
-  entryId    Int
-  entry      JournalEntry  @relation(fields: [entryId], references: [id])
-  accountId  Int
-  account    Account       @relation(fields: [accountId], references: [id])
+  id          Int          @id @default(autoincrement())
+  entryId     Int
+  entry       JournalEntry @relation(fields: [entryId], references: [id])
+  accountId   Int
+  account     Account      @relation(fields: [accountId], references: [id])
   description String?
-  debit      Decimal       @default(0)
-  credit     Decimal       @default(0)
+  debit       Decimal      @default(0)
+  credit      Decimal      @default(0)
 }
 
 // Prospects
@@ -406,40 +469,40 @@ enum SourceType {
 }
 
 model Prospect {
-  id            Int            @id @default(autoincrement())
-  companyName   String
-  industry      String
-  size          CompanySize
-  website       String?
-  email         String?
-  phone         String?
-  address       String?
-  city          String?
-  country       String
-  revenue       Decimal?
-  employees     Int?
-  description   String?
-  painPoints    String?        // JSON array
-  budget        BudgetRange?
-  decisionMakerName String?
+  id                    Int            @id @default(autoincrement())
+  companyName           String
+  industry              String
+  size                  CompanySize
+  website               String?
+  email                 String?
+  phone                 String?
+  address               String?
+  city                  String?
+  country               String
+  revenue               Decimal?
+  employees             Int?
+  description           String?
+  painPoints            String? // JSON array
+  budget                BudgetRange?
+  decisionMakerName     String?
   decisionMakerPosition String?
-  decisionMakerEmail String?
-  decisionMakerPhone String?
+  decisionMakerEmail    String?
+  decisionMakerPhone    String?
   decisionMakerLinkedin String?
-  status        ProspectStatus @default(NEW)
-  sourceType    SourceType     @default(DIRECT)
-  sourceName    String?
-  sourceCost    Decimal?
-  sourceConversionRate Decimal?
-  score         Int            @default(50) // 0-100
-  priority      Priority       @default(MEDIUM)
-  assignedTo   String?
-  lastContact   DateTime?
-  nextFollowUp  DateTime?
-  notes         String?        // JSON array
-  tags          String?        // JSON array
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  status                ProspectStatus @default(NEW)
+  sourceType            SourceType     @default(DIRECT)
+  sourceName            String?
+  sourceCost            Decimal?
+  sourceConversionRate  Decimal?
+  score                 Int            @default(50) // 0-100
+  priority              Priority       @default(MEDIUM)
+  assignedTo            String?
+  lastContact           DateTime?
+  nextFollowUp          DateTime?
+  notes                 String? // JSON array
+  tags                  String? // JSON array
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
   @@index([companyName])
   @@index([industry])
@@ -454,18 +517,18 @@ enum PackType {
 }
 
 model Pack {
-  id          Int       @id @default(autoincrement())
-  name        String
-  type        PackType
-  description String
-  details     String
-  products    String?   // JSON array of product IDs
-  totalHours  Int       @default(0)
-  totalPrice  Decimal   @default(0)
-  isTemplate  Boolean   @default(false)
-  templateId  String?
-  features    String?   // JSON array
-  deliveryTime Int?     // days
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           Int      @id @default(autoincrement())
+  name         String
+  type         PackType
+  description  String
+  details      String
+  products     String? // JSON array of product IDs
+  totalHours   Int      @default(0)
+  totalPrice   Decimal  @default(0)
+  isTemplate   Boolean  @default(false)
+  templateId   String?
+  features     String? // JSON array
+  deliveryTime Int? // days
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

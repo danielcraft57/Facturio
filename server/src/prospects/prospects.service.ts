@@ -1,42 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
-
-export interface CreateProspectDto {
-	companyName: string;
-	industry: string;
-	size: string;
-	website?: string;
-	email?: string;
-	phone?: string;
-	address?: string;
-	city?: string;
-	country: string;
-	revenue?: number;
-	employees?: number;
-	description?: string;
-	painPoints?: string[];
-	budget?: string;
-	decisionMaker?: {
-		name?: string;
-		position?: string;
-		email?: string;
-		phone?: string;
-		linkedin?: string;
-	};
-	source?: string;
-	score?: number;
-	priority?: string;
-	assignedTo?: string;
-	notes?: string[];
-	tags?: string[];
-}
-
-export interface UpdateProspectDto extends Partial<CreateProspectDto> {
-	status?: string;
-	lastContact?: string | Date;
-	nextFollowUp?: string | Date;
-}
+import { CreateProspectDto } from './dto/create-prospect.dto';
+import { UpdateProspectDto } from './dto/update-prospect.dto';
 
 @Injectable()
 export class ProspectsService {
@@ -78,8 +44,8 @@ export class ProspectsService {
 	}
 
 	async findAll(query: ListQueryDto) {
-		const page = query.page ?? 1;
-		const pageSize = query.pageSize ?? 20;
+		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
+		const pageSize = query?.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
 		const skip = (page - 1) * pageSize;
 
 		const where: any = {};

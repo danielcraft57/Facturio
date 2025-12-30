@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import { ProspectsService, CreateProspectDto, UpdateProspectDto } from './prospects.service';
+import { ProspectsService } from './prospects.service';
+import { CreateProspectDto } from './dto/create-prospect.dto';
+import { UpdateProspectDto } from './dto/update-prospect.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 
 @Controller('prospects')

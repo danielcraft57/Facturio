@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import { PacksService, CreatePackDto, UpdatePackDto } from './packs.service';
+import { PacksService } from './packs.service';
+import { CreatePackDto } from './dto/create-pack.dto';
+import { UpdatePackDto } from './dto/update-pack.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 
 @Controller('packs')

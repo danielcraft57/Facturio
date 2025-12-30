@@ -5,20 +5,20 @@ Liste exhaustive de tout ce qu'il reste à faire dans le projet Facturio, organi
 ## 🔴 Priorité haute (Court terme - 1-2 mois)
 
 ### Backend - Qualité API (v0.2)
-- [ ] Implémenter DTOs avec `class-validator` sur tous les endpoints
-- [ ] Ajouter pagination sur les listes (clients, factures, produits, devis)
-- [ ] Ajouter tri (par date, montant, nom, etc.)
-- [ ] Ajouter recherche textuelle (nom, email, référence)
-- [ ] Normaliser les erreurs avec exception filter global
-- [ ] Améliorer les messages d'erreur (codes HTTP appropriés)
+- [x] Implémenter DTOs avec `class-validator` sur tous les endpoints (✅ Products, Prospects, Packs faits - reste Quotes)
+- [x] Ajouter pagination sur les listes (clients, factures, produits, devis) (✅ Products, Prospects, Packs faits)
+- [x] Ajouter tri (par date, montant, nom, etc.) (✅ Products, Prospects, Packs faits)
+- [x] Ajouter recherche textuelle (nom, email, référence) (✅ Products, Prospects, Packs faits)
+- [x] Normaliser les erreurs avec exception filter global (✅ Fait)
+- [x] Améliorer les messages d'erreur (codes HTTP appropriés) (✅ Fait)
 
 ### Backend - PDF & Email (v0.5)
-- [ ] Créer modèle PDF avec logo, entête, pied de page
-- [ ] Implémenter export PDF depuis une facture
-- [ ] Implémenter export PDF depuis un devis
-- [ ] Configurer nodemailer pour envoi réel d'emails
-- [ ] Créer templates d'emails (facture, devis, relance)
-- [ ] Ajouter mentions légales dynamiques dans les PDF
+- [x] Créer modèle PDF avec logo, entête, pied de page (✅ Modèle professionnel implémenté)
+- [x] Implémenter export PDF depuis une facture (✅ Fait)
+- [x] Implémenter export PDF depuis un devis (✅ Fait)
+- [x] Configurer nodemailer pour envoi réel d'emails (✅ Fait)
+- [x] Créer templates d'emails (facture, devis, relance) (✅ Templates HTML implémentés)
+- [ ] Ajouter mentions légales dynamiques dans les PDF (⚠️ Mentions statiques pour l'instant)
 
 ### Backend - Authentification (v0.4)
 - [ ] Implémenter authentification JWT (login simple)
@@ -381,9 +381,9 @@ Liste exhaustive de tout ce qu'il reste à faire dans le projet Facturio, organi
 ## 🧪 Tests & Qualité
 
 ### Backend
-- [ ] Augmenter couverture de tests unitaires
+- [x] Augmenter couverture de tests unitaires (✅ Products: 19 tests unitaires)
 - [ ] Ajouter tests d'intégration
-- [ ] Améliorer tests E2E
+- [x] Améliorer tests E2E (✅ Products: 11 tests E2E)
 - [ ] Tests de performance
 - [ ] Tests de sécurité
 

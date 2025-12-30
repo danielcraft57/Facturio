@@ -1,18 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
-
-export interface CreatePackDto {
-	name: string;
-	type: string;
-	description: string;
-	details: string;
-	products: string[];
-	features?: string[];
-	deliveryTime?: number;
-}
-
-export interface UpdatePackDto extends Partial<CreatePackDto> {}
+import { CreatePackDto } from './dto/create-pack.dto';
+import { UpdatePackDto } from './dto/update-pack.dto';
 
 @Injectable()
 export class PacksService {
@@ -47,8 +37,8 @@ export class PacksService {
 	}
 
 	async findAll(query: ListQueryDto) {
-		const page = query.page ?? 1;
-		const pageSize = query.pageSize ?? 20;
+		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
+		const pageSize = query?.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
 		const skip = (page - 1) * pageSize;
 
 		const where: any = {};
