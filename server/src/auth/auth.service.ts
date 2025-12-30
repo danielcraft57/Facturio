@@ -5,6 +5,18 @@ import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 
+/**
+ * Service d'authentification
+ * 
+ * Gère :
+ * - L'inscription (signup) avec création d'organisation
+ * - La connexion (login) avec vérification du mot de passe
+ * - L'authentification Google OAuth
+ * - La génération de tokens JWT
+ * - La gestion des sessions via cookies
+ * 
+ * @see AuthController pour les endpoints API
+ */
 @Injectable()
 export class AuthService {
 	constructor(
@@ -12,6 +24,31 @@ export class AuthService {
 		private jwtService: JwtService,
 	) {}
 
+	/**
+	 * Inscription d'un nouvel utilisateur
+	 * 
+	 * Crée :
+	 * 1. Une nouvelle organisation
+	 * 2. Un utilisateur avec rôle ADMIN (premier utilisateur)
+	 * 3. Hash le mot de passe avec bcrypt (12 rounds)
+	 * 
+	 * @param data - Données d'inscription (email, password, firstName, lastName, organizationName)
+	 * @returns Token JWT et informations utilisateur
+	 * @throws {ConflictException} Si l'email existe déjà
+	 * 
+	 * @example
+	 * ```typescript
+	 * const result = await authService.signup({
+	 *   email: 'user@example.com',
+	 *   password: 'password123',
+	 *   firstName: 'John',
+	 *   lastName: 'Doe',
+	 *   organizationName: 'My Company'
+	 * });
+	 * // result.access_token = JWT token
+	 * // result.user = { id, email, firstName, lastName, role, organization }
+	 * ```
+	 */
 	async signup(data: SignupDto) {
 		// Vérifier si l'email existe déjà
 		const existingUser = await this.prisma.user.findUnique({
@@ -52,6 +89,28 @@ export class AuthService {
 		return this.generateTokens(user);
 	}
 
+	/**
+	 * Connexion d'un utilisateur existant
+	 * 
+	 * Vérifie :
+	 * - L'existence de l'utilisateur
+	 * - La validité du mot de passe (bcrypt)
+	 * - Le statut du compte (doit être ACTIVE)
+	 * 
+	 * Met à jour la date de dernière connexion.
+	 * 
+	 * @param data - Données de connexion (email, password)
+	 * @returns Token JWT et informations utilisateur
+	 * @throws {UnauthorizedException} Si email/mot de passe incorrect ou compte inactif
+	 * 
+	 * @example
+	 * ```typescript
+	 * const result = await authService.login({
+	 *   email: 'user@example.com',
+	 *   password: 'password123'
+	 * });
+	 * ```
+	 */
 	async login(data: LoginDto) {
 		const user = await this.prisma.user.findUnique({
 			where: { email: data.email },
@@ -85,6 +144,29 @@ export class AuthService {
 		return this.generateTokens(user);
 	}
 
+	/**
+	 * Valide et crée/connecte un utilisateur via Google OAuth
+	 * 
+	 * Logique :
+	 * 1. Cherche un utilisateur existant par googleId
+	 * 2. Si non trouvé, cherche par email
+	 * 3. Si trouvé par email, lie le compte Google
+	 * 4. Si aucun compte, crée un nouvel utilisateur avec organisation
+	 * 
+	 * @param googleUser - Données utilisateur depuis Google OAuth
+	 * @returns Token JWT et informations utilisateur
+	 * 
+	 * @example
+	 * ```typescript
+	 * const result = await authService.validateGoogleUser({
+	 *   googleId: '123456789',
+	 *   email: 'user@gmail.com',
+	 *   firstName: 'John',
+	 *   lastName: 'Doe',
+	 *   avatar: 'https://...'
+	 * });
+	 * ```
+	 */
 	async validateGoogleUser(googleUser: any) {
 		// Chercher utilisateur existant par googleId
 		let user = await this.prisma.user.findUnique({
@@ -157,6 +239,26 @@ export class AuthService {
 		return this.generateTokens(user);
 	}
 
+	/**
+	 * Lie un compte Google à un compte utilisateur existant
+	 * 
+	 * Permet à un utilisateur ayant créé un compte avec email/mot de passe
+	 * de lier son compte Google pour pouvoir se connecter via OAuth.
+	 * 
+	 * @param userId - ID de l'utilisateur
+	 * @param googleUser - Données Google OAuth
+	 * @returns Utilisateur mis à jour
+	 * @throws {ConflictException} Si le compte Google est déjà lié à un autre utilisateur
+	 * 
+	 * @example
+	 * ```typescript
+	 * await authService.linkGoogleAccount(1, {
+	 *   googleId: '123456789',
+	 *   email: 'user@gmail.com',
+	 *   avatar: 'https://...'
+	 * });
+	 * ```
+	 */
 	async linkGoogleAccount(userId: number, googleUser: any) {
 		const user = await this.prisma.user.findUnique({
 			where: { id: userId },
@@ -188,6 +290,20 @@ export class AuthService {
 		});
 	}
 
+	/**
+	 * Génère un token JWT pour un utilisateur
+	 * 
+	 * Le payload contient :
+	 * - sub: ID utilisateur
+	 * - email: Email utilisateur
+	 * - role: Rôle utilisateur
+	 * - organizationId: ID de l'organisation
+	 * 
+	 * @param user - Utilisateur avec organisation
+	 * @returns Token JWT et informations utilisateur (sans mot de passe)
+	 * 
+	 * @private
+	 */
 	private generateTokens(user: any) {
 		const payload = {
 			sub: user.id,

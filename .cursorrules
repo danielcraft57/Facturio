@@ -16,6 +16,20 @@ Adapte ton langage pour que le style soit plus humain, moins formaté, et ne res
 - N'utilise PAS d'icônes (emojis, symboles spéciaux) dans les README et autres fichiers de documentation 
 - Interdire l'utilisation des opérateurs de pipe (|) et des chaînages conditionnels (&&) dans les commandes. Exécuter les commandes séparément.
 
+- Documentation du code source
+  - Toujours documenter les classes, interfaces, méthodes publiques et privées importantes avec JSDoc
+  - Inclure une description claire de ce que fait chaque fonction/méthode
+  - Documenter les paramètres (@param) avec leur type et leur description
+  - Documenter les valeurs de retour (@returns) avec le type et la description
+  - Ajouter des exemples d'utilisation (@example) pour les méthodes complexes
+  - Documenter les exceptions possibles (@throws) avec le type et la raison
+  - Pour les services NestJS : documenter le rôle du service, ses dépendances et ses responsabilités principales
+  - Pour les controllers : documenter les endpoints, leurs paramètres et réponses
+  - Pour les DTOs : documenter chaque propriété avec sa validation et son usage
+  - Pour les tests : ajouter des commentaires expliquant ce qui est testé et pourquoi
+  - Utiliser un style de documentation cohérent dans tout le projet
+  - La documentation doit être en français et claire pour faciliter la maintenance
+
 - Git
   - Messages de commit en français, style Conventional Commits si possible.
   - Messages courts, clairs, orientés impact.

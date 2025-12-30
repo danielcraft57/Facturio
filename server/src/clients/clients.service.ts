@@ -4,11 +4,43 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 
-
+/**
+ * Service de gestion des clients
+ * 
+ * Gère le CRUD complet des clients avec :
+ * - Validation des données (nom, email)
+ * - Filtrage multi-tenant par organizationId
+ * - Pagination, recherche et tri
+ * - Gestion des taux de TVA personnalisés
+ * 
+ * @see ClientsController pour les endpoints API
+ */
 @Injectable()
 export class ClientsService {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Crée un nouveau client
+	 * 
+	 * Valide :
+	 * - Le nom (obligatoire)
+	 * - L'email (obligatoire, format valide)
+	 * 
+	 * @param data - Données du client
+	 * @param organizationId - ID de l'organisation (pour multi-tenant)
+	 * @returns Client créé
+	 * @throws {BadRequestException} Si validation échoue
+	 * 
+	 * @example
+	 * ```typescript
+	 * const client = await clientsService.create({
+	 *   name: 'Acme Corp',
+	 *   email: 'contact@acme.com',
+	 *   isCompany: true,
+	 *   countryCode: 'FR'
+	 * }, 1);
+	 * ```
+	 */
 	async create(data: CreateClientDto, organizationId?: number) {
 		// Validation nom
 		if (!data.name) {
@@ -37,6 +69,25 @@ export class ClientsService {
 		return this.prisma.client.create({ data: cleanData });
 	}
 
+	/**
+	 * Liste les clients avec pagination, recherche et tri
+	 * 
+	 * @param query - Paramètres de pagination/recherche/tri
+	 * @param organizationId - ID de l'organisation (filtre multi-tenant)
+	 * @returns Liste paginée de clients
+	 * 
+	 * @example
+	 * ```typescript
+	 * const result = await clientsService.findAll({
+	 *   page: 1,
+	 *   pageSize: 20,
+	 *   search: 'Acme',
+	 *   sortBy: 'name',
+	 *   order: 'asc'
+	 * }, 1);
+	 * // result = { items: [...], total: 50, page: 1, pageSize: 20 }
+	 * ```
+	 */
 	async findAll(query: ListQueryDto, organizationId?: number) {
 		const page = query.page ? parseInt(query.page.toString(), 10) : 1;
 		const pageSize = query.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
@@ -69,6 +120,14 @@ export class ClientsService {
 		return { items, total, page, pageSize };
 	}
 
+	/**
+	 * Récupère un client par ID
+	 * 
+	 * @param id - ID du client
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
+	 * @returns Client trouvé
+	 * @throws {NotFoundException} Si client non trouvé ou n'appartient pas à l'organisation
+	 */
 	async findOne(id: number, organizationId?: number) {
 		const where: any = { id };
 		if (organizationId) {
@@ -79,6 +138,15 @@ export class ClientsService {
 		return client;
 	}
 
+	/**
+	 * Met à jour un client
+	 * 
+	 * @param id - ID du client
+	 * @param data - Données de mise à jour (tous les champs optionnels)
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
+	 * @returns Client mis à jour
+	 * @throws {NotFoundException} Si client non trouvé
+	 */
 	async update(id: number, data: UpdateClientDto, organizationId?: number) {
 		await this.findOne(id, organizationId);
 		
@@ -91,6 +159,14 @@ export class ClientsService {
 		return this.prisma.client.update({ where: { id }, data: cleanData });
 	}
 
+	/**
+	 * Supprime un client
+	 * 
+	 * @param id - ID du client
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
+	 * @returns Confirmation de suppression
+	 * @throws {NotFoundException} Si client non trouvé
+	 */
 	async remove(id: number, organizationId?: number) {
 		await this.findOne(id, organizationId);
 		await this.prisma.client.delete({ where: { id } });

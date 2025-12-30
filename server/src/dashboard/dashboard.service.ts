@@ -1,10 +1,39 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * Service de dashboard
+ * 
+ * Fournit des statistiques agrégées pour le tableau de bord :
+ * - Revenus (total, mensuel, croissance)
+ * - Statistiques de factures (par statut)
+ * - Statistiques de clients
+ * - Top clients
+ * - Évolution des revenus
+ * 
+ * Utilise des agrégations SQL pour optimiser les performances.
+ * 
+ * @see DashboardController pour les endpoints API
+ */
 @Injectable()
 export class DashboardService {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Récupère les statistiques du dashboard
+	 * 
+	 * Calcule :
+	 * - Revenus totaux sur la période
+	 * - Revenus du mois en cours vs mois précédent (croissance)
+	 * - Répartition des factures par statut
+	 * - Nombre de clients
+	 * - Top clients (par CA)
+	 * - Évolution des revenus (mensuelle)
+	 * 
+	 * @param startDate - Date de début (optionnel, défaut: début du mois)
+	 * @param endDate - Date de fin (optionnel, défaut: maintenant)
+	 * @returns Statistiques complètes du dashboard
+	 */
 	async getStats(startDate?: string, endDate?: string) {
 		const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 		const end = endDate ? new Date(endDate) : new Date();

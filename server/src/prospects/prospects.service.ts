@@ -4,10 +4,29 @@ import { ListQueryDto } from '../common/dto/list-query.dto';
 import { CreateProspectDto } from './dto/create-prospect.dto';
 import { UpdateProspectDto } from './dto/update-prospect.dto';
 
+/**
+ * Service de gestion des prospects
+ * 
+ * Gère :
+ * - Le CRUD complet des prospects
+ * - Les informations détaillées (entreprise, décideur, source, score)
+ * - Les métriques (par statut, industrie, score moyen)
+ * - Le formatage des données (JSON parsing pour painPoints, notes, tags)
+ * 
+ * @see ProspectsController pour les endpoints API
+ */
 @Injectable()
 export class ProspectsService {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Crée un nouveau prospect
+	 * 
+	 * Convertit les données complexes (painPoints, notes, tags) en JSON pour le stockage.
+	 * 
+	 * @param data - Données du prospect
+	 * @returns Prospect créé et formaté
+	 */
 	async create(data: CreateProspectDto) {
 		const prospect = await this.prisma.prospect.create({
 			data: {
@@ -43,6 +62,12 @@ export class ProspectsService {
 		return this.formatProspect(prospect);
 	}
 
+	/**
+	 * Liste les prospects avec pagination, recherche et tri
+	 * 
+	 * @param query - Paramètres de pagination/recherche/tri
+	 * @returns Liste paginée de prospects formatés
+	 */
 	async findAll(query: ListQueryDto) {
 		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
 		const pageSize = query?.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
@@ -135,6 +160,18 @@ export class ProspectsService {
 		return { success: true };
 	}
 
+	/**
+	 * Récupère les métriques des prospects
+	 * 
+	 * Calcule :
+	 * - Total de prospects
+	 * - Répartition par statut
+	 * - Répartition par industrie
+	 * - Score moyen
+	 * - Taux de conversion (TODO: calculer depuis les données)
+	 * 
+	 * @returns Métriques agrégées
+	 */
 	async getMetrics() {
 		const total = await this.prisma.prospect.count();
 		const byStatus = await this.prisma.prospect.groupBy({

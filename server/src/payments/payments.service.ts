@@ -2,21 +2,47 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
 
+/**
+ * Données de création de paiement
+ */
 export interface CreatePaymentDto {
+	/** ID de la facture */
 	invoiceId: number;
+	/** Montant du paiement */
 	amount: number;
+	/** Date du paiement (optionnel) */
 	date?: string | Date;
+	/** Méthode de paiement (optionnel) */
 	method?: string;
+	/** Notes (optionnel) */
 	notes?: string;
 }
 
+/**
+ * Données de mise à jour de paiement
+ */
 export interface UpdatePaymentDto {
+	/** Montant du paiement */
 	amount?: number;
+	/** Date du paiement */
 	date?: string | Date;
+	/** Méthode de paiement */
 	method?: string;
+	/** Notes */
 	notes?: string;
 }
 
+/**
+ * Service de gestion des paiements
+ * 
+ * Gère :
+ * - La création de paiements sur factures
+ * - La mise à jour du solde et statut des factures
+ * - La comptabilisation automatique (écritures 512/411)
+ * - La validation des montants (ne peut pas dépasser le total)
+ * 
+ * @see PaymentsController pour les endpoints API
+ */
 @Injectable()
 export class PaymentsService {
 	constructor(

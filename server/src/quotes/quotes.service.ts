@@ -5,33 +5,78 @@ import { randomBytes } from 'crypto';
 import * as crypto from 'crypto';
 import { AccountingService } from '../accounting/accounting.service';
 
+/**
+ * Ligne de devis
+ */
 export interface QuoteLineDto {
+	/** Description de la ligne */
 	description: string;
+	/** Quantité */
 	quantity: number;
+	/** Prix unitaire (HT) */
 	unitPrice: number;
+	/** Taux de TVA (ex: 0.2 pour 20%) */
 	taxRate?: number;
 }
 
+/**
+ * Données de création de devis
+ */
 export interface CreateQuoteDto {
+	/** Numéro de devis (auto-généré si non fourni) */
 	number?: string;
+	/** ID du client */
 	clientId: number;
+	/** Date d'expiration */
 	expiryDate?: string | Date | null;
+	/** Statut du devis */
 	status?: QuoteStatus;
+	/** Lignes de devis */
 	lines?: QuoteLineDto[];
 }
 
+/**
+ * Données de mise à jour de devis
+ */
 export interface UpdateQuoteDto {
+	/** Numéro de devis */
 	number?: string;
+	/** ID du client */
 	clientId?: number;
+	/** Date d'expiration */
 	expiryDate?: string | Date | null;
+	/** Statut du devis */
 	status?: QuoteStatus;
+	/** Lignes de devis */
 	lines?: QuoteLineDto[];
 }
 
+/**
+ * Service de gestion des devis
+ * 
+ * Gère :
+ * - La création de devis avec numérotation automatique
+ * - Le calcul automatique des totaux (HT, TVA, TTC)
+ * - L'envoi de devis avec token public
+ * - La visualisation publique (tracking des vues)
+ * - L'acceptation/rejet publique
+ * - La comptabilisation hors-bilan (écritures DRAFT)
+ * - La contre-passation en cas de rejet/expiration
+ * 
+ * @see QuotesController pour les endpoints API
+ */
 @Injectable()
 export class QuotesService {
 	constructor(private readonly prisma: PrismaService, private readonly accounting: AccountingService) {}
 
+	/**
+	 * Contre-passe l'écriture hors-bilan d'un devis
+	 * 
+	 * Utilisé quand un devis est rejeté ou expiré.
+	 * 
+	 * @param quoteNumber - Numéro du devis
+	 * @private
+	 */
 	private async contraOffBalanceForQuote(quoteNumber: string): Promise<void> {
 		const entry = await this.prisma.journalEntry.findFirst({
 			where: { journal: { code: 'OD' }, reference: `DEV ${quoteNumber}` },
@@ -53,6 +98,13 @@ export class QuotesService {
 		});
 	}
 
+	/**
+	 * Calcule les totaux d'un devis (HT, TVA, TTC)
+	 * 
+	 * @param lines - Lignes de devis
+	 * @returns Totaux calculés
+	 * @private
+	 */
 	private computeTotals(lines: QuoteLineDto[] = []) {
 		let subtotal = 0;
 		let tax = 0;
@@ -65,6 +117,15 @@ export class QuotesService {
 		return { subtotal, tax, total: subtotal + tax };
 	}
 
+	/**
+	 * Génère le prochain numéro de devis
+	 * 
+	 * Format : DEV-YYYY-NNNN (ex: DEV-2024-0001)
+	 * Utilise un compteur par année.
+	 * 
+	 * @returns Numéro de devis unique
+	 * @private
+	 */
 	private async nextQuoteNumber(): Promise<string> {
 		const year = new Date().getFullYear();
 		const scope = `quote-${year}`;
@@ -77,6 +138,13 @@ export class QuotesService {
 		return `DEV-${year}-${padded}`;
 	}
 
+	/**
+	 * Crée un nouveau devis
+	 * 
+	 * @param data - Données du devis
+	 * @returns Devis créé avec lignes et client
+	 * @throws {BadRequestException} Si validation échoue
+	 */
 	async create(data: CreateQuoteDto) {
 		// Validation
 		if (!data.clientId) {
@@ -116,16 +184,38 @@ export class QuotesService {
 		});
 	}
 
+	/**
+	 * Liste tous les devis
+	 * 
+	 * @returns Liste des devis avec lignes et client, triés par date décroissante
+	 */
 	findAll() {
 		return this.prisma.quote.findMany({ orderBy: { createdAt: 'desc' }, include: { lines: true, client: true } });
 	}
 
+	/**
+	 * Récupère un devis par ID
+	 * 
+	 * @param id - ID du devis
+	 * @returns Devis avec lignes et client
+	 * @throws {NotFoundException} Si devis non trouvé
+	 */
 	async findOne(id: number) {
 		const quote = await this.prisma.quote.findUnique({ where: { id }, include: { lines: true, client: true } });
 		if (!quote) throw new NotFoundException('Devis non trouve');
 		return quote;
 	}
 
+	/**
+	 * Met à jour un devis
+	 * 
+	 * Si le statut passe à REJECTED ou EXPIRED, contre-passe l'écriture hors-bilan.
+	 * 
+	 * @param id - ID du devis
+	 * @param data - Données de mise à jour
+	 * @returns Devis mis à jour
+	 * @throws {NotFoundException} Si devis non trouvé
+	 */
 	async update(id: number, data: UpdateQuoteDto) {
 		await this.findOne(id);
 		const lines = data.lines ?? [];
@@ -170,6 +260,15 @@ export class QuotesService {
 		return randomBytes(24).toString('hex');
 	}
 
+	/**
+	 * Envoie un devis (création du token public)
+	 * 
+	 * Crée un token public unique et une écriture comptable hors-bilan (DRAFT).
+	 * 
+	 * @param id - ID du devis
+	 * @returns URL publique et confirmation
+	 * @throws {NotFoundException} Si devis non trouvé
+	 */
 	async send(id: number) {
 		const quote = await this.findOne(id);
 		const token = quote.publicToken ?? this.ensureToken();
@@ -194,6 +293,17 @@ export class QuotesService {
 		return { ok: true, publicUrl: `/public/quotes/${token}` };
 	}
 
+	/**
+	 * Visualise un devis via token public
+	 * 
+	 * Enregistre la visualisation (IP, user agent) pour le tracking.
+	 * 
+	 * @param token - Token public du devis
+	 * @param ip - Adresse IP du visiteur (optionnel)
+	 * @param userAgent - User agent du visiteur (optionnel)
+	 * @returns Informations du devis
+	 * @throws {NotFoundException} Si devis non trouvé
+	 */
 	async publicView(token: string, ip?: string, userAgent?: string) {
 		const quote = await this.prisma.quote.findUnique({ where: { publicToken: token } });
 		if (!quote) throw new NotFoundException('Devis introuvable');
@@ -202,6 +312,14 @@ export class QuotesService {
 		return { id: quote.id, number: quote.number, status: quote.status, clientId: quote.clientId } as any;
 	}
 
+	/**
+	 * Accepte un devis via token public
+	 * 
+	 * @param token - Token public du devis
+	 * @param ip - Adresse IP (optionnel)
+	 * @returns Confirmation d'acceptation
+	 * @throws {NotFoundException} Si devis non trouvé
+	 */
 	async publicAccept(token: string, ip?: string) {
 		const quote = await this.prisma.quote.findUnique({ where: { publicToken: token } });
 		if (!quote) throw new NotFoundException('Devis introuvable');
@@ -210,6 +328,15 @@ export class QuotesService {
 		return { status: 'accepted', id: updated.id } as any;
 	}
 
+	/**
+	 * Rejette un devis via token public
+	 * 
+	 * Contre-passe automatiquement l'écriture hors-bilan.
+	 * 
+	 * @param token - Token public du devis
+	 * @returns Confirmation de rejet
+	 * @throws {NotFoundException} Si devis non trouvé
+	 */
 	async publicReject(token: string) {
 		const quote = await this.prisma.quote.findUnique({ where: { publicToken: token } });
 		if (!quote) throw new NotFoundException('Devis introuvable');

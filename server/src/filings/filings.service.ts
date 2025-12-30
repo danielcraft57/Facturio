@@ -2,25 +2,71 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { AuthorityType, FilingStatus, FilingType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * Données de création de déclaration fiscale
+ */
 export interface CreateFilingDto {
+	/** Type de déclaration (VAT_CA3, VAT_CA12, URSSAF_MONTHLY, etc.) */
 	type: string;
+	/** Autorité (URSSAF, DGFIP, etc.) */
 	authority?: string;
-	period?: string; // Format: "2024-Q1", "2024-Q2", etc.
+	/** Période formatée (ex: "2024-Q1" pour trimestriel) */
+	period?: string;
+	/** Date de début de période */
 	periodStart?: string | Date;
+	/** Date de fin de période */
 	periodEnd?: string | Date;
+	/** Date d'échéance */
 	dueDate?: string | Date;
+	/** Notes */
 	notes?: string;
 }
 
+/**
+ * Données de mise à jour de déclaration
+ */
 export interface UpdateFilingDto {
+	/** Statut de la déclaration */
 	status?: FilingStatus;
+	/** Notes */
 	notes?: string;
 }
 
+/**
+ * Service de gestion des déclarations fiscales
+ * 
+ * Gère :
+ * - La création de déclarations (TVA, URSSAF, IS, CFE)
+ * - Le calcul automatique des montants (TVA CA3/CA12)
+ * - Le suivi des paiements
+ * - Le statut des déclarations (DRAFT, CALCULATED, FILED, PAID)
+ * 
+ * @see FilingsController pour les endpoints API
+ */
 @Injectable()
 export class FilingsService {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Crée une nouvelle déclaration fiscale
+	 * 
+	 * Supporte deux formats :
+	 * - Période formatée : "YYYY-QN" (ex: "2024-Q1")
+	 * - Dates directes : periodStart, periodEnd, dueDate
+	 * 
+	 * @param data - Données de la déclaration
+	 * @returns Déclaration créée
+	 * @throws {BadRequestException} Si format de période invalide
+	 * 
+	 * @example
+	 * ```typescript
+	 * const filing = await filingsService.create({
+	 *   type: 'VAT_CA3',
+	 *   authority: 'DGFIP',
+	 *   period: '2024-Q1'
+	 * });
+	 * ```
+	 */
 	create(data: CreateFilingDto) {
 		// Parser la période si elle est fournie
 		let periodStart: Date;
@@ -76,26 +122,71 @@ export class FilingsService {
 		});
 	}
 
+	/**
+	 * Liste toutes les déclarations
+	 * 
+	 * @returns Liste des déclarations avec lignes et paiements, triées par date décroissante
+	 */
 	findAll() {
 		return this.prisma.filing.findMany({ orderBy: { createdAt: 'desc' }, include: { lines: true, payments: true } });
 	}
 
+	/**
+	 * Récupère une déclaration par ID
+	 * 
+	 * @param id - ID de la déclaration
+	 * @returns Déclaration avec lignes et paiements
+	 * @throws {NotFoundException} Si déclaration non trouvée
+	 */
 	async findOne(id: number) {
 		const f = await this.prisma.filing.findUnique({ where: { id }, include: { lines: true, payments: true } });
 		if (!f) throw new NotFoundException('Declaration introuvable');
 		return f;
 	}
 
+	/**
+	 * Met à jour une déclaration
+	 * 
+	 * @param id - ID de la déclaration
+	 * @param data - Données de mise à jour
+	 * @returns Déclaration mise à jour
+	 */
 	update(id: number, data: UpdateFilingDto) {
 		return this.prisma.filing.update({ where: { id }, data });
 	}
 
+	/**
+	 * Supprime une déclaration
+	 * 
+	 * @param id - ID de la déclaration
+	 * @returns Confirmation de suppression
+	 * @throws {NotFoundException} Si déclaration non trouvée
+	 */
 	async remove(id: number) {
 		await this.findOne(id);
 		await this.prisma.filing.delete({ where: { id } });
 		return { success: true };
 	}
 
+	/**
+	 * Calcule une déclaration TVA (CA3 ou CA12)
+	 * 
+	 * Calcule automatiquement :
+	 * - La base taxable (HT des factures)
+	 * - Le montant de TVA
+	 * - Met à jour le statut à CALCULATED
+	 * 
+	 * @param id - ID de la déclaration
+	 * @returns Déclaration calculée avec montants
+	 * @throws {NotFoundException} Si déclaration non trouvée ou type non TVA
+	 * 
+	 * @example
+	 * ```typescript
+	 * const result = await filingsService.calculateVatReturn(1);
+	 * // result.vatAmount = montant TVA à payer
+	 * // result.invoiceCount = nombre de factures
+	 * ```
+	 */
 	// Calcul CA3/CA12 simplifie a partir des factures de la periode
 	async calculateVatReturn(id: number) {
 		const filing = await this.findOne(id);
@@ -130,6 +221,22 @@ export class FilingsService {
 		} as any;
 	}
 
+	/**
+	 * Ajoute un paiement à une déclaration
+	 * 
+	 * Met à jour automatiquement :
+	 * - Le montant payé total
+	 * - Le statut (PAID si montant payé >= montant dû)
+	 * 
+	 * @param id - ID de la déclaration
+	 * @param amount - Montant du paiement
+	 * @param date - Date du paiement (optionnel)
+	 * @param reference - Référence du paiement (optionnel)
+	 * @param notes - Notes (optionnel)
+	 * @returns Paiement créé
+	 * @throws {BadRequestException} Si montant invalide
+	 * @throws {NotFoundException} Si déclaration non trouvée
+	 */
 	async addAuthorityPayment(id: number, amount: number, date?: string | Date, reference?: string, notes?: string) {
 		await this.findOne(id);
 		if (amount < 0) throw new BadRequestException('Montant invalide');

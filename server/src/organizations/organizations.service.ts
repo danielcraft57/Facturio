@@ -1,10 +1,31 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * Service de gestion des organisations
+ * 
+ * Gère :
+ * - Le profil organisation (récupération, mise à jour)
+ * - Les informations légales (SIRET, SIREN, RCS, TVA, etc.)
+ * - Les informations URSSAF (activité, taux, seuils)
+ * - Les documents officiels validés
+ * - Les paramètres (devise, langue, timezone)
+ * 
+ * @see OrganizationsController pour les endpoints API
+ */
 @Injectable()
 export class OrganizationsService {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Récupère le profil d'une organisation
+	 * 
+	 * Inclut les documents officiels validés.
+	 * 
+	 * @param orgId - ID de l'organisation
+	 * @returns Organisation avec documents validés
+	 * @throws {NotFoundException} Si organisation non trouvée
+	 */
 	async getProfile(orgId: number) {
 		const organization = await this.prisma.organization.findUnique({
 			where: { id: orgId },
@@ -23,6 +44,20 @@ export class OrganizationsService {
 		return organization;
 	}
 
+	/**
+	 * Met à jour le profil d'une organisation
+	 * 
+	 * Permet de mettre à jour toutes les informations :
+	 * - Informations légales (nom, SIRET, SIREN, RCS, TVA)
+	 * - Statut et type d'entreprise
+	 * - Adresse et coordonnées
+	 * - Informations URSSAF
+	 * - Paramètres (devise, langue, timezone)
+	 * 
+	 * @param orgId - ID de l'organisation
+	 * @param data - Données de mise à jour
+	 * @returns Organisation mise à jour avec documents validés
+	 */
 	async updateProfile(orgId: number, data: any) {
 		return this.prisma.organization.update({
 			where: { id: orgId },

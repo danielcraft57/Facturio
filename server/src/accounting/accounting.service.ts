@@ -1,20 +1,61 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * Service de comptabilité
+ * 
+ * Gère la comptabilité en partie double avec :
+ * - Création et gestion des comptes (plan comptable)
+ * - Création et gestion des journaux
+ * - Écritures comptables équilibrées (débit = crédit)
+ * - Export FEC (Fichier des Écritures Comptables) pour la DGFIP
+ * - Balance des comptes
+ * - Grand livre
+ * - Écritures automatiques pour :
+ *   - Ventes (411/706/44571)
+ *   - Encaissements (512/411)
+ *   - Achats (622/44566/401)
+ *   - Paiements fournisseurs (401/512)
+ *   - Paie (641/645/421/431)
+ *   - Paiements salaires (421/512)
+ *   - Paiements URSSAF (431/512)
+ *   - Cotisations micro-social (645/431)
+ *   - Contribution C3S (635/447)
+ * 
+ * @see AccountingController pour les endpoints API
+ */
 @Injectable()
 export class AccountingService {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Liste tous les comptes du plan comptable
+	 * 
+	 * @returns Liste des comptes triés par code
+	 */
 	async listAccounts() {
 		return this.prisma.account.findMany({ orderBy: { code: 'asc' } });
 	}
 
+	/**
+	 * Crée un nouveau compte comptable
+	 * 
+	 * @param input - Code, nom et type du compte
+	 * @returns Compte créé
+	 * @throws {BadRequestException} Si le code existe déjà
+	 */
 	async createAccount(input: { code: string; name: string; type: string }) {
 		const existing = await this.prisma.account.findUnique({ where: { code: input.code } });
 		if (existing) throw new BadRequestException('Code de compte déjà existant');
 		return this.prisma.account.create({ data: { code: input.code, name: input.name, type: input.type as any } });
 	}
 
+	/**
+	 * Crée ou met à jour un journal comptable
+	 * 
+	 * @param input - Code et nom du journal
+	 * @returns Journal créé ou mis à jour
+	 */
 	async createJournal(input: { code: string; name: string }) {
 		return this.prisma.journal.upsert({
 			where: { code: input.code },
@@ -23,6 +64,29 @@ export class AccountingService {
 		});
 	}
 
+	/**
+	 * Poste une écriture comptable
+	 * 
+	 * L'écriture doit être équilibrée (total débit = total crédit).
+	 * Crée automatiquement les comptes s'ils n'existent pas (avec les comptes par défaut).
+	 * 
+	 * @param input - Journal, date, référence, libellé et lignes (débit/crédit)
+	 * @returns Écriture créée
+	 * @throws {BadRequestException} Si écriture non équilibrée ou aucune ligne
+	 * 
+	 * @example
+	 * ```typescript
+	 * await accountingService.postEntry({
+	 *   journalCode: 'VE',
+	 *   reference: 'VENTE FAC-2024-0001',
+	 *   lines: [
+	 *     { accountCode: '411', debit: 1200 },
+	 *     { accountCode: '706', credit: 1000 },
+	 *     { accountCode: '44571', credit: 200 }
+	 *   ]
+	 * });
+	 * ```
+	 */
 	async postEntry(input: {
 		journalCode: string;
 		date?: Date | string;
@@ -124,6 +188,24 @@ export class AccountingService {
 		return (n as any)?.toNumber?.() ?? Number(n);
 	}
 
+	/**
+	 * Exporte le FEC (Fichier des Écritures Comptables) pour la DGFIP
+	 * 
+	 * Format conforme à la norme FEC (arrêté du 29 juillet 2013).
+	 * Format pipe-delimited (|) avec en-tête.
+	 * 
+	 * @param params - Dates de début et fin (optionnel)
+	 * @returns Fichier FEC au format texte
+	 * 
+	 * @example
+	 * ```typescript
+	 * const fec = await accountingService.exportFEC({
+	 *   start: '2024-01-01',
+	 *   end: '2024-12-31'
+	 * });
+	 * // Sauvegarder dans un fichier .txt
+	 * ```
+	 */
 	async exportFEC(params: { start?: string; end?: string }): Promise<string> {
 		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
 		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
@@ -177,6 +259,17 @@ export class AccountingService {
 		return lines.join('\n');
 	}
 
+	/**
+	 * Calcule la balance des comptes
+	 * 
+	 * Pour chaque compte, calcule :
+	 * - Total débit
+	 * - Total crédit
+	 * - Solde (débit - crédit)
+	 * 
+	 * @param params - Dates de début et fin (optionnel)
+	 * @returns Balance triée par code de compte
+	 */
 	async getTrialBalance(params: { start?: string; end?: string }) {
 		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
 		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
@@ -203,6 +296,16 @@ export class AccountingService {
 			.sort((a, b) => a.accountCode.localeCompare(b.accountCode));
 	}
 
+	/**
+	 * Récupère le grand livre
+	 * 
+	 * Pour chaque compte (ou un compte spécifique), liste toutes les écritures
+	 * avec totaux débit/crédit.
+	 * 
+	 * @param params - Dates et code de compte optionnel
+	 * @returns Grand livre trié par code de compte
+	 * @throws {BadRequestException} Si le code de compte n'existe pas
+	 */
 	async getGeneralLedger(params: { start?: string; end?: string; accountCode?: string }) {
 		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
 		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
@@ -237,6 +340,15 @@ export class AccountingService {
 		return Object.values(ledger).sort((a: any, b: any) => a.accountCode.localeCompare(b.accountCode));
 	}
 
+	/**
+	 * Poste l'écriture de vente d'une facture
+	 * 
+	 * Écriture : 411 (Clients) / 706 (Prestations) / 44571 (TVA collectée)
+	 * 
+	 * @param params - ID facture et codes de comptes optionnels
+	 * @returns Écriture créée
+	 * @throws {BadRequestException} Si facture introuvable
+	 */
 	// Vente: 411/706/44571
 	async postInvoiceSale(params: { invoiceId: number; customerAccountCode?: string; revenueAccountCode?: string; vatCollectedAccountCode?: string }) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
@@ -254,6 +366,15 @@ export class AccountingService {
 		return this.postEntry({ journalCode: 'VE', reference: `VENTE ${invoice.number}`, lines });
 	}
 
+	/**
+	 * Poste l'écriture d'encaissement d'une facture
+	 * 
+	 * Écriture : 512 (Banque) / 411 (Clients)
+	 * 
+	 * @param params - ID facture, montant et codes de comptes optionnels
+	 * @returns Écriture créée
+	 * @throws {BadRequestException} Si facture introuvable
+	 */
 	// Encaissement: 512/411
 	async postInvoicePayment(params: { invoiceId: number; amount: number; bankAccountCode?: string; customerAccountCode?: string }) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
@@ -381,6 +502,15 @@ export class AccountingService {
 		});
 	}
 
+	/**
+	 * Poste l'écriture de cotisation micro-social (auto-entrepreneur)
+	 * 
+	 * Calcule la cotisation sur le CA de la période et crée l'écriture :
+	 * 645 (Charges sociales) / 431 (URSSAF)
+	 * 
+	 * @param params - Période, taux et codes de comptes optionnels
+	 * @returns Écriture créée
+	 */
 	// Micro-social (auto-entrepreneur): calcul d'une cotisation sur CA
 	async postMicroSocialContribution(params: { periodStart: string; periodEnd: string; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string }) {
 		const start = new Date(params.periodStart);

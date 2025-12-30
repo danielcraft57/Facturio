@@ -4,10 +4,26 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 
+/**
+ * Service de gestion des produits
+ * 
+ * Gère le CRUD complet des produits avec :
+ * - Gestion des SKU (codes produits)
+ * - Association avec des taux de TVA par défaut
+ * - Pagination, recherche et tri
+ * 
+ * @see ProductsController pour les endpoints API
+ */
 @Injectable()
 export class ProductsService {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Crée un nouveau produit
+	 * 
+	 * @param data - Données du produit (nom, SKU, prix, taux TVA, etc.)
+	 * @returns Produit créé avec taux de TVA par défaut
+	 */
 	create(data: CreateProductDto) {
 		return this.prisma.product.create({ 
 			data,
@@ -15,6 +31,12 @@ export class ProductsService {
 		});
 	}
 
+	/**
+	 * Liste les produits avec pagination, recherche et tri
+	 * 
+	 * @param query - Paramètres de pagination/recherche/tri
+	 * @returns Liste paginée de produits avec taux de TVA
+	 */
 	async findAll(query?: ListQueryDto) {
 		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
 		const pageSize = query?.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
@@ -50,17 +72,39 @@ export class ProductsService {
 		};
 	}
 
+	/**
+	 * Récupère un produit par ID
+	 * 
+	 * @param id - ID du produit
+	 * @returns Produit avec taux de TVA par défaut
+	 * @throws {NotFoundException} Si produit non trouvé
+	 */
 	async findOne(id: number) {
 		const product = await this.prisma.product.findUnique({ where: { id }, include: { defaultTaxRate: true } });
 		if (!product) throw new NotFoundException('Produit non trouve');
 		return product;
 	}
 
+	/**
+	 * Met à jour un produit
+	 * 
+	 * @param id - ID du produit
+	 * @param data - Données de mise à jour (tous les champs optionnels)
+	 * @returns Produit mis à jour
+	 * @throws {NotFoundException} Si produit non trouvé
+	 */
 	async update(id: number, data: UpdateProductDto) {
 		await this.findOne(id);
 		return this.prisma.product.update({ where: { id }, data, include: { defaultTaxRate: true } });
 	}
 
+	/**
+	 * Supprime un produit
+	 * 
+	 * @param id - ID du produit
+	 * @returns Confirmation de suppression
+	 * @throws {NotFoundException} Si produit non trouvé
+	 */
 	async remove(id: number) {
 		await this.findOne(id);
 		await this.prisma.product.delete({ where: { id } });

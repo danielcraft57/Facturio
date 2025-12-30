@@ -2,10 +2,27 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 
+/**
+ * Service de gestion des utilisateurs
+ * 
+ * Gère :
+ * - Le profil utilisateur (récupération, mise à jour)
+ * - Le changement de mot de passe (avec vérification de l'ancien)
+ * - L'association avec l'organisation
+ * 
+ * @see UsersController pour les endpoints API
+ */
 @Injectable()
 export class UsersService {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Récupère le profil d'un utilisateur
+	 * 
+	 * @param userId - ID de l'utilisateur
+	 * @returns Utilisateur avec organisation
+	 * @throws {NotFoundException} Si utilisateur non trouvé
+	 */
 	async getProfile(userId: number) {
 		const user = await this.prisma.user.findUnique({
 			where: { id: userId },
@@ -19,6 +36,13 @@ export class UsersService {
 		return user;
 	}
 
+	/**
+	 * Met à jour le profil d'un utilisateur
+	 * 
+	 * @param userId - ID de l'utilisateur
+	 * @param data - Données de mise à jour (tous les champs optionnels)
+	 * @returns Utilisateur mis à jour avec organisation
+	 */
 	async updateProfile(userId: number, data: { firstName?: string; lastName?: string; phone?: string; avatar?: string }) {
 		return this.prisma.user.update({
 			where: { id: userId },
@@ -32,6 +56,18 @@ export class UsersService {
 		});
 	}
 
+	/**
+	 * Change le mot de passe d'un utilisateur
+	 * 
+	 * Vérifie l'ancien mot de passe avant de le changer.
+	 * Hash le nouveau mot de passe avec bcrypt (12 rounds).
+	 * 
+	 * @param userId - ID de l'utilisateur
+	 * @param oldPassword - Ancien mot de passe
+	 * @param newPassword - Nouveau mot de passe
+	 * @returns Confirmation de changement
+	 * @throws {BadRequestException} Si aucun mot de passe défini ou ancien mot de passe incorrect
+	 */
 	async changePassword(userId: number, oldPassword: string, newPassword: string) {
 		const user = await this.prisma.user.findUnique({
 			where: { id: userId },

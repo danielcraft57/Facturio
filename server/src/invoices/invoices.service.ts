@@ -4,35 +4,79 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { AccountingService } from '../accounting/accounting.service';
 
+/**
+ * Ligne de facture
+ */
 export interface InvoiceLineInput {
+	/** Description de la ligne */
 	description: string;
+	/** Quantité */
 	quantity: number;
+	/** Prix unitaire (HT) */
 	unitPrice: number;
-	taxRate?: number; // 0.2 pour 20%
+	/** Taux de TVA (ex: 0.2 pour 20%). Si non fourni, utilise le taux par défaut */
+	taxRate?: number;
 }
 
+/**
+ * Données de création de facture
+ */
 export interface CreateInvoiceInput {
+	/** Numéro de facture (auto-généré si non fourni) */
 	number?: string;
+	/** ID du client */
 	clientId: number;
+	/** Date d'échéance */
 	dueDate?: string | Date | null;
+	/** Statut de la facture */
 	status?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+	/** Lignes de facture */
 	lines?: InvoiceLineInput[];
-  currency?: string;
+	/** Devise (défaut: EUR) */
+	currency?: string;
 }
 
+/**
+ * Données de mise à jour de facture
+ */
 export interface UpdateInvoiceInput {
+	/** Numéro de facture */
 	number?: string;
+	/** ID du client */
 	clientId?: number;
+	/** Date d'échéance */
 	dueDate?: string | Date | null;
+	/** Statut de la facture */
 	status?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+	/** Lignes de facture */
 	lines?: InvoiceLineInput[];
-  currency?: string;
+	/** Devise */
+	currency?: string;
 }
 
+/**
+ * Service de gestion des factures
+ * 
+ * Gère :
+ * - La création de factures avec numérotation automatique
+ * - Le calcul automatique des totaux (HT, TVA, TTC)
+ * - La politique TVA selon le client (FR, UE, international, exonéré)
+ * - La comptabilisation automatique (écritures comptables)
+ * - La gestion des paiements et du solde
+ * - Le filtrage multi-tenant par organizationId
+ * 
+ * @see InvoicesController pour les endpoints API
+ */
 @Injectable()
 export class InvoicesService {
 	constructor(private readonly prisma: PrismaService, private readonly accounting: AccountingService) {}
 
+	/**
+	 * Récupère le taux de TVA par défaut
+	 * 
+	 * @returns Taux de TVA par défaut (0.2 = 20% si aucun taux défini)
+	 * @private
+	 */
   private async getDefaultTaxRate(): Promise<number> {
     const def = await this.prisma.taxRate.findFirst({ where: { isDefault: true } });
     if (!def) {
@@ -43,6 +87,13 @@ export class InvoicesService {
     return value || 0.2;
   }
 
+	/**
+	 * Calcule les totaux d'une facture (HT, TVA, TTC)
+	 * 
+	 * @param lines - Lignes de facture
+	 * @returns Totaux calculés
+	 * @private
+	 */
 	private async computeTotals(lines: InvoiceLineInput[] = []) {
 		let subtotal = 0;
 		let tax = 0;
@@ -57,6 +108,19 @@ export class InvoicesService {
 		return { subtotal, tax, total };
 	}
 
+	/**
+	 * Détermine la politique TVA selon le client
+	 * 
+	 * Règles :
+	 * - France : TVA standard (taux par défaut)
+	 * - UE avec numéro TVA : Autoliquidation (0%)
+	 * - Hors UE : Export (0%)
+	 * - Exonéré : 0%
+	 * 
+	 * @param params - Informations client
+	 * @returns Politique TVA (rate: -1 = utiliser taux par défaut, mention légale)
+	 * @private
+	 */
   private computeVatPolicy(params: { countryCode?: string | null; isCompany?: boolean; vatNumber?: string | null; isVatExempt?: boolean; }): { rate: number; mention?: string } {
     if (params.isVatExempt) return { rate: 0, mention: 'Operation exoneree de TVA' };
     const cc = (params.countryCode || 'FR').toUpperCase();
@@ -73,6 +137,15 @@ export class InvoicesService {
     return { rate: -1 };
   }
 
+	/**
+	 * Génère le prochain numéro de facture
+	 * 
+	 * Format : FAC-YYYY-NNNN (ex: FAC-2024-0001)
+	 * Utilise un compteur par année.
+	 * 
+	 * @returns Numéro de facture unique
+	 * @private
+	 */
   private async nextInvoiceNumber(): Promise<string> {
     const year = new Date().getFullYear();
     const scope = `invoice-${year}`;
@@ -85,6 +158,32 @@ export class InvoicesService {
     return `FAC-${year}-${padded}`;
   }
 
+	/**
+	 * Crée une nouvelle facture
+	 * 
+	 * Processus :
+	 * 1. Validation des données (client, lignes)
+	 * 2. Calcul de la politique TVA selon le client
+	 * 3. Calcul des totaux (HT, TVA, TTC)
+	 * 4. Génération du numéro de facture
+	 * 5. Création en base avec lignes
+	 * 6. Comptabilisation automatique (écriture 411/706/44571)
+	 * 
+	 * @param data - Données de la facture
+	 * @param organizationId - ID de l'organisation (multi-tenant)
+	 * @returns Facture créée avec lignes, client et paiements
+	 * @throws {BadRequestException} Si validation échoue
+	 * 
+	 * @example
+	 * ```typescript
+	 * const invoice = await invoicesService.create({
+	 *   clientId: 1,
+	 *   lines: [
+	 *     { description: 'Service', quantity: 1, unitPrice: 1000, taxRate: 0.2 }
+	 *   ]
+	 * }, 1);
+	 * ```
+	 */
 	async create(data: CreateInvoiceInput, organizationId?: number) {
 		// Validation
 		if (!data.clientId) {
@@ -151,6 +250,13 @@ export class InvoicesService {
 		return created;
 	}
 
+	/**
+	 * Liste les factures avec pagination, recherche et tri
+	 * 
+	 * @param query - Paramètres de pagination/recherche/tri
+	 * @param organizationId - ID de l'organisation (filtre multi-tenant)
+	 * @returns Liste paginée de factures avec lignes, client et paiements
+	 */
 	async findAll(query: ListQueryDto, organizationId?: number) {
 		const page = query.page ?? 1;
 		const pageSize = query.pageSize ?? 20;
@@ -181,7 +287,15 @@ export class InvoicesService {
 		return { items, total, page, pageSize };
 	}
 
-	async findOne(id: number) {
+	/**
+	 * Récupère une facture par ID
+	 * 
+	 * @param id - ID de la facture
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
+	 * @returns Facture avec lignes, client et paiements
+	 * @throws {NotFoundException} Si facture non trouvée
+	 */
+	async findOne(id: number, organizationId?: number) {
 		const invoice = await this.prisma.invoice.findUnique({
 			where: { id },
 			include: { lines: true, client: true, payments: true }
@@ -190,6 +304,17 @@ export class InvoicesService {
 		return invoice;
 	}
 
+	/**
+	 * Met à jour une facture
+	 * 
+	 * Recalcule automatiquement les totaux et le solde en tenant compte des paiements.
+	 * 
+	 * @param id - ID de la facture
+	 * @param data - Données de mise à jour
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
+	 * @returns Facture mise à jour
+	 * @throws {NotFoundException} Si facture non trouvée
+	 */
 	async update(id: number, data: UpdateInvoiceInput, organizationId?: number) {
 		await this.findOne(id, organizationId);
 
@@ -240,17 +365,49 @@ export class InvoicesService {
 		});
 	}
 
+	/**
+	 * Supprime une facture
+	 * 
+	 * @param id - ID de la facture
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
+	 * @returns Confirmation de suppression
+	 * @throws {NotFoundException} Si facture non trouvée
+	 */
 	async remove(id: number, organizationId?: number) {
 		await this.findOne(id, organizationId);
 		await this.prisma.invoice.delete({ where: { id } });
 		return { success: true };
 	}
 
+	/**
+	 * Liste les paiements d'une facture
+	 * 
+	 * @param id - ID de la facture
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
+	 * @returns Liste des paiements triés par date décroissante
+	 */
 	async listPayments(id: number, organizationId?: number) {
 		await this.findOne(id, organizationId);
 		return this.prisma.payment.findMany({ where: { invoiceId: id }, orderBy: { date: 'desc' } });
 	}
 
+	/**
+	 * Ajoute un paiement à une facture
+	 * 
+	 * Met à jour automatiquement :
+	 * - Le solde de la facture
+	 * - Le statut (PAID si solde <= 0)
+	 * - Crée l'écriture comptable (512/411)
+	 * 
+	 * @param id - ID de la facture
+	 * @param amount - Montant du paiement
+	 * @param date - Date du paiement (optionnel, défaut: maintenant)
+	 * @param method - Méthode de paiement (optionnel)
+	 * @param notes - Notes (optionnel)
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
+	 * @returns Paiement créé
+	 * @throws {NotFoundException} Si facture non trouvée
+	 */
 	async addPayment(id: number, amount: number, date?: string | Date, method?: string, notes?: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
 		const payment = await this.prisma.payment.create({

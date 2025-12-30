@@ -6,13 +6,32 @@ import { UpdateCreditNoteDto } from './dto/update-credit-note.dto';
 import { ApplyCreditNoteDto } from './dto/apply-credit-note.dto';
 import { AccountingService } from '../accounting/accounting.service';
 
+/**
+ * Ligne d'avoir
+ */
 export interface CreditNoteLineInput {
+	/** Description de la ligne */
 	description: string;
+	/** Quantité */
 	quantity: number;
+	/** Prix unitaire (HT) */
 	unitPrice: number;
+	/** Taux de TVA (ex: 0.2 pour 20%) */
 	taxRate?: number;
 }
 
+/**
+ * Service de gestion des avoirs (notes de crédit)
+ * 
+ * Gère :
+ * - La création d'avoirs avec numérotation automatique
+ * - Le calcul automatique des totaux (HT, TVA, TTC)
+ * - L'imputation d'avoirs sur des factures
+ * - La comptabilisation automatique (écritures comptables)
+ * - Le suivi du solde disponible
+ * 
+ * @see CreditNotesController pour les endpoints API
+ */
 @Injectable()
 export class CreditNotesService {
 	constructor(
@@ -20,6 +39,13 @@ export class CreditNotesService {
 		private readonly accounting: AccountingService
 	) {}
 
+	/**
+	 * Calcule les totaux d'un avoir (HT, TVA, TTC)
+	 * 
+	 * @param lines - Lignes d'avoir
+	 * @returns Totaux calculés
+	 * @private
+	 */
 	private async computeTotals(lines: CreditNoteLineInput[] = []) {
 		let subtotal = 0;
 		let tax = 0;
@@ -34,6 +60,15 @@ export class CreditNotesService {
 		return { subtotal, tax, total };
 	}
 
+	/**
+	 * Génère le prochain numéro d'avoir
+	 * 
+	 * Format : AVO-YYYY-NNNN (ex: AVO-2024-0001)
+	 * Utilise un compteur par année.
+	 * 
+	 * @returns Numéro d'avoir unique
+	 * @private
+	 */
 	private async nextCreditNoteNumber(): Promise<string> {
 		const year = new Date().getFullYear();
 		const scope = `credit-note-${year}`;

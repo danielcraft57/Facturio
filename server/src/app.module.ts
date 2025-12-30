@@ -18,6 +18,7 @@ import { CreditNotesModule } from './credit-notes/credit-notes.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { UrssafModule } from './urssaf/urssaf.module';
 import { ConfigModule } from './config/config.module';
 
 @Module({
@@ -40,7 +41,8 @@ import { ConfigModule } from './config/config.module';
 		CreditNotesModule,
 		AuthModule,
 		UsersModule,
-		OrganizationsModule
+		OrganizationsModule,
+		UrssafModule
 	],
 	controllers: [WebhooksController],
 	providers: []

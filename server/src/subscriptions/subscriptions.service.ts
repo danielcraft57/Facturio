@@ -2,6 +2,70 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { BillingInterval, Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * Données de création de plan d'abonnement
+ */
+export interface CreatePlanDto {
+	/** ID du produit associé */
+	productId: number;
+	/** Nom du plan */
+	name: string;
+	/** Montant de l'abonnement */
+	amount: number;
+	/** Devise (défaut: EUR) */
+	currency?: string;
+	/** Intervalle de facturation (MONTHLY, YEARLY) */
+	interval: BillingInterval;
+	/** Jours d'essai gratuit (optionnel) */
+	trialDays?: number | null;
+	/** Facturation à l'usage (métrique) */
+	metered?: boolean;
+}
+
+/**
+ * Données de mise à jour de plan
+ */
+export interface UpdatePlanDto {
+	/** Nom du plan */
+	name?: string;
+	/** Montant */
+	amount?: number;
+	/** Devise */
+	currency?: string;
+	/** Intervalle */
+	interval?: BillingInterval;
+	/** Jours d'essai */
+	trialDays?: number | null;
+	/** Facturation à l'usage */
+	metered?: boolean;
+}
+
+/**
+ * Données de création d'abonnement
+ */
+export interface CreateSubscriptionDto {
+	/** ID du client */
+	clientId: number;
+	/** ID du plan */
+	planId: number;
+	/** Quantité (optionnel, défaut: 1) */
+	quantity?: number;
+	/** Date de début (optionnel, défaut: maintenant) */
+	startDate?: string | Date;
+}
+
+/**
+ * Service de gestion des abonnements
+ * 
+ * Gère :
+ * - Les plans d'abonnement (création, mise à jour)
+ * - Les abonnements clients (création, activation, annulation)
+ * - La facturation récurrente
+ * - Les périodes d'essai
+ * 
+ * @see SubscriptionsController pour les endpoints API
+ */
+
 export interface CreatePlanDto {
 	productId: number;
 	name: string;

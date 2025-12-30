@@ -4,6 +4,16 @@ import { ListQueryDto } from '../common/dto/list-query.dto';
 import { CreatePackDto } from './dto/create-pack.dto';
 import { UpdatePackDto } from './dto/update-pack.dto';
 
+/**
+ * Service de gestion des packs
+ * 
+ * Gère :
+ * - Le CRUD complet des packs (ensembles de produits)
+ * - Le calcul automatique du total (heures, prix) depuis les produits
+ * - La pagination, recherche et tri
+ * 
+ * @see PacksController pour les endpoints API
+ */
 @Injectable()
 export class PacksService {
 	constructor(private readonly prisma: PrismaService) {}
