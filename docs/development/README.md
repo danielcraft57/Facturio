@@ -1,0 +1,26 @@
+# Guides de développement
+
+Documentation pour les développeurs contribuant à Facturio.
+
+## 📚 Contenu
+
+- [Architecture](./ARCHITECTURE.md) - Vue d'ensemble de l'architecture
+- [Guide de développement](./DEVELOPMENT.md) - Workflow et bonnes pratiques
+- [CI/CD](./CI_CD.md) - Intégration continue et déploiement
+- [Optimisation](./OPTIMIZATION.md) - Optimisation des performances
+
+## 🛠️ Stack technique
+
+- **Backend** : NestJS + TypeScript + Prisma
+- **Frontend** : React + TypeScript + Material UI
+- **Base de données** : SQLite (dev) / Postgres (prod)
+
+## 📝 Workflow
+
+1. Créer une branche depuis `main`
+2. Développer la fonctionnalité
+3. Écrire les tests
+4. Créer une PR
+
+Pour plus de détails, voir [Guide de développement](./DEVELOPMENT.md).
+

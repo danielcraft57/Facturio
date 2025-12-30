@@ -28,20 +28,37 @@ npm i
 npm run dev
 ```
 
-Plus de détails: voir `server/README.md` et `docs/ENVIRONMENTS.md`.
+Plus de détails: voir `server/README.md` et `docs/getting-started/ENVIRONMENTS.md`.
 
 ### Documentation
 
 Toute la documentation est disponible dans le dossier `docs/` :
 
-- [Documentation complète](docs/README.md) - Index de toute la documentation
-- [Architecture](docs/ARCHITECTURE.md) - Vue d'ensemble de l'architecture
-- [Installation](docs/INSTALLATION.md) - Guide d'installation
-- [API](docs/API.md) - Documentation des endpoints
-- [Développement](docs/DEVELOPMENT.md) - Guide de développement
-- [OSINT](docs/OSINT.md) - Intégration OSINT
-- [Scraper](docs/SCRAPER.md) - Module de scraping
-- [Roadmap](docs/ROADMAP.md) - Roadmap globale
+**Démarrage rapide**
+- [Installation](docs/getting-started/INSTALLATION.md) - Guide d'installation
+- [Configuration](docs/getting-started/ENVIRONMENTS.md) - Variables d'environnement
+
+**API & Développement**
+- [API](docs/api/API.md) - Documentation des endpoints
+- [Architecture](docs/development/ARCHITECTURE.md) - Vue d'ensemble de l'architecture
+- [Développement](docs/development/DEVELOPMENT.md) - Guide de développement
+- [CI/CD](docs/development/CI_CD.md) - Intégration continue
+
+**Modules spécialisés**
+- [OSINT](docs/modules/OSINT.md) - Intégration OSINT
+- [Scraper](docs/modules/SCRAPER.md) - Module de scraping
+- [Outils OSINT](docs/modules/OSINT_TOOLS.md) - Liste des outils
+
+**Planning**
+- [Roadmap](docs/planning/ROADMAP.md) - Roadmap globale
+- [TODO](docs/planning/TODO.md) - Liste des tâches
+- [Avancement](docs/planning/AVANCEMENT.md) - État du projet
+
+**Changelog**
+- [Priorités hautes](docs/changelog/CHANGELOG_PRIORITES_HAUTES.md) - Dernières fonctionnalités
+- [Notes de développement](docs/changelog/NOTES_DEVELOPPEMENT.md) - Notes techniques
+
+Voir [Documentation complète](docs/README.md) pour l'index complet.
 
 Documentation par composant :
 - Backend: `server/README.md`

@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create(AppModule, {
@@ -14,13 +15,24 @@ async function bootstrap(): Promise<void> {
 	const config = app.get(ConfigService);
 	const logger = new Logger('Bootstrap');
 
+	// Exception filter global pour normaliser les erreurs
+	app.useGlobalFilters(new HttpExceptionFilter());
+
 	// Validation globale
 	app.useGlobalPipes(
 		new ValidationPipe({
 			whitelist: true,
 			transform: true,
 			forbidUnknownValues: false,
-			disableErrorMessages: config.isProd // Désactiver les messages d'erreur détaillés en prod
+			disableErrorMessages: config.isProd, // Désactiver les messages d'erreur détaillés en prod
+			exceptionFactory: (errors) => {
+				// Formater les erreurs de validation de manière lisible
+				const messages = errors.map(error => {
+					const constraints = error.constraints || {};
+					return Object.values(constraints).join(', ');
+				});
+				return new ValidationPipe().createExceptionFactory()(errors);
+			}
 		})
 	);
 

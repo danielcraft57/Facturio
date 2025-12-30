@@ -56,11 +56,14 @@ export class QuotesController {
 		const quote = await this.quotes.sendQuote(Number(id));
 		const pdf = await this.pdfService.generateQuotePdf(quote);
 		if (quote.client?.email) {
-			await this.email.send({
+			await this.email.sendQuote({
 				to: quote.client.email,
-				subject: `Devis ${quote.number}`,
-				html: `<p>Bonjour,</p><p>Veuillez trouver ci-joint le devis ${quote.number}.</p>`,
-				attachments: [{ filename: `Devis-${quote.number}.pdf`, content: pdf, contentType: 'application/pdf' }]
+				quoteNumber: quote.number,
+				quoteDate: quote.createdAt,
+				clientName: quote.client.name || quote.client.companyName || '',
+				total: quote.total,
+				expiryDate: quote.expiryDate || undefined,
+				pdfBuffer: pdf
 			});
 		}
 		return quote;

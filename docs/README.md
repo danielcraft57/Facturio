@@ -1,38 +1,77 @@
 # Documentation Facturio
 
-Documentation complète du projet Facturio.
+Documentation complète du projet Facturio, organisée par catégories.
 
-## Documentation principale
+## 📚 Structure de la documentation
 
-### [Architecture](./ARCHITECTURE.md)
-Vue d'ensemble de l'architecture du projet, structure des modules, stack technique et principes de conception.
+```
+docs/
+├── getting-started/    # Démarrage rapide
+├── api/                # Documentation API
+├── development/        # Guides de développement
+├── modules/            # Modules spécialisés
+├── planning/           # Roadmap et planning
+└── changelog/          # Changelogs et notes
+```
 
-### [Installation](./INSTALLATION.md)
+## 🚀 Démarrage rapide
+
+### [Installation](./getting-started/INSTALLATION.md)
 Guide complet pour installer et démarrer Facturio en local, avec Docker, et dépannage.
 
-### [API](./API.md)
+### [Configuration des environnements](./getting-started/ENVIRONMENTS.md)
+Configuration des variables d'environnement pour développement et production.
+
+## 📡 API
+
+### [Documentation API](./api/API.md)
 Documentation complète des endpoints de l'API REST, avec exemples cURL et codes de statut.
 
-### [Développement](./DEVELOPMENT.md)
+## 💻 Développement
+
+### [Architecture](./development/ARCHITECTURE.md)
+Vue d'ensemble de l'architecture du projet, structure des modules, stack technique et principes de conception.
+
+### [Guide de développement](./development/DEVELOPMENT.md)
 Guide pour contribuer au projet : workflow, structure du code, tests, bonnes pratiques.
 
-## Modules spécialisés
+### [CI/CD](./development/CI_CD.md)
+Documentation sur l'intégration continue et le déploiement de Facturio.
 
-### [OSINT](./OSINT.md)
+### [Optimisation](./development/OPTIMIZATION.md)
+Guide d'optimisation des performances et des ressources.
+
+## 🔧 Modules spécialisés
+
+### [OSINT](./modules/OSINT.md)
 Documentation sur l'intégration OSINT pour l'enrichissement de données clients et prospects.
 
-### [Scraper](./SCRAPER.md)
+### [Scraper](./modules/SCRAPER.md)
 Documentation du module de scraping web pour l'extraction automatique d'informations.
 
-### [Outils OSINT](./OSINT_TOOLS.md)
+### [Outils OSINT](./modules/OSINT_TOOLS.md)
 Liste complète des outils OSINT disponibles, gratuits et payants, pour l'intelligence économique.
 
-## Roadmap
+## 📅 Planning & Roadmap
 
-### [Roadmap globale](./ROADMAP.md)
+### [Roadmap globale](./planning/ROADMAP.md)
 Vue d'ensemble des fonctionnalités à venir, phases de développement et priorités.
 
-## Documentation par composant
+### [TODO - Liste complète](./planning/TODO.md)
+Liste exhaustive de toutes les tâches restantes, organisée par priorité et domaine.
+
+### [Avancement du projet](./planning/AVANCEMENT.md)
+État actuel du projet, progression globale et fonctionnalités implémentées.
+
+## 📝 Changelog & Notes
+
+### [Changelog - Priorités hautes](./changelog/CHANGELOG_PRIORITES_HAUTES.md)
+Changelog détaillé des fonctionnalités prioritaires implémentées.
+
+### [Notes de développement](./changelog/NOTES_DEVELOPPEMENT.md)
+Notes techniques et décisions de développement pour les fonctionnalités prioritaires.
+
+## 📖 Documentation par composant
 
 ### Backend
 - Voir `server/README.md` pour la documentation du serveur
@@ -45,18 +84,33 @@ Vue d'ensemble des fonctionnalités à venir, phases de développement et priori
 ### Module Prospects
 - Voir `frontend/src/modules/prospects/README.md` pour la documentation du module de prospection
 
-## Liens rapides
+## 🔗 Liens rapides
 
-- [Architecture](./ARCHITECTURE.md)
-- [Installation](./INSTALLATION.md)
-- [API](./API.md)
-- [Développement](./DEVELOPMENT.md)
-- [OSINT](./OSINT.md)
-- [Scraper](./SCRAPER.md)
-- [Outils OSINT](./OSINT_TOOLS.md)
-- [Roadmap](./ROADMAP.md)
+### Démarrage
+- [Installation](./getting-started/INSTALLATION.md)
+- [Configuration](./getting-started/ENVIRONMENTS.md)
 
-## Contribuer
+### API & Développement
+- [API](./api/API.md)
+- [Architecture](./development/ARCHITECTURE.md)
+- [Développement](./development/DEVELOPMENT.md)
+- [CI/CD](./development/CI_CD.md)
+
+### Modules
+- [OSINT](./modules/OSINT.md)
+- [Scraper](./modules/SCRAPER.md)
+- [Outils OSINT](./modules/OSINT_TOOLS.md)
+
+### Planning
+- [Roadmap](./planning/ROADMAP.md)
+- [TODO](./planning/TODO.md)
+- [Avancement](./planning/AVANCEMENT.md)
+
+### Changelog
+- [Priorités hautes](./changelog/CHANGELOG_PRIORITES_HAUTES.md)
+- [Notes de développement](./changelog/NOTES_DEVELOPPEMENT.md)
+
+## 🤝 Contribuer
 
 Pour contribuer à la documentation :
 
@@ -65,10 +119,6 @@ Pour contribuer à la documentation :
 3. Vérifier la syntaxe Markdown
 4. Créer une PR avec les changements
 
-## Questions
+## ❓ Questions
 
 Pour toute question sur la documentation, ouvrir une issue sur GitHub.
-
-
-
-

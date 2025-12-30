@@ -42,7 +42,7 @@ export class InvoicesController {
 	@Header('Content-Type', 'application/pdf')
 	async downloadPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
 		const invoice = await this.invoices.findOne(id);
-		const buf = this.pdfService.generateInvoicePdf(invoice);
+		const buf = await this.pdfService.generateInvoicePdf(invoice);
 		res.setHeader('Content-Disposition', `inline; filename=invoice-${invoice.number}.pdf`);
 		return res.send(buf);
 	}
