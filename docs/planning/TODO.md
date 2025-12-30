@@ -20,20 +20,33 @@ Liste exhaustive de tout ce qu'il reste à faire dans le projet Facturio, organi
 - [x] Créer templates d'emails (facture, devis, relance) (✅ Templates HTML implémentés)
 - [ ] Ajouter mentions légales dynamiques dans les PDF (⚠️ Mentions statiques pour l'instant)
 
-### Backend - Authentification (v0.4)
-- [ ] Implémenter authentification JWT (login simple)
-- [ ] Créer endpoints login/logout
-- [ ] Ajouter guards pour protéger les routes
-- [ ] Implémenter séparation utilisateur/organisation (multi-tenant simple)
-- [ ] Ajouter rôles basiques (admin, user)
-- [ ] Créer middleware pour extraire l'utilisateur depuis le token
+### Backend - Authentification & Profils (v0.4)
+- [ ] Créer modèles User, Organization, OrganizationDocument dans Prisma
+- [ ] Ajouter champs OAuth Google dans User (googleId, googleEmail, googlePicture)
+- [ ] Modifier modèles existants pour ajouter organizationId (multi-tenant)
+- [ ] Migration Prisma et script migration données existantes
+- [ ] Implémenter authentification JWT (login/signup/logout)
+- [ ] Créer endpoints auth (signup, login, logout, refresh, forgot-password)
+- [ ] **Implémenter authentification Google OAuth** (passport-google-oauth20)
+- [ ] **Créer endpoints Google OAuth** (/auth/google, /auth/google/callback)
+- [ ] **Gérer liaison compte Google à compte existant**
+- [ ] Ajouter guards JWT et rôles pour protéger les routes
+- [ ] Créer middleware multi-tenant (filtrage par organisation)
+- [ ] Implémenter service Users (profil utilisateur)
+- [ ] Implémenter service Organizations (profil entreprise)
+- [ ] Créer endpoints profils (GET/PATCH /auth/me, /organization/profile)
+- [ ] Gestion upload documents officiels (Multer)
+- [ ] Validation documents par admin
+- [ ] Protéger toutes les routes API existantes
+- [ ] Filtrer toutes les données par organizationId
+- [ ] Voir document détaillé : `docs/planning/AUTH_AND_PROFILES.md`
 
 ### Backend - Avoirs (v0.3)
-- [ ] Créer modèle Avoir dans Prisma
-- [ ] Implémenter CRUD pour les avoirs
-- [ ] Lier avoirs aux factures
-- [ ] Gérer l'imputation des avoirs sur les factures
-- [ ] Créer écritures comptables pour les avoirs
+- [x] Créer modèle Avoir dans Prisma (✅ CreditNote, CreditNoteLine, CreditNoteApplication)
+- [x] Implémenter CRUD pour les avoirs (✅ Service, Controller, DTOs avec validation)
+- [x] Lier avoirs aux factures (✅ Relation optionnelle invoiceId)
+- [x] Gérer l'imputation des avoirs sur les factures (✅ Endpoint /apply avec validation)
+- [x] Créer écritures comptables pour les avoirs (✅ Écritures automatiques 411/706/44571)
 
 ### Frontend - Devis & Factures
 - [ ] Implémenter conversion devis → facture
@@ -286,6 +299,19 @@ Liste exhaustive de tout ce qu'il reste à faire dans le projet Facturio, organi
 - [ ] Déclarations CA3 avec formulaire
 - [ ] Livre de TVA
 - [ ] Récapitulatifs détaillés
+
+### URSSAF & Statuts d'entreprises
+- [ ] Ajouter statut entreprise dans modèle Client (auto-entrepreneur, micro-entreprise, etc.)
+- [ ] Créer service URSSAF avec calculs selon statut
+- [ ] Implémenter calcul cotisations auto-entrepreneur (taux selon activité)
+- [ ] Gérer option micro-fiscal (taux réduits)
+- [ ] Vérifier seuils de CA annuel
+- [ ] Créer déclarations URSSAF automatiques (mensuelle/trimestrielle)
+- [ ] Générer écritures comptables pour cotisations
+- [ ] Interface configuration statut entreprise
+- [ ] Dashboard échéances URSSAF
+- [ ] Alertes échéances automatiques
+- [ ] Voir document détaillé : `docs/planning/URSSAF_INTEGRATION.md`
 
 ### Autres taxes
 - [ ] CVAE

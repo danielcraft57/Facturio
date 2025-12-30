@@ -100,8 +100,8 @@ model CreditNote {
   number            String                  @unique
   date              DateTime                @default(now())
   status            CreditNoteStatus        @default(DRAFT)
-  invoiceId         Int // Facture d'origine
-  invoice           Invoice                 @relation("InvoiceCreditNotes", fields: [invoiceId], references: [id])
+  invoiceId         Int? // Facture d'origine
+  invoice           Invoice?                 @relation("InvoiceCreditNotes", fields: [invoiceId], references: [id])
   clientId          Int
   client            Client                  @relation(fields: [clientId], references: [id])
   lines             CreditNoteLine[]

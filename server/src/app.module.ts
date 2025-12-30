@@ -14,6 +14,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ProspectsModule } from './prospects/prospects.module';
 import { PacksModule } from './packs/packs.module';
+import { CreditNotesModule } from './credit-notes/credit-notes.module';
 import { ConfigModule } from './config/config.module';
 
 @Module({
@@ -32,7 +33,8 @@ import { ConfigModule } from './config/config.module';
 		DashboardModule,
 		PaymentsModule,
 		ProspectsModule,
-		PacksModule
+		PacksModule,
+		CreditNotesModule
 	],
 	controllers: [WebhooksController],
 	providers: []
