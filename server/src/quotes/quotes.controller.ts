@@ -1,11 +1,14 @@
-import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { CreateQuoteDto, QuotesService, UpdateQuoteDto } from './quotes.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { Request, Response } from 'express';
 import { PdfService } from '../common/pdf.service';
 import { EmailService } from '../common/email.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('quotes')
+@UseGuards(JwtAuthGuard)
 export class QuotesController {
 	constructor(
 		private readonly quotes: QuotesService,
@@ -15,45 +18,46 @@ export class QuotesController {
 	) {}
 
 	@Post()
-	create(@Body() data: CreateQuoteDto) {
-		return this.quotes.create(data);
+	create(@Body() data: CreateQuoteDto, @CurrentUser() user: any) {
+		return this.quotes.create(data, user.organizationId);
 	}
 
 	@Get()
-	findAll() {
-		return this.quotes.findAll();
+	findAll(@CurrentUser() user: any) {
+		return this.quotes.findAll(user.organizationId);
 	}
 
 	@Get(':id')
-	findOne(@Param('id', ParseIntPipe) id: number) {
-		return this.quotes.findOne(id);
+	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.quotes.findOne(id, user.organizationId);
 	}
 
 	@Patch(':id')
 	update(
 		@Param('id', ParseIntPipe) id: number,
-		@Body() data: UpdateQuoteDto
+		@Body() data: UpdateQuoteDto,
+		@CurrentUser() user: any
 	) {
-		return this.quotes.update(id, data);
+		return this.quotes.update(id, data, user.organizationId);
 	}
 
 	@Delete(':id')
-	remove(@Param('id', ParseIntPipe) id: number) {
-		return this.quotes.remove(id);
+	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.quotes.remove(id, user.organizationId);
 	}
 
 	@Post(':id/convert-to-invoice')
-	async convertToInvoice(@Param('id', ParseIntPipe) id: number) {
-		const quote = await this.quotes.findOne(id);
+	async convertToInvoice(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		const quote = await this.quotes.findOne(id, user.organizationId);
 		return this.invoices.create({
 			clientId: quote.clientId,
 			lines: quote.lines.map((l: any) => ({ description: l.description, quantity: l.quantity, unitPrice: Number(l.unitPrice), taxRate: Number(l.taxRate) }))
-		});
+		}, user.organizationId);
 	}
 
 	@Post(':id/send')
-	async sendQuote(@Param('id') id: string) {
-		const quote = await this.quotes.sendQuote(Number(id));
+	async sendQuote(@Param('id') id: string, @CurrentUser() user: any) {
+		const quote = await this.quotes.sendQuote(Number(id), user.organizationId);
 		const pdf = await this.pdfService.generateQuotePdf(quote);
 		if (quote.client?.email) {
 			await this.email.sendQuote({
@@ -71,8 +75,8 @@ export class QuotesController {
 
 	@Get(':id/pdf')
 	@Header('Content-Type', 'application/pdf')
-	async downloadPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
-		const quote = await this.quotes.findOne(id);
+	async downloadPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response, @CurrentUser() user: any) {
+		const quote = await this.quotes.findOne(id, user.organizationId);
 		const buf = this.pdfService.generateQuotePdf(quote);
 		res.setHeader('Content-Disposition', `inline; filename=quote-${quote.number}.pdf`);
 		return res.send(buf);

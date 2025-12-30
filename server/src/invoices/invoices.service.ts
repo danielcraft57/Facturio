@@ -85,7 +85,7 @@ export class InvoicesService {
     return `FAC-${year}-${padded}`;
   }
 
-	async create(data: CreateInvoiceInput) {
+	async create(data: CreateInvoiceInput, organizationId?: number) {
 		// Validation
 		if (!data.clientId) {
 			throw new BadRequestException('Client requis');
@@ -113,10 +113,15 @@ export class InvoicesService {
 		const linesWithTax = lines.map(l => ({ ...l, taxRate: l.taxRate ?? effectiveRate }));
 		const totals = await this.computeTotals(linesWithTax);
 		const number = data.number ?? (await this.nextInvoiceNumber());
+		
+		// Utiliser organizationId fourni ou celui du client
+		const orgId = organizationId ?? client?.organizationId;
+		
 		const created = await this.prisma.invoice.create({
 			data: {
 				number,
 				clientId: data.clientId,
+				organizationId: orgId ?? undefined,
 				dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
 				status: data.status ?? 'DRAFT',
 				currency: data.currency ?? 'EUR',
@@ -146,18 +151,23 @@ export class InvoicesService {
 		return created;
 	}
 
-	async findAll(query: ListQueryDto) {
+	async findAll(query: ListQueryDto, organizationId?: number) {
 		const page = query.page ?? 1;
 		const pageSize = query.pageSize ?? 20;
 		const skip = (page - 1) * pageSize;
-		const where = query.search
+		const where: any = query.search
 			? {
 				OR: [
 					{ number: { contains: query.search } },
 					{ client: { name: { contains: query.search } } as any }
 				]
 			}
-			: undefined;
+			: {};
+		
+		// Filtrer par organisation si fournie
+		if (organizationId) {
+			where.organizationId = organizationId;
+		}
 		const [items, total] = await this.prisma.$transaction([
 			this.prisma.invoice.findMany({
 				skip,
@@ -180,8 +190,8 @@ export class InvoicesService {
 		return invoice;
 	}
 
-	async update(id: number, data: UpdateInvoiceInput) {
-		await this.findOne(id);
+	async update(id: number, data: UpdateInvoiceInput, organizationId?: number) {
+		await this.findOne(id, organizationId);
 
 		const lines = data.lines ?? [];
 		const invoice = await this.prisma.invoice.findUnique({ where: { id }, include: { client: true } });
@@ -230,19 +240,19 @@ export class InvoicesService {
 		});
 	}
 
-	async remove(id: number) {
-		await this.findOne(id);
+	async remove(id: number, organizationId?: number) {
+		await this.findOne(id, organizationId);
 		await this.prisma.invoice.delete({ where: { id } });
 		return { success: true };
 	}
 
-	async listPayments(id: number) {
-		await this.findOne(id);
+	async listPayments(id: number, organizationId?: number) {
+		await this.findOne(id, organizationId);
 		return this.prisma.payment.findMany({ where: { invoiceId: id }, orderBy: { date: 'desc' } });
 	}
 
-	async addPayment(id: number, amount: number, date?: string | Date, method?: string, notes?: string) {
-		const invoice = await this.findOne(id);
+	async addPayment(id: number, amount: number, date?: string | Date, method?: string, notes?: string, organizationId?: number) {
+		const invoice = await this.findOne(id, organizationId);
 		const payment = await this.prisma.payment.create({
 			data: { invoiceId: id, amount, date: date ? new Date(date) : undefined, method, notes }
 		});

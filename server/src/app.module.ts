@@ -15,6 +15,9 @@ import { PaymentsModule } from './payments/payments.module';
 import { ProspectsModule } from './prospects/prospects.module';
 import { PacksModule } from './packs/packs.module';
 import { CreditNotesModule } from './credit-notes/credit-notes.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { OrganizationsModule } from './organizations/organizations.module';
 import { ConfigModule } from './config/config.module';
 
 @Module({
@@ -34,7 +37,10 @@ import { ConfigModule } from './config/config.module';
 		PaymentsModule,
 		ProspectsModule,
 		PacksModule,
-		CreditNotesModule
+		CreditNotesModule,
+		AuthModule,
+		UsersModule,
+		OrganizationsModule
 	],
 	controllers: [WebhooksController],
 	providers: []

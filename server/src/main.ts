@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -14,6 +15,9 @@ async function bootstrap(): Promise<void> {
 
 	const config = app.get(ConfigService);
 	const logger = new Logger('Bootstrap');
+
+	// Cookie parser pour gérer les cookies de session
+	app.use(cookieParser());
 
 	// Exception filter global pour normaliser les erreurs
 	app.useGlobalFilters(new HttpExceptionFilter());

@@ -34,14 +34,24 @@ describe('CreditNotes e2e', () => {
 		await prisma.creditNoteLine.deleteMany({});
 		await prisma.creditNote.deleteMany({});
 		await prisma.client.deleteMany({});
+		await prisma.organization.deleteMany({});
+
+		// Créer une organisation de test
+		const organization = await prisma.organization.create({
+			data: {
+				name: 'Test Organization',
+				companyType: 'B2B',
+			},
+		});
 
 		// Créer un client de test
 		const client = await prisma.client.create({
 			data: {
 				name: 'Test Client',
 				email: 'test@example.com',
-				isCompany: true
-			}
+				isCompany: true,
+				organizationId: organization.id,
+			},
 		});
 		clientId = client.id;
 	});
@@ -100,32 +110,38 @@ describe('CreditNotes e2e', () => {
 
 	describe('GET /credit-notes', () => {
 		beforeEach(async () => {
+			// Récupérer l'organisation du client
+			const client = await prisma.client.findUnique({ where: { id: clientId } });
+			const orgId = client!.organizationId!;
+
 			// Créer des avoirs de test
 			await prisma.creditNote.createMany({
 				data: [
 					{
 						number: 'AVO-2024-0001',
 						clientId,
+						organizationId: orgId,
 						date: new Date(),
 						status: 'DRAFT',
 						subtotal: 100,
 						tax: 20,
 						total: 120,
 						appliedAmount: 0,
-						currency: 'EUR'
+						currency: 'EUR',
 					},
 					{
 						number: 'AVO-2024-0002',
 						clientId,
+						organizationId: orgId,
 						date: new Date(),
 						status: 'SENT',
 						subtotal: 200,
 						tax: 40,
 						total: 240,
 						appliedAmount: 0,
-						currency: 'EUR'
-					}
-				]
+						currency: 'EUR',
+					},
+				],
 			});
 		});
 
@@ -153,10 +169,12 @@ describe('CreditNotes e2e', () => {
 
 	describe('GET /credit-notes/:id', () => {
 		it('devrait retourner un avoir existant', async () => {
+			const client = await prisma.client.findUnique({ where: { id: clientId } });
 			const creditNote = await prisma.creditNote.create({
 				data: {
 					number: 'AVO-2024-0001',
 					clientId,
+					organizationId: client!.organizationId!,
 					invoiceId: null,
 					date: new Date(),
 					status: 'DRAFT',
@@ -164,8 +182,8 @@ describe('CreditNotes e2e', () => {
 					tax: 20,
 					total: 120,
 					appliedAmount: 0,
-					currency: 'EUR'
-				}
+					currency: 'EUR',
+				},
 			});
 
 			return request(app.getHttpServer())
@@ -184,10 +202,14 @@ describe('CreditNotes e2e', () => {
 
 	describe('POST /credit-notes/:id/apply', () => {
 		it('devrait imputer un avoir sur une facture', async () => {
+			const client = await prisma.client.findUnique({ where: { id: clientId } });
+			const orgId = client!.organizationId!;
+
 			const creditNote = await prisma.creditNote.create({
 				data: {
 					number: 'AVO-2024-0001',
 					clientId,
+					organizationId: orgId,
 					invoiceId: null,
 					date: new Date(),
 					status: 'DRAFT',
@@ -195,22 +217,23 @@ describe('CreditNotes e2e', () => {
 					tax: 20,
 					total: 120,
 					appliedAmount: 0,
-					currency: 'EUR'
-				}
+					currency: 'EUR',
+				},
 			});
 
 			const invoice = await prisma.invoice.create({
 				data: {
 					number: 'FAC-2024-0001',
 					clientId,
+					organizationId: orgId,
 					date: new Date(),
 					status: 'SENT',
 					subtotal: 200,
 					tax: 40,
 					total: 240,
 					balance: 240,
-					currency: 'EUR'
-				}
+					currency: 'EUR',
+				},
 			});
 
 			return request(app.getHttpServer())

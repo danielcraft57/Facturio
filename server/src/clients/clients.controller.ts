@@ -1,39 +1,43 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('clients')
+@UseGuards(JwtAuthGuard)
 export class ClientsController {
 	constructor(private readonly clients: ClientsService) {}
 
 	@Post()
-	create(@Body() data: CreateClientDto) {
-		return this.clients.create(data);
+	create(@Body() data: CreateClientDto, @CurrentUser() user: any) {
+		return this.clients.create(data, user.organizationId);
 	}
 
 	@Get()
-	findAll(@Query() query: ListQueryDto) {
-		return this.clients.findAll(query);
+	findAll(@Query() query: ListQueryDto, @CurrentUser() user: any) {
+		return this.clients.findAll(query, user.organizationId);
 	}
 
 	@Get(':id')
-	findOne(@Param('id', ParseIntPipe) id: number) {
-		return this.clients.findOne(id);
+	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.clients.findOne(id, user.organizationId);
 	}
 
 	@Patch(':id')
 	update(
 		@Param('id', ParseIntPipe) id: number,
-		@Body() data: UpdateClientDto
+		@Body() data: UpdateClientDto,
+		@CurrentUser() user: any
 	) {
-		return this.clients.update(id, data);
+		return this.clients.update(id, data, user.organizationId);
 	}
 
 	@Delete(':id')
-	remove(@Param('id', ParseIntPipe) id: number) {
-		return this.clients.remove(id);
+	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.clients.remove(id, user.organizationId);
 	}
 }
 

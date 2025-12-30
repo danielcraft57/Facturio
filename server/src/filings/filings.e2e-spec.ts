@@ -26,6 +26,8 @@ describe('Filings e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM FilingLine');
 		await prisma.$executeRawUnsafe('DELETE FROM AuthorityPayment');
 		await prisma.$executeRawUnsafe('DELETE FROM Filing');
+		await prisma.$executeRawUnsafe('DELETE FROM Client');
+		await prisma.$executeRawUnsafe('DELETE FROM Organization');
 	});
 
 	afterAll(async () => {
@@ -76,14 +78,19 @@ describe('Filings e2e', () => {
 	// ========================================
 
 	it('complex VAT calculations with multiple invoices', async () => {
+		// Créer une organisation
+		const organization = await prisma.organization.create({
+			data: { name: 'Test Org', companyType: 'B2B' },
+		});
+
 		// Créer des clients et factures avec des emails uniques pour éviter
 		// les collisions de contrainte d'unicité entre plusieurs runs.
 		const suffix = Date.now();
 		const client1 = await prisma.client.create({
-			data: { name: 'Client 1', email: `client1+${suffix}@test.com`, isCompany: true, countryCode: 'FR' }
+			data: { name: 'Client 1', email: `client1+${suffix}@test.com`, isCompany: true, countryCode: 'FR', organizationId: organization.id }
 		});
 		const client2 = await prisma.client.create({
-			data: { name: 'Client 2', email: `client2+${suffix}@test.com`, isCompany: true, countryCode: 'DE' }
+			data: { name: 'Client 2', email: `client2+${suffix}@test.com`, isCompany: true, countryCode: 'DE', organizationId: organization.id }
 		});
 
 		// Facture avec TVA française (20%)

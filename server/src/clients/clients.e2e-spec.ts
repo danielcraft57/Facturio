@@ -1,8 +1,10 @@
 import * as request from 'supertest';
+import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
+import { createTestUser, authenticatedRequest, TestUser } from '../common/test-helpers/auth.helper';
 
 function uniqueEmail(base: string): string {
 	const [local, domain] = base.split('@');
@@ -12,10 +14,12 @@ function uniqueEmail(base: string): string {
 describe('Clients e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
+	let testUser: TestUser;
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
 		app = moduleRef.createNestApplication();
+		app.use(cookieParser());
 		await app.init();
 		prisma = app.get(PrismaService);
 		// On remet à zéro les entités liées aux clients (devis/factures) sans
@@ -27,6 +31,9 @@ describe('Clients e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
+		
+		// Créer un utilisateur de test
+		testUser = await createTestUser(app, prisma);
 	});
 
 	afterAll(async () => {
@@ -39,8 +46,8 @@ describe('Clients e2e', () => {
 
 	it('create -> list -> get -> update -> delete', async () => {
 		// CREATE avec un email unique pour éviter les collisions entre runs
-		const created = await request(app.getHttpServer())
-			.post('/clients')
+		const created = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/clients')
 			.send({ name: 'Test Client', email: uniqueEmail('test@example.com'), isCompany: true, countryCode: 'FR' })
 			.expect(201)
 			.then(r => r.body);
@@ -50,18 +57,24 @@ describe('Clients e2e', () => {
 
 		// LIST - la base peut contenir d'autres clients, on vérifie que celui qu'on
 		// vient de créer est bien présent dans la liste.
-		const list = await request(app.getHttpServer()).get('/clients').expect(200).then(r => r.body);
+		const list = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/clients')
+			.expect(200)
+			.then(r => r.body);
 		const found = list.items.find((c: any) => c.id === created.id);
 		expect(found).toBeDefined();
 		expect(found.name).toBe('Test Client');
 
 		// GET
-		const retrieved = await request(app.getHttpServer()).get(`/clients/${created.id}`).expect(200).then(r => r.body);
+		const retrieved = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/clients/${created.id}`)
+			.expect(200)
+			.then(r => r.body);
 		expect(retrieved.name).toBe('Test Client');
 
 		// UPDATE
-		const updated = await request(app.getHttpServer())
-			.patch(`/clients/${created.id}`)
+		const updated = await authenticatedRequest(app, testUser.cookies)
+			.patch(`/api/clients/${created.id}`)
 			.send({ name: 'Updated Client' })
 			.expect(200)
 			.then(r => r.body);
@@ -69,9 +82,14 @@ describe('Clients e2e', () => {
 		expect(updated.name).toBe('Updated Client');
 
 		// DELETE
-		await request(app.getHttpServer()).delete(`/clients/${created.id}`).expect(200);
+		await authenticatedRequest(app, testUser.cookies)
+			.delete(`/api/clients/${created.id}`)
+			.expect(200);
 
-		const finalList = await request(app.getHttpServer()).get('/clients').expect(200).then(r => r.body);
+		const finalList = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/clients')
+			.expect(200)
+			.then(r => r.body);
 		// La base peut contenir d'autres clients créés par d'autres tests,
 		// on vérifie simplement que celui qu'on vient de supprimer n'est plus là.
 		const deleted = finalList.items.find((c: any) => c.id === created.id);
@@ -84,14 +102,14 @@ describe('Clients e2e', () => {
 
 	it('validation errors', async () => {
 		// Email invalide
-		await request(app.getHttpServer())
-			.post('/clients')
+		await authenticatedRequest(app, testUser.cookies)
+			.post('/api/clients')
 			.send({ name: 'Test', email: 'invalid-email', isCompany: true })
 			.expect(400);
 
 		// Nom manquant
-		await request(app.getHttpServer())
-			.post('/clients')
+		await authenticatedRequest(app, testUser.cookies)
+			.post('/api/clients')
 			.send({ email: 'test@example.com', isCompany: true })
 			.expect(400);
 	});
@@ -105,8 +123,8 @@ describe('Clients e2e', () => {
 		const clients: any[] = [];
 		const suffix = Date.now();
 		for (let i = 0; i < 5; i++) {
-			const client = await request(app.getHttpServer())
-				.post('/clients')
+			const client = await authenticatedRequest(app, testUser.cookies)
+				.post('/api/clients')
 				.send({
 					name: `Client ${i}`,
 					email: `client${i}+${suffix}@test.com`,
@@ -119,14 +137,23 @@ describe('Clients e2e', () => {
 		}
 
 		// Test pagination
-		const page1 = await request(app.getHttpServer()).get('/clients?page=1&pageSize=2').expect(200).then(r => r.body);
+		const page1 = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/clients?page=1&pageSize=2')
+			.expect(200)
+			.then(r => r.body);
 		expect(page1.items).toHaveLength(2);
 
-		const page2 = await request(app.getHttpServer()).get('/clients?page=2&pageSize=2').expect(200).then(r => r.body);
+		const page2 = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/clients?page=2&pageSize=2')
+			.expect(200)
+			.then(r => r.body);
 		expect(page2.items).toHaveLength(2);
 
 		// Test recherche - on vérifie qu'au moins un des clients créés est présent
-		const search = await request(app.getHttpServer()).get(`/clients?search=Client 1`).expect(200).then(r => r.body);
+		const search = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/clients?search=Client 1`)
+			.expect(200)
+			.then(r => r.body);
 		const found = search.items.find((c: any) => c.id === clients[1].id);
 		expect(found).toBeDefined();
 		expect(found.name).toBe('Client 1');
