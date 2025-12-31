@@ -22,7 +22,7 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  Grid
+  GridLegacy,
 } from '@mui/material'
 import {
   Download,
@@ -157,8 +157,8 @@ export function AccountingPage() {
       {/* Filtres de période */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={4}>
+          <GridLegacy container spacing={2} alignItems="center">
+            <GridLegacy item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Date de début"
@@ -167,8 +167,8 @@ export function AccountingPage() {
                 onChange={(e) => setStartDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </GridLegacy>
+            <GridLegacy item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Date de fin"
@@ -177,9 +177,9 @@ export function AccountingPage() {
                 onChange={(e) => setEndDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
               />
-            </Grid>
+            </GridLegacy>
             {tabValue === 2 && (
-              <Grid item xs={12} sm={4}>
+              <GridLegacy item xs={12} sm={4}>
                 <FormControl fullWidth>
                   <InputLabel>Compte</InputLabel>
                   <Select
@@ -195,9 +195,9 @@ export function AccountingPage() {
                     ))}
                   </Select>
                 </FormControl>
-              </Grid>
+              </GridLegacy>
             )}
-          </Grid>
+          </GridLegacy>
         </CardContent>
       </Card>
 

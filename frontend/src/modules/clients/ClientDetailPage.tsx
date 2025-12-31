@@ -12,7 +12,6 @@ import {
   IconButton,
   CircularProgress,
   Alert,
-  Grid,
   Tabs,
   Tab,
   Table,
@@ -24,7 +23,8 @@ import {
   Paper,
   Avatar,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  GridLegacy,
 } from '@mui/material'
 import {
   ArrowBack,
@@ -210,9 +210,9 @@ export function ClientDetailPage() {
         </Button>
       </Stack>
 
-      <Grid container spacing={3}>
+      <GridLegacy container spacing={3}>
         {/* Colonne principale */}
-        <Grid item xs={12} md={8}>
+        <GridLegacy item xs={12} md={8}>
           {/* Informations client */}
           <Card sx={{ mb: 3 }}>
             <CardContent>
@@ -234,27 +234,27 @@ export function ClientDetailPage() {
 
               <Divider sx={{ my: 2 }} />
 
-              <Grid container spacing={2}>
+              <GridLegacy container spacing={2}>
                 {client.email && (
-                  <Grid item xs={12} sm={6}>
+                  <GridLegacy item xs={12} sm={6}>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Email color="action" />
                       <Typography variant="body2">{client.email}</Typography>
                     </Stack>
-                  </Grid>
+                  </GridLegacy>
                 )}
                 
                 {client.phone && (
-                  <Grid item xs={12} sm={6}>
+                  <GridLegacy item xs={12} sm={6}>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Phone color="action" />
                       <Typography variant="body2">{client.phone}</Typography>
                     </Stack>
-                  </Grid>
+                  </GridLegacy>
                 )}
                 
                 {client.address && (
-                  <Grid item xs={12}>
+                  <GridLegacy item xs={12}>
                     <Stack direction="row" spacing={1} alignItems="flex-start">
                       <LocationOn color="action" sx={{ mt: 0.5 }} />
                       <Box>
@@ -271,34 +271,34 @@ export function ClientDetailPage() {
                         )}
                       </Box>
                     </Stack>
-                  </Grid>
+                  </GridLegacy>
                 )}
 
                 {client.company && (
                   <>
                     {client.company.tva && (
-                      <Grid item xs={12} sm={6}>
+                      <GridLegacy item xs={12} sm={6}>
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Business color="action" />
                           <Typography variant="body2">
                             TVA: {client.company.tva}
                           </Typography>
                         </Stack>
-                      </Grid>
+                      </GridLegacy>
                     )}
                     {client.company.siret && (
-                      <Grid item xs={12} sm={6}>
+                      <GridLegacy item xs={12} sm={6}>
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Business color="action" />
                           <Typography variant="body2">
                             SIRET: {client.company.siret}
                           </Typography>
                         </Stack>
-                      </Grid>
+                      </GridLegacy>
                     )}
                   </>
                 )}
-              </Grid>
+              </GridLegacy>
             </CardContent>
           </Card>
 
@@ -406,10 +406,10 @@ export function ClientDetailPage() {
               </Alert>
             </TabPanel>
           </Card>
-        </Grid>
+        </GridLegacy>
 
         {/* Panneau latéral */}
-        <Grid item xs={12} md={4}>
+        <GridLegacy item xs={12} md={4}>
           <Stack spacing={2}>
             {/* Statistiques */}
             <Card>
@@ -490,8 +490,8 @@ export function ClientDetailPage() {
               </CardContent>
             </Card>
           </Stack>
-        </Grid>
-      </Grid>
+        </GridLegacy>
+      </GridLegacy>
     </Box>
   )
 }

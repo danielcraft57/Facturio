@@ -12,13 +12,19 @@ export class PackService {
     if (filters?.search) params.set('search', filters.search);
     
     const response = await this.apiClient.get<PackListResponse>(`${this.baseUrl}?${params.toString()}`);
-    return response;
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Erreur lors de la récupération des packs');
+    }
+    return response.data;
   }
 
   async getPack(id: string): Promise<Pack | null> {
     try {
       const response = await this.apiClient.get<Pack>(`${this.baseUrl}/${id}`);
-      return response;
+      if (!response.success || !response.data) {
+        return null;
+      }
+      return response.data;
     } catch (error: any) {
       if (error?.status === 404) return null;
       throw error;
@@ -27,13 +33,19 @@ export class PackService {
 
   async createPack(data: CreatePackData): Promise<Pack> {
     const response = await this.apiClient.post<Pack>(this.baseUrl, data);
-    return response;
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Erreur lors de la création du pack');
+    }
+    return response.data;
   }
 
   async updatePack(id: string, data: UpdatePackData): Promise<Pack | null> {
     try {
       const response = await this.apiClient.patch<Pack>(`${this.baseUrl}/${id}`, data);
-      return response;
+      if (!response.success || !response.data) {
+        return null;
+      }
+      return response.data;
     } catch (error: any) {
       if (error?.status === 404) return null;
       throw error;

@@ -19,20 +19,29 @@ export class ProspectService {
     if (filters?.search) params.set('search', filters.search);
     
     const response = await this.apiClient.get<{ data: Prospect[]; total: number; page: number; pageSize: number }>(`${this.baseUrl}?${params.toString()}`);
+    if (!response.success || !response.data) {
+      return { data: [], total: 0 };
+    }
     return {
-      data: response.data || [],
-      total: response.total || 0
+      data: response.data.data || [],
+      total: response.data.total || 0
     };
   }
 
   async createProspect(data: CreateProspectDto): Promise<Prospect> {
     const response = await this.apiClient.post<Prospect>(this.baseUrl, data);
-    return response;
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Erreur lors de la création du prospect');
+    }
+    return response.data;
   }
 
   async updateProspect(id: string, data: UpdateProspectDto): Promise<Prospect> {
     const response = await this.apiClient.patch<Prospect>(`${this.baseUrl}/${id}`, data);
-    return response;
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Erreur lors de la mise à jour du prospect');
+    }
+    return response.data;
   }
 
   async deleteProspect(id: string): Promise<void> {
@@ -54,7 +63,10 @@ export class ProspectService {
       conversionRate: number;
       averageScore: number;
     }>(`${this.baseUrl}/metrics`);
-    return response;
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Erreur lors de la récupération des métriques');
+    }
+    return response.data;
   }
 }
 

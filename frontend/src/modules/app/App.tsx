@@ -5,9 +5,15 @@ import { CssBaseline, CircularProgress, Box } from '@mui/material'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { createCustomTheme, type ThemeSettings } from '../../theme/theme'
 import { AppLayout } from './components/AppLayout'
+import { PublicLayout } from './components/PublicLayout'
 import { ThemeSettingsDrawer } from './components/ThemeSettingsDrawer'
 import { ToastContainer, useToast } from '../../components/Toast'
 import { ModernPageLoader } from '../../components/AdvancedPageLoader'
+import { ProtectedRoute } from '../../components/ProtectedRoute'
+import { LandingPage } from './pages/LandingPage'
+import { LoginPage } from './pages/LoginPage'
+import { SignupPage } from './pages/SignupPage'
+import { AuthCallbackPage } from './pages/AuthCallbackPage'
 
 // Lazy loading des pages pour optimiser les performances
 const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -85,6 +91,19 @@ export function App() {
     setSettings(newSettings)
   }
 
+  // Wrapper pour les routes privées avec layout
+  const PrivateRouteWrapper = ({ children }: { children: ReactNode }) => (
+    <ProtectedRoute>
+      <AppLayout
+        mode={settings.mode}
+        onToggleMode={handleToggleMode}
+        onOpenSettings={handleOpenSettings}
+      >
+        {children}
+      </AppLayout>
+    </ProtectedRoute>
+  )
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -97,34 +116,157 @@ export function App() {
             color="primary"
           />
           
-          <AppLayout
-            mode={settings.mode}
-            onToggleMode={handleToggleMode}
-            onOpenSettings={handleOpenSettings}
-          >
-            <Suspense fallback={
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <CircularProgress />
-              </Box>
-            }>
+          <Suspense fallback={
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+              <CircularProgress />
+            </Box>
+          }>
             <RouterRoutes>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/clients" element={<ClientsPage />} />
-                <Route path="/clients/:id" element={<ClientDetailPage />} />
-              <Route path="/devis" element={<QuotesPage />} />
-              <Route path="/factures" element={<InvoicesPage />} />
-                <Route path="/factures/:id" element={<InvoiceDetailPage />} />
-              <Route path="/produits" element={<ProductsPage />} />
-              <Route path="/prospection" element={<ProspectsPage />} />
-              <Route path="/taxes" element={<TaxesPage />} />
-              <Route path="/abonnements" element={<SubscriptionsPage />} />
-              <Route path="/declarations" element={<FilingsPage />} />
-              <Route path="/comptabilite" element={<AccountingPage />} />
-              <Route path="/demo" element={<GlobalStateDemo />} />
-              <Route path="/loaders" element={<LoaderDemo />} />
+              {/* Routes publiques */}
+              <Route
+                path="/"
+                element={
+                  <PublicLayout>
+                    <LandingPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
+                path="/login"
+                element={
+                  <PublicLayout>
+                    <LoginPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
+                path="/signup"
+                element={
+                  <PublicLayout>
+                    <SignupPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
+                path="/auth/callback"
+                element={<AuthCallbackPage />}
+              />
+
+              {/* Routes privées (protégées) */}
+              <Route
+                path="/dashboard"
+                element={
+                  <PrivateRouteWrapper>
+                    <DashboardPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/clients"
+                element={
+                  <PrivateRouteWrapper>
+                    <ClientsPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/clients/:id"
+                element={
+                  <PrivateRouteWrapper>
+                    <ClientDetailPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/devis"
+                element={
+                  <PrivateRouteWrapper>
+                    <QuotesPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/factures"
+                element={
+                  <PrivateRouteWrapper>
+                    <InvoicesPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/factures/:id"
+                element={
+                  <PrivateRouteWrapper>
+                    <InvoiceDetailPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/produits"
+                element={
+                  <PrivateRouteWrapper>
+                    <ProductsPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/prospection"
+                element={
+                  <PrivateRouteWrapper>
+                    <ProspectsPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/taxes"
+                element={
+                  <PrivateRouteWrapper>
+                    <TaxesPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/abonnements"
+                element={
+                  <PrivateRouteWrapper>
+                    <SubscriptionsPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/declarations"
+                element={
+                  <PrivateRouteWrapper>
+                    <FilingsPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/comptabilite"
+                element={
+                  <PrivateRouteWrapper>
+                    <AccountingPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/demo"
+                element={
+                  <PrivateRouteWrapper>
+                    <GlobalStateDemo />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/loaders"
+                element={
+                  <PrivateRouteWrapper>
+                    <LoaderDemo />
+                  </PrivateRouteWrapper>
+                }
+              />
             </RouterRoutes>
-            </Suspense>
-          </AppLayout>
+          </Suspense>
 
           <ThemeSettingsDrawer
             open={settingsOpen}

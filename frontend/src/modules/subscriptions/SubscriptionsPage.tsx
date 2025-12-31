@@ -18,7 +18,6 @@ import {
   IconButton,
   CircularProgress,
   Alert,
-  Grid,
   Paper,
   Dialog,
   DialogTitle,
@@ -28,7 +27,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  GridLegacy,
 } from '@mui/material'
 import {
   Add,
@@ -155,8 +155,8 @@ export function SubscriptionsPage() {
       )}
 
       {/* Analytics */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <GridLegacy container spacing={2} sx={{ mb: 3 }}>
+        <GridLegacy item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="h6" color="primary">
               {formatCurrency(mrr)}
@@ -165,8 +165,8 @@ export function SubscriptionsPage() {
               MRR (Revenu récurrent mensuel)
             </Typography>
           </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        </GridLegacy>
+        <GridLegacy item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="h6" color="primary">
               {formatCurrency(arr)}
@@ -175,8 +175,8 @@ export function SubscriptionsPage() {
               ARR (Revenu récurrent annuel)
             </Typography>
           </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        </GridLegacy>
+        <GridLegacy item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="h6" color="success.main">
               {subscriptions.filter(s => s.status === 'ACTIVE').length}
@@ -185,8 +185,8 @@ export function SubscriptionsPage() {
               Abonnements actifs
             </Typography>
           </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        </GridLegacy>
+        <GridLegacy item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="h6">
               {plans.length}
@@ -195,8 +195,8 @@ export function SubscriptionsPage() {
               Plans disponibles
             </Typography>
           </Paper>
-        </Grid>
-      </Grid>
+        </GridLegacy>
+      </GridLegacy>
 
       {/* Onglets */}
       <Card>

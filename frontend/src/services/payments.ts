@@ -72,7 +72,7 @@ export class PaymentsService {
 			apiClient.invalidateCache(`/invoices/${payment.data.invoiceId}`);
 			apiClient.invalidateCache('/invoices');
 		}
-		return { data: undefined };
+		return { data: undefined, success: true };
 	}
 }
 

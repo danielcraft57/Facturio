@@ -25,7 +25,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Grid
+  GridLegacy,
 } from '@mui/material'
 import {
   Add,
@@ -143,8 +143,8 @@ export function FilingsPage() {
       {/* Filtres */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
+          <GridLegacy container spacing={2}>
+            <GridLegacy item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Période (ex: 2024-Q1)"
@@ -152,8 +152,8 @@ export function FilingsPage() {
                 onChange={(e) => setPeriodFilter(e.target.value)}
                 placeholder="2024-Q1"
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
+            </GridLegacy>
+            <GridLegacy item xs={12} sm={4}>
               <FormControl fullWidth>
                 <InputLabel>Statut</InputLabel>
                 <Select
@@ -168,8 +168,8 @@ export function FilingsPage() {
                   <MenuItem value="paid">Payée</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-          </Grid>
+            </GridLegacy>
+          </GridLegacy>
         </CardContent>
       </Card>
 

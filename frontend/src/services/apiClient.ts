@@ -105,6 +105,18 @@ class ApiClient {
       };
     }
   }
+
+  public async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.axiosInstance.patch<ApiResponse<T>>(url, data, config);
+      return response.data;
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Erreur réseau'
+      };
+    }
+  }
 }
 
 export { ApiClient };

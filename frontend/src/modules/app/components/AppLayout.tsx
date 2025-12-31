@@ -16,6 +16,8 @@ import {
   Tooltip,
   Avatar,
   Chip,
+  Menu,
+  MenuItem,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import DashboardIcon from '@mui/icons-material/Dashboard'
@@ -31,8 +33,11 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SettingsIcon from '@mui/icons-material/Settings'
-import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import LogoutIcon from '@mui/icons-material/Logout'
+import PersonIcon from '@mui/icons-material/Person'
+import { useAuthStore } from '../../../stores/authStore'
 
 type AppLayoutProps = PropsWithChildren<{
   mode: 'light' | 'dark'
@@ -45,7 +50,24 @@ const drawerWidth = 280
 export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppLayoutProps) {
   const theme = useTheme()
   const location = useLocation()
+  const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
+  const { user, logout } = useAuthStore()
+
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget)
+  }
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null)
+  }
+
+  const handleLogout = async () => {
+    handleUserMenuClose()
+    await logout()
+    navigate('/login')
+  }
 
   const items = [
     { 
@@ -313,7 +335,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
           <Typography variant="h6" sx={{ flexGrow: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             Facturio
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Tooltip title={mode === 'light' ? 'Mode sombre' : 'Mode clair'}>
               <IconButton color="inherit" onClick={onToggleMode}>
                 {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
@@ -324,7 +346,54 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
                 <SettingsIcon />
               </IconButton>
             </Tooltip>
+            {user && (
+              <Tooltip title="Menu utilisateur">
+                <IconButton
+                  color="inherit"
+                  onClick={handleUserMenuOpen}
+                  sx={{ ml: 1 }}
+                >
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+                    {user.firstName?.[0] || user.email[0].toUpperCase()}
+                  </Avatar>
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
+          <Menu
+            anchorEl={userMenuAnchor}
+            open={Boolean(userMenuAnchor)}
+            onClose={handleUserMenuClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+          >
+            <MenuItem disabled>
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.email}
+                </Typography>
+                {user?.organization && (
+                  <Typography variant="caption" color="text.secondary">
+                    {user.organization.name}
+                  </Typography>
+                )}
+              </Box>
+            </MenuItem>
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              Déconnexion
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 

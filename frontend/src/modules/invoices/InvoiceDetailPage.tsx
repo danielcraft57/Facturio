@@ -19,14 +19,14 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  Grid,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  GridLegacy,
 } from '@mui/material'
 import {
   ArrowBack,
@@ -349,8 +349,8 @@ export function InvoiceDetailPage() {
       </Stack>
 
       {/* Informations principales */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={8}>
+      <GridLegacy container spacing={3} sx={{ mb: 3 }}>
+        <GridLegacy item xs={12} md={8}>
           <Card>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
@@ -368,7 +368,7 @@ export function InvoiceDetailPage() {
                 <Chip
                   label={getStatusLabel(invoice.status)}
                   color={getStatusColor(invoice.status) as any}
-                  size="large"
+                  size="medium"
                 />
               </Stack>
 
@@ -517,10 +517,10 @@ export function InvoiceDetailPage() {
               )}
             </CardContent>
           </Card>
-        </Grid>
+        </GridLegacy>
 
         {/* Panneau latéral */}
-        <Grid item xs={12} md={4}>
+        <GridLegacy item xs={12} md={4}>
           <Stack spacing={2}>
             <Card>
               <CardContent>
@@ -645,8 +645,8 @@ export function InvoiceDetailPage() {
               </CardContent>
             </Card>
           </Stack>
-        </Grid>
-      </Grid>
+        </GridLegacy>
+      </GridLegacy>
 
       {/* Dialog de paiement */}
       <Dialog open={paymentDialogOpen} onClose={() => setPaymentDialogOpen(false)} maxWidth="sm" fullWidth>
