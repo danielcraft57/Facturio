@@ -24,12 +24,12 @@ export class QuotesController {
 
 	@Get()
 	findAll(@CurrentUser() user: any) {
-		return this.quotes.findAll(user.organizationId);
+		return this.quotes.findAll();
 	}
 
 	@Get(':id')
 	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.quotes.findOne(id, user.organizationId);
+		return this.quotes.findOne(id);
 	}
 
 	@Patch(':id')
@@ -38,17 +38,17 @@ export class QuotesController {
 		@Body() data: UpdateQuoteDto,
 		@CurrentUser() user: any
 	) {
-		return this.quotes.update(id, data, user.organizationId);
+		return this.quotes.update(id, data);
 	}
 
 	@Delete(':id')
 	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.quotes.remove(id, user.organizationId);
+		return this.quotes.remove(id);
 	}
 
 	@Post(':id/convert-to-invoice')
 	async convertToInvoice(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		const quote = await this.quotes.findOne(id, user.organizationId);
+		const quote = await this.quotes.findOne(id);
 		return this.invoices.create({
 			clientId: quote.clientId,
 			lines: quote.lines.map((l: any) => ({ description: l.description, quantity: l.quantity, unitPrice: Number(l.unitPrice), taxRate: Number(l.taxRate) }))
@@ -57,7 +57,7 @@ export class QuotesController {
 
 	@Post(':id/send')
 	async sendQuote(@Param('id') id: string, @CurrentUser() user: any) {
-		const quote = await this.quotes.sendQuote(Number(id), user.organizationId);
+		const quote = await this.quotes.sendQuote(Number(id));
 		const pdf = await this.pdfService.generateQuotePdf(quote);
 		if (quote.client?.email) {
 			await this.email.sendQuote({
@@ -76,7 +76,7 @@ export class QuotesController {
 	@Get(':id/pdf')
 	@Header('Content-Type', 'application/pdf')
 	async downloadPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response, @CurrentUser() user: any) {
-		const quote = await this.quotes.findOne(id, user.organizationId);
+		const quote = await this.quotes.findOne(id);
 		const buf = this.pdfService.generateQuotePdf(quote);
 		res.setHeader('Content-Disposition', `inline; filename=quote-${quote.number}.pdf`);
 		return res.send(buf);

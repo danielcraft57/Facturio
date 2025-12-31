@@ -1,18 +1,22 @@
 import * as request from 'supertest';
+import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { createTestUser, authenticatedRequest } from '../common/test-helpers/auth.helper';
 
-describe('CreditNotes e2e', () => {
+describe('Avoirs e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
 	let clientId: number;
+	let testUser: { cookies: string[]; organizationId: number };
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
 		app = moduleRef.createNestApplication();
 		app.setGlobalPrefix('api');
+		app.use(cookieParser());
 		app.useGlobalPipes(
 			new ValidationPipe({
 				whitelist: true,
@@ -22,6 +26,9 @@ describe('CreditNotes e2e', () => {
 		);
 		await app.init();
 		prisma = app.get(PrismaService);
+
+		// Créer un utilisateur de test
+		testUser = await createTestUser(app, prisma);
 	});
 
 	afterAll(async () => {
@@ -29,37 +36,47 @@ describe('CreditNotes e2e', () => {
 	});
 
 	beforeEach(async () => {
-		// Nettoyer la base avant chaque test
-		await prisma.creditNoteApplication.deleteMany({});
-		await prisma.creditNoteLine.deleteMany({});
-		await prisma.creditNote.deleteMany({});
+		// Nettoyer la base avant chaque test (ordre important)
+		await prisma.avoirApplication.deleteMany({});
+		await prisma.avoirLine.deleteMany({});
+		await prisma.avoir.deleteMany({});
+		await prisma.payment.deleteMany({});
+		await prisma.invoiceLine.deleteMany({});
+		await prisma.invoice.deleteMany({});
+		await prisma.quoteLine.deleteMany({});
+		await prisma.quote.deleteMany({});
+		await prisma.subscription.deleteMany({});
+		await prisma.pack.deleteMany({});
+		await prisma.prospect.deleteMany({});
+		await prisma.taxSimulation.deleteMany({});
+		await prisma.taxCredit.deleteMany({});
+		await prisma.amortization.deleteMany({});
+		await prisma.taxDeduction.deleteMany({});
 		await prisma.client.deleteMany({});
+		await prisma.user.deleteMany({});
+		await prisma.organizationDocument.deleteMany({});
+		// Supprimer les organisations en dernier car elles sont référencées par clients et users
 		await prisma.organization.deleteMany({});
 
-		// Créer une organisation de test
-		const organization = await prisma.organization.create({
-			data: {
-				name: 'Test Organization',
-				companyType: 'B2B',
-			},
-		});
+		// Recréer l'utilisateur de test avec organisation
+		testUser = await createTestUser(app, prisma);
 
-		// Créer un client de test
+		// Créer un client de test avec l'organisation de l'utilisateur de test
 		const client = await prisma.client.create({
 			data: {
 				name: 'Test Client',
-				email: 'test@example.com',
+				email: `test-${Date.now()}@example.com`,
 				isCompany: true,
-				organizationId: organization.id,
+				organizationId: testUser.organizationId,
 			},
 		});
 		clientId = client.id;
 	});
 
-	describe('POST /credit-notes', () => {
+	describe('POST /avoirs', () => {
 		it('devrait créer un avoir valide', () => {
-			return request(app.getHttpServer())
-				.post('/api/credit-notes')
+			return authenticatedRequest(app, testUser.cookies)
+				.post('/api/avoirs')
 				.send({
 					clientId,
 					lines: [
@@ -72,7 +89,7 @@ describe('CreditNotes e2e', () => {
 					]
 				})
 				.expect(201)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body).toHaveProperty('id');
 					expect(res.body).toHaveProperty('number');
 					expect(res.body.clientId).toBe(clientId);
@@ -82,8 +99,8 @@ describe('CreditNotes e2e', () => {
 		});
 
 		it('devrait rejeter un avoir sans lignes', () => {
-			return request(app.getHttpServer())
-				.post('/api/credit-notes')
+			return authenticatedRequest(app, testUser.cookies)
+				.post('/api/avoirs')
 				.send({
 					clientId,
 					lines: []
@@ -92,8 +109,8 @@ describe('CreditNotes e2e', () => {
 		});
 
 		it('devrait rejeter un avoir avec un client invalide', () => {
-			return request(app.getHttpServer())
-				.post('/api/credit-notes')
+			return authenticatedRequest(app, testUser.cookies)
+				.post('/api/avoirs')
 				.send({
 					clientId: 99999,
 					lines: [
@@ -108,19 +125,15 @@ describe('CreditNotes e2e', () => {
 		});
 	});
 
-	describe('GET /credit-notes', () => {
+	describe('GET /avoirs', () => {
 		beforeEach(async () => {
-			// Récupérer l'organisation du client
-			const client = await prisma.client.findUnique({ where: { id: clientId } });
-			const orgId = client!.organizationId!;
-
 			// Créer des avoirs de test
-			await prisma.creditNote.createMany({
+			await prisma.avoir.createMany({
 				data: [
 					{
 						number: 'AVO-2024-0001',
 						clientId,
-						organizationId: orgId,
+						organizationId: testUser.organizationId,
 						date: new Date(),
 						status: 'DRAFT',
 						subtotal: 100,
@@ -132,7 +145,7 @@ describe('CreditNotes e2e', () => {
 					{
 						number: 'AVO-2024-0002',
 						clientId,
-						organizationId: orgId,
+						organizationId: testUser.organizationId,
 						date: new Date(),
 						status: 'SENT',
 						subtotal: 200,
@@ -146,10 +159,10 @@ describe('CreditNotes e2e', () => {
 		});
 
 		it('devrait retourner la liste des avoirs', () => {
-			return request(app.getHttpServer())
-				.get('/api/credit-notes')
+			return authenticatedRequest(app, testUser.cookies)
+				.get('/api/avoirs')
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body).toHaveProperty('data');
 					expect(res.body).toHaveProperty('pagination');
 					expect(res.body.data.length).toBeGreaterThan(0);
@@ -157,24 +170,23 @@ describe('CreditNotes e2e', () => {
 		});
 
 		it('devrait paginer les résultats', () => {
-			return request(app.getHttpServer())
-				.get('/api/credit-notes?page=1&pageSize=1')
+			return authenticatedRequest(app, testUser.cookies)
+				.get('/api/avoirs?page=1&pageSize=1')
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body.data.length).toBe(1);
 					expect(res.body.pagination.pageSize).toBe(1);
 				});
 		});
 	});
 
-	describe('GET /credit-notes/:id', () => {
+	describe('GET /avoirs/:id', () => {
 		it('devrait retourner un avoir existant', async () => {
-			const client = await prisma.client.findUnique({ where: { id: clientId } });
-			const creditNote = await prisma.creditNote.create({
+			const avoir = await prisma.avoir.create({
 				data: {
 					number: 'AVO-2024-0001',
 					clientId,
-					organizationId: client!.organizationId!,
+					organizationId: testUser.organizationId,
 					invoiceId: null,
 					date: new Date(),
 					status: 'DRAFT',
@@ -186,30 +198,27 @@ describe('CreditNotes e2e', () => {
 				},
 			});
 
-			return request(app.getHttpServer())
-				.get(`/api/credit-notes/${creditNote.id}`)
+			return authenticatedRequest(app, testUser.cookies)
+				.get(`/api/avoirs/${avoir.id}`)
 				.expect(200)
-				.expect((res) => {
-					expect(res.body.id).toBe(creditNote.id);
+				.expect((res: any) => {
+					expect(res.body.id).toBe(avoir.id);
 					expect(res.body.number).toBe('AVO-2024-0001');
 				});
 		});
 
 		it('devrait retourner 404 pour un avoir inexistant', () => {
-			return request(app.getHttpServer()).get('/api/credit-notes/99999').expect(404);
+			return authenticatedRequest(app, testUser.cookies).get('/api/avoirs/99999').expect(404);
 		});
 	});
 
-	describe('POST /credit-notes/:id/apply', () => {
+	describe('POST /avoirs/:id/apply', () => {
 		it('devrait imputer un avoir sur une facture', async () => {
-			const client = await prisma.client.findUnique({ where: { id: clientId } });
-			const orgId = client!.organizationId!;
-
-			const creditNote = await prisma.creditNote.create({
+			const avoir = await prisma.avoir.create({
 				data: {
 					number: 'AVO-2024-0001',
 					clientId,
-					organizationId: orgId,
+					organizationId: testUser.organizationId,
 					invoiceId: null,
 					date: new Date(),
 					status: 'DRAFT',
@@ -225,7 +234,7 @@ describe('CreditNotes e2e', () => {
 				data: {
 					number: 'FAC-2024-0001',
 					clientId,
-					organizationId: orgId,
+					organizationId: testUser.organizationId,
 					date: new Date(),
 					status: 'SENT',
 					subtotal: 200,
@@ -236,14 +245,14 @@ describe('CreditNotes e2e', () => {
 				},
 			});
 
-			return request(app.getHttpServer())
-				.post(`/api/credit-notes/${creditNote.id}/apply`)
+			return authenticatedRequest(app, testUser.cookies)
+				.post(`/api/avoirs/${avoir.id}/apply`)
 				.send({
 					invoiceId: invoice.id,
 					amount: 50
 				})
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body.applications).toHaveLength(1);
 					expect(Number(res.body.appliedAmount)).toBe(50);
 				});

@@ -1,6 +1,6 @@
 import { IsInt, IsNotEmpty, IsNumber, Min } from 'class-validator';
 
-export class ApplyCreditNoteDto {
+export class ApplyAvoirDto {
 	@IsInt()
 	@IsNotEmpty()
 	invoiceId!: number;

@@ -1,11 +1,11 @@
 import { IsArray, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CreateCreditNoteLineDto } from './create-credit-note-line.dto';
+import { CreateAvoirLineDto } from './create-avoir-line.dto';
 
-export const CREDIT_NOTE_STATUS_VALUES = ['DRAFT', 'SENT', 'APPLIED', 'CANCELLED'] as const;
-export type CreditNoteStatusLiteral = typeof CREDIT_NOTE_STATUS_VALUES[number];
+export const AVOIR_STATUS_VALUES = ['DRAFT', 'SENT', 'APPLIED', 'CANCELLED'] as const;
+export type AvoirStatusLiteral = typeof AVOIR_STATUS_VALUES[number];
 
-export class CreateCreditNoteDto {
+export class CreateAvoirDto {
 	@IsOptional()
 	@IsString()
 	number?: string;
@@ -22,8 +22,8 @@ export class CreateCreditNoteDto {
 	date?: string;
 
 	@IsOptional()
-	@IsEnum(CREDIT_NOTE_STATUS_VALUES)
-	status?: CreditNoteStatusLiteral;
+	@IsEnum(AVOIR_STATUS_VALUES)
+	status?: AvoirStatusLiteral;
 
 	@IsOptional()
 	@IsString()
@@ -35,7 +35,7 @@ export class CreateCreditNoteDto {
 
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => CreateCreditNoteLineDto)
-	lines!: CreateCreditNoteLineDto[];
+	@Type(() => CreateAvoirLineDto)
+	lines!: CreateAvoirLineDto[];
 }
 

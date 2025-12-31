@@ -17,17 +17,17 @@ export class CalculateContributionDto {
 	@IsNotEmpty()
 	@IsNumber()
 	@Transform(({ value }) => parseInt(value))
-	organizationId: number;
+	organizationId!: number;
 
 	/** Date de début de période (format ISO 8601) */
 	@IsNotEmpty()
 	@IsDateString()
-	periodStart: string;
+	periodStart!: string;
 
 	/** Date de fin de période (format ISO 8601) */
 	@IsNotEmpty()
 	@IsDateString()
-	periodEnd: string;
+	periodEnd!: string;
 
 	/** Période formatée (optionnel) : "YYYY-MNN" (mensuel) ou "YYYY-QN" (trimestriel) */
 	@IsOptional()

@@ -3,13 +3,13 @@ import { Transform } from 'class-transformer';
 
 export class ListQueryDto {
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => value === undefined || value === null || value === '' ? undefined : parseInt(value, 10))
 	@IsInt()
 	@IsPositive()
 	page?: number = 1;
 
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => value === undefined || value === null || value === '' ? undefined : parseInt(value, 10))
 	@IsInt()
 	@Min(1)
 	@Max(100)

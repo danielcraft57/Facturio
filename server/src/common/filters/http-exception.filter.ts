@@ -7,6 +7,7 @@ import {
 	Logger
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { ConfigService } from '../../config/config.service';
 
 /**
  * Exception filter global pour normaliser toutes les erreurs HTTP
@@ -32,6 +33,12 @@ import { Request, Response } from 'express';
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
 	private readonly logger = new Logger(HttpExceptionFilter.name);
+	private readonly isTestEnv: boolean;
+
+	constructor() {
+		// Détecter l'environnement de test
+		this.isTestEnv = process.env.NODE_ENV === 'test';
+	}
 
 	catch(exception: unknown, host: ArgumentsHost) {
 		const ctx = host.switchToHttp();
@@ -69,11 +76,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			status = HttpStatus.INTERNAL_SERVER_ERROR;
 			message = 'Internal server error';
 			
-			// Logger l'erreur complète en développement
-			this.logger.error(
-				`Unhandled exception: ${exception instanceof Error ? exception.stack : JSON.stringify(exception)}`,
-				exception instanceof Error ? exception.stack : undefined
-			);
+			// Logger l'erreur complète en développement (pas en test)
+			if (!this.isTestEnv) {
+				this.logger.error(
+					`Unhandled exception: ${exception instanceof Error ? exception.stack : JSON.stringify(exception)}`,
+					exception instanceof Error ? exception.stack : undefined
+				);
+			}
 		}
 
 		// Construire la réponse standardisée
@@ -85,16 +94,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			path: request.url
 		};
 
-		// Logger selon le niveau de sévérité
-		if (status >= 500) {
-			this.logger.error(
-				`${request.method} ${request.url} - ${status} - ${message}`,
-				exception instanceof Error ? exception.stack : undefined
-			);
-		} else if (status >= 400) {
-			this.logger.warn(
-				`${request.method} ${request.url} - ${status} - ${message}`
-			);
+		// Logger selon le niveau de sévérité (pas en test pour réduire le bruit)
+		if (!this.isTestEnv) {
+			if (status >= 500) {
+				this.logger.error(
+					`${request.method} ${request.url} - ${status} - ${message}`,
+					exception instanceof Error ? exception.stack : undefined
+				);
+			} else if (status >= 400) {
+				this.logger.warn(
+					`${request.method} ${request.url} - ${status} - ${message}`
+				);
+			}
 		}
 
 		response.status(status).json(errorResponse);

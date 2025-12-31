@@ -26,6 +26,9 @@ describe('Payments e2e', () => {
 		prisma = app.get(PrismaService);
 
 		// Nettoyage des paiements et factures de test
+		await prisma.$executeRawUnsafe('DELETE FROM AvoirApplication');
+		await prisma.$executeRawUnsafe('DELETE FROM AvoirLine');
+		await prisma.$executeRawUnsafe('DELETE FROM Avoir');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
@@ -69,6 +72,9 @@ describe('Payments e2e', () => {
 
 	afterAll(async () => {
 		// Nettoyage
+		await prisma.$executeRawUnsafe('DELETE FROM AvoirApplication');
+		await prisma.$executeRawUnsafe('DELETE FROM AvoirLine');
+		await prisma.$executeRawUnsafe('DELETE FROM Avoir');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');

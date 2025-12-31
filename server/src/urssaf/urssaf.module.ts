@@ -4,6 +4,7 @@ import { UrssafService } from './urssaf.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AccountingModule } from '../accounting/accounting.module';
 import { FilingsModule } from '../filings/filings.module';
+import { ConfigModule } from '../config/config.module';
 
 /**
  * Module URSSAF
@@ -18,7 +19,7 @@ import { FilingsModule } from '../filings/filings.module';
  * @see UrssafController pour les endpoints API
  */
 @Module({
-	imports: [PrismaModule, AccountingModule, FilingsModule],
+	imports: [PrismaModule, AccountingModule, FilingsModule, ConfigModule],
 	controllers: [UrssafController],
 	providers: [UrssafService],
 	exports: [UrssafService],

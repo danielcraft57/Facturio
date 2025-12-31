@@ -1,6 +1,6 @@
 import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
-export class CreateCreditNoteLineDto {
+export class CreateAvoirLineDto {
 	@IsNotEmpty()
 	@IsString()
 	description!: string;

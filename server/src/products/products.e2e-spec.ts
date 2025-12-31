@@ -1,17 +1,21 @@
 import * as request from 'supertest';
+import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { createTestUser, authenticatedRequest } from '../common/test-helpers/auth.helper';
 
 describe('Products e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
+	let testUser: { cookies: string[]; organizationId: number };
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
 		app = moduleRef.createNestApplication();
 		app.setGlobalPrefix('api');
+		app.use(cookieParser());
 		app.useGlobalPipes(
 			new ValidationPipe({
 				whitelist: true,
@@ -21,6 +25,9 @@ describe('Products e2e', () => {
 		);
 		await app.init();
 		prisma = app.get(PrismaService);
+
+		// Créer un utilisateur de test
+		testUser = await createTestUser(app, prisma);
 	});
 
 	afterAll(async () => {
@@ -28,13 +35,15 @@ describe('Products e2e', () => {
 	});
 
 	beforeEach(async () => {
-		// Nettoyer la base avant chaque test
+		// Nettoyer la base avant chaque test (ordre important : supprimer d'abord les entités dépendantes)
+		await prisma.subscription.deleteMany({});
+		await prisma.plan.deleteMany({});
 		await prisma.product.deleteMany({});
 	});
 
 	describe('POST /products', () => {
 		it('devrait créer un produit valide', () => {
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.post('/api/products')
 				.send({
 					name: 'Test Product',
@@ -42,7 +51,7 @@ describe('Products e2e', () => {
 					unitPrice: 100
 				})
 				.expect(201)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body).toHaveProperty('id');
 					expect(res.body.name).toBe('Test Product');
 					expect(res.body.sku).toBe('TEST-001');
@@ -51,21 +60,21 @@ describe('Products e2e', () => {
 		});
 
 		it('devrait rejeter un produit sans nom', () => {
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.post('/api/products')
 				.send({
 					sku: 'TEST-001',
 					unitPrice: 100
 				})
 				.expect(400)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body.statusCode).toBe(400);
 					expect(res.body.message || res.body.errors).toBeDefined();
 				});
 		});
 
 		it('devrait rejeter un prix négatif', () => {
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.post('/api/products')
 				.send({
 					name: 'Test Product',
@@ -89,11 +98,11 @@ describe('Products e2e', () => {
 		});
 
 		it('devrait retourner tous les produits avec pagination', () => {
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.get('/api/products')
 				.query({ page: 1, pageSize: 2 })
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body).toHaveProperty('items');
 					expect(res.body).toHaveProperty('total');
 					expect(res.body).toHaveProperty('page');
@@ -106,22 +115,22 @@ describe('Products e2e', () => {
 		});
 
 		it('devrait rechercher par nom ou SKU', () => {
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.get('/api/products')
 				.query({ search: 'Test' })
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body.items.length).toBeGreaterThan(0);
 					expect(res.body.items.some((p: any) => p.name.includes('Test') || p.sku.includes('Test'))).toBe(true);
 				});
 		});
 
 		it('devrait trier par nom ascendant', () => {
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.get('/api/products')
 				.query({ sortBy: 'name', order: 'asc' })
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					const names = res.body.items.map((p: any) => p.name);
 					const sorted = [...names].sort();
 					expect(names).toEqual(sorted);
@@ -129,10 +138,10 @@ describe('Products e2e', () => {
 		});
 
 		it('devrait utiliser les valeurs par défaut si aucun paramètre', () => {
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.get('/api/products')
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body.page).toBe(1);
 					expect(res.body.pageSize).toBe(20);
 				});
@@ -145,17 +154,17 @@ describe('Products e2e', () => {
 				data: { name: 'Test Product', unitPrice: 100 }
 			});
 
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.get(`/api/products/${product.id}`)
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body.id).toBe(product.id);
 					expect(res.body.name).toBe('Test Product');
 				});
 		});
 
 		it('devrait retourner 404 pour un produit inexistant', () => {
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.get('/api/products/99999')
 				.expect(404);
 		});
@@ -167,11 +176,11 @@ describe('Products e2e', () => {
 				data: { name: 'Old Name', unitPrice: 100 }
 			});
 
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.patch(`/api/products/${product.id}`)
 				.send({ name: 'New Name' })
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body.name).toBe('New Name');
 				});
 		});
@@ -183,10 +192,10 @@ describe('Products e2e', () => {
 				data: { name: 'To Delete', unitPrice: 100 }
 			});
 
-			return request(app.getHttpServer())
+			return authenticatedRequest(app, testUser.cookies)
 				.delete(`/api/products/${product.id}`)
 				.expect(200)
-				.expect((res) => {
+				.expect((res: any) => {
 					expect(res.body).toHaveProperty('success', true);
 				});
 		});

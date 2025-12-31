@@ -13,32 +13,32 @@ export class ProspectsController {
 
 	@Post()
 	create(@Body() data: CreateProspectDto, @CurrentUser() user: any) {
-		return this.prospects.create(data, user.organizationId);
+		return this.prospects.create(data);
 	}
 
 	@Get()
 	findAll(@Query() query: ListQueryDto, @CurrentUser() user: any) {
-		return this.prospects.findAll(query, user.organizationId);
+		return this.prospects.findAll(query);
 	}
 
 	@Get('metrics')
 	getMetrics(@CurrentUser() user: any) {
-		return this.prospects.getMetrics(user.organizationId);
+		return this.prospects.getMetrics();
 	}
 
 	@Get(':id')
 	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.prospects.findOne(id, user.organizationId);
+		return this.prospects.findOne(id);
 	}
 
 	@Patch(':id')
 	update(@Param('id', ParseIntPipe) id: number, @Body() data: UpdateProspectDto, @CurrentUser() user: any) {
-		return this.prospects.update(id, data, user.organizationId);
+		return this.prospects.update(id, data);
 	}
 
 	@Delete(':id')
 	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.prospects.remove(id, user.organizationId);
+		return this.prospects.remove(id);
 	}
 }
 

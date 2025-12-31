@@ -1,13 +1,16 @@
 import * as request from 'supertest';
+import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { createTestUser, authenticatedRequest } from '../common/test-helpers/auth.helper';
 
 describe('Packs e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
 	let testProductId: number;
+	let testUser: { cookies: string[]; organizationId: number };
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({
@@ -15,9 +18,21 @@ describe('Packs e2e', () => {
 		}).compile();
 
 		app = moduleRef.createNestApplication();
+		app.setGlobalPrefix('api');
+		app.use(cookieParser());
+		app.useGlobalPipes(
+			new ValidationPipe({
+				whitelist: true,
+				transform: true,
+				forbidUnknownValues: false,
+			}),
+		);
 		await app.init();
 
 		prisma = app.get(PrismaService);
+
+		// Créer un utilisateur de test
+		testUser = await createTestUser(app, prisma);
 
 		// Nettoyage des packs de test
 		await prisma.pack.deleteMany();
@@ -36,15 +51,21 @@ describe('Packs e2e', () => {
 
 	afterAll(async () => {
 		// Nettoyage
+		if (prisma) {
 		await prisma.pack.deleteMany();
+			if (testProductId) {
 		await prisma.product.delete({ where: { id: testProductId } });
+			}
+		}
+		if (app) {
 		await app.close();
+		}
 	});
 
 	it('create -> list -> get -> update -> delete', async () => {
 		// CREATE
-		const created = await request(app.getHttpServer())
-			.post('/packs')
+		const created = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/packs')
 			.send({
 				name: 'Pack Test',
 				type: 'WEBSITE',
@@ -55,7 +76,7 @@ describe('Packs e2e', () => {
 				deliveryTime: 30
 			})
 			.expect(201)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(created.id).toBeDefined();
 		expect(created.name).toBe('Pack Test');
@@ -67,10 +88,10 @@ describe('Packs e2e', () => {
 		expect(created.deliveryTime).toBe(30);
 
 		// LIST
-		const list = await request(app.getHttpServer())
-			.get('/packs')
+		const list = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/packs')
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(list.packs).toBeDefined();
 		expect(Array.isArray(list.packs)).toBe(true);
@@ -79,39 +100,39 @@ describe('Packs e2e', () => {
 		expect(found).toBeDefined();
 
 		// GET
-		const retrieved = await request(app.getHttpServer())
-			.get(`/packs/${created.id}`)
+		const retrieved = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/packs/${created.id}`)
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(retrieved.id).toBe(created.id);
 		expect(retrieved.name).toBe('Pack Test');
 
 		// UPDATE
-		const updated = await request(app.getHttpServer())
-			.patch(`/packs/${created.id}`)
+		const updated = await authenticatedRequest(app, testUser.cookies)
+			.patch(`/api/packs/${created.id}`)
 			.send({
 				name: 'Pack Modifié',
 				deliveryTime: 45
 			})
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(updated.name).toBe('Pack Modifié');
 		expect(updated.deliveryTime).toBe(45);
 
 		// DELETE
-		await request(app.getHttpServer()).delete(`/packs/${created.id}`).expect(200);
+		await authenticatedRequest(app, testUser.cookies).delete(`/api/packs/${created.id}`).expect(200);
 
 		// Vérifier qu'il n'existe plus
-		await request(app.getHttpServer()).get(`/packs/${created.id}`).expect(404);
+		await authenticatedRequest(app, testUser.cookies).get(`/api/packs/${created.id}`).expect(404);
 	});
 
 	it('should support search', async () => {
 		// Créer un pack avec un nom unique
 		const uniqueName = `SearchPack-${Date.now()}`;
-		await request(app.getHttpServer())
-			.post('/packs')
+		await authenticatedRequest(app, testUser.cookies)
+			.post('/api/packs')
 			.send({
 				name: uniqueName,
 				type: 'SAAS',
@@ -122,17 +143,17 @@ describe('Packs e2e', () => {
 			.expect(201);
 
 		// Rechercher
-		const results = await request(app.getHttpServer())
-			.get(`/packs?search=${uniqueName}`)
+		const results = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/packs?search=${uniqueName}`)
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(results.packs.length).toBeGreaterThanOrEqual(1);
 		expect(results.packs.some((p: any) => p.name.includes(uniqueName))).toBe(true);
 	});
 
 	it('returns 404 for unknown pack', async () => {
-		await request(app.getHttpServer()).get('/packs/999999').expect(404);
+		await authenticatedRequest(app, testUser.cookies).get('/api/packs/999999').expect(404);
 	});
 });
 

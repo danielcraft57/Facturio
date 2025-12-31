@@ -94,8 +94,6 @@ export class AccountingService {
 		memo?: string;
 		lines: Array<{ accountCode: string; description?: string; debit?: number; credit?: number }>;
 	}) {
-		console.log('postEntry: Début avec input:', JSON.stringify(input, null, 2));
-		
 		let journal = await this.prisma.journal.findUnique({ where: { code: input.journalCode } });
 		if (!journal) {
 			const nameMap: Record<string, string> = { VE: 'Ventes', BQ: 'Banque', OD: 'Opérations diverses' };
@@ -105,7 +103,6 @@ export class AccountingService {
 				update: { name: nameMap[input.journalCode] ?? input.journalCode }
 			});
 		}
-		console.log('postEntry: Journal trouvé:', journal);
 
 		if (!input.lines?.length) throw new BadRequestException('Aucune ligne');
 		let totalDebit = 0;
@@ -115,7 +112,6 @@ export class AccountingService {
 			totalDebit += Number(l.debit || 0);
 			totalCredit += Number(l.credit || 0);
 		}
-		console.log('postEntry: Totaux calculés - débit:', totalDebit, 'crédit:', totalCredit);
 		
 		if (Number(totalDebit.toFixed(2)) !== Number(totalCredit.toFixed(2))) {
 			throw new BadRequestException('Écriture non équilibrée');

@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { AccountingService } from '../accounting/accounting.service';
+import { ConfigService } from '../config/config.service';
 
 /**
  * Ligne de facture
@@ -69,7 +70,11 @@ export interface UpdateInvoiceInput {
  */
 @Injectable()
 export class InvoicesService {
-	constructor(private readonly prisma: PrismaService, private readonly accounting: AccountingService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly accounting: AccountingService,
+		private readonly config: ConfigService
+	) {}
 
 	/**
 	 * Récupère le taux de TVA par défaut
@@ -80,11 +85,10 @@ export class InvoicesService {
   private async getDefaultTaxRate(): Promise<number> {
     const def = await this.prisma.taxRate.findFirst({ where: { isDefault: true } });
     if (!def) {
-      // Fallback a 20% si aucun taux n'est present dans la base de test
-      return 0.2;
+      return this.config.defaultVatRate;
     }
     const value = (def.rate as any)?.toNumber?.() ?? Number(def.rate);
-    return value || 0.2;
+    return value || this.config.defaultVatRate;
   }
 
 	/**
@@ -199,28 +203,46 @@ export class InvoicesService {
 			if (l.unitPrice < 0) throw new BadRequestException('Prix unitaire invalide');
 		}
 
-		// Politique TVA par client
+		// Vérifier que le client existe
 		const client = await this.prisma.client.findUnique({ where: { id: data.clientId } });
+		if (!client) {
+			throw new NotFoundException(`Client avec l'ID ${data.clientId} introuvable`);
+		}
+		
+		// Politique TVA par client
 		const policy = this.computeVatPolicy({
-			countryCode: client?.countryCode,
-			isCompany: client?.isCompany,
-			vatNumber: client?.vatNumber,
-			isVatExempt: client?.isVatExempt
+			countryCode: client.countryCode,
+			isCompany: client.isCompany,
+			vatNumber: client.vatNumber,
+			isVatExempt: client.isVatExempt
 		});
 		const defaultRate = await this.getDefaultTaxRate();
-		const effectiveRate = policy.rate === -1 ? (client?.taxRateOverrideId ? (await this.prisma.taxRate.findUnique({ where: { id: client!.taxRateOverrideId! } }))?.rate as any ?? defaultRate : defaultRate) : policy.rate;
+		const effectiveRate = policy.rate === -1 ? (client.taxRateOverrideId ? (await this.prisma.taxRate.findUnique({ where: { id: client.taxRateOverrideId } }))?.rate as any ?? defaultRate : defaultRate) : policy.rate;
 		const linesWithTax = lines.map(l => ({ ...l, taxRate: l.taxRate ?? effectiveRate }));
 		const totals = await this.computeTotals(linesWithTax);
 		const number = data.number ?? (await this.nextInvoiceNumber());
 		
 		// Utiliser organizationId fourni ou celui du client
-		const orgId = organizationId ?? client?.organizationId;
+		const orgId = organizationId ?? client.organizationId;
+		
+		// S'assurer qu'on a un organizationId valide
+		if (!orgId) {
+			throw new BadRequestException('OrganizationId requis. Le client doit être associé à une organisation.');
+		}
+		
+		// Vérifier que l'organisation existe
+		const organization = await this.prisma.organization.findUnique({
+			where: { id: orgId }
+		});
+		if (!organization) {
+			throw new NotFoundException(`Organisation avec l'ID ${orgId} introuvable`);
+		}
 		
 		const created = await this.prisma.invoice.create({
 			data: {
 				number,
 				clientId: data.clientId,
-				organizationId: orgId ?? undefined,
+				organizationId: orgId,
 				dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
 				status: data.status ?? 'DRAFT',
 				currency: data.currency ?? 'EUR',

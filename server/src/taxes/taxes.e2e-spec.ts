@@ -1,6 +1,7 @@
 import * as request from 'supertest';
 import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
@@ -9,8 +10,22 @@ describe('Taxes e2e', () => {
 	let prisma: PrismaService;
 
 	beforeAll(async () => {
+		// Définir les variables d'environnement pour Google OAuth (requis pour l'initialisation)
+		process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'test-client-id';
+		process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || 'test-client-secret';
+		process.env.GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback';
+
 		const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
 		app = moduleRef.createNestApplication();
+		app.setGlobalPrefix('api');
+		app.use(cookieParser());
+		app.useGlobalPipes(
+			new ValidationPipe({
+				whitelist: true,
+				transform: true,
+				forbidUnknownValues: false,
+			}),
+		);
 		await app.init();
 		prisma = app.get(PrismaService);
 		// On nettoie les données liées aux taxes / factures sans toucher aux clients
@@ -19,8 +34,11 @@ describe('Taxes e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM EmailEvent');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Quote');
-		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
+		await prisma.$executeRawUnsafe('DELETE FROM AvoirApplication');
+		await prisma.$executeRawUnsafe('DELETE FROM AvoirLine');
+		await prisma.$executeRawUnsafe('DELETE FROM Avoir');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
+		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
 	});
 
@@ -35,7 +53,7 @@ describe('Taxes e2e', () => {
 	it('create -> list -> update -> delete', async () => {
 		// CREATE
 		const created = await request(app.getHttpServer())
-			.post('/taxes')
+			.post('/api/taxes')
 			.send({ name: 'TVA Standard', rate: 0.2, isDefault: true })
 			.expect(201)
 			.then(r => r.body);
@@ -46,14 +64,14 @@ describe('Taxes e2e', () => {
 
 		// LIST - la base peut contenir d'autres taxes, on vérifie que celle
 		// qu'on vient de créer est bien présente.
-		const list = await request(app.getHttpServer()).get('/taxes').expect(200).then(r => r.body);
+		const list = await request(app.getHttpServer()).get('/api/taxes').expect(200).then(r => r.body);
 		const found = list.find((t: any) => t.id === created.id);
 		expect(found).toBeDefined();
 		expect(found.name).toBe('TVA Standard');
 
 		// UPDATE
 		const updated = await request(app.getHttpServer())
-			.patch(`/taxes/${created.id}`)
+			.patch(`/api/taxes/${created.id}`)
 			.send({ rate: 0.21 })
 			.expect(200)
 			.then(r => r.body);
@@ -61,9 +79,9 @@ describe('Taxes e2e', () => {
 		expect(Number(updated.rate)).toBe(0.21);
 
 		// DELETE
-		await request(app.getHttpServer()).delete(`/taxes/${created.id}`).expect(200);
+		await request(app.getHttpServer()).delete(`/api/taxes/${created.id}`).expect(200);
 
-		const finalList = await request(app.getHttpServer()).get('/taxes').expect(200).then(r => r.body);
+		const finalList = await request(app.getHttpServer()).get('/api/taxes').expect(200).then(r => r.body);
 		// Comme d'autres tests peuvent créer des taxes, on ne s'attend plus à une
 		// liste vide, on vérifie simplement que la taxe supprimée n'y est plus.
 		const deleted = finalList.find((t: any) => t.id === created.id);
@@ -77,26 +95,26 @@ describe('Taxes e2e', () => {
 	it('VAT policies by country', async () => {
 		// Créer différents taux de TVA
 		const tvaFR = await request(app.getHttpServer())
-			.post('/taxes')
+			.post('/api/taxes')
 			.send({ name: 'TVA France', rate: 0.2, isDefault: true })
 			.expect(201)
 			.then(r => r.body);
 
 		const tvaDE = await request(app.getHttpServer())
-			.post('/taxes')
+			.post('/api/taxes')
 			.send({ name: 'TVA Allemagne', rate: 0.19, isDefault: false })
 			.expect(201)
 			.then(r => r.body);
 
 		const tvaZero = await request(app.getHttpServer())
-			.post('/taxes')
+			.post('/api/taxes')
 			.send({ name: 'TVA Zéro', rate: 0, isDefault: false })
 			.expect(201)
 			.then(r => r.body);
 
 		// Vérifier les taux par défaut - il peut déjà en exister d'autres,
 		// on vérifie qu'au moins un des taux par défaut est bien à 0.2.
-		const defaultRates = await request(app.getHttpServer()).get('/taxes?isDefault=true').expect(200).then(r => r.body);
+		const defaultRates = await request(app.getHttpServer()).get('/api/taxes?isDefault=true').expect(200).then(r => r.body);
 		expect(defaultRates.length).toBeGreaterThan(0);
 		expect(defaultRates.some((t: any) => Number(t.rate) === 0.2)).toBe(true);
 	});
@@ -108,19 +126,19 @@ describe('Taxes e2e', () => {
 	it('validation errors', async () => {
 		// Taux négatif
 		await request(app.getHttpServer())
-			.post('/taxes')
+			.post('/api/taxes')
 			.send({ name: 'Invalid Tax', rate: -0.1 })
 			.expect(400);
 
 		// Taux supérieur à 100%
 		await request(app.getHttpServer())
-			.post('/taxes')
+			.post('/api/taxes')
 			.send({ name: 'Invalid Tax', rate: 1.5 })
 			.expect(400);
 
 		// Nom manquant
 		await request(app.getHttpServer())
-			.post('/taxes')
+			.post('/api/taxes')
 			.send({ rate: 0.2 })
 			.expect(400);
 	});
@@ -134,7 +152,7 @@ describe('Taxes e2e', () => {
 		const taxes = [];
 		for (let i = 0; i < 5; i++) {
 			const tax = await request(app.getHttpServer())
-				.post('/taxes')
+				.post('/api/taxes')
 				.send({ name: `Tax ${i}`, rate: 0.1 + i * 0.05, isDefault: false })
 				.expect(201)
 				.then(r => r.body);
@@ -142,12 +160,12 @@ describe('Taxes e2e', () => {
 		}
 
 		// Test recherche par nom - il peut exister d'autres entrées "Tax 1"
-		const search = await request(app.getHttpServer()).get('/taxes?search=Tax 1').expect(200).then(r => r.body);
+		const search = await request(app.getHttpServer()).get('/api/taxes?search=Tax 1').expect(200).then(r => r.body);
 		expect(search.length).toBeGreaterThan(0);
 		expect(search.some((t: any) => t.name === 'Tax 1')).toBe(true);
 
 		// Test filtrage par défaut
-		const defaultOnly = await request(app.getHttpServer()).get('/taxes?isDefault=true').expect(200).then(r => r.body);
+		const defaultOnly = await request(app.getHttpServer()).get('/api/taxes?isDefault=true').expect(200).then(r => r.body);
 		expect(defaultOnly.length).toBeGreaterThan(0);
 		expect(defaultOnly.every((t: any) => t.isDefault === true)).toBe(true);
 	});

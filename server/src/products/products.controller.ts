@@ -13,17 +13,17 @@ export class ProductsController {
 
 	@Post()
 	create(@Body() data: CreateProductDto, @CurrentUser() user: any) {
-		return this.products.create(data, user.organizationId);
+		return this.products.create(data);
 	}
 
 	@Get()
 	findAll(@Query() query: ListQueryDto, @CurrentUser() user: any) {
-		return this.products.findAll(query, user.organizationId);
+		return this.products.findAll(query);
 	}
 
 	@Get(':id')
 	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.products.findOne(id, user.organizationId);
+		return this.products.findOne(id);
 	}
 
 	@Patch(':id')
@@ -32,12 +32,12 @@ export class ProductsController {
 		@Body() data: UpdateProductDto,
 		@CurrentUser() user: any
 	) {
-		return this.products.update(id, data, user.organizationId);
+		return this.products.update(id, data);
 	}
 
 	@Delete(':id')
 	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.products.remove(id, user.organizationId);
+		return this.products.remove(id);
 	}
 }
 

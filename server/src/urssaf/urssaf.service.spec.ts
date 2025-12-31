@@ -3,6 +3,7 @@ import { UrssafService } from './urssaf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { FilingsService } from '../filings/filings.service';
+import { ConfigService } from '../config/config.service';
 import { UrssafActivity } from './dto/update-organization-urssaf.dto';
 
 /**
@@ -82,6 +83,20 @@ describe('UrssafService', () => {
 					provide: FilingsService,
 					useValue: {
 						create: jest.fn(),
+					},
+				},
+				{
+					provide: ConfigService,
+					useValue: {
+						urssafRateVente: 0.128,
+						urssafRateServiceBic: 0.22,
+						urssafRateServiceBnc: 0.22,
+						urssafFiscalRateVente: 0.01,
+						urssafFiscalRateServiceBic: 0.017,
+						urssafFiscalRateServiceBnc: 0.017,
+						urssafThresholdVente: 188700,
+						urssafThresholdServiceBic: 77700,
+						urssafThresholdServiceBnc: 77700,
 					},
 				},
 			],
@@ -205,7 +220,7 @@ describe('UrssafService', () => {
 			});
 
 			expect(result.rate).toBe(0.128); // Taux VENTE par défaut
-			expect(result.contribution).toBe(1024); // 8000 * 0.128
+			expect(result.contribution).toBe(1024); // 8000 * 0.128 = 1024
 		});
 	});
 

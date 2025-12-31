@@ -145,7 +145,7 @@ export class QuotesService {
 	 * @returns Devis créé avec lignes et client
 	 * @throws {BadRequestException} Si validation échoue
 	 */
-	async create(data: CreateQuoteDto) {
+	async create(data: CreateQuoteDto, organizationId?: number) {
 		// Validation
 		if (!data.clientId) {
 			throw new BadRequestException('Client requis');
@@ -158,12 +158,44 @@ export class QuotesService {
 			if (l.quantity <= 0) throw new BadRequestException('Quantite invalide');
 			if (l.unitPrice < 0) throw new BadRequestException('Prix unitaire invalide');
 		}
+		
+		// Vérifier que le client existe
+		const client = await this.prisma.client.findUnique({
+			where: { id: data.clientId },
+			select: { organizationId: true }
+		});
+		if (!client) {
+			throw new NotFoundException(`Client avec l'ID ${data.clientId} introuvable`);
+		}
+		
+		// Récupérer l'organizationId depuis le client si non fourni
+		let orgId = organizationId;
+		if (!orgId) {
+			if (client.organizationId !== null) {
+				orgId = client.organizationId;
+			}
+		}
+		
+		// S'assurer qu'on a un organizationId valide
+		if (!orgId) {
+			throw new BadRequestException('OrganizationId requis. Le client doit être associé à une organisation.');
+		}
+		
+		// Vérifier que l'organisation existe
+		const organization = await this.prisma.organization.findUnique({
+			where: { id: orgId }
+		});
+		if (!organization) {
+			throw new NotFoundException(`Organisation avec l'ID ${orgId} introuvable`);
+		}
+		
 		const totals = this.computeTotals(lines);
 		const number = data.number ?? (await this.nextQuoteNumber());
 		return this.prisma.quote.create({
 			data: {
 				number,
 				clientId: data.clientId,
+				organizationId: orgId,
 				expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
 				status: data.status ?? QuoteStatus.DRAFT,
 				subtotal: totals.subtotal,

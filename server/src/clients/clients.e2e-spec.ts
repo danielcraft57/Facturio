@@ -20,6 +20,7 @@ describe('Clients e2e', () => {
 		const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
 		app = moduleRef.createNestApplication();
 		app.use(cookieParser());
+		app.setGlobalPrefix('api');
 		await app.init();
 		prisma = app.get(PrismaService);
 		// On remet à zéro les entités liées aux clients (devis/factures) sans
@@ -50,7 +51,7 @@ describe('Clients e2e', () => {
 			.post('/api/clients')
 			.send({ name: 'Test Client', email: uniqueEmail('test@example.com'), isCompany: true, countryCode: 'FR' })
 			.expect(201)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 
 		expect(created.id).toBeDefined();
 		expect(created.name).toBe('Test Client');
@@ -60,7 +61,7 @@ describe('Clients e2e', () => {
 		const list = await authenticatedRequest(app, testUser.cookies)
 			.get('/api/clients')
 			.expect(200)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 		const found = list.items.find((c: any) => c.id === created.id);
 		expect(found).toBeDefined();
 		expect(found.name).toBe('Test Client');
@@ -69,7 +70,7 @@ describe('Clients e2e', () => {
 		const retrieved = await authenticatedRequest(app, testUser.cookies)
 			.get(`/api/clients/${created.id}`)
 			.expect(200)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 		expect(retrieved.name).toBe('Test Client');
 
 		// UPDATE
@@ -77,7 +78,7 @@ describe('Clients e2e', () => {
 			.patch(`/api/clients/${created.id}`)
 			.send({ name: 'Updated Client' })
 			.expect(200)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 
 		expect(updated.name).toBe('Updated Client');
 
@@ -89,7 +90,7 @@ describe('Clients e2e', () => {
 		const finalList = await authenticatedRequest(app, testUser.cookies)
 			.get('/api/clients')
 			.expect(200)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 		// La base peut contenir d'autres clients créés par d'autres tests,
 		// on vérifie simplement que celui qu'on vient de supprimer n'est plus là.
 		const deleted = finalList.items.find((c: any) => c.id === created.id);
@@ -132,7 +133,7 @@ describe('Clients e2e', () => {
 					countryCode: 'FR'
 				})
 				.expect(201)
-				.then(r => r.body);
+				.then((r: any) => r.body);
 			clients.push(client);
 		}
 
@@ -140,20 +141,20 @@ describe('Clients e2e', () => {
 		const page1 = await authenticatedRequest(app, testUser.cookies)
 			.get('/api/clients?page=1&pageSize=2')
 			.expect(200)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 		expect(page1.items).toHaveLength(2);
 
 		const page2 = await authenticatedRequest(app, testUser.cookies)
 			.get('/api/clients?page=2&pageSize=2')
 			.expect(200)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 		expect(page2.items).toHaveLength(2);
 
 		// Test recherche - on vérifie qu'au moins un des clients créés est présent
 		const search = await authenticatedRequest(app, testUser.cookies)
 			.get(`/api/clients?search=Client 1`)
 			.expect(200)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 		const found = search.items.find((c: any) => c.id === clients[1].id);
 		expect(found).toBeDefined();
 		expect(found.name).toBe('Client 1');

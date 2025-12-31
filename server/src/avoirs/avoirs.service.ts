@@ -1,15 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
-import { CreateCreditNoteDto } from './dto/create-credit-note.dto';
-import { UpdateCreditNoteDto } from './dto/update-credit-note.dto';
-import { ApplyCreditNoteDto } from './dto/apply-credit-note.dto';
+import { CreateAvoirDto } from './dto/create-avoir.dto';
+import { UpdateAvoirDto } from './dto/update-avoir.dto';
+import { ApplyAvoirDto } from './dto/apply-avoir.dto';
 import { AccountingService } from '../accounting/accounting.service';
+import { ConfigService } from '../config/config.service';
 
 /**
  * Ligne d'avoir
  */
-export interface CreditNoteLineInput {
+export interface AvoirLineInput {
 	/** Description de la ligne */
 	description: string;
 	/** Quantité */
@@ -21,7 +22,7 @@ export interface CreditNoteLineInput {
 }
 
 /**
- * Service de gestion des avoirs (notes de crédit)
+ * Service de gestion des avoirs
  * 
  * Gère :
  * - La création d'avoirs avec numérotation automatique
@@ -30,13 +31,14 @@ export interface CreditNoteLineInput {
  * - La comptabilisation automatique (écritures comptables)
  * - Le suivi du solde disponible
  * 
- * @see CreditNotesController pour les endpoints API
+ * @see AvoirsController pour les endpoints API
  */
 @Injectable()
-export class CreditNotesService {
+export class AvoirsService {
 	constructor(
 		private readonly prisma: PrismaService,
-		private readonly accounting: AccountingService
+		private readonly accounting: AccountingService,
+		private readonly config: ConfigService
 	) {}
 
 	/**
@@ -46,7 +48,7 @@ export class CreditNotesService {
 	 * @returns Totaux calculés
 	 * @private
 	 */
-	private async computeTotals(lines: CreditNoteLineInput[] = []) {
+	private async computeTotals(lines: AvoirLineInput[] = []) {
 		let subtotal = 0;
 		let tax = 0;
 		for (const l of lines) {
@@ -69,9 +71,9 @@ export class CreditNotesService {
 	 * @returns Numéro d'avoir unique
 	 * @private
 	 */
-	private async nextCreditNoteNumber(): Promise<string> {
+	private async nextAvoirNumber(): Promise<string> {
 		const year = new Date().getFullYear();
-		const scope = `credit-note-${year}`;
+		const scope = `avoir-${year}`;
 		const counter = await this.prisma.counter.upsert({
 			where: { scope },
 			create: { scope, current: 1 },
@@ -81,7 +83,7 @@ export class CreditNotesService {
 		return `AVO-${year}-${padded}`;
 	}
 
-	async create(data: CreateCreditNoteDto) {
+	async create(data: CreateAvoirDto) {
 		if (!data.clientId) {
 			throw new BadRequestException('Client requis');
 		}
@@ -102,6 +104,10 @@ export class CreditNotesService {
 			throw new NotFoundException('Client introuvable');
 		}
 
+		if (!client.organizationId) {
+			throw new BadRequestException('Le client doit appartenir à une organisation');
+		}
+
 		// Vérifier que la facture existe si fournie
 		if (data.invoiceId) {
 			const invoice = await this.prisma.invoice.findUnique({ where: { id: data.invoiceId } });
@@ -117,11 +123,12 @@ export class CreditNotesService {
 		const defaultTaxRate = await this.getDefaultTaxRate();
 		const linesWithTax = lines.map(l => ({ ...l, taxRate: l.taxRate ?? defaultTaxRate }));
 		const totals = await this.computeTotals(linesWithTax);
-		const number = data.number ?? (await this.nextCreditNoteNumber());
+		const number = data.number ?? (await this.nextAvoirNumber());
 
-		const createData: any = {
+		const createData = {
 			number,
 			clientId: data.clientId,
+			organizationId: client.organizationId,
 			date: data.date ? new Date(data.date) : new Date(),
 			status: data.status ?? 'DRAFT',
 			currency: data.currency ?? 'EUR',
@@ -131,22 +138,21 @@ export class CreditNotesService {
 			total: totals.total,
 			appliedAmount: 0,
 			lines: {
-					create: linesWithTax.map(l => ({
-						description: l.description,
-						quantity: l.quantity,
-						unitPrice: l.unitPrice,
-						taxRate: l.taxRate,
-						taxAmount: l.quantity * l.unitPrice * l.taxRate,
-						total: l.quantity * l.unitPrice * (1 + l.taxRate)
+				create: linesWithTax.map(l => ({
+					description: l.description,
+					quantity: l.quantity,
+					unitPrice: l.unitPrice,
+					taxRate: l.taxRate,
+					taxAmount: l.quantity * l.unitPrice * l.taxRate,
+					total: l.quantity * l.unitPrice * (1 + l.taxRate)
 				}))
-			}
+			},
+			...(data.invoiceId !== undefined && {
+				invoiceId: data.invoiceId ?? null
+			})
 		};
 
-		if (data.invoiceId !== undefined) {
-			createData.invoiceId = data.invoiceId ?? null;
-		}
-
-		const created = await this.prisma.creditNote.create({
+		const created = await this.prisma.avoir.create({
 			data: createData,
 			include: {
 				lines: true,
@@ -170,7 +176,7 @@ export class CreditNotesService {
 			}
 		}
 
-		return this.formatCreditNote(created);
+		return this.formatAvoir(created);
 	}
 
 	async findAll(query: ListQueryDto) {
@@ -190,7 +196,7 @@ export class CreditNotesService {
 		// Note: Le filtrage par status peut être ajouté via query.search si nécessaire
 
 		const [data, total] = await Promise.all([
-			this.prisma.creditNote.findMany({
+			this.prisma.avoir.findMany({
 				where,
 				skip,
 				take: pageSize,
@@ -207,11 +213,11 @@ export class CreditNotesService {
 					}
 				}
 			}),
-			this.prisma.creditNote.count({ where })
+			this.prisma.avoir.count({ where })
 		]);
 
 		return {
-			data: data.map(cn => this.formatCreditNote(cn)),
+			data: data.map(avoir => this.formatAvoir(avoir)),
 			pagination: {
 				page,
 				pageSize,
@@ -222,7 +228,7 @@ export class CreditNotesService {
 	}
 
 	async findOne(id: number) {
-		const creditNote = await this.prisma.creditNote.findUnique({
+		const avoir = await this.prisma.avoir.findUnique({
 			where: { id },
 			include: {
 				lines: true,
@@ -236,14 +242,14 @@ export class CreditNotesService {
 			}
 		});
 
-		if (!creditNote) {
+		if (!avoir) {
 			throw new NotFoundException(`Avoir ${id} introuvable`);
 		}
 
-		return this.formatCreditNote(creditNote);
+		return this.formatAvoir(avoir);
 	}
 
-	async update(id: number, data: UpdateCreditNoteDto) {
+	async update(id: number, data: UpdateAvoirDto) {
 		await this.findOne(id);
 
 		const lines = data.lines ?? [];
@@ -269,14 +275,14 @@ export class CreditNotesService {
 				if (!invoice) {
 					throw new NotFoundException('Facture introuvable');
 				}
-				const clientId = data.clientId ?? (await this.prisma.creditNote.findUnique({ where: { id } }))!.clientId;
+				const clientId = data.clientId ?? (await this.prisma.avoir.findUnique({ where: { id } }))!.clientId;
 				if (invoice.clientId !== clientId) {
 					throw new BadRequestException('La facture doit appartenir au même client');
 				}
 			}
 		}
 
-		const current = await this.prisma.creditNote.findUnique({ where: { id }, include: { lines: true } });
+		const current = await this.prisma.avoir.findUnique({ where: { id }, include: { lines: true } });
 		if (!current) {
 			throw new NotFoundException(`Avoir ${id} introuvable`);
 		}
@@ -294,7 +300,7 @@ export class CreditNotesService {
 			totals = await this.computeTotals(linesWithTax);
 		}
 
-		const updated = await this.prisma.creditNote.update({
+		const updated = await this.prisma.avoir.update({
 			where: { id },
 			data: {
 				number: data.number,
@@ -338,25 +344,25 @@ export class CreditNotesService {
 			}
 		});
 
-		return this.formatCreditNote(updated);
+		return this.formatAvoir(updated);
 	}
 
 	async remove(id: number) {
-		const creditNote = await this.findOne(id);
+		const avoir = await this.findOne(id);
 
 		// Vérifier qu'il n'y a pas d'imputations
-		if (creditNote.applications && creditNote.applications.length > 0) {
+		if (avoir.applications && avoir.applications.length > 0) {
 			throw new BadRequestException('Impossible de supprimer un avoir avec des imputations');
 		}
 
-		await this.prisma.creditNote.delete({ where: { id } });
+		await this.prisma.avoir.delete({ where: { id } });
 		return { success: true };
 	}
 
-	async apply(creditNoteId: number, data: ApplyCreditNoteDto) {
-		const creditNote = await this.findOne(creditNoteId);
+	async apply(avoirId: number, data: ApplyAvoirDto) {
+		const avoir = await this.findOne(avoirId);
 
-		if (creditNote.status === 'CANCELLED') {
+		if (avoir.status === 'CANCELLED') {
 			throw new BadRequestException('Impossible d\'imputer un avoir annulé');
 		}
 
@@ -365,13 +371,13 @@ export class CreditNotesService {
 			throw new NotFoundException('Facture introuvable');
 		}
 
-		if (invoice.clientId !== creditNote.clientId) {
+		if (invoice.clientId !== avoir.clientId) {
 			throw new BadRequestException('La facture doit appartenir au même client que l\'avoir');
 		}
 
-		const creditNoteTotal = (creditNote.total as any)?.toNumber?.() ?? Number(creditNote.total);
-		const appliedAmount = (creditNote.appliedAmount as any)?.toNumber?.() ?? Number(creditNote.appliedAmount || 0);
-		const availableAmount = creditNoteTotal - appliedAmount;
+		const avoirTotal = (avoir.total as any)?.toNumber?.() ?? Number(avoir.total);
+		const appliedAmount = (avoir.appliedAmount as any)?.toNumber?.() ?? Number(avoir.appliedAmount || 0);
+		const availableAmount = avoirTotal - appliedAmount;
 
 		if (data.amount > availableAmount) {
 			throw new BadRequestException(`Montant disponible insuffisant (${availableAmount} disponible)`);
@@ -383,9 +389,9 @@ export class CreditNotesService {
 		}
 
 		// Créer l'imputation
-		await this.prisma.creditNoteApplication.create({
+		await this.prisma.avoirApplication.create({
 			data: {
-				creditNoteId,
+				avoirId: avoirId,
 				invoiceId: data.invoiceId,
 				amount: data.amount
 			}
@@ -393,10 +399,10 @@ export class CreditNotesService {
 
 		// Mettre à jour le montant imputé de l'avoir
 		const newAppliedAmount = appliedAmount + data.amount;
-		const newStatus = newAppliedAmount >= creditNoteTotal ? 'APPLIED' : creditNote.status === 'DRAFT' ? 'SENT' : creditNote.status;
+		const newStatus = newAppliedAmount >= avoirTotal ? 'APPLIED' : avoir.status === 'DRAFT' ? 'SENT' : avoir.status;
 
-		const updated = await this.prisma.creditNote.update({
-			where: { id: creditNoteId },
+		const updated = await this.prisma.avoir.update({
+			where: { id: avoirId },
 			data: {
 				appliedAmount: newAppliedAmount,
 				status: newStatus
@@ -406,7 +412,7 @@ export class CreditNotesService {
 		// Créer l'écriture comptable si le statut passe à SENT ou APPLIED et qu'elle n'existe pas encore
 		if ((newStatus === 'SENT' || newStatus === 'APPLIED') && !updated.accountingEntryId) {
 			try {
-				await this.createAccountingEntry(creditNoteId);
+				await this.createAccountingEntry(avoirId);
 			} catch (error) {
 				console.error('Erreur lors de la création de l\'écriture comptable:', error);
 			}
@@ -424,31 +430,31 @@ export class CreditNotesService {
 			}
 		});
 
-		return this.findOne(creditNoteId);
+		return this.findOne(avoirId);
 	}
 
 	private async getDefaultTaxRate(): Promise<number> {
 		const def = await this.prisma.taxRate.findFirst({ where: { isDefault: true } });
 		if (!def) {
-			return 0.2;
+			return this.config.defaultVatRate;
 		}
 		const value = (def.rate as any)?.toNumber?.() ?? Number(def.rate);
-		return value || 0.2;
+		return value || this.config.defaultVatRate;
 	}
 
-	private async createAccountingEntry(creditNoteId: number) {
-		const creditNote = await this.prisma.creditNote.findUnique({
-			where: { id: creditNoteId },
+	private async createAccountingEntry(avoirId: number) {
+		const avoir = await this.prisma.avoir.findUnique({
+			where: { id: avoirId },
 			include: { lines: true, client: true }
 		});
 
-		if (!creditNote || creditNote.accountingEntryId) {
+		if (!avoir || avoir.accountingEntryId) {
 			return; // Déjà comptabilisé ou avoir introuvable
 		}
 
-		const subtotal = (creditNote.subtotal as any)?.toNumber?.() ?? Number(creditNote.subtotal);
-		const tax = (creditNote.tax as any)?.toNumber?.() ?? Number(creditNote.tax);
-		const total = (creditNote.total as any)?.toNumber?.() ?? Number(creditNote.total);
+		const subtotal = (avoir.subtotal as any)?.toNumber?.() ?? Number(avoir.subtotal);
+		const tax = (avoir.tax as any)?.toNumber?.() ?? Number(avoir.tax);
+		const total = (avoir.total as any)?.toNumber?.() ?? Number(avoir.total);
 
 		// Écriture comptable pour un avoir (inverse d'une vente)
 		// Débit : 411 (Clients) pour le montant TTC
@@ -456,25 +462,25 @@ export class CreditNotesService {
 		// Crédit : 44571 (TVA collectée) pour le montant de TVA
 		const entry = await this.accounting.postEntry({
 			journalCode: 'VE',
-			date: creditNote.date,
-			reference: creditNote.number,
-			memo: `Avoir ${creditNote.number} - ${creditNote.client.name}`,
+			date: avoir.date,
+			reference: avoir.number,
+			memo: `Avoir ${avoir.number} - ${avoir.client.name}`,
 			lines: [
 				{
 					accountCode: '411',
-					description: `Avoir ${creditNote.number}`,
+					description: `Avoir ${avoir.number}`,
 					debit: total,
 					credit: 0
 				},
 				{
 					accountCode: '706',
-					description: `Avoir ${creditNote.number}`,
+					description: `Avoir ${avoir.number}`,
 					debit: 0,
 					credit: subtotal
 				},
 				{
 					accountCode: '44571',
-					description: `TVA avoir ${creditNote.number}`,
+					description: `TVA avoir ${avoir.number}`,
 					debit: 0,
 					credit: tax
 				}
@@ -482,31 +488,31 @@ export class CreditNotesService {
 		});
 
 		// Lier l'écriture comptable à l'avoir
-		await this.prisma.creditNote.update({
-			where: { id: creditNoteId },
+		await this.prisma.avoir.update({
+			where: { id: avoirId },
 			data: { accountingEntryId: entry.id }
 		});
 	}
 
-	private formatCreditNote(cn: any) {
-		const total = (cn.total as any)?.toNumber?.() ?? Number(cn.total);
-		const appliedAmount = (cn.appliedAmount as any)?.toNumber?.() ?? Number(cn.appliedAmount || 0);
+	private formatAvoir(avoir: any) {
+		const total = (avoir.total as any)?.toNumber?.() ?? Number(avoir.total);
+		const appliedAmount = (avoir.appliedAmount as any)?.toNumber?.() ?? Number(avoir.appliedAmount || 0);
 		return {
-			...cn,
-			subtotal: (cn.subtotal as any)?.toNumber?.() ?? Number(cn.subtotal),
-			tax: (cn.tax as any)?.toNumber?.() ?? Number(cn.tax),
+			...avoir,
+			subtotal: (avoir.subtotal as any)?.toNumber?.() ?? Number(avoir.subtotal),
+			tax: (avoir.tax as any)?.toNumber?.() ?? Number(avoir.tax),
 			total,
 			appliedAmount,
 			balance: total - appliedAmount,
-			memo: cn.legalMention,
-			lines: cn.lines?.map((l: any) => ({
+			memo: avoir.legalMention,
+			lines: avoir.lines?.map((l: any) => ({
 				...l,
 				unitPrice: (l.unitPrice as any)?.toNumber?.() ?? Number(l.unitPrice),
 				taxRate: (l.taxRate as any)?.toNumber?.() ?? Number(l.taxRate),
 				taxAmount: (l.taxAmount as any)?.toNumber?.() ?? Number(l.taxAmount),
 				total: (l.total as any)?.toNumber?.() ?? Number(l.total)
 			})),
-			applications: cn.applications?.map((a: any) => ({
+			applications: avoir.applications?.map((a: any) => ({
 				...a,
 				amount: (a.amount as any)?.toNumber?.() ?? Number(a.amount)
 			}))

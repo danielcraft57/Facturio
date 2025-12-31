@@ -1,8 +1,10 @@
 import * as request from 'supertest';
+import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
+import { createTestUser, authenticatedRequest, TestUser } from '../../src/common/test-helpers/auth.helper';
 
 function uniqueEmail(base: string): string {
 	const [local, domain] = base.split('@');
@@ -12,12 +14,23 @@ function uniqueEmail(base: string): string {
 describe('Invoices e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
+	let testUser: TestUser;
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
 		app = moduleRef.createNestApplication();
+		app.setGlobalPrefix('api');
+		app.use(cookieParser());
+		app.useGlobalPipes(
+			new ValidationPipe({
+				whitelist: true,
+				transform: true,
+				forbidUnknownValues: false,
+			}),
+		);
 		await app.init();
 		prisma = app.get(PrismaService);
+		testUser = await createTestUser(app, prisma);
 		// On nettoie les entités directement liées aux factures pour isoler les tests,
 		// mais on ne supprime plus les clients globaux pour éviter les erreurs de FK
 		// avec les autres suites e2e.
@@ -40,21 +53,22 @@ describe('Invoices e2e', () => {
 
 	it('create invoice then add payment -> status paid', async () => {
 		const client = await prisma.client.create({
-			data: { name: 'Test Client', email: uniqueEmail('test-invoice@example.com'), isCompany: true, countryCode: 'FR' }
+			data: { name: 'Test Client', email: uniqueEmail('test-invoice@example.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
 		});
 
 		// CREATE INVOICE
-		const invoice = await request(app.getHttpServer())
-			.post('/invoices')
+		const invoice = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
 			.send({
 				clientId: client.id,
+				organizationId: testUser.organizationId,
 				lines: [
 					{ description: 'Service A', quantity: 2, unitPrice: 100 },
 					{ description: 'Service B', quantity: 1, unitPrice: 50 }
 				]
 			})
 			.expect(201)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 
 		expect(invoice.id).toBeDefined();
 		expect(invoice.number).toBeDefined();
@@ -62,16 +76,16 @@ describe('Invoices e2e', () => {
 		expect(Number(invoice.total)).toBe(300); // 2*100 + 1*50 + TVA
 
 		// ADD PAYMENT
-		const payment = await request(app.getHttpServer())
-			.post(`/invoices/${invoice.id}/payments`)
+		const payment = await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/invoices/${invoice.id}/payments`)
 			.send({ amount: 250, method: 'bank_transfer' })
 			.expect(201)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 
 		expect(payment.amount).toBe(250);
 
 		// VERIFY STATUS UPDATED
-		const updatedInvoice = await request(app.getHttpServer()).get(`/invoices/${invoice.id}`).expect(200).then(r => r.body);
+		const updatedInvoice = await authenticatedRequest(app, testUser.cookies).get(`/api/invoices/${invoice.id}`).expect(200).then((r: any) => r.body);
 		expect(updatedInvoice.status).toBe('PAID');
 		expect(Number(updatedInvoice.balance)).toBe(0);
 	});
@@ -82,18 +96,19 @@ describe('Invoices e2e', () => {
 
 	it('VAT calculations and policies', async () => {
 		const client = await prisma.client.create({
-			data: { name: 'VAT Client', email: uniqueEmail('vat-invoice@test.com'), isCompany: true, countryCode: 'FR' }
+			data: { name: 'VAT Client', email: uniqueEmail('vat-invoice@test.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
 		});
 
 		// Test TVA française (20%)
-		const invoiceFR = await request(app.getHttpServer())
-			.post('/invoices')
+		const invoiceFR = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
 			.send({
 				clientId: client.id,
+				organizationId: testUser.organizationId,
 				lines: [{ description: 'Service', quantity: 1, unitPrice: 100 }]
 			})
 			.expect(201)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 
 		expect(Number(invoiceFR.subtotal)).toBe(100);
 		expect(Number(invoiceFR.tax)).toBe(20); // 20% TVA
@@ -106,17 +121,19 @@ describe('Invoices e2e', () => {
 				email: uniqueEmail('ue-invoice@test.com'),
 				isCompany: true,
 				countryCode: 'DE',
-				vatNumber: 'DE123456789'
+				vatNumber: 'DE123456789',
+				organizationId: testUser.organizationId
 			}
 		});
-		const invoiceUE = await request(app.getHttpServer())
-			.post('/invoices')
+		const invoiceUE = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
 			.send({
 				clientId: clientUE.id,
+				organizationId: testUser.organizationId,
 				lines: [{ description: 'Service', quantity: 1, unitPrice: 100 }]
 			})
 			.expect(201)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 
 		expect(Number(invoiceUE.subtotal)).toBe(100);
 		expect(Number(invoiceUE.tax)).toBe(0); // 0% TVA UE B2B
@@ -129,17 +146,17 @@ describe('Invoices e2e', () => {
 
 	it('PDF generation', async () => {
 		const client = await prisma.client.create({
-			data: { name: 'PDF Client INV', email: uniqueEmail('pdf-inv@test.com'), isCompany: true, countryCode: 'FR' }
+			data: { name: 'PDF Client INV', email: uniqueEmail('pdf-inv@test.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
 		});
-		const invoice = await request(app.getHttpServer())
-			.post('/invoices')
-			.send({ clientId: client.id, lines: [{ description: 'Service', quantity: 2, unitPrice: 150 }] })
+		const invoice = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
+			.send({ clientId: client.id, organizationId: testUser.organizationId, lines: [{ description: 'Service', quantity: 2, unitPrice: 150 }] })
 			.expect(201)
-			.then(r => r.body);
+			.then((r: any) => r.body);
 
-		const res = await request(app.getHttpServer()).get(`/invoices/${invoice.id}/pdf`).buffer(true).parse((res, cb) => {
+		const res = await authenticatedRequest(app, testUser.cookies).get(`/api/invoices/${invoice.id}/pdf`).buffer(true).parse((res: any, cb: any) => {
 			const data: Uint8Array[] = [];
-			res.on('data', (chunk) => data.push(chunk));
+			res.on('data', (chunk: any) => data.push(chunk));
 			res.on('end', () => cb(null, Buffer.concat(data)));
 		}).expect(200);
 
@@ -153,21 +170,22 @@ describe('Invoices e2e', () => {
 
 	it('validation errors', async () => {
 		const client = await prisma.client.create({
-			data: { name: 'Test Client', email: uniqueEmail('test-invoice2@example.com'), isCompany: true, countryCode: 'FR' }
+			data: { name: 'Test Client', email: uniqueEmail('test-invoice2@example.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
 		});
 
 		// Client inexistant
-		await request(app.getHttpServer())
-			.post('/invoices')
+		await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
 			.send({
 				clientId: 99999,
+				organizationId: testUser.organizationId,
 				lines: [{ description: 'Service', quantity: 1, unitPrice: 100 }]
 			})
-			.expect(500); // Foreign key constraint violation
+			.expect(404); // Client introuvable
 
 		// Lignes vides
-		await request(app.getHttpServer())
-			.post('/invoices')
+		await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
 			.send({
 				clientId: client.id,
 				lines: []
@@ -175,10 +193,11 @@ describe('Invoices e2e', () => {
 			.expect(400);
 
 		// Prix négatif
-		await request(app.getHttpServer())
-			.post('/invoices')
+		await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
 			.send({
 				clientId: client.id,
+				organizationId: testUser.organizationId,
 				lines: [{ description: 'Service', quantity: 1, unitPrice: -100 }]
 			})
 			.expect(400);

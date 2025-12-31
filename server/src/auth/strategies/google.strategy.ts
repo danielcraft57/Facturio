@@ -5,9 +5,11 @@ import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 	constructor() {
+		// En mode test, on utilise des valeurs mockées pour éviter l'erreur OAuth2Strategy
+		const isTest = process.env.NODE_ENV === 'test' || !process.env.GOOGLE_CLIENT_ID;
 		super({
-			clientID: process.env.GOOGLE_CLIENT_ID || '',
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+			clientID: process.env.GOOGLE_CLIENT_ID || (isTest ? 'test-client-id' : ''),
+			clientSecret: process.env.GOOGLE_CLIENT_SECRET || (isTest ? 'test-client-secret' : ''),
 			callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
 			scope: ['email', 'profile'],
 		});

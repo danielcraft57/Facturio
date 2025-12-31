@@ -42,18 +42,35 @@ describe('Urssaf e2e', () => {
 	});
 
 	afterAll(async () => {
+		if (app) {
 		await app.close();
+		}
 	});
 
 	beforeEach(async () => {
-		// Nettoyer la base
+		// Nettoyer la base (ordre important : supprimer d'abord les entités dépendantes)
 		await prisma.filingLine.deleteMany({});
 		await prisma.authorityPayment.deleteMany({});
 		await prisma.filing.deleteMany({});
+		await prisma.payment.deleteMany({});
 		await prisma.invoiceLine.deleteMany({});
+		await prisma.avoirApplication.deleteMany({});
+		await prisma.avoirLine.deleteMany({});
+		await prisma.avoir.deleteMany({});
 		await prisma.invoice.deleteMany({});
+		await prisma.quoteLine.deleteMany({});
+		await prisma.quote.deleteMany({});
+		await prisma.subscription.deleteMany({});
+		await prisma.pack.deleteMany({});
+		await prisma.prospect.deleteMany({});
+		await prisma.taxSimulation.deleteMany({});
+		await prisma.taxCredit.deleteMany({});
+		await prisma.amortization.deleteMany({});
+		await prisma.taxDeduction.deleteMany({});
 		await prisma.client.deleteMany({});
 		await prisma.user.deleteMany({});
+		await prisma.organizationDocument.deleteMany({});
+		// Supprimer les organisations en dernier car elles sont référencées par de nombreuses entités
 		await prisma.organization.deleteMany({});
 
 		// Créer un utilisateur de test avec organisation auto-entrepreneur

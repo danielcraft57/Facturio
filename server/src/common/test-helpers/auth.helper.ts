@@ -28,7 +28,7 @@ export async function createTestUser(
 	const password = overrides?.password || 'password123';
 	const organizationName = overrides?.organizationName || `Test Org ${Date.now()}`;
 
-	const response = await request(app.getHttpServer())
+	const response = await (request as any)(app.getHttpServer())
 		.post('/api/auth/signup')
 		.send({
 			email,
@@ -64,12 +64,18 @@ export async function createTestUser(
 
 /**
  * Crée une requête authentifiée avec cookies
+ * Utilise request.agent() pour maintenir les cookies entre les requêtes
  */
 export function authenticatedRequest(
 	app: INestApplication,
 	cookies: string[]
-) {
+): any {
 	const cookieString = Array.isArray(cookies) ? cookies.join('; ') : cookies;
-	return request(app.getHttpServer()).set('Cookie', cookieString);
+	const httpServer = app.getHttpServer();
+	// Utiliser request.agent() pour créer un agent qui maintient les cookies
+	const agent = (request as any).agent(httpServer);
+	// Définir les cookies manuellement
+	agent.set('Cookie', cookieString);
+	return agent;
 }
 

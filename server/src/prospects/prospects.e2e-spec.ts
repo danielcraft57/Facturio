@@ -1,12 +1,15 @@
 import * as request from 'supertest';
+import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { createTestUser, authenticatedRequest, TestUser } from '../common/test-helpers/auth.helper';
 
 describe('Prospects e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
+	let testUser: TestUser;
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({
@@ -14,9 +17,19 @@ describe('Prospects e2e', () => {
 		}).compile();
 
 		app = moduleRef.createNestApplication();
+		app.setGlobalPrefix('api');
+		app.use(cookieParser());
+		app.useGlobalPipes(
+			new ValidationPipe({
+				whitelist: true,
+				transform: true,
+				forbidUnknownValues: false,
+			}),
+		);
 		await app.init();
 
 		prisma = app.get(PrismaService);
+		testUser = await createTestUser(app, prisma);
 
 		// Nettoyage des prospects de test
 		await prisma.prospect.deleteMany();
@@ -28,8 +41,8 @@ describe('Prospects e2e', () => {
 
 	it('create -> list -> get -> update -> delete', async () => {
 		// CREATE
-		const created = await request(app.getHttpServer())
-			.post('/prospects')
+		const created = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/prospects')
 			.send({
 				companyName: 'Test Company',
 				industry: 'SaaS',
@@ -46,7 +59,7 @@ describe('Prospects e2e', () => {
 				priority: 'HIGH'
 			})
 			.expect(201)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(created.id).toBeDefined();
 		expect(created.companyName).toBe('Test Company');
@@ -56,10 +69,10 @@ describe('Prospects e2e', () => {
 		expect(created.decisionMaker.name).toBe('John Doe');
 
 		// LIST
-		const list = await request(app.getHttpServer())
-			.get('/prospects')
+		const list = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/prospects')
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(list.data).toBeDefined();
 		expect(Array.isArray(list.data)).toBe(true);
@@ -68,41 +81,41 @@ describe('Prospects e2e', () => {
 		expect(found).toBeDefined();
 
 		// GET
-		const retrieved = await request(app.getHttpServer())
-			.get(`/prospects/${created.id}`)
+		const retrieved = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/prospects/${created.id}`)
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(retrieved.id).toBe(created.id);
 		expect(retrieved.companyName).toBe('Test Company');
 
 		// UPDATE
-		const updated = await request(app.getHttpServer())
-			.patch(`/prospects/${created.id}`)
+		const updated = await authenticatedRequest(app, testUser.cookies)
+			.patch(`/api/prospects/${created.id}`)
 			.send({
 				companyName: 'Updated Company',
 				status: 'QUALIFIED',
 				score: 85
 			})
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(updated.companyName).toBe('Updated Company');
 		expect(updated.status).toBe('qualified');
 		expect(updated.score).toBe(85);
 
 		// DELETE
-		await request(app.getHttpServer()).delete(`/prospects/${created.id}`).expect(200);
+		await authenticatedRequest(app, testUser.cookies).delete(`/api/prospects/${created.id}`).expect(200);
 
 		// Vérifier qu'il n'existe plus
-		await request(app.getHttpServer()).get(`/prospects/${created.id}`).expect(404);
+		await authenticatedRequest(app, testUser.cookies).get(`/api/prospects/${created.id}`).expect(404);
 	});
 
 	it('should return metrics', async () => {
-		const metrics = await request(app.getHttpServer())
-			.get('/prospects/metrics')
+		const metrics = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/prospects/metrics')
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(metrics).toBeDefined();
 		expect(typeof metrics.total).toBe('number');
@@ -115,8 +128,8 @@ describe('Prospects e2e', () => {
 	it('should support search', async () => {
 		// Créer un prospect avec un nom unique
 		const uniqueName = `SearchTest-${Date.now()}`;
-		await request(app.getHttpServer())
-			.post('/prospects')
+		await authenticatedRequest(app, testUser.cookies)
+			.post('/api/prospects')
 			.send({
 				companyName: uniqueName,
 				industry: 'Tech',
@@ -126,17 +139,17 @@ describe('Prospects e2e', () => {
 			.expect(201);
 
 		// Rechercher
-		const results = await request(app.getHttpServer())
-			.get(`/prospects?search=${uniqueName}`)
+		const results = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/prospects?search=${uniqueName}`)
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: any) => r.body);
 
 		expect(results.data.length).toBeGreaterThanOrEqual(1);
 		expect(results.data.some((p: any) => p.companyName.includes(uniqueName))).toBe(true);
 	});
 
 	it('returns 404 for unknown prospect', async () => {
-		await request(app.getHttpServer()).get('/prospects/999999').expect(404);
+		await authenticatedRequest(app, testUser.cookies).get('/api/prospects/999999').expect(404);
 	});
 });
 

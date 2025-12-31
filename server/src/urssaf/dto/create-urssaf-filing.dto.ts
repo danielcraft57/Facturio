@@ -21,7 +21,7 @@ export class CreateUrssafFilingDto {
 	@IsNotEmpty()
 	@IsNumber()
 	@Transform(({ value }) => parseInt(value))
-	organizationId: number;
+	organizationId!: number;
 
 	/** 
 	 * Période de déclaration
@@ -30,6 +30,6 @@ export class CreateUrssafFilingDto {
 	 */
 	@IsNotEmpty()
 	@IsString()
-	period: string;
+	period!: string;
 }
 

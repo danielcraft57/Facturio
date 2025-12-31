@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { FilingsService } from '../filings/filings.service';
+import { ConfigService } from '../config/config.service';
 import { CalculateContributionDto } from './dto/calculate-contribution.dto';
 import { CreateUrssafFilingDto } from './dto/create-urssaf-filing.dto';
 import { UpdateOrganizationUrssafDto, UrssafActivity } from './dto/update-organization-urssaf.dto';
@@ -43,32 +44,39 @@ export interface ContributionCalculation {
  */
 @Injectable()
 export class UrssafService {
-	// Taux par défaut selon activité (auto-entrepreneur) - 2024
-	private readonly DEFAULT_RATES: Record<UrssafActivity, number> = {
-		[UrssafActivity.VENTE]: 0.128, // 12,8%
-		[UrssafActivity.SERVICE_BIC]: 0.22, // 22%
-		[UrssafActivity.SERVICE_BNC]: 0.22, // 22%
-	};
-
-	// Taux micro-fiscal (option micro-fiscal)
-	private readonly FISCAL_RATES: Record<UrssafActivity, number> = {
-		[UrssafActivity.VENTE]: 0.01, // 1%
-		[UrssafActivity.SERVICE_BIC]: 0.017, // 1,7%
-		[UrssafActivity.SERVICE_BNC]: 0.022, // 2,2%
-	};
-
-	// Seuils de CA annuel 2024
-	private readonly ANNUAL_THRESHOLDS: Record<UrssafActivity, number> = {
-		[UrssafActivity.VENTE]: 72600, // 72 600€
-		[UrssafActivity.SERVICE_BIC]: 176200, // 176 200€
-		[UrssafActivity.SERVICE_BNC]: 176200, // 176 200€
-	};
-
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly accounting: AccountingService,
-		private readonly filings: FilingsService
+		private readonly filings: FilingsService,
+		private readonly config: ConfigService
 	) {}
+
+	// Taux par défaut selon activité (auto-entrepreneur) - depuis .env
+	private get DEFAULT_RATES(): Record<UrssafActivity, number> {
+		return {
+			[UrssafActivity.VENTE]: this.config.urssafRateVente,
+			[UrssafActivity.SERVICE_BIC]: this.config.urssafRateServiceBic,
+			[UrssafActivity.SERVICE_BNC]: this.config.urssafRateServiceBnc,
+		};
+	}
+
+	// Taux micro-fiscal (option micro-fiscal) - depuis .env
+	private get FISCAL_RATES(): Record<UrssafActivity, number> {
+		return {
+			[UrssafActivity.VENTE]: this.config.urssafFiscalRateVente,
+			[UrssafActivity.SERVICE_BIC]: this.config.urssafFiscalRateServiceBic,
+			[UrssafActivity.SERVICE_BNC]: this.config.urssafFiscalRateServiceBnc,
+		};
+	}
+
+	// Seuils de CA annuel - depuis .env
+	private get ANNUAL_THRESHOLDS(): Record<UrssafActivity, number> {
+		return {
+			[UrssafActivity.VENTE]: this.config.urssafThresholdVente,
+			[UrssafActivity.SERVICE_BIC]: this.config.urssafThresholdServiceBic,
+			[UrssafActivity.SERVICE_BNC]: this.config.urssafThresholdServiceBnc,
+		};
+	}
 
 	/**
 	 * Calcule la cotisation URSSAF pour une période donnée

@@ -129,14 +129,18 @@ model Organization {
   timezone        String  @default("Europe/Paris")
 
   // Relations
-  users         User[]
-  clients       Client[]
-  invoices      Invoice[]
-  quotes        Quote[]
-  subscriptions Subscription[]
-  creditNotes   CreditNote[]
-  prospects     Prospect[]
-  documents     OrganizationDocument[]
+  users          User[]
+  clients        Client[]
+  invoices       Invoice[]
+  quotes         Quote[]
+  subscriptions  Subscription[]
+  avoirs    Avoir[]
+  prospects      Prospect[]
+  documents      OrganizationDocument[]
+  taxDeductions  TaxDeduction[]
+  amortizations  Amortization[]
+  taxCredits     TaxCredit[]
+  taxSimulations TaxSimulation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -197,6 +201,7 @@ model OrganizationDocument {
   metadata        String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+  TaxDeduction    TaxDeduction[]
 
   @@index([organizationId])
   @@index([type])
@@ -221,11 +226,11 @@ model Client {
   taxRateOverride   TaxRate?       @relation("ClientTaxOverride", fields: [taxRateOverrideId], references: [id])
   countryCode       String? // ISO 3166-1 alpha-2
   organizationId    Int?
-  organization      Organization?   @relation(fields: [organizationId], references: [id])
+  organization      Organization?  @relation(fields: [organizationId], references: [id])
   invoices          Invoice[]
   quotes            Quote[]
   subscriptions     Subscription[]
-  creditNotes       CreditNote[]
+  avoirs            Avoir[]
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -245,7 +250,7 @@ model Invoice {
   subscriptionId     Int?
   subscription       Subscription?           @relation(fields: [subscriptionId], references: [id])
   organizationId     Int?
-  organization       Organization?            @relation(fields: [organizationId], references: [id])
+  organization       Organization?           @relation(fields: [organizationId], references: [id])
   lines              InvoiceLine[]
   subtotal           Decimal                 @default(0)
   tax                Decimal                 @default(0)
@@ -255,8 +260,9 @@ model Invoice {
   legalMention       String?
   payments           Payment[]
   emailEvents        EmailEvent[]
-  creditNotes        CreditNote[]            @relation("InvoiceCreditNotes")
-  appliedCreditNotes CreditNoteApplication[] @relation("AppliedCreditNotes")
+  avoirs        Avoir[]            @relation("InvoiceAvoirs")
+  appliedAvoirs AvoirApplication[] @relation("AppliedAvoirs")
+  taxDeductions      TaxDeduction[]
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
@@ -278,36 +284,36 @@ model InvoiceLine {
   total       Decimal @default(0)
 }
 
-enum CreditNoteStatus {
+enum AvoirStatus {
   DRAFT
   SENT
   APPLIED
   CANCELLED
 }
 
-model CreditNote {
-  id                Int                     @id @default(autoincrement())
-  number            String                  @unique
-  date              DateTime                @default(now())
-  status            CreditNoteStatus        @default(DRAFT)
+model Avoir {
+  id                Int                  @id @default(autoincrement())
+  number            String               @unique
+  date              DateTime             @default(now())
+  status            AvoirStatus          @default(DRAFT)
   invoiceId         Int? // Facture d'origine
-  invoice           Invoice?                @relation("InvoiceCreditNotes", fields: [invoiceId], references: [id])
+  invoice           Invoice?             @relation("InvoiceAvoirs", fields: [invoiceId], references: [id])
   clientId          Int
-  client            Client                  @relation(fields: [clientId], references: [id])
-  lines             CreditNoteLine[]
-  subtotal          Decimal                 @default(0)
-  tax               Decimal                 @default(0)
-  total             Decimal                 @default(0) // Montant négatif
-  appliedAmount     Decimal                 @default(0) // Montant déjà imputé
-  currency          String                  @default("EUR")
+  client            Client               @relation(fields: [clientId], references: [id])
+  lines             AvoirLine[]
+  subtotal          Decimal              @default(0)
+  tax               Decimal              @default(0)
+  total             Decimal              @default(0) // Montant négatif
+  appliedAmount     Decimal              @default(0) // Montant déjà imputé
+  currency          String               @default("EUR")
   legalMention      String?
   accountingEntryId Int?
-  accountingEntry   JournalEntry?           @relation(fields: [accountingEntryId], references: [id])
-  applications      CreditNoteApplication[] // Factures sur lesquelles l'avoir a été imputé
+  accountingEntry   JournalEntry?        @relation(fields: [accountingEntryId], references: [id])
+  applications      AvoirApplication[] // Factures sur lesquelles l'avoir a été imputé
   organizationId    Int
-  organization      Organization            @relation(fields: [organizationId], references: [id])
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
+  organization      Organization         @relation(fields: [organizationId], references: [id])
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   @@index([status, date])
   @@index([clientId])
@@ -315,10 +321,10 @@ model CreditNote {
   @@index([number])
 }
 
-model CreditNoteLine {
-  id           Int        @id @default(autoincrement())
-  creditNoteId Int
-  creditNote   CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+model AvoirLine {
+  id        Int     @id @default(autoincrement())
+  avoirId   Int
+  avoir     Avoir   @relation(fields: [avoirId], references: [id], onDelete: Cascade)
   description  String
   quantity     Int        @default(1)
   unitPrice    Decimal    @default(0)
@@ -327,42 +333,42 @@ model CreditNoteLine {
   total        Decimal    @default(0)
 }
 
-model CreditNoteApplication {
-  id           Int        @id @default(autoincrement())
-  creditNoteId Int
-  creditNote   CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+model AvoirApplication {
+  id        Int     @id @default(autoincrement())
+  avoirId   Int
+  avoir     Avoir   @relation(fields: [avoirId], references: [id], onDelete: Cascade)
   invoiceId    Int
-  invoice      Invoice    @relation("AppliedCreditNotes", fields: [invoiceId], references: [id])
+  invoice      Invoice    @relation("AppliedAvoirs", fields: [invoiceId], references: [id])
   amount       Decimal    @default(0) // Montant imputé sur cette facture
   appliedAt    DateTime   @default(now())
   createdAt    DateTime   @default(now())
 
-  @@index([creditNoteId])
+  @@index([avoirId])
   @@index([invoiceId])
 }
 
 model Quote {
-  id             Int          @id @default(autoincrement())
-  number         String       @unique
-  date           DateTime     @default(now())
+  id             Int           @id @default(autoincrement())
+  number         String        @unique
+  date           DateTime      @default(now())
   expiryDate     DateTime?
-  status         QuoteStatus  @default(DRAFT)
+  status         QuoteStatus   @default(DRAFT)
   clientId       Int
-  client         Client       @relation(fields: [clientId], references: [id])
+  client         Client        @relation(fields: [clientId], references: [id])
   organizationId Int?
   organization   Organization? @relation(fields: [organizationId], references: [id])
   lines          QuoteLine[]
-  subtotal       Decimal      @default(0)
-  tax            Decimal      @default(0)
-  total          Decimal      @default(0)
-  publicToken    String?      @unique
+  subtotal       Decimal       @default(0)
+  tax            Decimal       @default(0)
+  total          Decimal       @default(0)
+  publicToken    String?       @unique
   sentAt         DateTime?
   acceptedAt     DateTime?
   acceptedIp     String?
   views          QuoteView[]
   emailEvents    EmailEvent[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([organizationId])
 }
@@ -445,7 +451,7 @@ model Subscription {
   planId             Int
   plan               Plan               @relation(fields: [planId], references: [id])
   organizationId     Int?
-  organization       Organization?       @relation(fields: [organizationId], references: [id])
+  organization       Organization?      @relation(fields: [organizationId], references: [id])
   status             SubscriptionStatus @default(ACTIVE)
   quantity           Int                @default(1)
   startDate          DateTime           @default(now())
@@ -608,7 +614,7 @@ model JournalEntry {
   status      EntryStatus   @default(DRAFT)
   totalDebit  Decimal       @default(0)
   totalCredit Decimal       @default(0)
-  creditNotes CreditNote[]
+  avoirs Avoir[]
   createdAt   DateTime      @default(now())
   lines       JournalLine[]
 }
@@ -702,7 +708,7 @@ model Prospect {
   notes                 String? // JSON array
   tags                  String? // JSON array
   organizationId        Int?
-  organization          Organization?   @relation(fields: [organizationId], references: [id])
+  organization          Organization?  @relation(fields: [organizationId], references: [id])
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
@@ -738,4 +744,166 @@ model Pack {
   updatedAt      DateTime      @updatedAt
 
   @@index([organizationId])
+}
+
+// ============================================
+// OPTIMISATION FISCALE
+// ============================================
+
+enum TaxDeductionCategory {
+  EXPENSE
+  AMORTIZATION
+  PROVISION
+  INTEREST
+  CHARITY
+  OTHER
+}
+
+enum TaxDeductionStatus {
+  PENDING
+  VALIDATED
+  REJECTED
+}
+
+model TaxDeduction {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  category       TaxDeductionCategory
+  name           String
+  description    String?
+  amount         Decimal
+  year           Int
+  deductibleRate Decimal              @default(1.0) // 100% par défaut
+
+  // Justificatifs
+  invoiceId  Int?
+  invoice    Invoice?              @relation(fields: [invoiceId], references: [id])
+  documentId Int?
+  document   OrganizationDocument? @relation(fields: [documentId], references: [id])
+
+  status TaxDeductionStatus @default(PENDING)
+  notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, year])
+  @@index([status])
+}
+
+enum AmortizationMethod {
+  LINEAR
+  DECLINING
+  EXCEPTIONAL
+}
+
+model Amortization {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  assetName        String
+  assetDescription String?
+  purchaseDate     DateTime
+  purchaseAmount   Decimal
+  residualValue    Decimal  @default(0)
+
+  method      AmortizationMethod
+  duration    Int // Durée en années
+  coefficient Decimal? // Coefficient pour dégressif (1.25 ou 1.75)
+
+  startYear Int
+  endYear   Int?
+
+  // Tableau d'amortissement (JSON)
+  schedule Json? // [{year, amount, cumulativeAmount, remainingValue}]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, startYear])
+}
+
+enum TaxCreditType {
+  CIR // Crédit d'Impôt Recherche
+  CII // Crédit d'Impôt Innovation
+  FORMATION // Formation
+  APPRENTICESHIP // Apprentissage
+  OTHER
+}
+
+enum TaxCreditStatus {
+  ELIGIBLE
+  CLAIMED
+  VALIDATED
+  REJECTED
+}
+
+model TaxCredit {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  type        TaxCreditType
+  name        String
+  description String?
+
+  eligibleAmount Decimal // Montant éligible
+  rate           Decimal // Taux du crédit (ex: 0.30 pour 30%)
+  creditAmount   Decimal // Montant du crédit (eligibleAmount * rate)
+
+  year   Int
+  status TaxCreditStatus @default(ELIGIBLE)
+
+  // Justificatifs
+  documents Json? // IDs des documents justificatifs
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, year])
+  @@index([type, status])
+}
+
+enum TaxSimulationScenario {
+  CURRENT
+  OPTIMIZED
+  CUSTOM
+}
+
+model TaxSimulation {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  scenario TaxSimulationScenario
+  year     Int
+  name     String?
+
+  // Données d'entrée
+  revenue       Decimal
+  expenses      Decimal
+  deductions    Decimal
+  amortizations Decimal
+  credits       Decimal
+
+  // Résultats
+  taxableIncome Decimal
+  corporateTax  Decimal
+  cfe           Decimal
+  totalTax      Decimal
+  effectiveRate Decimal
+
+  // Optimisations appliquées
+  optimizations Json? // Liste des optimisations suggérées
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, year])
+  @@index([scenario])
 }

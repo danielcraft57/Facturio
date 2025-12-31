@@ -14,7 +14,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ProspectsModule } from './prospects/prospects.module';
 import { PacksModule } from './packs/packs.module';
-import { CreditNotesModule } from './credit-notes/credit-notes.module';
+import { AvoirsModule } from './avoirs/avoirs.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { OrganizationsModule } from './organizations/organizations.module';
@@ -38,7 +38,7 @@ import { ConfigModule } from './config/config.module';
 		PaymentsModule,
 		ProspectsModule,
 		PacksModule,
-		CreditNotesModule,
+		AvoirsModule,
 		AuthModule,
 		UsersModule,
 		OrganizationsModule,
