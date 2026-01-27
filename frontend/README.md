@@ -18,20 +18,25 @@ Application de gestion commerciale moderne avec interface React et Material UI.
 - ✅ Gestion d'erreurs standardisée
 - ✅ Cache intelligent avec invalidation automatique
 - ✅ Retry automatique avec backoff exponentiel
-- ✅ Services spécialisés : clients et factures
+- ✅ Services spécialisés : clients, factures, produits, packs, prospects, taxes, comptabilité, abonnements, déclarations
 
 #### **Composants de base**
 - ✅ DataTable réutilisable avec pagination, tri, filtres
 - ✅ ConfirmDialog avec variantes spécialisées
 - ✅ Système de notifications toast global
 - ✅ Thème personnalisable (couleurs, densité, arrondis)
+- ✅ Loader de page moderne (transition entre routes)
 
 #### **Pages & Navigation**
 - ✅ Dashboard avec statistiques, graphiques et filtres par période
-- ✅ Page clients avec tableau et actions
-- ✅ Page produits avec gestion des modules web/SaaS
-- ✅ Page packs avec templates prédéfinis et gestion avancée
-- ✅ Pages vides pour toutes les sections (devis, factures, etc.)
+- ✅ Clients : liste avec recherche/filtres + fiche client détaillée
+- ✅ Factures : liste, création (dialog), fiche facture avec paiements partiels et historique
+- ✅ Devis : liste, workflow d'envoi/acceptation/rejet, conversion backend vers facture
+- ✅ Produits : catalogue produits avec filtres et panneau de détails
+- ✅ Packs : templates prédéfinis (bundles) avec calculs automatiques
+- ✅ Prospects : module CRM léger (pipeline, scoring, analytics)
+- ✅ Taxes, abonnements, déclarations : pages dédiées
+- ✅ Comptabilité : plan comptable, balance et grand livre (lecture seule)
 
 ## Technologies
 
@@ -40,7 +45,7 @@ Application de gestion commerciale moderne avec interface React et Material UI.
 - **Build** : Vite + SWC
 - **Routing** : React Router DOM
 - **HTTP Client** : Axios avec intercepteurs
-- **État** : React Hooks + localStorage
+- **État** : Zustand + React Hooks (stores spécialisés) + persistance locale
 
 ## Installation
 

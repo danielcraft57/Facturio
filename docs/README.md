@@ -55,13 +55,13 @@ Liste complète des outils OSINT disponibles, gratuits et payants, pour l'intell
 ## 📅 Planning & Roadmap
 
 ### [Roadmap globale](./planning/ROADMAP.md)
-Vue d'ensemble des fonctionnalités à venir, phases de développement et priorités.
+Vue d'ensemble des fonctionnalités à venir, phases de développement et priorités, alignée avec l'état réel du projet (backend + frontend).
 
 ### [TODO - Liste complète](./planning/TODO.md)
 Liste exhaustive de toutes les tâches restantes, organisée par priorité et domaine.
 
 ### [Avancement du projet](./planning/AVANCEMENT.md)
-État actuel du projet, progression globale et fonctionnalités implémentées.
+État actuel du projet, progression globale et fonctionnalités implémentées (version, pourcentage d'avancement, par module).
 
 ## 📝 Changelog & Notes
 

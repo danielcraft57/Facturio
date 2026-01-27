@@ -10,16 +10,17 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - [x] CORS activé
 
 ### v0.2 - Qualité d'API
-- [ ] DTOs `class-validator`
-- [ ] Pagination + tri + recherche (clients, factures, produits)
-- [ ] Normaliser les erreurs (exception filter)
+- [x] DTOs `class-validator` (phase 1 : Products/Prospects/Packs)
+- [x] Pagination + tri + recherche (phase 1 : Products/Prospects/Packs)
+- [x] Normaliser les erreurs (exception filter global + messages d'erreur)
+- [ ] Étendre DTOs + pagination/tri/recherche à tous les modules (Clients, Invoices, Quotes, etc.)
 
 ### v0.3 - Métier facture
 - [x] Numérotation automatique des factures par année
 - [x] Paiements et solde facture
 - [x] TVA auto: FR défaut 20%, UE B2B autoliquidation 0%, export 0%, exonération client
-- [ ] Mentions légales dynamiques et export PDF
-- [ ] Avoirs
+- [x] Avoirs (modèle complet + écritures comptables automatiques)
+- [ ] Mentions légales dynamiques dans les PDF
 
 ### v0.4 - Authentification
 - [ ] Auth JWT (login simple)
@@ -27,14 +28,18 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - [ ] Rôles basiques (admin, user)
 
 ### v0.5 - Génération PDF et envoi
-- [ ] Modèle PDF (logo, entête, pied de page, conditions)
-- [ ] Export PDF depuis une facture
-- [ ] Envoi par email (nodemailer)
+- [x] Modèle PDF (logo, entête, pied de page, conditions)
+- [x] Export PDF depuis une facture
+- [x] Export PDF depuis un devis
+- [x] Envoi par email réel (nodemailer) avec templates HTML
+- [ ] Mentions légales dynamiques dans les PDF (compléter le modèle)
 
 ### v0.6 - UI Web
-- [ ] App web (liste clients/factures/produits/abos)
-- [ ] Aperçu facture + téléchargement PDF
-- [ ] Thème clair/sombre
+- [x] App web (Dashboard, Clients, Factures, Devis, Produits, Packs, Prospects, Taxes, Abonnements, Déclarations)
+- [x] Aperçu facture (liste + détail) + téléchargement PDF depuis le backend
+- [x] Thème clair/sombre avec personnalisation (couleurs, densité, arrondis)
+- [x] Séparation routes publiques/privées + authentification de base (ProtectedRoute)
+- [ ] Boutons d'export/téléchargement PDF directement depuis tous les écrans frontend
 
 ### v0.7 - Import/Export & intégrations
 - [ ] Import CSV/Excel de clients
