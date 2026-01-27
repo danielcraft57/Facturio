@@ -66,30 +66,37 @@ export const useClientsStore = create<ClientsState>()(
 
       // Actions
       fetchClients: async (filters?: Partial<ClientFilters>) => {
+        if (get().isLoading) return;
         const state = get();
         const newFilters = { ...state.filters, ...filters };
-        
+        const page = newFilters.page ?? state.pagination.page;
+        const limit = newFilters.limit ?? state.pagination.limit;
+
         set({ isLoading: true, filters: newFilters });
-        
+
         try {
           const response = await clientService.getClients({
             ...newFilters,
-            page: state.pagination.page,
-            limit: state.pagination.limit,
+            page,
+            limit,
           });
-          
+          const payload = (response as any).data?.data ?? (response as any).data;
+          const list = payload?.clients ?? payload?.items ?? [];
+          const total = payload?.total ?? 0;
+
           set({
-            clients: response.data.clients,
+            clients: list,
             pagination: {
               ...state.pagination,
-              total: response.data.total,
+              page,
+              limit,
+              total,
             },
             lastFetch: new Date(),
             isStale: false,
           });
         } catch (error) {
           console.error('Erreur lors du chargement des clients:', error);
-          // Garder les données en cache en cas d'erreur
         } finally {
           set({ isLoading: false });
         }

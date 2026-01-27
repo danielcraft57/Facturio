@@ -15,6 +15,7 @@ Application de gestion commerciale moderne avec interface React et Material UI.
 
 #### **Services API**
 - ✅ Client HTTP avec intercepteurs (auth, retry, cache)
+- ✅ Normalisation des réponses (`{ success, data }`) pour les appels NestJS
 - ✅ Gestion d'erreurs standardisée
 - ✅ Cache intelligent avec invalidation automatique
 - ✅ Retry automatique avec backoff exponentiel
@@ -130,8 +131,18 @@ Le proxy Vite est configuré pour rediriger `/api/*` vers le backend NestJS (voi
 
 ### Scripts disponibles
 - `npm run dev` - Serveur de développement
-- `npm run build` - Build de production
+- `npm run build` - Build de production (mode production)
 - `npm run preview` - Prévisualisation du build
+- `npm run lint` - Lint TypeScript/React
+- `npm run test` - Tests unitaires (Vitest)
+- `npm run test:watch` - Tests en mode watch
+- `npm run test:ui` - UI des tests Vitest
+
+Au niveau racine du projet :
+
+- `npm run start:all` - Démarre backend + frontend en mode dev
+- `npm run start:all:prod` - Démarre backend (prod) + frontend (preview)
+- `npm run build:all` - Build backend + frontend
 
 ### Fonctionnalités de développement
 - Hot reload automatique

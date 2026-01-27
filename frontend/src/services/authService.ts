@@ -47,6 +47,21 @@ class AuthService {
   private readonly baseUrl = '/auth'
 
   /**
+   * Extrait la charge utile d'une réponse normalisée par apiClient.
+   * apiClient wrappe les réponses Nest en { success: true, data }.
+   */
+  private unwrap<T>(response: { data: any }): T {
+    if (response && response.data) {
+      // Si la réponse est déjà de la forme { success, data }
+      if (typeof response.data === 'object' && 'data' in response.data) {
+        return response.data.data as T
+      }
+      return response.data as T
+    }
+    throw new Error('Réponse invalide du serveur')
+  }
+
+  /**
    * Connexion d'un utilisateur
    * 
    * @param credentials - Email et mot de passe
@@ -59,12 +74,13 @@ class AuthService {
         `${this.baseUrl}/login`,
         credentials
       )
+      const payload = this.unwrap<AuthResponse>(response)
 
-      if (response.data && response.data.access_token) {
+      if (payload && payload.access_token) {
         // Stocker le token dans localStorage (le cookie est géré côté serveur)
-        localStorage.setItem('auth_token', response.data.access_token)
-        localStorage.setItem('user', JSON.stringify(response.data.user))
-        return response.data
+        localStorage.setItem('auth_token', payload.access_token)
+        localStorage.setItem('user', JSON.stringify(payload.user))
+        return payload
       }
 
       throw new Error('Réponse invalide du serveur')
@@ -87,12 +103,13 @@ class AuthService {
         `${this.baseUrl}/signup`,
         data
       )
+      const payload = this.unwrap<AuthResponse>(response)
 
-      if (response.data && response.data.access_token) {
+      if (payload && payload.access_token) {
         // Stocker le token dans localStorage
-        localStorage.setItem('auth_token', response.data.access_token)
-        localStorage.setItem('user', JSON.stringify(response.data.user))
-        return response.data
+        localStorage.setItem('auth_token', payload.access_token)
+        localStorage.setItem('user', JSON.stringify(payload.user))
+        return payload
       }
 
       throw new Error('Réponse invalide du serveur')
@@ -129,10 +146,11 @@ class AuthService {
   async getCurrentUser(): Promise<User> {
     try {
       const response = await apiClient.get<User>(`${this.baseUrl}/me`)
-      
-      if (response.data) {
-        localStorage.setItem('user', JSON.stringify(response.data))
-        return response.data
+      const user = this.unwrap<User>(response)
+
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user))
+        return user
       }
 
       throw new Error('Réponse invalide du serveur')

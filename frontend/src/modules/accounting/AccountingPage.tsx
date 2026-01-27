@@ -22,7 +22,6 @@ import {
   CircularProgress,
   Alert,
   Paper,
-  GridLegacy,
 } from '@mui/material'
 import {
   Download,
@@ -75,9 +74,9 @@ export function AccountingPage() {
     try {
       setLoading(true)
       const response = await accountingService.getAccounts()
-      if (response.data) {
-        setAccounts(response.data)
-      }
+      const payload = (response as any).data?.data ?? (response as any).data
+      const list = Array.isArray(payload) ? payload : (payload?.accounts ?? payload?.items ?? [])
+      setAccounts(list)
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement des comptes')
     } finally {
@@ -89,9 +88,9 @@ export function AccountingPage() {
     try {
       setLoading(true)
       const response = await accountingService.getTrialBalance(startDate, endDate)
-      if (response.data) {
-        setTrialBalance(response.data)
-      }
+      const payload = (response as any).data?.data ?? (response as any).data
+      const list = Array.isArray(payload) ? payload : (payload?.items ?? payload?.trialBalance ?? [])
+      setTrialBalance(list)
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement de la balance')
     } finally {
@@ -107,9 +106,9 @@ export function AccountingPage() {
         endDate,
         selectedAccount || undefined
       )
-      if (response.data) {
-        setGeneralLedger(response.data)
-      }
+      const payload = (response as any).data?.data ?? (response as any).data
+      const list = Array.isArray(payload) ? payload : (payload?.items ?? payload?.entries ?? [])
+      setGeneralLedger(list)
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement du grand livre')
     } finally {
@@ -132,6 +131,8 @@ export function AccountingPage() {
       setError(err.message || 'Erreur lors de l\'export FEC')
     }
   }
+
+  const safeAccounts = Array.isArray(accounts) ? accounts : []
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
@@ -157,47 +158,50 @@ export function AccountingPage() {
       {/* Filtres de période */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <GridLegacy container spacing={2} alignItems="center">
-            <GridLegacy item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Date de début"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </GridLegacy>
-            <GridLegacy item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Date de fin"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </GridLegacy>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            sx={{ flexWrap: 'wrap' }}
+          >
+            <TextField
+              fullWidth
+              sx={{ minWidth: { sm: 200 }, flex: { sm: '1 1 200px' } }}
+              label="Date de début"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              fullWidth
+              sx={{ minWidth: { sm: 200 }, flex: { sm: '1 1 200px' } }}
+              label="Date de fin"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
             {tabValue === 2 && (
-              <GridLegacy item xs={12} sm={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Compte</InputLabel>
-                  <Select
-                    value={selectedAccount}
-                    label="Compte"
-                    onChange={(e) => setSelectedAccount(e.target.value)}
-                  >
-                    <MenuItem value="">Tous les comptes</MenuItem>
-                    {accounts.map((account) => (
-                      <MenuItem key={account.id} value={account.code}>
-                        {account.code} - {account.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </GridLegacy>
+              <FormControl
+                fullWidth
+                sx={{ minWidth: { sm: 200 }, flex: { sm: '1 1 200px' } }}
+              >
+                <InputLabel>Compte</InputLabel>
+                <Select
+                  value={selectedAccount}
+                  label="Compte"
+                  onChange={(e) => setSelectedAccount(e.target.value)}
+                >
+                  <MenuItem value="">Tous les comptes</MenuItem>
+                  {safeAccounts.map((account) => (
+                    <MenuItem key={account.id} value={account.code}>
+                      {account.code} - {account.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             )}
-          </GridLegacy>
+          </Stack>
         </CardContent>
       </Card>
 
@@ -216,7 +220,7 @@ export function AccountingPage() {
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
               <CircularProgress />
             </Box>
-          ) : accounts.length === 0 ? (
+          ) : safeAccounts.length === 0 ? (
             <Alert severity="info">Aucun compte trouvé</Alert>
           ) : (
             <TableContainer>
@@ -229,7 +233,7 @@ export function AccountingPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {accounts.map((account) => (
+                  {safeAccounts.map((account) => (
                     <TableRow key={account.id} hover>
                       <TableCell>{account.code}</TableCell>
                       <TableCell>{account.name}</TableCell>

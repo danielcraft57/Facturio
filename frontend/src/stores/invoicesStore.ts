@@ -3,6 +3,44 @@ import { persist } from 'zustand/middleware';
 import type { Invoice, CreateInvoiceData, UpdateInvoiceData, InvoiceFilters } from '../services/invoices';
 import { invoiceService } from '../services/invoices';
 
+/** Normalise une facture API (backend) vers le format attendu par le frontend */
+function normalizeInvoiceFromApi(raw: any): Invoice {
+  const id = String(raw?.id ?? '');
+  const client = raw?.client ?? {};
+  return {
+    id,
+    number: raw?.number ?? '',
+    clientId: String(raw?.clientId ?? client?.id ?? ''),
+    client: {
+      id: String(client?.id ?? ''),
+      name: client?.name ?? '',
+      email: client?.email ?? '',
+    },
+    status: (raw?.status ?? 'draft').toString().toLowerCase() as Invoice['status'],
+    issueDate: raw?.date ?? raw?.issueDate ?? new Date().toISOString(),
+    dueDate: raw?.dueDate ?? '',
+    items: (raw?.lines ?? raw?.items ?? []).map((ln: any) => ({
+      id: String(ln?.id ?? ''),
+      description: ln?.description ?? '',
+      quantity: Number(ln?.quantity ?? 0),
+      unitPrice: Number(ln?.unitPrice ?? 0),
+      taxRate: Number(ln?.taxRate ?? 0),
+      discount: ln?.discount,
+      total: Number(ln?.total ?? 0),
+      totalWithTax: Number(ln?.total ?? 0),
+    })),
+    subtotal: Number(raw?.subtotal ?? 0),
+    taxTotal: Number(raw?.tax ?? 0),
+    total: Number(raw?.total ?? 0),
+    currency: raw?.currency ?? 'EUR',
+    notes: raw?.legalMention,
+    terms: raw?.terms,
+    createdAt: raw?.createdAt ?? '',
+    updatedAt: raw?.updatedAt ?? '',
+    paidAt: raw?.paidAt,
+  };
+}
+
 // Types pour l'état des factures
 export interface InvoicesState {
   // Données
@@ -71,23 +109,31 @@ export const useInvoicesStore = create<InvoicesState>()(
 
       // Actions
       fetchInvoices: async (filters?: Partial<InvoiceFilters>) => {
+        if (get().isLoading) return;
         const state = get();
         const newFilters = { ...state.filters, ...filters };
-        
+        const page = newFilters.page ?? state.pagination.page;
+        const limit = newFilters.limit ?? state.pagination.limit;
+
         set({ isLoading: true, filters: newFilters });
-        
+
         try {
           const response = await invoiceService.getInvoices({
             ...newFilters,
-            page: state.pagination.page,
-            limit: state.pagination.limit,
+            page,
+            limit,
           });
-          
+          const payload = (response as any).data?.data ?? (response as any).data;
+          const list = payload?.invoices ?? payload?.items ?? [];
+          const total = payload?.total ?? 0;
+
           set({
-            invoices: response.data.invoices,
+            invoices: (list || []).map(normalizeInvoiceFromApi),
             pagination: {
               ...state.pagination,
-              total: response.data.total,
+              page,
+              limit,
+              total,
             },
             lastFetch: new Date(),
             isStale: false,

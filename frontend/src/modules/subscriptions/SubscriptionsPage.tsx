@@ -28,7 +28,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  GridLegacy,
 } from '@mui/material'
 import {
   Add,
@@ -90,9 +89,9 @@ export function SubscriptionsPage() {
     try {
       setLoading(true)
       const response = await subscriptionsService.getPlans()
-      if (response.data) {
-        setPlans(response.data)
-      }
+      const payload = (response as any).data?.data ?? (response as any).data
+      const list = Array.isArray(payload) ? payload : (payload?.plans ?? payload?.items ?? [])
+      setPlans(list)
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement des plans')
     } finally {
@@ -103,9 +102,9 @@ export function SubscriptionsPage() {
   const loadSubscriptions = async () => {
     try {
       const response = await subscriptionsService.getSubscriptions()
-      if (response.data) {
-        setSubscriptions(response.data)
-      }
+      const payload = (response as any).data?.data ?? (response as any).data
+      const list = Array.isArray(payload) ? payload : (payload?.subscriptions ?? payload?.items ?? [])
+      setSubscriptions(list)
     } catch (err: any) {
       console.error('Erreur lors du chargement des abonnements:', err)
     }
@@ -209,6 +208,8 @@ export function SubscriptionsPage() {
     }
   }
 
+  const safeSubscriptions = Array.isArray(subscriptions) ? subscriptions : []
+
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
@@ -231,54 +232,50 @@ export function SubscriptionsPage() {
       )}
 
       {/* Analytics */}
-      <GridLegacy container spacing={2} sx={{ mb: 3 }}>
-        <GridLegacy item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="primary">
-              {formatCurrency(mrr)}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              MRR (Revenu récurrent mensuel)
-            </Typography>
-          </Paper>
-        </GridLegacy>
-        <GridLegacy item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="primary">
-              {formatCurrency(arr)}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              ARR (Revenu récurrent annuel)
-            </Typography>
-          </Paper>
-        </GridLegacy>
-        <GridLegacy item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="success.main">
-              {subscriptions.filter(s => s.status === 'ACTIVE').length}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Abonnements actifs
-            </Typography>
-          </Paper>
-        </GridLegacy>
-        <GridLegacy item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6">
-              {plans.length}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Plans disponibles
-            </Typography>
-          </Paper>
-        </GridLegacy>
-      </GridLegacy>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ mb: 3, flexWrap: 'wrap' }}
+      >
+        <Paper sx={{ p: 2, textAlign: 'center', flex: { sm: '1 1 200px' } }}>
+          <Typography variant="h6" color="primary">
+            {formatCurrency(mrr)}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            MRR (Revenu récurrent mensuel)
+          </Typography>
+        </Paper>
+        <Paper sx={{ p: 2, textAlign: 'center', flex: { sm: '1 1 200px' } }}>
+          <Typography variant="h6" color="primary">
+            {formatCurrency(arr)}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            ARR (Revenu récurrent annuel)
+          </Typography>
+        </Paper>
+        <Paper sx={{ p: 2, textAlign: 'center', flex: { sm: '1 1 200px' } }}>
+          <Typography variant="h6" color="success.main">
+            {safeSubscriptions.filter(s => s.status === 'ACTIVE').length}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Abonnements actifs
+          </Typography>
+        </Paper>
+        <Paper sx={{ p: 2, textAlign: 'center', flex: { sm: '1 1 200px' } }}>
+          <Typography variant="h6">
+            {plans.length}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Plans disponibles
+          </Typography>
+        </Paper>
+      </Stack>
 
       {/* Onglets */}
       <Card>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-            <Tab label={`Abonnements (${subscriptions.length})`} />
+            <Tab label={`Abonnements (${safeSubscriptions.length})`} />
             <Tab label={`Plans (${plans.length})`} />
           </Tabs>
         </Box>
@@ -288,7 +285,7 @@ export function SubscriptionsPage() {
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
               <CircularProgress />
             </Box>
-          ) : subscriptions.length === 0 ? (
+          ) : safeSubscriptions.length === 0 ? (
             <Alert severity="info">Aucun abonnement trouvé</Alert>
           ) : (
             <TableContainer>
@@ -304,7 +301,7 @@ export function SubscriptionsPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {subscriptions.map((subscription) => (
+                  {safeSubscriptions.map((subscription) => (
                     <TableRow key={subscription.id} hover>
                       <TableCell>{subscription.client?.name || `Client ${subscription.clientId}`}</TableCell>
                       <TableCell>{subscription.plan?.name || `Plan ${subscription.planId}`}</TableCell>

@@ -25,7 +25,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  GridLegacy,
 } from '@mui/material'
 import {
   Add,
@@ -57,9 +56,9 @@ export function FilingsPage() {
         period: periodFilter || undefined,
         status: statusFilter || undefined
       })
-      if (response.data) {
-        setFilings(response.data)
-      }
+      const payload = (response as any).data?.data ?? (response as any).data
+      const list = Array.isArray(payload) ? payload : (payload?.items ?? payload?.filings ?? [])
+      setFilings(list)
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement des déclarations')
     } finally {
@@ -143,33 +142,30 @@ export function FilingsPage() {
       {/* Filtres */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <GridLegacy container spacing={2}>
-            <GridLegacy item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Période (ex: 2024-Q1)"
-                value={periodFilter}
-                onChange={(e) => setPeriodFilter(e.target.value)}
-                placeholder="2024-Q1"
-              />
-            </GridLegacy>
-            <GridLegacy item xs={12} sm={4}>
-              <FormControl fullWidth>
-                <InputLabel>Statut</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Statut"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <MenuItem value="">Tous</MenuItem>
-                  <MenuItem value="draft">Brouillon</MenuItem>
-                  <MenuItem value="calculated">Calculée</MenuItem>
-                  <MenuItem value="submitted">Déposée</MenuItem>
-                  <MenuItem value="paid">Payée</MenuItem>
-                </Select>
-              </FormControl>
-            </GridLegacy>
-          </GridLegacy>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ flexWrap: 'wrap' }}>
+            <TextField
+              fullWidth
+              sx={{ minWidth: { sm: 200 }, flex: { sm: '1 1 200px' } }}
+              label="Période (ex: 2024-Q1)"
+              value={periodFilter}
+              onChange={(e) => setPeriodFilter(e.target.value)}
+              placeholder="2024-Q1"
+            />
+            <FormControl fullWidth sx={{ minWidth: { sm: 200 }, flex: { sm: '1 1 200px' } }}>
+              <InputLabel>Statut</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Statut"
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value="">Tous</MenuItem>
+                <MenuItem value="draft">Brouillon</MenuItem>
+                <MenuItem value="calculated">Calculée</MenuItem>
+                <MenuItem value="submitted">Déposée</MenuItem>
+                <MenuItem value="paid">Payée</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
         </CardContent>
       </Card>
 
@@ -180,7 +176,7 @@ export function FilingsPage() {
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
               <CircularProgress />
             </Box>
-          ) : filings.length === 0 ? (
+          ) : !Array.isArray(filings) || filings.length === 0 ? (
             <Alert severity="info">Aucune déclaration trouvée</Alert>
           ) : (
             <TableContainer>
@@ -197,7 +193,7 @@ export function FilingsPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filings.map((filing) => (
+                  {(filings ?? []).map((filing) => (
                     <TableRow key={filing.id} hover>
                       <TableCell>{getTypeLabel(filing.type)}</TableCell>
                       <TableCell>{filing.period}</TableCell>

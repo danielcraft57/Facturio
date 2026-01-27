@@ -97,7 +97,12 @@ export function DashboardPage() {
     )
   }
 
-  if (!dashboardStore.stats) {
+  const stats = dashboardStore.stats;
+  const revenue = stats?.revenue;
+  const invoices = stats?.invoices;
+  const clients = stats?.clients;
+
+  if (!stats || !revenue || !invoices || !clients) {
     return (
       <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
         <Alert severity="warning">
@@ -106,6 +111,11 @@ export function DashboardPage() {
       </Box>
     )
   }
+
+  const unpaidAmount = (invoices.total ?? 0) - (invoices.paid ?? 0);
+  const conversionPct = (invoices.total ?? 0) > 0
+    ? Math.round(((invoices.paid ?? 0) / invoices.total) * 100)
+    : 0;
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
@@ -134,12 +144,12 @@ export function DashboardPage() {
                   Chiffre d'affaires
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {formatCurrency(dashboardStore.stats.revenue.total)}
+                  {formatCurrency(revenue.total ?? 0)}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                   <TrendingUp sx={{ fontSize: 16, mr: 0.5 }} />
                   <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    +{dashboardStore.stats.revenue.growth}% ce mois
+                    +{revenue.growth ?? 0}% ce mois
                   </Typography>
                 </Box>
               </Box>
@@ -156,10 +166,10 @@ export function DashboardPage() {
                   Factures impayées
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {formatCurrency(dashboardStore.stats.invoices.total - dashboardStore.stats.invoices.paid)}
+                  {formatCurrency(unpaidAmount)}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                  {dashboardStore.stats.invoices.overdue} en retard
+                  {invoices.overdue ?? 0} en retard
                 </Typography>
               </Box>
               <Receipt sx={{ fontSize: { xs: 32, sm: 48 }, opacity: 0.3 }} />
@@ -175,10 +185,10 @@ export function DashboardPage() {
                   Clients actifs
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {dashboardStore.stats.clients.active}
+                  {clients.active ?? 0}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                  +{dashboardStore.stats.clients.newThisMonth} ce mois
+                  +{clients.newThisMonth ?? 0} ce mois
                 </Typography>
               </Box>
               <People sx={{ fontSize: { xs: 32, sm: 48 }, opacity: 0.3 }} />
@@ -194,7 +204,7 @@ export function DashboardPage() {
                   Taux de conversion
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mt: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-                  {Math.round((dashboardStore.stats.invoices.paid / dashboardStore.stats.invoices.total) * 100)}%
+                  {conversionPct}%
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   Devis → Factures
@@ -207,7 +217,7 @@ export function DashboardPage() {
       </Box>
 
       {/* Graphiques */}
-      {dashboardStore.stats?.chartData ? (
+      {stats?.chartData ? (
         <Box sx={{ 
           display: 'grid', 
           gridTemplateColumns: { 
@@ -218,9 +228,9 @@ export function DashboardPage() {
           gap: { xs: 2, sm: 3 }, 
           mb: 4 
         }}>
-          <RevenueChart data={dashboardStore.stats.chartData.revenueEvolution} />
-          <TopClientsChart data={dashboardStore.stats.chartData.topClients} />
-          <InvoiceStatusChart data={dashboardStore.stats.chartData.invoiceStatus} />
+          <RevenueChart data={stats.chartData.revenueEvolution} />
+          <TopClientsChart data={stats.chartData.topClients} />
+          <InvoiceStatusChart data={stats.chartData.invoiceStatus} />
         </Box>
       ) : dashboardStore.isLoading ? (
         <Box sx={{ 

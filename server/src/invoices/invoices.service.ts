@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
@@ -68,8 +68,23 @@ export interface UpdateInvoiceInput {
  * 
  * @see InvoicesController pour les endpoints API
  */
+/** Mapping des champs de tri API → champs Prisma Invoice (ex. issueDate → date) */
+const SORT_FIELD_MAP: Record<string, string> = {
+	issueDate: 'date',
+	date: 'date',
+	dueDate: 'dueDate',
+	createdAt: 'createdAt',
+	updatedAt: 'updatedAt',
+	number: 'number',
+	status: 'status',
+	total: 'total',
+	balance: 'balance',
+};
+
 @Injectable()
 export class InvoicesService {
+	private readonly logger = new Logger(InvoicesService.name);
+
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly accounting: AccountingService,
@@ -281,8 +296,15 @@ export class InvoicesService {
 	 */
 	async findAll(query: ListQueryDto, organizationId?: number) {
 		const page = query.page ?? 1;
-		const pageSize = query.pageSize ?? 20;
+		const pageSize = query.pageSize ?? query.limit ?? 20;
 		const skip = (page - 1) * pageSize;
+		const sortBy = query.sortBy ? (SORT_FIELD_MAP[query.sortBy] ?? query.sortBy) : 'createdAt';
+		const order = (query.order ?? query.sortOrder ?? 'desc') as 'asc' | 'desc';
+
+		this.logger.log(
+			`findAll pagination=${page}/${pageSize} sortBy=${query.sortBy ?? 'default'}→${sortBy} order=${order} orgId=${organizationId ?? 'any'} search=${query.search ? '***' : 'no'}`
+		);
+
 		const where: any = query.search
 			? {
 				OR: [
@@ -291,22 +313,34 @@ export class InvoicesService {
 				]
 			}
 			: {};
-		
-		// Filtrer par organisation si fournie
 		if (organizationId) {
 			where.organizationId = organizationId;
 		}
-		const [items, total] = await this.prisma.$transaction([
-			this.prisma.invoice.findMany({
-				skip,
-				take: pageSize,
-				where,
-				orderBy: query.sortBy ? { [query.sortBy]: (query.order ?? 'desc') as any } : { createdAt: 'desc' },
-				include: { lines: true, client: true, payments: true }
-			}),
-			this.prisma.invoice.count({ where })
-		]);
-		return { items, total, page, pageSize };
+
+		try {
+			const [items, total] = await this.prisma.$transaction([
+				this.prisma.invoice.findMany({
+					skip,
+					take: pageSize,
+					where,
+					orderBy: { [sortBy]: order },
+					include: { lines: true, client: true, payments: true }
+				}),
+				this.prisma.invoice.count({ where })
+			]);
+			this.logger.log(`findAll returned ${items.length} items, total=${total}`);
+			const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 0;
+			return {
+				invoices: items,
+				total,
+				page,
+				limit: pageSize,
+				totalPages,
+			};
+		} catch (err) {
+			this.logger.error(`findAll failed: ${err instanceof Error ? err.message : String(err)}`, err instanceof Error ? err.stack : undefined);
+			throw err;
+		}
 	}
 
 	/**

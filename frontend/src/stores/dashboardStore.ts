@@ -28,7 +28,7 @@ export interface DashboardState {
 // Store du dashboard
 export const useDashboardStore = create<DashboardState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // État initial
       stats: null,
       isLoading: false,
@@ -37,18 +37,19 @@ export const useDashboardStore = create<DashboardState>()(
 
       // Actions
       fetchStats: async () => {
+        if (get().isLoading) return;
         set({ isLoading: true });
-        
+
         try {
           const response = await dashboardService.getStats();
+          const payload = (response as any).data?.data ?? (response as any).data;
           set({
-            stats: response.data,
+            stats: payload ?? null,
             lastFetch: new Date(),
             isStale: false,
           });
         } catch (error) {
           console.error('Erreur lors du chargement des statistiques:', error);
-          // Garder les données en cache en cas d'erreur
         } finally {
           set({ isLoading: false });
         }
@@ -57,8 +58,9 @@ export const useDashboardStore = create<DashboardState>()(
       fetchStatsRealtime: async () => {
         try {
           const response = await dashboardService.getStatsRealtime();
+          const payload = (response as any).data?.data ?? (response as any).data;
           set({
-            stats: response.data,
+            stats: payload ?? null,
             lastFetch: new Date(),
             isStale: false,
           });
@@ -69,13 +71,14 @@ export const useDashboardStore = create<DashboardState>()(
 
       fetchStatsByPeriod: async (startDate: Date, endDate: Date) => {
         set({ isLoading: true });
-        
+
         try {
           const startDateStr = startDate.toISOString().split('T')[0];
           const endDateStr = endDate.toISOString().split('T')[0];
           const response = await dashboardService.getStatsByPeriod(startDateStr, endDateStr);
+          const payload = (response as any).data?.data ?? (response as any).data;
           set({
-            stats: response.data,
+            stats: payload ?? null,
             lastFetch: new Date(),
             isStale: false,
           });

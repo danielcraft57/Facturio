@@ -94,22 +94,37 @@ unitPrice?: number | null;
 
 ## Pagination avec ListQueryDto
 
-Tous les endpoints de liste utilisent `ListQueryDto` pour la pagination, tri et recherche :
+Tous les endpoints de liste utilisent `ListQueryDto` pour la pagination, tri et recherche.
+
+Depuis l’intégration du frontend React, **des alias compatibles avec le web** ont été ajoutés :
+
+- `limit` → alias de `pageSize`
+- `sortOrder` → alias de `order`
+
+Cela permet d’accepter aussi bien `?pageSize=20&order=asc` que `?limit=20&sortOrder=asc` côté API.
 
 ```typescript
 export class ListQueryDto {
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => value === undefined || value === null || value === '' ? undefined : parseInt(value, 10))
 	@IsInt()
 	@IsPositive()
 	page?: number = 1;
 
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => value === undefined || value === null || value === '' ? undefined : parseInt(value, 10))
 	@IsInt()
 	@Min(1)
 	@Max(100)
 	pageSize?: number = 20;
+
+	/** Alias côté frontend: limit -> pageSize */
+	@IsOptional()
+	@Transform(({ value }) => value === undefined || value === null || value === '' ? undefined : parseInt(value, 10))
+	@IsInt()
+	@Min(1)
+	@Max(100)
+	limit?: number;
 
 	@IsOptional()
 	@IsString()
@@ -122,6 +137,11 @@ export class ListQueryDto {
 	@IsOptional()
 	@IsIn(['asc', 'desc'])
 	order?: 'asc' | 'desc' = 'desc';
+
+	/** Alias côté frontend: sortOrder -> order */
+	@IsOptional()
+	@IsIn(['asc', 'desc'])
+	sortOrder?: 'asc' | 'desc';
 }
 ```
 

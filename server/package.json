@@ -32,13 +32,15 @@
     "class-validator": "^0.14.2",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
+    "nest-winston": "^1.10.2",
     "nodemailer": "^7.0.5",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "pdfkit": "^0.17.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@nestjs/mapped-types": "^2.0.4",

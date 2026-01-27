@@ -15,6 +15,14 @@ export class ListQueryDto {
 	@Max(100)
 	pageSize?: number = 20;
 
+	/** Alias côté front: limit → pageSize */
+	@IsOptional()
+	@Transform(({ value }) => value === undefined || value === null || value === '' ? undefined : parseInt(value, 10))
+	@IsInt()
+	@Min(1)
+	@Max(100)
+	limit?: number;
+
 	@IsOptional()
 	@IsString()
 	search?: string;
@@ -26,6 +34,11 @@ export class ListQueryDto {
 	@IsOptional()
 	@IsIn(['asc', 'desc'])
 	order?: 'asc' | 'desc' = 'desc';
+
+	/** Alias côté front: sortOrder → order */
+	@IsOptional()
+	@IsIn(['asc', 'desc'])
+	sortOrder?: 'asc' | 'desc';
 }
 
 

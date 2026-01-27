@@ -90,7 +90,7 @@ export class ClientsService {
 	 */
 	async findAll(query: ListQueryDto, organizationId?: number) {
 		const page = query.page ? parseInt(query.page.toString(), 10) : 1;
-		const pageSize = query.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
+		const pageSize = query.pageSize ? parseInt(query.pageSize.toString(), 10) : (query.limit ? parseInt(query.limit.toString(), 10) : 20);
 		const skip = (page - 1) * pageSize;
 		const where: any = query.search
 			? {

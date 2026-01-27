@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -23,6 +23,8 @@ export class AuthService {
 		private prisma: PrismaService,
 		private jwtService: JwtService,
 	) {}
+
+	private readonly logger = new Logger(AuthService.name);
 
 	/**
 	 * Inscription d'un nouvel utilisateur
@@ -50,12 +52,14 @@ export class AuthService {
 	 * ```
 	 */
 	async signup(data: SignupDto) {
+		this.logger.log(`Signup attempt for ${data.email}`);
 		// Vérifier si l'email existe déjà
 		const existingUser = await this.prisma.user.findUnique({
 			where: { email: data.email },
 		});
 
 		if (existingUser) {
+			this.logger.warn(`Signup failed for ${data.email}: email already used`);
 			throw new ConflictException('Cet email est déjà utilisé');
 		}
 
@@ -86,6 +90,7 @@ export class AuthService {
 			include: { organization: true },
 		});
 
+		this.logger.log(`Signup success for ${data.email} (userId=${user.id}, orgId=${organization.id})`);
 		return this.generateTokens(user);
 	}
 
@@ -112,26 +117,31 @@ export class AuthService {
 	 * ```
 	 */
 	async login(data: LoginDto) {
+		this.logger.log(`Login attempt for ${data.email}`);
 		const user = await this.prisma.user.findUnique({
 			where: { email: data.email },
 			include: { organization: true },
 		});
 
 		if (!user) {
+			this.logger.warn(`Login failed for ${data.email}: user not found`);
 			throw new UnauthorizedException('Email ou mot de passe incorrect');
 		}
 
 		if (!user.password) {
+			this.logger.warn(`Login failed for ${data.email}: password is null (Google-only account)`);
 			throw new UnauthorizedException('Veuillez vous connecter avec Google');
 		}
 
 		const isPasswordValid = await bcrypt.compare(data.password, user.password);
 
 		if (!isPasswordValid) {
+			this.logger.warn(`Login failed for ${data.email}: invalid password`);
 			throw new UnauthorizedException('Email ou mot de passe incorrect');
 		}
 
 		if (user.status !== 'ACTIVE') {
+			this.logger.warn(`Login failed for ${data.email}: status=${user.status}`);
 			throw new UnauthorizedException('Compte non actif');
 		}
 
@@ -141,6 +151,7 @@ export class AuthService {
 			data: { lastLoginAt: new Date() },
 		});
 
+		this.logger.log(`Login success for ${data.email} (userId=${user.id})`);
 		return this.generateTokens(user);
 	}
 

@@ -109,11 +109,11 @@ export function App() {
       <CssBaseline />
       <AppWithToasts>
         <BrowserRouter>
-          {/* Barre de chargement entre les pages */}
+          {/* Barre de chargement moderne entre les pages */}
           <ModernPageLoader 
             height={3}
-            duration={800}
-            color="primary"
+            duration={600}
+            color="rainbow"
           />
           
           <Suspense fallback={

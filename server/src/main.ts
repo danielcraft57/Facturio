@@ -2,15 +2,15 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
+import { WinstonModule } from 'nest-winston';
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { winstonConfig } from './logger/winston.config';
 
 async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create(AppModule, {
-		logger: ['error', 'warn', 'log', 'debug', 'verbose'].includes(process.env.LOG_LEVEL || '')
-			? undefined
-			: ['error', 'warn', 'log']
+		logger: WinstonModule.createLogger(winstonConfig),
 	});
 
 	const config = app.get(ConfigService);
