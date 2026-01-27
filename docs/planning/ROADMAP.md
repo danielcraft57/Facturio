@@ -46,7 +46,7 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - [ ] Export CSV (factures, lignes)
 - [ ] Intégration paiement (Stripe) optionnelle
 
-### v0.8 - Comptabilité
+### v0.8 - Comptabilité (backend)
 - [x] Plan comptable minimal seedé (comptes clés + journaux VE/BQ/OD)
 - [x] Écritures auto ventes (411/706/44571) et paiements (512/411)
 - [x] Achats services (622/44566/401) et paiements fournisseurs (401/512)
@@ -56,6 +56,41 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - [x] Rapports: Balance, Grand livre
 - [x] Export FEC (première version texte)
 - [ ] Verrouillage de périodes et contre-passations
+
+### v0.9 - Tests & qualité
+- [x] Tests E2E sur endpoints critiques (backend)
+- [ ] Étendre les tests d'intégration backend
+- [ ] Mettre en place tests frontend (Vitest + Playwright)
+
+### v1.0 - Comptabilité frontend
+- [ ] Visualisation des écritures comptables dans l'interface
+- [ ] Affichage du plan comptable complet
+- [ ] Interfaces Balance / Grand livre / compte de résultat
+- [ ] Export FEC depuis l'interface
+
+### v1.1 - Abonnements & facturation récurrente
+- [ ] Interface de création et gestion des abonnements (cycles, suspension, résiliation)
+- [ ] Génération automatique des factures récurrentes
+- [ ] Gestion des échecs de paiement et notifications
+
+### v1.2 - Déclarations & taxes
+- [ ] Interface déclarations TVA (CA3/CA12) et livre de TVA
+- [ ] Intégration URSSAF (statuts entreprises, cotisations, échéances)
+- [ ] Dashboard des échéances fiscales et alertes automatiques
+
+### v1.3 - Intégrations
+- [ ] Intégrations paiements (Stripe/PayPal)
+- [ ] Connecteurs compta (Sage, Cegid, etc.)
+- [ ] Intégrations CRM / emailing (HubSpot, Salesforce, Mailchimp, SendGrid)
+
+### v1.4 - Mobile & PWA
+- [ ] PWA complète (offline, sync, notifications push)
+- [ ] Optimisation responsive mobile (gestes, perfs)
+
+### v1.5 - IA & recommandations
+- [ ] Scoring de risque avancé (ML)
+- [ ] Prévisions de trésorerie et ventes
+- [ ] Suggestions de produits et optimisation des échéances
 
 ### Technique & Ops
 - [x] Script de seed Prisma (TVA FR)
