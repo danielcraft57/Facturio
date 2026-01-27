@@ -66,6 +66,17 @@ export function SubscriptionsPage() {
   const [arr, setArr] = useState(0)
   const [planDialogOpen, setPlanDialogOpen] = useState(false)
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false)
+  const [savingPlan, setSavingPlan] = useState(false)
+  const [savingSubscription, setSavingSubscription] = useState(false)
+  const [planName, setPlanName] = useState('')
+  const [planAmount, setPlanAmount] = useState<number | ''>('')
+  const [planInterval, setPlanInterval] = useState<'MONTH' | 'YEAR'>('MONTH')
+  const [planCurrency, setPlanCurrency] = useState('EUR')
+  const [planTrialDays, setPlanTrialDays] = useState<number | ''>('')
+  const [subscriptionClientId, setSubscriptionClientId] = useState<number | ''>('')
+  const [subscriptionPlanId, setSubscriptionPlanId] = useState<number | ''>('')
+  const [subscriptionQuantity, setSubscriptionQuantity] = useState<number | ''>(1)
+  const [subscriptionStartDate, setSubscriptionStartDate] = useState<string>('')
 
   useEffect(() => {
     loadData()
@@ -110,6 +121,71 @@ export function SubscriptionsPage() {
       setArr(arrResponse.data || 0)
     } catch (err) {
       console.error('Erreur lors du chargement des analytics:', err)
+    }
+  }
+
+  const resetPlanForm = () => {
+    setPlanName('')
+    setPlanAmount('')
+    setPlanInterval('MONTH')
+    setPlanCurrency('EUR')
+    setPlanTrialDays('')
+  }
+
+  const resetSubscriptionForm = () => {
+    setSubscriptionClientId('')
+    setSubscriptionPlanId('')
+    setSubscriptionQuantity(1)
+    setSubscriptionStartDate('')
+  }
+
+  const handleCreatePlan = async () => {
+    if (!planName || !planAmount) {
+      setError('Le nom et le montant du plan sont obligatoires')
+      return
+    }
+    try {
+      setSavingPlan(true)
+      setError(null)
+      await subscriptionsService.createPlan({
+        productId: 0,
+        name: planName,
+        amount: Number(planAmount),
+        currency: planCurrency,
+        interval: planInterval,
+        trialDays: planTrialDays === '' ? null : Number(planTrialDays),
+      })
+      await loadPlans()
+      setPlanDialogOpen(false)
+      resetPlanForm()
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la création du plan')
+    } finally {
+      setSavingPlan(false)
+    }
+  }
+
+  const handleCreateSubscription = async () => {
+    if (!subscriptionClientId || !subscriptionPlanId) {
+      setError('Le client et le plan sont obligatoires pour un abonnement')
+      return
+    }
+    try {
+      setSavingSubscription(true)
+      setError(null)
+      await subscriptionsService.createSubscription({
+        clientId: Number(subscriptionClientId),
+        planId: Number(subscriptionPlanId),
+        quantity: subscriptionQuantity === '' ? 1 : Number(subscriptionQuantity),
+        startDate: subscriptionStartDate || undefined,
+      })
+      await loadSubscriptions()
+      setSubscriptionDialogOpen(false)
+      resetSubscriptionForm()
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la création de l’abonnement')
+    } finally {
+      setSavingSubscription(false)
     }
   }
 
@@ -261,6 +337,21 @@ export function SubscriptionsPage() {
                               <Cancel />
                             </IconButton>
                           )}
+                          {subscription.status !== 'CANCELLED' && (
+                            <IconButton
+                              size="small"
+                              onClick={async () => {
+                                if (confirm('Annuler immédiatement cet abonnement ?')) {
+                                  await subscriptionsService.cancelNow(subscription.id)
+                                  await loadSubscriptions()
+                                }
+                              }}
+                              title="Annuler immédiatement"
+                              color="error"
+                            >
+                              <Delete />
+                            </IconButton>
+                          )}
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -334,6 +425,163 @@ export function SubscriptionsPage() {
           )}
         </TabPanel>
       </Card>
+
+      {/* Dialog nouveau plan */}
+      <Dialog
+        open={planDialogOpen}
+        onClose={() => {
+          setPlanDialogOpen(false)
+          resetPlanForm()
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Nouveau plan d’abonnement</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              fullWidth
+              label="Nom du plan"
+              value={planName}
+              onChange={(e) => setPlanName(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              label="Montant"
+              type="number"
+              value={planAmount}
+              onChange={(e) => setPlanAmount(e.target.value === '' ? '' : Number(e.target.value))}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Devise</InputLabel>
+              <Select
+                value={planCurrency}
+                label="Devise"
+                onChange={(e) => setPlanCurrency(e.target.value as string)}
+              >
+                <MenuItem value="EUR">EUR (€)</MenuItem>
+                <MenuItem value="USD">USD ($)</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Période</InputLabel>
+              <Select
+                value={planInterval}
+                label="Période"
+                onChange={(e) => setPlanInterval(e.target.value as 'MONTH' | 'YEAR')}
+              >
+                <MenuItem value="MONTH">Mensuel</MenuItem>
+                <MenuItem value="YEAR">Annuel</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Jours d’essai (optionnel)"
+              type="number"
+              value={planTrialDays}
+              onChange={(e) => setPlanTrialDays(e.target.value === '' ? '' : Number(e.target.value))}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setPlanDialogOpen(false)
+              resetPlanForm()
+            }}
+          >
+            Annuler
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleCreatePlan}
+            disabled={savingPlan}
+          >
+            {savingPlan ? 'Création...' : 'Créer le plan'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog nouvel abonnement */}
+      <Dialog
+        open={subscriptionDialogOpen}
+        onClose={() => {
+          setSubscriptionDialogOpen(false)
+          resetSubscriptionForm()
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Nouvel abonnement</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              fullWidth
+              label="ID client"
+              type="number"
+              value={subscriptionClientId}
+              onChange={(e) =>
+                setSubscriptionClientId(e.target.value === '' ? '' : Number(e.target.value))
+              }
+              helperText="Sélectionnera le client côté serveur à partir de son ID"
+            />
+            <FormControl fullWidth>
+              <InputLabel>Plan</InputLabel>
+              <Select
+                value={subscriptionPlanId === '' ? '' : subscriptionPlanId}
+                label="Plan"
+                onChange={(e) =>
+                  setSubscriptionPlanId(e.target.value === '' ? '' : Number(e.target.value))
+                }
+              >
+                <MenuItem value="">
+                  <em>Sélectionner un plan</em>
+                </MenuItem>
+                {plans.map((plan) => (
+                  <MenuItem key={plan.id} value={plan.id}>
+                    {plan.name} — {formatCurrency(plan.amount)} /{' '}
+                    {plan.interval === 'MONTH' ? 'mois' : 'an'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Quantité"
+              type="number"
+              value={subscriptionQuantity}
+              onChange={(e) =>
+                setSubscriptionQuantity(e.target.value === '' ? '' : Number(e.target.value))
+              }
+            />
+            <TextField
+              fullWidth
+              label="Date de début"
+              type="date"
+              value={subscriptionStartDate}
+              onChange={(e) => setSubscriptionStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setSubscriptionDialogOpen(false)
+              resetSubscriptionForm()
+            }}
+          >
+            Annuler
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleCreateSubscription}
+            disabled={savingSubscription}
+          >
+            {savingSubscription ? 'Création...' : 'Créer l’abonnement'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

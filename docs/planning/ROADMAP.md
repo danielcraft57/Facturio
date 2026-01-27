@@ -69,7 +69,9 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - [ ] Export FEC depuis l'interface
 
 ### v1.1 - Abonnements & facturation récurrente
-- [ ] Interface de création et gestion des abonnements (cycles, suspension, résiliation)
+- [x] Interface de gestion des abonnements (liste, statut, annulation fin de période / immédiate)
+- [x] Interface de gestion des plans (création/suppression, montant, période, essai)
+- [x] MRR / ARR de base sur les abonnements existants
 - [ ] Génération automatique des factures récurrentes
 - [ ] Gestion des échecs de paiement et notifications
 
