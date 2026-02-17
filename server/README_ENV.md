@@ -18,12 +18,18 @@ npm run test:e2e
 - Base de données : `prisma/test.db`
 - Logs : Erreurs uniquement
 
-### Production
+### Production (PostgreSQL sur le serveur de prod)
 ```bash
-npm run build
+# Sur le serveur de prod : utiliser env.prod.example et schéma PostgreSQL
+npm run prisma:prod
+npm run db:push:prod
+npm run build:prod
+npm run seed:prod
 npm run start:prod
 ```
-- Base de données : Configurée via `DATABASE_URL`
+- Base de données : PostgreSQL (voir `env.prod.example` et `prisma/schema.postgresql.prisma`)
+- Dev : SQLite (`schema.prisma` + `DATABASE_URL=file:./prisma/dev.db`)
+- Prod : PostgreSQL (`schema.postgresql.prisma` + `DATABASE_URL=postgresql://...`)
 - Logs : Info
 - CORS : Restreint
 - Compression : Activée

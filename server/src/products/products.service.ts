@@ -39,8 +39,9 @@ export class ProductsService {
 	 */
 	async findAll(query?: ListQueryDto) {
 		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
-		const pageSize = query?.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
-		const skip = (page - 1) * pageSize;
+		const pageSize = query?.pageSize ?? query?.limit;
+		const take = pageSize != null ? parseInt(String(pageSize), 10) : 20;
+		const skip = (page - 1) * take;
 
 		const where = query?.search
 			? {
@@ -54,7 +55,7 @@ export class ProductsService {
 		const [items, total] = await this.prisma.$transaction([
 			this.prisma.product.findMany({
 				skip,
-				take: pageSize,
+				take,
 				where,
 				orderBy: query?.sortBy
 					? { [query.sortBy]: (query.order ?? 'desc') as any }
@@ -68,7 +69,7 @@ export class ProductsService {
 			items,
 			total,
 			page,
-			pageSize
+			pageSize: take
 		};
 	}
 

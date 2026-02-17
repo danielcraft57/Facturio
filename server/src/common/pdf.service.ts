@@ -133,10 +133,11 @@ export class PdfService {
 		
 		doc.moveDown(1);
 		
-		// Date de validité si présente
+		// Date de validité si présente (style DanielCraftFr)
 		if (quote.expiryDate) {
 			doc.fontSize(10)
-				.fillColor('#666666')
+				.fillColor('#6b7280')
+				.font('Helvetica')
 				.text(`Valable jusqu'au ${new Date(quote.expiryDate).toLocaleDateString('fr-FR')}`, { align: 'right' });
 			doc.moveDown(0.5);
 		}
@@ -165,23 +166,33 @@ export class PdfService {
 	}
 
 	/**
-	 * Construit l'en-tête du document
+	 * Construit l'en-tête du document (style DanielCraftFr)
 	 */
 	private buildHeader(doc: any, title: string, date?: Date | string): void {
+		const headerY = doc.y;
+		
+		// Bande d'accent rouge (style DanielCraftFr)
+		doc.rect(50, headerY, 495, 4)
+			.fillColor('#dc2626')
+			.fill();
+		
+		doc.moveDown(0.5);
+		
+		// Titre avec couleur primaire
 		doc.fontSize(24)
-			.fillColor('#000000')
+			.fillColor('#dc2626')
 			.font('Helvetica-Bold')
 			.text(title, { align: 'right' });
 		
 		if (date) {
 			doc.fontSize(10)
-				.fillColor('#666666')
+				.fillColor('#6b7280')
 				.font('Helvetica')
 				.text(`Date: ${new Date(date).toLocaleDateString('fr-FR')}`, { align: 'right' });
 		}
 		
 		doc.moveDown(1);
-		doc.strokeColor('#cccccc')
+		doc.strokeColor('#e5e7eb')
 			.lineWidth(1)
 			.moveTo(50, doc.y)
 			.lineTo(545, doc.y)
@@ -190,50 +201,59 @@ export class PdfService {
 	}
 
 	/**
-	 * Construit les informations entreprise
+	 * Construit les informations entreprise (style DanielCraftFr)
 	 */
 	private buildCompanyInfo(doc: any): void {
 		const companyName = process.env.COMPANY_NAME || 'Votre Entreprise';
 		const companyAddress = process.env.COMPANY_ADDRESS || 'Adresse de votre entreprise';
 		const companySiret = process.env.COMPANY_SIRET || '';
 		const companyTva = process.env.COMPANY_VAT || '';
+		const companyPhone = process.env.COMPANY_PHONE || '';
+		const companyEmail = process.env.COMPANY_EMAIL || '';
 		
-		doc.fontSize(12)
-			.fillColor('#000000')
+		doc.fontSize(14)
+			.fillColor('#1f2937')
 			.font('Helvetica-Bold')
 			.text(companyName);
 		
 		doc.fontSize(10)
-			.fillColor('#333333')
+			.fillColor('#374151')
 			.font('Helvetica')
 			.text(companyAddress);
 		
+		if (companyPhone) {
+			doc.text(`Tél. : ${companyPhone}`);
+		}
+		if (companyEmail) {
+			doc.text(`Email : ${companyEmail}`);
+		}
 		if (companySiret) {
-			doc.text(`SIRET: ${companySiret}`);
+			doc.text(`SIRET : ${companySiret}`);
 		}
 		if (companyTva) {
-			doc.text(`TVA: ${companyTva}`);
+			doc.text(`TVA : ${companyTva}`);
 		}
 	}
 
 	/**
-	 * Construit les informations client
+	 * Construit les informations client (style DanielCraftFr)
 	 */
 	private buildClientInfo(doc: any, client: any): void {
 		if (!client) return;
 		
 		doc.fontSize(10)
-			.fillColor('#666666')
+			.fillColor('#6b7280')
+			.font('Helvetica')
 			.text('Facturé à:', { continued: false });
 		
-		doc.fontSize(11)
-			.fillColor('#000000')
+		doc.fontSize(12)
+			.fillColor('#1f2937')
 			.font('Helvetica-Bold')
 			.text(client.name || client.companyName || '');
 		
 		if (client.address) {
 			doc.fontSize(10)
-				.fillColor('#333333')
+				.fillColor('#374151')
 				.font('Helvetica')
 				.text(client.address);
 		}
@@ -243,7 +263,7 @@ export class PdfService {
 		}
 		
 		if (client.vatNumber) {
-			doc.text(`TVA: ${client.vatNumber}`);
+			doc.text(`TVA : ${client.vatNumber}`);
 		}
 	}
 
@@ -257,12 +277,12 @@ export class PdfService {
 		const itemHeight = 30;
 		const tableWidth = 495;
 		
-		// En-tête du tableau
+		// En-tête du tableau (style DanielCraftFr avec couleur primaire)
 		doc.fontSize(10)
 			.fillColor('#ffffff')
 			.font('Helvetica-Bold')
 			.rect(50, tableTop, tableWidth, 25)
-			.fill('#333333')
+			.fill('#dc2626')
 			.fillColor('#ffffff')
 			.text('Description', 55, tableTop + 8)
 			.text('Qté', 300, tableTop + 8)
@@ -279,16 +299,17 @@ export class PdfService {
 			const line = lines[i];
 			const lineY = y + (i * itemHeight);
 			
-			// Fond alterné
+			// Fond alterné (style DanielCraftFr - gris très clair)
 			if (i % 2 === 0) {
 				doc.rect(50, lineY, tableWidth, itemHeight)
-					.fillColor('#f9f9f9')
+					.fillColor('#f9fafb')
 					.fill()
-					.fillColor('#000000');
+					.fillColor('#1f2937');
 			}
 			
 			// Contenu
 			doc.fontSize(9)
+				.fillColor('#1f2937')
 				.text(line.description || '', 55, lineY + 10, { width: 240 })
 				.text(String(line.quantity || 0), 300, lineY + 10)
 				.text(`${this.formatCurrency(line.unitPrice || 0)}`, 350, lineY + 10)
@@ -296,8 +317,8 @@ export class PdfService {
 				.text(this.formatCurrency(line.total || 0), 450, lineY + 10);
 		}
 		
-		// Bordure du tableau
-		doc.strokeColor('#cccccc')
+		// Bordure du tableau (style DanielCraftFr)
+		doc.strokeColor('#e5e7eb')
 			.lineWidth(1)
 			.rect(50, tableTop, tableWidth, (lines.length * itemHeight) + 25)
 			.stroke();
@@ -314,7 +335,7 @@ export class PdfService {
 		const lineHeight = 20;
 		
 		doc.fontSize(10)
-			.fillColor('#333333');
+			.fillColor('#374151');
 		
 		doc.text('Sous-total HT:', rightMargin - 150, startY, { width: 100, align: 'right' })
 			.text(this.formatCurrency(totals.subtotal), rightMargin - 50, startY, { align: 'right' });
@@ -322,8 +343,9 @@ export class PdfService {
 		doc.text('TVA:', rightMargin - 150, startY + lineHeight, { width: 100, align: 'right' })
 			.text(this.formatCurrency(totals.tax), rightMargin - 50, startY + lineHeight, { align: 'right' });
 		
+		// Total TTC avec accent rouge (style DanielCraftFr)
 		doc.fontSize(12)
-			.fillColor('#000000')
+			.fillColor('#dc2626')
 			.font('Helvetica-Bold')
 			.text('Total TTC:', rightMargin - 150, startY + (lineHeight * 2), { width: 100, align: 'right' })
 			.text(this.formatCurrency(totals.total), rightMargin - 50, startY + (lineHeight * 2), { align: 'right' });
@@ -339,13 +361,13 @@ export class PdfService {
 		
 		if (mentions) {
 			doc.fontSize(8)
-				.fillColor('#666666')
+				.fillColor('#6b7280')
 				.font('Helvetica')
 				.text(mentions, { align: 'justify' });
 		} else {
-			// Mentions par défaut
+			// Mentions par défaut (style DanielCraftFr)
 			doc.fontSize(8)
-				.fillColor('#666666')
+				.fillColor('#6b7280')
 				.font('Helvetica')
 				.text(
 					type === 'facture' 
@@ -364,7 +386,7 @@ export class PdfService {
 		const footerY = pageHeight - 50;
 		
 		doc.fontSize(8)
-			.fillColor('#999999')
+			.fillColor('#9ca3af')
 			.font('Helvetica')
 			.text(
 				`Page ${doc.page.number} - Généré par Facturio`,

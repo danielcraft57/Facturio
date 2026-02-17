@@ -50,10 +50,15 @@ export const useProductsStore = create<ProductsState>()(
         set({ isLoading: true });
         try {
           const res = await productService.getProducts(filters, page, get().pagination.limit);
-          if (res.success && res.data) {
+          const raw: any = res?.data ?? res;
+          const list = Array.isArray(raw?.items) ? raw.items : Array.isArray(raw?.data) ? raw.data : [];
+          const total = raw?.total ?? 0;
+          const pageNum = raw?.page ?? page;
+          const limit = raw?.pageSize ?? raw?.limit ?? get().pagination.limit;
+          if (list.length >= 0) {
             set({
-              products: res.data.data,
-              pagination: { page: res.data.page, limit: res.data.limit, total: res.data.total },
+              products: list,
+              pagination: { page: pageNum, limit, total },
               lastFetch: Date.now(),
               isStale: false,
             });

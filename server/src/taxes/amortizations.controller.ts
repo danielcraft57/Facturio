@@ -6,20 +6,17 @@ import {
 	Param,
 	Delete,
 	Query,
-	UseGuards,
 } from '@nestjs/common';
 import { AmortizationsService } from './amortizations.service';
 import { CreateAmortizationDto } from './dto/create-amortization.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 /**
  * Controller pour la gestion des amortissements
- * 
+ *
  * @see AmortizationsService pour la logique métier
  */
 @Controller('taxes/amortizations')
-@UseGuards(JwtAuthGuard)
 export class AmortizationsController {
 	constructor(private readonly amortizationsService: AmortizationsService) {}
 

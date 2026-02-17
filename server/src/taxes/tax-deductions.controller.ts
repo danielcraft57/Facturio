@@ -7,23 +7,18 @@ import {
 	Patch,
 	Delete,
 	Query,
-	UseGuards,
 } from '@nestjs/common';
 import { TaxDeductionsService } from './tax-deductions.service';
 import { CreateTaxDeductionDto } from './dto/create-tax-deduction.dto';
 import { UpdateTaxDeductionDto } from './dto/update-tax-deduction.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 /**
  * Controller pour la gestion des déductions fiscales
- * 
- * Toutes les routes nécessitent une authentification JWT.
- * 
+ *
  * @see TaxDeductionsService pour la logique métier
  */
 @Controller('taxes/deductions')
-@UseGuards(JwtAuthGuard)
 export class TaxDeductionsController {
 	constructor(private readonly taxDeductionsService: TaxDeductionsService) {}
 

@@ -88,9 +88,9 @@ export function ProductsPage() {
     { id: 'kind' as keyof Product, label: 'Type', minWidth: 100, render: (p: Product) => <Chip size="small" label={p.kind} /> },
     { id: 'purpose' as keyof Product, label: 'But', minWidth: 120, render: (p: Product) => p.purpose ? <Chip size="small" color="primary" label={p.purpose} /> : '-' },
     { id: 'category' as keyof Product, label: 'Catégorie', minWidth: 120, render: (p: Product) => p.category ? <Chip size="small" label={p.category} /> : '-' },
-    { id: 'languages' as keyof Product, label: 'Langages', minWidth: 160, render: (p: Product) => (p.languages ?? []).join(', ') || '-' },
-    { id: 'estimatedHours' as keyof Product, label: 'Heures', minWidth: 90, render: (p: Product) => (p.estimatedHours ?? 0) + ' h' },
-    { id: 'unitPrice' as keyof Product, label: 'Prix', minWidth: 110, render: (p: Product) => (p.unitPrice ?? 0).toFixed(2) + ' €' },
+    { id: 'languages' as keyof Product, label: 'Langages', minWidth: 160, render: (p: Product) => (Array.isArray(p.languages) ? p.languages.join(', ') : (p.languages as any) ? String(p.languages) : '-') || '-' },
+    { id: 'estimatedHours' as keyof Product, label: 'Heures', minWidth: 90, render: (p: Product) => (Number(p.estimatedHours ?? 0) > 0 ? Number(p.estimatedHours) + ' h' : '-') },
+    { id: 'unitPrice' as keyof Product, label: 'Prix', minWidth: 110, render: (p: Product) => Number(p.unitPrice ?? 0).toFixed(2) + ' €' },
   ];
 
   // Colonnes pour les packs
@@ -112,8 +112,8 @@ export function ProductsPage() {
     { id: 'features' as keyof Pack, label: 'Fonctionnalités', minWidth: 150, render: (p: Pack) => p.features ? `${p.features.length} fonctionnalités` : '-' },
     { id: 'products' as keyof Pack, label: 'Produits', minWidth: 120, render: (p: Pack) => `${p.products.length} produits` },
     { id: 'deliveryTime' as keyof Pack, label: 'Délai', minWidth: 90, render: (p: Pack) => p.deliveryTime ? `${p.deliveryTime} jours` : '-' },
-    { id: 'totalHours' as keyof Pack, label: 'Heures', minWidth: 90, render: (p: Pack) => p.totalHours + ' h' },
-    { id: 'totalPrice' as keyof Pack, label: 'Prix', minWidth: 110, render: (p: Pack) => p.totalPrice.toFixed(2) + ' €' },
+    { id: 'totalHours' as keyof Pack, label: 'Heures', minWidth: 90, render: (p: Pack) => Number(p.totalHours ?? 0) + ' h' },
+    { id: 'totalPrice' as keyof Pack, label: 'Prix', minWidth: 110, render: (p: Pack) => Number(p.totalPrice ?? 0).toFixed(2) + ' €' },
   ];
 
   // Fonction pour obtenir les noms des produits d'un pack

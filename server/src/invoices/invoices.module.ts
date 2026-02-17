@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
-import { InvoicesController } from './invoices.controller';
+import { InvoicesController, PublicInvoicesController } from './invoices.controller';
 import { CommonModule } from '../common/common.module';
 import { AccountingModule } from '../accounting/accounting.module';
 import { ConfigModule } from '../config/config.module';
 
 @Module({
 	imports: [CommonModule, AccountingModule, ConfigModule],
-	controllers: [InvoicesController],
+	controllers: [InvoicesController, PublicInvoicesController],
 	providers: [InvoicesService],
 	exports: [InvoicesService]
 })

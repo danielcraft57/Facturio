@@ -32,8 +32,10 @@ import {
 } from '@mui/icons-material';
 import { DataTable } from '../../components/DataTable';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { CreateQuoteDialog } from './components/CreateQuoteDialog';
 import { useQuotes } from '../../hooks/useStores';
 import type { Quote, QuoteStatus } from '../../types/quote';
+import type { CreateQuoteData } from '../../types/quote';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 const QUOTE_STATUS_COLORS = {
@@ -60,6 +62,7 @@ export function QuotesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Charger les devis au montage
   useEffect(() => {
@@ -105,8 +108,14 @@ export function QuotesPage() {
   const handleConvertToInvoice = async (quote: Quote) => {
     const invoiceId = await quotesStore.convertToInvoice(quote.id);
     if (invoiceId) {
-      // Rediriger vers la facture créée
       navigate(`/factures/${invoiceId}`);
+    }
+  };
+
+  const handleCreateQuote = async (data: CreateQuoteData) => {
+    const quote = await quotesStore.createQuote(data);
+    if (quote) {
+      setCreateDialogOpen(false);
     }
   };
 
@@ -270,7 +279,7 @@ export function QuotesPage() {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => {/* TODO: Ouvrir modal création */}}
+          onClick={() => setCreateDialogOpen(true)}
         >
           Nouveau devis
         </Button>
@@ -392,6 +401,12 @@ export function QuotesPage() {
           setDeleteDialogOpen(false);
           setQuoteToDelete(null);
         }}
+      />
+
+      <CreateQuoteDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSubmit={handleCreateQuote}
       />
     </Box>
   );

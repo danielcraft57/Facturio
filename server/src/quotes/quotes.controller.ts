@@ -1,14 +1,12 @@
-import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Req, Res } from '@nestjs/common';
 import { CreateQuoteDto, QuotesService, UpdateQuoteDto } from './quotes.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { Request, Response } from 'express';
 import { PdfService } from '../common/pdf.service';
 import { EmailService } from '../common/email.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('quotes')
-@UseGuards(JwtAuthGuard)
 export class QuotesController {
 	constructor(
 		private readonly quotes: QuotesService,
@@ -51,26 +49,41 @@ export class QuotesController {
 		const quote = await this.quotes.findOne(id);
 		return this.invoices.create({
 			clientId: quote.clientId,
-			lines: quote.lines.map((l: any) => ({ description: l.description, quantity: l.quantity, unitPrice: Number(l.unitPrice), taxRate: Number(l.taxRate) }))
+			lines: quote.lines.map((l: any) => ({
+				productId: l.productId ?? undefined,
+				description: l.description,
+				quantity: l.quantity,
+				unitPrice: Number(l.unitPrice),
+				taxRate: Number(l.taxRate)
+			}))
 		}, user.organizationId);
 	}
 
 	@Post(':id/send')
 	async sendQuote(@Param('id') id: string, @CurrentUser() user: any) {
-		const quote = await this.quotes.sendQuote(Number(id));
-		const pdf = await this.pdfService.generateQuotePdf(quote);
-		if (quote.client?.email) {
+		const result = await this.quotes.sendQuote(Number(id));
+		const token = result.publicToken;
+		const pdf = await this.pdfService.generateQuotePdf(result);
+		if (result.client?.email && token) {
+			const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
+			const baseUrl = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+			const trackOpenUrl = `${apiUrl}/api/track/opened/quote/${token}`;
+			const acceptUrl = `${baseUrl}/public/devis/${token}/accepter`;
+			const rejectUrl = `${baseUrl}/public/devis/${token}/refuser`;
 			await this.email.sendQuote({
-				to: quote.client.email,
-				quoteNumber: quote.number,
-				quoteDate: quote.createdAt,
-				clientName: quote.client.name || quote.client.companyName || '',
-				total: Number(quote.total),
-				expiryDate: quote.expiryDate || undefined,
-				pdfBuffer: pdf
+				to: result.client.email,
+				quoteNumber: result.number,
+				quoteDate: result.createdAt,
+				clientName: result.client.name || result.client.companyName || '',
+				total: Number(result.total),
+				expiryDate: result.expiryDate || undefined,
+				pdfBuffer: pdf,
+				trackOpenUrl,
+				acceptUrl,
+				rejectUrl
 			});
 		}
-		return quote;
+		return result;
 	}
 
 	@Get(':id/pdf')
@@ -85,11 +98,23 @@ export class QuotesController {
 
 @Controller('public/quotes')
 export class PublicQuotesController {
-	constructor(private readonly quotes: QuotesService) {}
+	constructor(
+		private readonly quotes: QuotesService,
+		private readonly pdfService: PdfService
+	) {}
 
 	@Get(':token')
 	async view(@Param('token') token: string, @Req() req: Request) {
 		return this.quotes.publicView(token, req.ip, req.get('user-agent') || '');
+	}
+
+	@Get(':token/pdf')
+	@Header('Content-Type', 'application/pdf')
+	async downloadPdf(@Param('token') token: string, @Res() res: Response) {
+		const quote = await this.quotes.publicView(token);
+		const buf = await this.pdfService.generateQuotePdf(quote);
+		res.setHeader('Content-Disposition', `inline; filename=devis-${quote.number}.pdf`);
+		return res.send(buf);
 	}
 
 	@Post(':token/accept')

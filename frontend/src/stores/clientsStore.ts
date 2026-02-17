@@ -80,16 +80,25 @@ export const useClientsStore = create<ClientsState>()(
             page,
             limit,
           });
-          const payload = (response as any).data?.data ?? (response as any).data;
-          const list = payload?.clients ?? payload?.items ?? [];
-          const total = payload?.total ?? 0;
+          const raw: any = (response as any)?.data ?? response;
+          const payload = raw?.data ?? raw;
+          const list = Array.isArray(payload?.items)
+            ? payload.items
+            : Array.isArray(payload?.clients)
+              ? payload.clients
+              : Array.isArray(payload)
+                ? payload
+                : [];
+          const total = payload?.total ?? raw?.total ?? list.length;
+          const pageNum = payload?.page ?? raw?.page ?? page;
+          const limitNum = payload?.pageSize ?? payload?.limit ?? raw?.pageSize ?? raw?.limit ?? limit;
 
           set({
             clients: list,
             pagination: {
               ...state.pagination,
-              page,
-              limit,
+              page: pageNum,
+              limit: limitNum,
               total,
             },
             lastFetch: new Date(),

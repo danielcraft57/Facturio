@@ -525,7 +525,7 @@ export function SubscriptionsPage() {
             <FormControl fullWidth>
               <InputLabel>Plan</InputLabel>
               <Select
-                value={subscriptionPlanId === '' ? '' : subscriptionPlanId}
+                value={subscriptionPlanId === '' ? '' : String(subscriptionPlanId)}
                 label="Plan"
                 onChange={(e) =>
                   setSubscriptionPlanId(e.target.value === '' ? '' : Number(e.target.value))

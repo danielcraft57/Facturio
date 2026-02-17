@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { purgeAll, seedTaxRates, seedChartOfAccounts, type SeedContext } from './seeds/base.seed';
+import { purgeAll, seedTaxRates, seedChartOfAccounts, seedDefaultUser, type SeedContext } from './seeds/base.seed';
 import { seedProducts, seedPlans } from './seeds/products.seed';
 import { seedClients } from './seeds/clients.seed';
 import { seedInvoices } from './seeds/invoices.seed';
@@ -11,6 +11,21 @@ import { seedPacks } from './seeds/packs.seed';
 
 const prisma = new PrismaClient();
 
+/**
+ * Exécute un seed ou ignore si la table du modèle n'existe pas (P2021).
+ */
+async function seedOrSkip(_prisma: PrismaClient, modelName: string, fn: () => Promise<void>): Promise<void> {
+	try {
+		await fn();
+	} catch (e: any) {
+		if (e?.code === 'P2021' && e?.meta?.modelName === modelName) {
+			console.log(`   (table ${modelName} absente, seed ignoré)`);
+			return;
+		}
+		throw e;
+	}
+}
+
 async function main(): Promise<void> {
 	const purge = String(process.env.SEED_PURGE || 'true').toLowerCase() !== 'false';
 	
@@ -21,6 +36,11 @@ async function main(): Promise<void> {
 		await purgeAll(prisma);
 		console.log('✅ Base purgée\n');
 	}
+
+	// 0. Utilisateur et organisation par défaut (pour accès local)
+	console.log('👤 Vérification utilisateur par défaut...');
+	await seedDefaultUser(prisma);
+	console.log('✅ Utilisateur par défaut prêt\n');
 
 	// 1. Taux de TVA
 	console.log('📊 Seeds des taux de TVA...');
@@ -38,9 +58,10 @@ async function main(): Promise<void> {
 	const plans = await seedPlans(prisma, products.productSaas);
 	console.log('✅ Produits et plans créés\n');
 
-	// 4. Clients
+	// 4. Clients (rattachés à l'organisation par défaut pour que le backend les retourne)
+	const defaultOrg = await prisma.organization.findFirst();
 	console.log('👥 Seeds des clients...');
-	const clients = await seedClients(prisma, { def10Id: taxIds.def10Id });
+	const clients = await seedClients(prisma, { def10Id: taxIds.def10Id, organizationId: defaultOrg?.id });
 	console.log(`✅ ${clients.length} clients créés\n`);
 
 	// 5. Abonnements
@@ -53,9 +74,9 @@ async function main(): Promise<void> {
 	await seedInvoices(prisma, clients, Object.values(products));
 	console.log('✅ Factures et paiements créés\n');
 
-	// 7. Devis
+	// 7. Devis (liés aux clients et produits V6)
 	console.log('📄 Seeds des devis...');
-	await seedQuotes(prisma, clients);
+	await seedQuotes(prisma, clients, products);
 	console.log('✅ Devis créés\n');
 
 	// 8. Déclarations
@@ -63,14 +84,14 @@ async function main(): Promise<void> {
 	await seedFilings(prisma);
 	console.log('✅ Déclarations créées\n');
 
-	// 9. Prospects
+	// 9. Prospects (ignoré si la table n'existe pas, ex. sans migration Prospect)
 	console.log('🎯 Seeds des prospects...');
-	await seedProspects(prisma);
+	await seedOrSkip(prisma, 'Prospect', () => seedProspects(prisma));
 	console.log('✅ Prospects créés\n');
 
-	// 10. Packs
+	// 10. Packs (ignoré si la table n'existe pas)
 	console.log('📦 Seeds des packs...');
-	await seedPacks(prisma, products);
+	await seedOrSkip(prisma, 'Pack', () => seedPacks(prisma, products));
 	console.log('✅ Packs créés\n');
 
 	console.log('🎉 Seeds terminés avec succès !');

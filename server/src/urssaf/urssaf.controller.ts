@@ -4,7 +4,6 @@ import {
 	Post,
 	Body,
 	Param,
-	UseGuards,
 	ParseIntPipe,
 	Patch,
 } from '@nestjs/common';
@@ -12,21 +11,18 @@ import { UrssafService } from './urssaf.service';
 import { CalculateContributionDto } from './dto/calculate-contribution.dto';
 import { CreateUrssafFilingDto } from './dto/create-urssaf-filing.dto';
 import { UpdateOrganizationUrssafDto } from './dto/update-organization-urssaf.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CurrentOrg } from '../auth/decorators/current-org.decorator';
 
 /**
  * Controller pour la gestion des cotisations URSSAF
- * 
- * Toutes les routes nécessitent une authentification JWT.
- * L'organizationId est automatiquement injecté depuis le contexte utilisateur.
- * 
+ *
+ * Accès restreint au réseau local (guard global).
+ *
  * @see UrssafService pour la logique métier
  * @see docs/api/URSSAF_API.md pour la documentation complète de l'API
  */
 @Controller('urssaf')
-@UseGuards(JwtAuthGuard)
 export class UrssafController {
 	constructor(private readonly urssafService: UrssafService) {}
 

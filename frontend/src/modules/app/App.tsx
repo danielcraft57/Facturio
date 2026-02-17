@@ -14,6 +14,10 @@ import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
+import { PublicQuotePage } from './pages/PublicQuotePage'
+import { PublicQuoteAcceptPage } from './pages/PublicQuoteAcceptPage'
+import { PublicQuoteRejectPage } from './pages/PublicQuoteRejectPage'
+import { PublicInvoicePage } from './pages/PublicInvoicePage'
 
 // Lazy loading des pages pour optimiser les performances
 const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -150,6 +154,40 @@ export function App() {
               <Route
                 path="/auth/callback"
                 element={<AuthCallbackPage />}
+              />
+
+              {/* Routes publiques devis / factures (accès par token) */}
+              <Route
+                path="/public/devis/:token"
+                element={
+                  <PublicLayout>
+                    <PublicQuotePage />
+                  </PublicLayout>
+                }
+              />
+              <Route
+                path="/public/devis/:token/accepter"
+                element={
+                  <PublicLayout>
+                    <PublicQuoteAcceptPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
+                path="/public/devis/:token/refuser"
+                element={
+                  <PublicLayout>
+                    <PublicQuoteRejectPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
+                path="/public/factures/:token"
+                element={
+                  <PublicLayout>
+                    <PublicInvoicePage />
+                  </PublicLayout>
+                }
               />
 
               {/* Routes privées (protégées) */}

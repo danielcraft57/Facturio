@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Box,
   Container,
@@ -9,6 +9,7 @@ import {
   CardContent,
   Paper,
   GridLegacy,
+  Alert,
 } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
@@ -19,27 +20,30 @@ import SecurityIcon from '@mui/icons-material/Security'
 import SpeedIcon from '@mui/icons-material/Speed'
 import { useAuthStore } from '../../../stores/authStore'
 
+function isLocalAccess(): boolean {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1' || host === ''
+}
+
 /**
- * Page d'accueil publique (Landing Page)
- * 
- * Présente le SaaS Facturio avec :
- * - Hero section avec CTA
- * - Fonctionnalités principales
- * - Avantages
- * - Call-to-action final
- * 
- * Redirige vers /dashboard si l'utilisateur est déjà connecté.
+ * Page d'accueil publique (Landing Page).
+ * En local : redirection auto vers le dashboard. En prod : si déjà connecté, redirection vers le dashboard.
  */
 export function LandingPage() {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuthStore()
+  const location = useLocation()
+  const accessMessage = (location.state as any)?.message
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
-  // Rediriger vers dashboard si déjà connecté
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isLocalAccess()) {
+      navigate('/dashboard', { replace: true })
+    } else if (isAuthenticated) {
       navigate('/dashboard', { replace: true })
     }
-  }, [isAuthenticated, navigate])
+  }, [navigate, isAuthenticated])
+
   const features = [
     {
       icon: <ReceiptLongIcon sx={{ fontSize: 40 }} />,
@@ -75,6 +79,13 @@ export function LandingPage() {
 
   return (
     <Box>
+      {accessMessage && (
+        <Container maxWidth="lg" sx={{ pt: 2 }}>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {accessMessage}
+          </Alert>
+        </Container>
+      )}
       {/* Hero Section */}
       <Box
         sx={{

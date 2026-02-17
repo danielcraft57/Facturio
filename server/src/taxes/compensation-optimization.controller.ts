@@ -1,14 +1,12 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { CompensationOptimizationService } from './compensation-optimization.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 /**
  * Controller pour l'optimisation de rémunération
- * 
+ *
  * @see CompensationOptimizationService pour la logique métier
  */
 @Controller('taxes/compensation')
-@UseGuards(JwtAuthGuard)
 export class CompensationOptimizationController {
 	constructor(private readonly compensationOptimizationService: CompensationOptimizationService) {}
 

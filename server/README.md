@@ -108,9 +108,16 @@ docker run --rm -p 3000:3000 -e DATABASE_URL=file:./prisma/dev.db facturio-serve
 
 L'entrypoint applique `prisma db push` au démarrage si `DATABASE_URL` est défini.
 
-## Base de données (Prisma)
-- Schéma: `prisma/schema.prisma`
-- Dev par défaut: SQLite (fichier `prisma/dev.db`)
+## Base de données (Prisma) – Dev vs Prod
+
+| Environnement | Provider   | Schéma                      | Fichier / URL                          |
+|---------------|------------|-----------------------------|----------------------------------------|
+| **Dev**       | SQLite     | `prisma/schema.prisma`      | `DATABASE_URL=file:./prisma/dev.db`    |
+| **Prod**      | PostgreSQL | `prisma/schema.postgresql.prisma` | `DATABASE_URL=postgresql://...` (voir `env.prod.example`) |
+
+- **Dev** : `npm run start:dev` (SQLite), `npm run seed:dev`.
+- **Prod** (serveur de prod) : `env.prod.example` + variables d'environnement (mot de passe PostgreSQL, etc.).  
+  `npm run prisma:prod` → `npm run db:push:prod` → `npm run build:prod` → `npm run seed:prod` → `npm run start:prod`.
 
 Commandes utiles:
 ```bash

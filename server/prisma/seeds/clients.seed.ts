@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import type { SeedContext } from './base.seed';
 
-export async function seedClients(prisma: PrismaClient, taxIds: { def10Id: number }): Promise<any[]> {
+export async function seedClients(prisma: PrismaClient, ctx: { def10Id: number; organizationId?: number }): Promise<any[]> {
+	const { def10Id: taxDef10Id, organizationId } = ctx;
 	const clients = [
 		{
 			name: 'ACME France',
@@ -41,7 +42,7 @@ export async function seedClients(prisma: PrismaClient, taxIds: { def10Id: numbe
 			vatNumber: null,
 			countryCode: 'FR',
 			address: '5 Avenue des Fleurs',
-			taxRateOverrideId: taxIds.def10Id
+			taxRateOverrideId: taxDef10Id
 		},
 		{
 			name: 'Exempt SARL',
@@ -83,16 +84,48 @@ export async function seedClients(prisma: PrismaClient, taxIds: { def10Id: numbe
 			countryCode: 'FR',
 			address: '8 Rue du Commerce, Lyon',
 			taxRateOverrideId: null
+		},
+		// Clients orientés devis (PME / projets V6)
+		{
+			name: 'Boulangerie Martin',
+			email: 'contact@boulangerie-martin.fr',
+			isCompany: true,
+			companyName: 'Boulangerie Martin SARL',
+			vatNumber: 'FR55443322110',
+			countryCode: 'FR',
+			address: '12 Place du Marché, Metz',
+			taxRateOverrideId: null
+		},
+		{
+			name: 'Restaurant Le Gourmet',
+			email: 'reservation@legourmet.fr',
+			isCompany: true,
+			companyName: 'Le Gourmet SAS',
+			vatNumber: 'FR77889900112',
+			countryCode: 'FR',
+			address: '5 Rue des Chefs, Nancy',
+			taxRateOverrideId: null
+		},
+		{
+			name: 'Cabinet Compta Plus',
+			email: 'direction@comptaplus.fr',
+			isCompany: true,
+			companyName: 'Compta Plus SARL',
+			vatNumber: 'FR99887766554',
+			countryCode: 'FR',
+			address: '3 Avenue de la Gare, Strasbourg',
+			taxRateOverrideId: null
 		}
 	];
 
 	const created = [];
 	for (const c of clients) {
+		const data = { ...c, organizationId: organizationId ?? undefined };
 		const existing = await prisma.client.findUnique({ where: { email: c.email } });
 		if (!existing) {
-			created.push(await prisma.client.create({ data: c }));
+			created.push(await prisma.client.create({ data }));
 		} else {
-			await prisma.client.update({ where: { email: c.email }, data: c });
+			await prisma.client.update({ where: { email: c.email }, data });
 			created.push(existing);
 		}
 	}

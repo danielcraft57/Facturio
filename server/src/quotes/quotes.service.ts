@@ -9,6 +9,8 @@ import { AccountingService } from '../accounting/accounting.service';
  * Ligne de devis
  */
 export interface QuoteLineDto {
+	/** Référence produit (optionnel, pour devis par sélection de produits) */
+	productId?: number | null;
 	/** Description de la ligne */
 	description: string;
 	/** Quantité */
@@ -203,6 +205,7 @@ export class QuotesService {
 				total: totals.total,
 				lines: {
 					create: lines.map(l => ({
+						productId: l.productId ?? undefined,
 						description: l.description,
 						quantity: l.quantity,
 						unitPrice: l.unitPrice,
@@ -265,6 +268,7 @@ export class QuotesService {
 				lines: {
 					deleteMany: {},
 					create: lines.map(l => ({
+						productId: l.productId ?? undefined,
 						description: l.description,
 						quantity: l.quantity,
 						unitPrice: l.unitPrice,
@@ -337,11 +341,13 @@ export class QuotesService {
 	 * @throws {NotFoundException} Si devis non trouvé
 	 */
 	async publicView(token: string, ip?: string, userAgent?: string) {
-		const quote = await this.prisma.quote.findUnique({ where: { publicToken: token } });
+		const quote = await this.prisma.quote.findUnique({
+			where: { publicToken: token },
+			include: { lines: true, client: true }
+		});
 		if (!quote) throw new NotFoundException('Devis introuvable');
 		await this.prisma.quoteView.create({ data: { quoteId: quote.id, ip: ip || null, userAgent: userAgent || null } });
-		// Retourner l'objet pour coller aux attentes e2e
-		return { id: quote.id, number: quote.number, status: quote.status, clientId: quote.clientId } as any;
+		return quote;
 	}
 
 	/**
@@ -393,6 +399,8 @@ export class QuotesService {
 			},
 			include: { client: true, lines: true }
 		});
+
+		await this.prisma.emailEvent.create({ data: { quoteId: id, type: 'sent' } });
 
 		// Hors-bilan: enregistre une écriture DRAFT dans OD (comme dans send)
 		try {

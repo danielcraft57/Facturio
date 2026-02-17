@@ -1,14 +1,12 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { AvoirsService } from './avoirs.service';
 import { CreateAvoirDto } from './dto/create-avoir.dto';
 import { UpdateAvoirDto } from './dto/update-avoir.dto';
 import { ApplyAvoirDto } from './dto/apply-avoir.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('avoirs')
-@UseGuards(JwtAuthGuard)
 export class AvoirsController {
 	constructor(private readonly avoirs: AvoirsService) {}
 

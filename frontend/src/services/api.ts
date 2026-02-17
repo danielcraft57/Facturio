@@ -14,7 +14,12 @@ export interface ApiError {
 }
 
 // Configuration par défaut
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+// En dev, utiliser le proxy Vite (/api) pour éviter les problèmes CORS
+// En prod, utiliser VITE_API_URL ou l'URL complète
+const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development'
+const API_BASE_URL = isDev 
+  ? '/api'  // Proxy Vite vers le backend local
+  : (import.meta.env.VITE_API_URL || 'http://localhost:3000/api')
 
 // Classe pour gérer les erreurs API
 export class ApiError extends Error {

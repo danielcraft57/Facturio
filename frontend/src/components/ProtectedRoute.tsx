@@ -1,6 +1,4 @@
-import { useEffect } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { CircularProgress, Box } from '@mui/material'
 import { useAuthStore } from '../stores/authStore'
 
 /**
@@ -11,51 +9,32 @@ interface ProtectedRouteProps {
 }
 
 /**
- * Composant pour protéger les routes nécessitant une authentification
- * 
- * Redirige vers /login si l'utilisateur n'est pas authentifié.
- * Affiche un loader pendant la vérification de l'authentification.
- * 
- * @example
- * ```tsx
- * <Route path="/dashboard" element={
- *   <ProtectedRoute>
- *     <DashboardPage />
- *   </ProtectedRoute>
- * } />
- * ```
+ * Indique si l'accès est en "réseau local" (localhost / 127.0.0.1).
+ * En local, pas de login requis. En production (domaine public), le login est requis.
+ */
+function isLocalAccess(): boolean {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1' || host === ''
+}
+
+/**
+ * Protège les routes (tableau de bord, etc.).
+ * - En local (localhost) : accès direct sans login.
+ * - En production (domaine public, ex. facturio.danielcraft.fr) : accès si connecté (token), sinon redirection vers /login.
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation()
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
-  // Vérifier l'authentification au montage du composant
-  useEffect(() => {
-    checkAuth()
-  }, [checkAuth])
-
-  // Afficher un loader pendant la vérification
-  if (isLoading) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    )
+  if (isLocalAccess()) {
+    return <>{children}</>
   }
 
-  // Rediriger vers login si non authentifié
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  // Rendre les enfants si authentifié
   return <>{children}</>
 }
 

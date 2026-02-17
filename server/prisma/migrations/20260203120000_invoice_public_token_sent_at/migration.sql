@@ -1,0 +1,2 @@
+-- Colonnes publicToken et sentAt déjà ajoutées à Invoice par la migration 20260203005101_add_prospect_and_pack (sync schéma).
+-- Cette migration est conservée pour l'historique ; pas d'opération à exécuter.

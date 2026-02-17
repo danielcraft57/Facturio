@@ -3,9 +3,9 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { LocalOnlyGuard } from './guards/local-only.guard';
 
 /**
  * Controller d'authentification
@@ -70,7 +70,6 @@ export class AuthController {
 	 * @returns Message de confirmation
 	 */
 	@Post('logout')
-	@UseGuards(JwtAuthGuard)
 	async logout(@Res({ passthrough: true }) res: Response) {
 		// Supprimer le cookie
 		res.clearCookie('access_token', {
@@ -149,7 +148,6 @@ export class AuthController {
 	 * @returns Utilisateur mis à jour
 	 */
 	@Post('google/link')
-	@UseGuards(JwtAuthGuard)
 	async linkGoogle(@CurrentUser() user: any, @Body() body: { googleToken: string }) {
 		// En production, vérifier le token Google côté serveur
 		// Pour l'instant, on accepte les données directement
@@ -165,7 +163,6 @@ export class AuthController {
 	 * @returns Informations utilisateur (sans données sensibles)
 	 */
 	@Get('me')
-	@UseGuards(JwtAuthGuard)
 	async getProfile(@CurrentUser() user: any) {
 		return {
 			id: user.id,

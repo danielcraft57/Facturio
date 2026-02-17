@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 export interface SeedContext {
 	prisma: PrismaClient;
@@ -86,6 +87,43 @@ export async function seedChartOfAccounts(prisma: PrismaClient): Promise<{ accou
 	return { accounts, journals };
 }
 
+/**
+ * Crée un utilisateur et une organisation par défaut si aucun utilisateur n'existe.
+ * Nécessaire pour le guard LocalOnly (accès restreint local sans mot de passe).
+ */
+export async function seedDefaultUser(prisma: PrismaClient): Promise<void> {
+	const count = await prisma.user.count();
+	if (count > 0) return;
+
+	const org = await prisma.organization.create({
+		data: {
+			name: 'Facturio',
+			companyType: 'B2B',
+			address: process.env.COMPANY_ADDRESS || '57000 Metz, France',
+			siret: process.env.COMPANY_SIRET || null,
+			email: process.env.COMPANY_EMAIL || 'contact@danielcraft.fr',
+			phone: process.env.COMPANY_PHONE || null,
+		},
+	});
+	const hashedPassword = await bcrypt.hash('facturio-local', 12);
+	await prisma.user.create({
+		data: {
+			email: 'admin@local.facturio',
+			password: hashedPassword,
+			firstName: 'Admin',
+			lastName: 'Local',
+			organizationId: org.id,
+			status: 'ACTIVE',
+			emailVerified: true,
+			role: 'ADMIN',
+		},
+	});
+}
+
+/**
+ * Supprime les données des tables pour permettre un seed propre.
+ * Ignore les erreurs si une table n'existe pas (ex. Prospect, Pack sans migration dédiée).
+ */
 export async function purgeAll(prisma: PrismaClient): Promise<void> {
 	await prisma.quoteView.deleteMany();
 	await prisma.emailEvent.deleteMany();
@@ -100,9 +138,24 @@ export async function purgeAll(prisma: PrismaClient): Promise<void> {
 	await prisma.subscription.deleteMany();
 	await prisma.plan.deleteMany();
 	await prisma.product.deleteMany();
-	await prisma.prospect.deleteMany();
-	await prisma.pack.deleteMany();
+	await deleteManyIfTableExists(prisma, 'prospect', () => prisma.prospect.deleteMany());
+	await deleteManyIfTableExists(prisma, 'pack', () => prisma.pack.deleteMany());
 	await prisma.counter.deleteMany();
 	// On garde Client, TaxRate, Account, Journal pour les seeds
+}
+
+/**
+ * Exécute une suppression uniquement si la table existe (évite P2021 après reset sans migration Prospect/Pack).
+ */
+async function deleteManyIfTableExists(_prisma: PrismaClient, tableName: string, deleteFn: () => Promise<unknown>): Promise<void> {
+	try {
+		await deleteFn();
+	} catch (e: any) {
+		const modelName = tableName.charAt(0).toUpperCase() + tableName.slice(1);
+		if (e?.code === 'P2021' && (e?.meta?.modelName === modelName || e?.meta?.table?.endsWith(modelName))) {
+			return;
+		}
+		throw e;
+	}
 }
 

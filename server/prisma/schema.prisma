@@ -246,7 +246,7 @@ model Invoice {
   dueDate            DateTime?
   status             InvoiceStatus           @default(DRAFT)
   clientId           Int
-  client             Client                  @relation(fields: [clientId], references: [id])
+  client             Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   subscriptionId     Int?
   subscription       Subscription?           @relation(fields: [subscriptionId], references: [id])
   organizationId     Int?
@@ -263,6 +263,8 @@ model Invoice {
   avoirs        Avoir[]            @relation("InvoiceAvoirs")
   appliedAvoirs AvoirApplication[] @relation("AppliedAvoirs")
   taxDeductions      TaxDeduction[]
+  publicToken        String?                 @unique
+  sentAt             DateTime?
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
@@ -270,18 +272,21 @@ model Invoice {
   @@index([clientId])
   @@index([number])
   @@index([organizationId])
+  @@index([publicToken])
 }
 
 model InvoiceLine {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   invoiceId   Int
-  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   Int?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   description String
-  quantity    Int     @default(1)
-  unitPrice   Decimal @default(0)
-  taxRate     Decimal @default(0) // ex: 0.2 pour 20%
-  taxAmount   Decimal @default(0)
-  total       Decimal @default(0)
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0)
+  taxRate     Decimal  @default(0) // ex: 0.2 pour 20%
+  taxAmount   Decimal  @default(0)
+  total       Decimal  @default(0)
 }
 
 enum AvoirStatus {
@@ -354,7 +359,7 @@ model Quote {
   expiryDate     DateTime?
   status         QuoteStatus   @default(DRAFT)
   clientId       Int
-  client         Client        @relation(fields: [clientId], references: [id])
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   organizationId Int?
   organization   Organization? @relation(fields: [organizationId], references: [id])
   lines          QuoteLine[]
@@ -374,15 +379,17 @@ model Quote {
 }
 
 model QuoteLine {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   quoteId     Int
-  quote       Quote   @relation(fields: [quoteId], references: [id])
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId   Int?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   description String
-  quantity    Int     @default(1)
-  unitPrice   Decimal @default(0)
-  taxRate     Decimal @default(0)
-  taxAmount   Decimal @default(0)
-  total       Decimal @default(0)
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0)
+  taxRate     Decimal  @default(0)
+  taxAmount   Decimal  @default(0)
+  total       Decimal  @default(0)
 }
 
 model TaxRate {
@@ -405,16 +412,26 @@ enum ProductKind {
 }
 
 model Product {
-  id               Int         @id @default(autoincrement())
+  id               Int            @id @default(autoincrement())
   name             String
-  sku              String?     @unique
-  kind             ProductKind @default(SERVICE)
+  sku              String?        @unique
+  kind             ProductKind    @default(SERVICE)
   unitPrice        Decimal? // optionnel si via plan
   defaultTaxRateId Int?
-  defaultTaxRate   TaxRate?    @relation("ProductDefaultTaxRate", fields: [defaultTaxRateId], references: [id])
-  plans            Plan[]
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  /** Catégorie fonctionnelle (SETUP, THEME, DEV, MAINTENANCE, etc.) */
+  category         String?
+  /** Langages / technos (ex: TypeScript, React, Nest) stockés en JSON array */
+  languages        Json?
+  /** Temps estimé en heures pour la prestation */
+  estimatedHours   Int?
+  /** Description technique détaillée du produit ou service */
+  description      String?
+  defaultTaxRate   TaxRate?       @relation("ProductDefaultTaxRate", fields: [defaultTaxRateId], references: [id])
+  plans            Plan[]         @relation("PlanProduct")
+  quoteLines       QuoteLine[]
+  invoiceLines     InvoiceLine[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 enum BillingInterval {
@@ -425,7 +442,7 @@ enum BillingInterval {
 model Plan {
   id            Int             @id @default(autoincrement())
   productId     Int
-  product       Product         @relation(fields: [productId], references: [id])
+  product       Product         @relation("PlanProduct", fields: [productId], references: [id], onDelete: Cascade)
   name          String
   amount        Decimal         @default(0)
   currency      String          @default("EUR")
@@ -447,7 +464,7 @@ enum SubscriptionStatus {
 model Subscription {
   id                 Int                @id @default(autoincrement())
   clientId           Int
-  client             Client             @relation(fields: [clientId], references: [id])
+  client             Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   planId             Int
   plan               Plan               @relation(fields: [planId], references: [id])
   organizationId     Int?

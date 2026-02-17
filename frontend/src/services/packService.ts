@@ -10,12 +10,21 @@ export class PackService {
     params.set('page', String(page));
     params.set('pageSize', String(limit));
     if (filters?.search) params.set('search', filters.search);
-    
-    const response = await this.apiClient.get<PackListResponse>(`${this.baseUrl}?${params.toString()}`);
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Erreur lors de la récupération des packs');
+
+    const res = await this.apiClient.get<PackListResponse>(`${this.baseUrl}?${params.toString()}`);
+    const raw: any = (res as any)?.data ?? res;
+    if (raw && Array.isArray(raw.packs)) {
+      return {
+        packs: raw.packs,
+        total: raw.total ?? 0,
+        page: raw.page ?? page,
+        limit: raw.limit ?? limit
+      };
     }
-    return response.data;
+    if ((res as any)?.success === false) {
+      throw new Error((res as any).error || 'Erreur lors de la récupération des packs');
+    }
+    return { packs: [], total: 0, page: 1, limit };
   }
 
   async getPack(id: string): Promise<Pack | null> {

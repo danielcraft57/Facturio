@@ -97,7 +97,9 @@ export function ClientsPage() {
         setLoading(true)
         setError(null)
         const response = await clientService.getClients({ page: 1, limit: 100 })
-        setClients(response.data?.clients || [])
+        const payload = response.data
+        const list = payload?.clients ?? []
+        setClients(Array.isArray(list) ? list : [])
       } catch (err) {
         setError('Erreur lors du chargement des clients')
         console.error('Clients error:', err)
@@ -159,7 +161,9 @@ export function ClientsPage() {
         setImportProgress(0)
         // Recharger la liste
         const listResponse = await clientService.getClients({ page: 1, limit: 100 })
-        setClients(listResponse.data?.clients || [])
+        const payload = listResponse.data
+        const list = payload?.clients ?? []
+        setClients(Array.isArray(list) ? list : [])
       }
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'import')

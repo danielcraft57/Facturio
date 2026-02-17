@@ -40,6 +40,7 @@ export interface CreateQuoteData {
 }
 
 export interface CreateQuoteLineData {
+  productId?: number | null;
   description: string;
   quantity: number;
   unitPrice: number;

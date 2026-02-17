@@ -55,8 +55,9 @@ async function bootstrap(): Promise<void> {
 
 	// Compression (en production)
 	if (config.isProd) {
-		const compression = await import('compression');
-		app.use(compression.default());
+		const compressionModule = await import('compression');
+		const compression = compressionModule.default || compressionModule;
+		app.use(compression());
 	}
 
 	const port = config.port;

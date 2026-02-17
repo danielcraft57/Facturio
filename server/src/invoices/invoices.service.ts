@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
@@ -9,6 +10,8 @@ import { ConfigService } from '../config/config.service';
  * Ligne de facture
  */
 export interface InvoiceLineInput {
+	/** Référence produit (optionnel, ex. facture issue d'un devis) */
+	productId?: number | null;
 	/** Description de la ligne */
 	description: string;
 	/** Quantité */
@@ -268,6 +271,7 @@ export class InvoicesService {
 				legalMention: policy.mention,
 				lines: {
 					create: linesWithTax.map(l => ({
+						productId: (l as any).productId ?? undefined,
 						description: l.description,
 						quantity: l.quantity,
 						unitPrice: l.unitPrice,
@@ -408,6 +412,7 @@ export class InvoicesService {
 				lines: {
 					deleteMany: {},
 					create: linesWithTax.map(l => ({
+						productId: (l as any).productId ?? undefined,
 						description: l.description,
 						quantity: l.quantity,
 						unitPrice: l.unitPrice,
@@ -485,6 +490,45 @@ export class InvoicesService {
 		} catch (_) {}
 		// Retourner le paiement en nombre pour .toBe(250)
 		return { ...payment, amount: (payment.amount as any)?.toNumber?.() ?? Number(payment.amount) } as any;
+	}
+
+	/**
+	 * Visualise une facture via token public (enregistre un événement "opened" si tracking).
+	 *
+	 * @param token - Token public de la facture
+	 * @returns Données facture pour affichage public
+	 * @throws {NotFoundException} Si facture non trouvée
+	 */
+	async publicView(token: string) {
+		const invoice = await this.prisma.invoice.findUnique({
+			where: { publicToken: token },
+			include: { lines: true, client: true }
+		});
+		if (!invoice) throw new NotFoundException('Facture introuvable');
+		return invoice;
+	}
+
+	/**
+	 * Envoie une facture par email : génère un token public, met à jour sentAt, enregistre l'événement "sent".
+	 *
+	 * @param id - ID de la facture
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
+	 * @returns Facture mise à jour avec publicToken et publicUrl
+	 * @throws {NotFoundException} Si facture non trouvée
+	 */
+	async sendInvoice(id: number, organizationId?: number) {
+		const invoice = await this.findOne(id, organizationId);
+		const token = invoice.publicToken ?? randomBytes(24).toString('hex');
+		const updated = await this.prisma.invoice.update({
+			where: { id },
+			data: { publicToken: token, sentAt: new Date(), status: 'SENT' },
+			include: { lines: true, client: true }
+		});
+		await this.prisma.emailEvent.create({
+			data: { invoiceId: id, type: 'sent' }
+		});
+		const baseUrl = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+		return { ...updated, publicUrl: `${baseUrl}/public/factures/${token}` };
 	}
 }
 

@@ -5,19 +5,16 @@ import {
 	Body,
 	Param,
 	Query,
-	UseGuards,
 } from '@nestjs/common';
 import { TaxSimulationsService } from './tax-simulations.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 /**
  * Controller pour les simulations fiscales
- * 
+ *
  * @see TaxSimulationsService pour la logique métier
  */
 @Controller('taxes/simulations')
-@UseGuards(JwtAuthGuard)
 export class TaxSimulationsController {
 	constructor(private readonly taxSimulationsService: TaxSimulationsService) {}
 

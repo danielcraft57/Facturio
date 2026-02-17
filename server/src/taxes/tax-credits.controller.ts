@@ -6,19 +6,16 @@ import {
 	Param,
 	Patch,
 	Query,
-	UseGuards,
 } from '@nestjs/common';
 import { TaxCreditsService } from './tax-credits.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 /**
  * Controller pour la gestion des crédits d'impôt
- * 
+ *
  * @see TaxCreditsService pour la logique métier
  */
 @Controller('taxes/credits')
-@UseGuards(JwtAuthGuard)
 export class TaxCreditsController {
 	constructor(private readonly taxCreditsService: TaxCreditsService) {}
 

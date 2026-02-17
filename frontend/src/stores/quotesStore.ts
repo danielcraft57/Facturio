@@ -70,19 +70,18 @@ export const useQuotesStore = create<QuotesState>()(
       fetchQuotes: async (filters = {}, page = 1) => {
         set({ isLoading: true });
         try {
-          const response = await quoteService.getQuotes(filters, page, get().pagination.limit);
-          if (response.success && response.data) {
-            set({
-              quotes: response.data.data,
-              pagination: {
-                page: response.data.page,
-                limit: response.data.limit,
-                total: response.data.total
-              },
-              lastFetch: Date.now(),
-              isStale: false
-            });
-          }
+          const res = await quoteService.getQuotes(filters, page, get().pagination.limit);
+          const raw: any = (res as any)?.data ?? res;
+          const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+          const total = raw?.total ?? list.length;
+          const pageNum = raw?.page ?? page;
+          const limit = raw?.limit ?? get().pagination.limit;
+          set({
+            quotes: list,
+            pagination: { page: pageNum, limit, total },
+            lastFetch: Date.now(),
+            isStale: false
+          });
         } catch (error) {
           console.error('Erreur lors de la récupération des devis:', error);
         } finally {
@@ -93,9 +92,10 @@ export const useQuotesStore = create<QuotesState>()(
       fetchQuote: async (id: number) => {
         set({ isLoading: true });
         try {
-          const response = await quoteService.getQuote(id);
-          if (response.success && response.data) {
-            set({ selectedQuote: response.data });
+          const res = await quoteService.getQuote(id);
+          const quote = (res as any)?.data ?? res;
+          if (quote && typeof quote.id === 'number') {
+            set({ selectedQuote: quote });
           }
         } catch (error) {
           console.error('Erreur lors de la récupération du devis:', error);
@@ -107,14 +107,15 @@ export const useQuotesStore = create<QuotesState>()(
       createQuote: async (data: CreateQuoteData) => {
         set({ isCreating: true });
         try {
-          const response = await quoteService.createQuote(data);
-          if (response.success && response.data) {
+          const res = await quoteService.createQuote(data);
+          const quote = (res as any)?.data ?? res;
+          if (quote && typeof quote.id === 'number') {
             set(state => ({
-              quotes: response.data ? [response.data, ...state.quotes] : state.quotes,
-              selectedQuote: response.data || null
+              quotes: [quote, ...state.quotes],
+              selectedQuote: quote
             }));
             get().markAsStale();
-            return response.data;
+            return quote;
           }
         } catch (error) {
           console.error('Erreur lors de la création du devis:', error);
@@ -127,15 +128,16 @@ export const useQuotesStore = create<QuotesState>()(
       updateQuote: async (id: number, data: UpdateQuoteData) => {
         set({ isUpdating: true });
         try {
-          const response = await quoteService.updateQuote(id, data);
-                  if (response.success && response.data) {
-          set(state => ({
-            quotes: state.quotes.map(q => q.id === id ? (response.data || q) : q),
-            selectedQuote: state.selectedQuote?.id === id ? (response.data || null) : state.selectedQuote
-          }));
-          get().markAsStale();
-          return response.data;
-        }
+          const res = await quoteService.updateQuote(id, data);
+          const quote = (res as any)?.data ?? res;
+          if (quote && typeof quote.id === 'number') {
+            set(state => ({
+              quotes: state.quotes.map(q => (q.id === id ? quote : q)),
+              selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
+            }));
+            get().markAsStale();
+            return quote;
+          }
         } catch (error) {
           console.error('Erreur lors de la mise à jour du devis:', error);
         } finally {
@@ -147,32 +149,31 @@ export const useQuotesStore = create<QuotesState>()(
       deleteQuote: async (id: number) => {
         set({ isDeleting: true });
         try {
-          const response = await quoteService.deleteQuote(id);
-          if (response.success) {
-            set(state => ({
-              quotes: state.quotes.filter(q => q.id !== id),
-              selectedQuote: state.selectedQuote?.id === id ? null : state.selectedQuote
-            }));
-            get().markAsStale();
-            return true;
-          }
+          await quoteService.deleteQuote(id);
+          set(state => ({
+            quotes: state.quotes.filter(q => q.id !== id),
+            selectedQuote: state.selectedQuote?.id === id ? null : state.selectedQuote
+          }));
+          get().markAsStale();
+          return true;
         } catch (error) {
           console.error('Erreur lors de la suppression du devis:', error);
+          return false;
         } finally {
           set({ isDeleting: false });
         }
-        return false;
       },
 
       sendQuote: async (id: number) => {
         try {
-          const response = await quoteService.sendQuote(id);
-          if (response.success && response.data) {
+          const res = await quoteService.sendQuote(id);
+          const quote = (res as any)?.data ?? res;
+          if (quote && typeof quote.id === 'number') {
             set(state => ({
-              quotes: state.quotes.map(q => q.id === id ? (response.data || q) : q),
-              selectedQuote: state.selectedQuote?.id === id ? (response.data || null) : state.selectedQuote
+              quotes: state.quotes.map(q => (q.id === id ? quote : q)),
+              selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
             }));
-            return response.data;
+            return quote;
           }
         } catch (error) {
           console.error('Erreur lors de l\'envoi du devis:', error);
@@ -182,13 +183,14 @@ export const useQuotesStore = create<QuotesState>()(
 
       acceptQuote: async (id: number) => {
         try {
-          const response = await quoteService.acceptQuote(id);
-          if (response.success && response.data) {
+          const res = await quoteService.acceptQuote(id);
+          const quote = (res as any)?.data ?? res;
+          if (quote && typeof quote.id === 'number') {
             set(state => ({
-              quotes: state.quotes.map(q => q.id === id ? (response.data || q) : q),
-              selectedQuote: state.selectedQuote?.id === id ? (response.data || null) : state.selectedQuote
+              quotes: state.quotes.map(q => (q.id === id ? quote : q)),
+              selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
             }));
-            return response.data;
+            return quote;
           }
         } catch (error) {
           console.error('Erreur lors de l\'acceptation du devis:', error);
@@ -198,13 +200,14 @@ export const useQuotesStore = create<QuotesState>()(
 
       rejectQuote: async (id: number) => {
         try {
-          const response = await quoteService.rejectQuote(id);
-          if (response.success && response.data) {
+          const res = await quoteService.rejectQuote(id);
+          const quote = (res as any)?.data ?? res;
+          if (quote && typeof quote.id === 'number') {
             set(state => ({
-              quotes: state.quotes.map(q => q.id === id ? (response.data || q) : q),
-              selectedQuote: state.selectedQuote?.id === id ? (response.data || null) : state.selectedQuote
+              quotes: state.quotes.map(q => (q.id === id ? quote : q)),
+              selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
             }));
-            return response.data;
+            return quote;
           }
         } catch (error) {
           console.error('Erreur lors du rejet du devis:', error);
@@ -214,9 +217,11 @@ export const useQuotesStore = create<QuotesState>()(
 
       convertToInvoice: async (id: number) => {
         try {
-          const response = await quoteService.convertToInvoice(id);
-          if (response.success && response.data) {
-            return response.data.invoiceId;
+          const res = await quoteService.convertToInvoice(id);
+          const raw: any = (res as any)?.data ?? res;
+          const invoiceId = raw?.invoiceId ?? raw?.id;
+          if (invoiceId != null) {
+            return Number(invoiceId);
           }
         } catch (error) {
           console.error('Erreur lors de la conversion en facture:', error);
