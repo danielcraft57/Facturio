@@ -33,6 +33,12 @@ export interface AuthResponse {
   user: User
 }
 
+/** Réponse signup quand vérification email requise (pas de token). */
+export interface SignupNeedVerificationResponse {
+  message: string
+  needVerification: true
+}
+
 /**
  * Service d'authentification
  * 
@@ -91,25 +97,29 @@ class AuthService {
   }
 
   /**
-   * Inscription d'un nouvel utilisateur
-   * 
+   * Inscription d'un nouvel utilisateur.
+   * Si le serveur renvoie needVerification, aucun token n'est stocké : l'utilisateur doit cliquer sur le lien reçu par email.
+   *
    * @param data - Données d'inscription
-   * @returns Token JWT et informations utilisateur
-   * @throws {Error} Si l'email existe déjà ou si les données sont invalides
+   * @returns AuthResponse (connecté) ou SignupNeedVerificationResponse (email de confirmation envoyé)
    */
-  async signup(data: SignupDto): Promise<AuthResponse> {
+  async signup(data: SignupDto): Promise<AuthResponse | SignupNeedVerificationResponse> {
     try {
-      const response = await apiClient.post<AuthResponse>(
+      const response = await apiClient.post<AuthResponse | SignupNeedVerificationResponse>(
         `${this.baseUrl}/signup`,
         data
       )
-      const payload = this.unwrap<AuthResponse>(response)
+      const payload = this.unwrap<AuthResponse | SignupNeedVerificationResponse>(response)
 
-      if (payload && payload.access_token) {
-        // Stocker le token dans localStorage
-        localStorage.setItem('auth_token', payload.access_token)
-        localStorage.setItem('user', JSON.stringify(payload.user))
-        return payload
+      if (payload && (payload as SignupNeedVerificationResponse).needVerification) {
+        return payload as SignupNeedVerificationResponse
+      }
+
+      const auth = payload as AuthResponse
+      if (auth?.access_token) {
+        localStorage.setItem('auth_token', auth.access_token)
+        localStorage.setItem('user', JSON.stringify(auth.user))
+        return auth
       }
 
       throw new Error('Réponse invalide du serveur')
@@ -120,21 +130,54 @@ class AuthService {
   }
 
   /**
+   * Vérifie l'adresse email avec le token reçu par email (lien d'inscription).
+   */
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    const res = await apiClient.get<{ message: string }>(`${this.baseUrl}/verify-email`, {
+      params: { token },
+    })
+    return (res as any).data?.data ?? (res as any).data ?? res
+  }
+
+  /**
+   * Renvoie l'email de vérification pour un compte non encore activé.
+   */
+  async resendVerificationEmail(email: string): Promise<{ message: string }> {
+    const res = await apiClient.post<{ message: string }>(`${this.baseUrl}/resend-verification`, { email })
+    return (res as any).data?.data ?? (res as any).data ?? res
+  }
+
+  /**
    * Déconnexion d'un utilisateur
-   * 
-   * Supprime le token et les données utilisateur du localStorage
-   * et appelle l'endpoint de déconnexion du serveur.
+   * Supprime token, user, et tous les stockages liés à l'auth, appelle le backend pour supprimer le cookie.
    */
   async logout(): Promise<void> {
     try {
       await apiClient.post(`${this.baseUrl}/logout`)
     } catch (error) {
-      // Même en cas d'erreur, on nettoie le localStorage
       console.error('Erreur lors de la déconnexion:', error)
     } finally {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
+      sessionStorage.removeItem('auth_token')
+      sessionStorage.removeItem('user')
     }
+  }
+
+  /**
+   * Demande d'envoi d'un email de réinitialisation du mot de passe
+   */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const res = await apiClient.post<{ message: string }>(`${this.baseUrl}/forgot-password`, { email })
+    return (res as any).data?.data ?? (res as any).data ?? res
+  }
+
+  /**
+   * Réinitialise le mot de passe avec le token reçu par email
+   */
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const res = await apiClient.post<{ message: string }>(`${this.baseUrl}/reset-password`, { token, newPassword })
+    return (res as any).data?.data ?? (res as any).data ?? res
   }
 
   /**

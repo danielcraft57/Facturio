@@ -28,7 +28,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		});
 
 		if (!user || user.status !== 'ACTIVE') {
-			throw new UnauthorizedException();
+			throw new UnauthorizedException('Compte non actif');
+		}
+
+		if (!user.emailVerified) {
+			throw new UnauthorizedException('Veuillez vérifier votre adresse email pour accéder à votre compte');
 		}
 
 		return user;

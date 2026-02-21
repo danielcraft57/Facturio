@@ -27,7 +27,7 @@ export class ProspectsService {
 	 * @param data - Données du prospect
 	 * @returns Prospect créé et formaté
 	 */
-	async create(data: CreateProspectDto) {
+	async create(data: CreateProspectDto, organizationId?: number) {
 		const prospect = await this.prisma.prospect.create({
 			data: {
 				companyName: data.companyName,
@@ -55,7 +55,8 @@ export class ProspectsService {
 				priority: (data.priority as any) || 'MEDIUM',
 				assignedTo: data.assignedTo,
 				notes: data.notes ? JSON.stringify(data.notes) : null,
-				tags: data.tags ? JSON.stringify(data.tags) : null
+				tags: data.tags ? JSON.stringify(data.tags) : null,
+				organizationId: organizationId ?? undefined
 			}
 		});
 
@@ -68,12 +69,13 @@ export class ProspectsService {
 	 * @param query - Paramètres de pagination/recherche/tri
 	 * @returns Liste paginée de prospects formatés
 	 */
-	async findAll(query: ListQueryDto) {
+	async findAll(query: ListQueryDto, organizationId?: number) {
 		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
 		const pageSize = query?.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
 		const skip = (page - 1) * pageSize;
 
 		const where: any = {};
+		if (organizationId != null) where.organizationId = organizationId;
 		if (query.search) {
 			where.OR = [
 				{ companyName: { contains: query.search } },
@@ -100,16 +102,18 @@ export class ProspectsService {
 		};
 	}
 
-	async findOne(id: number) {
-		const prospect = await this.prisma.prospect.findUnique({ where: { id } });
+	async findOne(id: number, organizationId?: number) {
+		const where: { id: number; organizationId?: number } = { id };
+		if (organizationId != null) where.organizationId = organizationId;
+		const prospect = await this.prisma.prospect.findFirst({ where });
 		if (!prospect) {
 			throw new NotFoundException('Prospect non trouve');
 		}
 		return this.formatProspect(prospect);
 	}
 
-	async update(id: number, data: UpdateProspectDto) {
-		await this.findOne(id);
+	async update(id: number, data: UpdateProspectDto, organizationId?: number) {
+		await this.findOne(id, organizationId);
 
 		const updateData: any = {};
 		if (data.companyName !== undefined) updateData.companyName = data.companyName;
@@ -154,8 +158,8 @@ export class ProspectsService {
 		return this.formatProspect(updated);
 	}
 
-	async remove(id: number) {
-		await this.findOne(id);
+	async remove(id: number, organizationId?: number) {
+		await this.findOne(id, organizationId);
 		await this.prisma.prospect.delete({ where: { id } });
 		return { success: true };
 	}
@@ -172,18 +176,22 @@ export class ProspectsService {
 	 * 
 	 * @returns Métriques agrégées
 	 */
-	async getMetrics() {
-		const total = await this.prisma.prospect.count();
+	async getMetrics(organizationId?: number) {
+		const where = organizationId != null ? { organizationId } : {};
+		const total = await this.prisma.prospect.count({ where });
 		const byStatus = await this.prisma.prospect.groupBy({
 			by: ['status'],
+			where,
 			_count: { id: true }
 		});
 		const byIndustry = await this.prisma.prospect.groupBy({
 			by: ['industry'],
+			where,
 			_count: { id: true }
 		});
 
 		const avgScore = await this.prisma.prospect.aggregate({
+			where,
 			_avg: { score: true }
 		});
 

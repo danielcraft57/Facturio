@@ -170,6 +170,14 @@ model User {
   googleEmail   String?
   googlePicture String?
 
+  // Réinitialisation mot de passe
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+
+  // Vérification email (inscription)
+  emailVerificationToken   String?   @unique
+  emailVerificationExpires DateTime?
+
   organizationId Int
   organization   Organization @relation(fields: [organizationId], references: [id])
 
@@ -179,6 +187,8 @@ model User {
   @@index([email])
   @@index([googleId])
   @@index([organizationId])
+  @@index([passwordResetToken])
+  @@index([emailVerificationToken])
 }
 
 model OrganizationDocument {

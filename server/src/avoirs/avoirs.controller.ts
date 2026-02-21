@@ -12,33 +12,33 @@ export class AvoirsController {
 
 	@Post()
 	create(@Body() data: CreateAvoirDto, @CurrentUser() user: any) {
-		return this.avoirs.create(data);
+		return this.avoirs.create(data, user.organizationId);
 	}
 
 	@Get()
 	findAll(@Query() query: ListQueryDto, @CurrentUser() user: any) {
-		return this.avoirs.findAll(query);
+		return this.avoirs.findAll(query, user.organizationId);
 	}
 
 	@Get(':id')
 	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.avoirs.findOne(id);
+		return this.avoirs.findOne(id, user.organizationId);
 	}
 
 	@Patch(':id')
 	update(@Param('id', ParseIntPipe) id: number, @Body() data: UpdateAvoirDto, @CurrentUser() user: any) {
-		return this.avoirs.update(id, data);
+		return this.avoirs.update(id, data, user.organizationId);
 	}
 
 	@Delete(':id')
 	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.avoirs.remove(id);
+		return this.avoirs.remove(id, user.organizationId);
 	}
 
 	@Post(':id/apply')
 	@HttpCode(200)
 	apply(@Param('id', ParseIntPipe) id: number, @Body() data: ApplyAvoirDto, @CurrentUser() user: any) {
-		return this.avoirs.apply(id, data);
+		return this.avoirs.apply(id, data, user.organizationId);
 	}
 }
 

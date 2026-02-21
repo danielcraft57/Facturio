@@ -11,27 +11,27 @@ export class PacksController {
 
 	@Post()
 	create(@Body() data: CreatePackDto, @CurrentUser() user: any) {
-		return this.packs.create(data);
+		return this.packs.create(data, user.organizationId);
 	}
 
 	@Get()
 	findAll(@Query() query: ListQueryDto, @CurrentUser() user: any) {
-		return this.packs.findAll(query);
+		return this.packs.findAll(query, user.organizationId);
 	}
 
 	@Get(':id')
 	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.packs.findOne(id);
+		return this.packs.findOne(id, user.organizationId);
 	}
 
 	@Patch(':id')
 	update(@Param('id', ParseIntPipe) id: number, @Body() data: UpdatePackDto, @CurrentUser() user: any) {
-		return this.packs.update(id, data);
+		return this.packs.update(id, data, user.organizationId);
 	}
 
 	@Delete(':id')
 	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.packs.remove(id);
+		return this.packs.remove(id, user.organizationId);
 	}
 }
 

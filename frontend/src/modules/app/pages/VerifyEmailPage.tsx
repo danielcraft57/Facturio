@@ -1,0 +1,101 @@
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom'
+import {
+  Container,
+  Box,
+  Paper,
+  Typography,
+  Button,
+  Alert,
+  CircularProgress,
+} from '@mui/material'
+import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline'
+import { authService } from '../../../services/authService'
+
+/**
+ * Page de vérification d'adresse email (lien reçu après inscription).
+ * Appelle l'API avec le token, affiche succès puis redirige vers la connexion.
+ */
+export function VerifyEmailPage() {
+  const { token } = useParams<{ token: string }>()
+  const navigate = useNavigate()
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [message, setMessage] = useState<string>('')
+
+  useEffect(() => {
+    if (!token?.trim()) {
+      setStatus('error')
+      setMessage('Lien invalide.')
+      return
+    }
+    authService
+      .verifyEmail(token.trim())
+      .then((res) => {
+        setStatus('success')
+        setMessage(res?.message || 'Adresse email confirmée. Vous pouvez vous connecter.')
+      })
+      .catch((err: any) => {
+        setStatus('error')
+        setMessage(err?.message || 'Lien invalide ou expiré. Demandez un nouvel email de confirmation.')
+      })
+  }, [token])
+
+  const goToLogin = () => {
+    navigate('/login', { replace: true, state: { message: status === 'success' ? message : undefined } })
+  }
+
+  return (
+    <Container maxWidth="sm">
+      <Box
+        sx={{
+          minHeight: '80vh',
+          display: 'flex',
+          alignItems: 'center',
+          py: 8,
+        }}
+      >
+        <Paper
+          elevation={3}
+          sx={{
+            p: { xs: 3, sm: 4 },
+            width: '100%',
+            textAlign: 'center',
+          }}
+        >
+          {status === 'loading' && (
+            <>
+              <CircularProgress size={48} sx={{ mb: 2 }} />
+              <Typography variant="body1" color="text.secondary">
+                Vérification de votre adresse email en cours...
+              </Typography>
+            </>
+          )}
+          {status === 'success' && (
+            <>
+              <CheckCircleOutline sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+              <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+                Email confirmé
+              </Typography>
+              <Alert severity="success" sx={{ mb: 3, textAlign: 'left' }}>
+                {message}
+              </Alert>
+              <Button component={RouterLink} to="/login" variant="contained" size="large" onClick={goToLogin}>
+                Se connecter
+              </Button>
+            </>
+          )}
+          {status === 'error' && (
+            <>
+              <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
+                {message}
+              </Alert>
+              <Button component={RouterLink} to="/login" variant="contained" size="large">
+                Retour à la connexion
+              </Button>
+            </>
+          )}
+        </Paper>
+      </Box>
+    </Container>
+  )
+}

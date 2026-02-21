@@ -606,12 +606,187 @@ Content-Type: application/json
 }
 ```
 
+## Authentification
+
+### Inscription
+
+```http
+POST /auth/signup
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "firstName": "John",
+  "lastName": "Doe",
+  "organizationName": "Mon Entreprise"
+}
+```
+
+**Réponse** (si email de vérification requis) :
+```json
+{
+  "message": "Un email de confirmation vous a été envoyé. Cliquez sur le lien pour activer votre compte.",
+  "needVerification": true
+}
+```
+
+**Réponse** (si connexion automatique) :
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "ADMIN",
+    "organization": { ... }
+  }
+}
+```
+
+### Connexion
+
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+**Réponse** :
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": { ... }
+}
+```
+
+**Erreur** (email non vérifié) :
+```json
+{
+  "statusCode": 401,
+  "message": "Veuillez vérifier votre adresse email. Consultez votre boîte de réception ou demandez un nouvel email de confirmation."
+}
+```
+
+### Vérification d'email
+
+```http
+GET /auth/verify-email?token=abc123...
+```
+
+ou
+
+```http
+POST /auth/verify-email
+Content-Type: application/json
+
+{
+  "token": "abc123..."
+}
+```
+
+**Réponse** :
+```json
+{
+  "message": "Adresse email confirmée. Vous pouvez maintenant vous connecter."
+}
+```
+
+### Renvoyer l'email de vérification
+
+```http
+POST /auth/resend-verification
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**Réponse** :
+```json
+{
+  "message": "Si un compte existe avec cet email, un nouvel email de confirmation a été envoyé."
+}
+```
+
+### Mot de passe oublié
+
+```http
+POST /auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+### Réinitialiser le mot de passe
+
+```http
+POST /auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "reset-token-from-email",
+  "newPassword": "newpassword123"
+}
+```
+
+### Déconnexion
+
+```http
+POST /auth/logout
+```
+
+### Profil utilisateur
+
+```http
+GET /auth/me
+Authorization: Bearer <token>
+```
+
+**Réponse** :
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "role": "ADMIN",
+  "organization": { ... }
+}
+```
+
+### Authentification Google OAuth
+
+```http
+GET /auth/google
+```
+
+Redirige vers Google pour l'authentification.
+
+```http
+GET /auth/google/callback
+```
+
+Callback après authentification Google (géré automatiquement).
+
 ## Codes de statut HTTP
 
 - `200` : Succès
 - `201` : Créé
 - `400` : Requête invalide
+- `401` : Non autorisé (token invalide ou email non vérifié)
 - `404` : Ressource non trouvée
+- `409` : Conflit (email déjà utilisé)
+- `429` : Trop de requêtes (rate limiting)
 - `500` : Erreur serveur
 
 ## Exemples avec cURL

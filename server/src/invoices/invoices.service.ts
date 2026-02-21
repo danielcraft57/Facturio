@@ -356,8 +356,10 @@ export class InvoicesService {
 	 * @throws {NotFoundException} Si facture non trouvée
 	 */
 	async findOne(id: number, organizationId?: number) {
-		const invoice = await this.prisma.invoice.findUnique({
-			where: { id },
+		const where: { id: number; organizationId?: number } = { id };
+		if (organizationId != null) where.organizationId = organizationId;
+		const invoice = await this.prisma.invoice.findFirst({
+			where,
 			include: { lines: true, client: true, payments: true }
 		});
 		if (!invoice) throw new NotFoundException('Facture non trouvee');

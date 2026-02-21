@@ -372,6 +372,133 @@ export class EmailService {
 	}
 
 	/**
+	 * Envoie l'email de vérification d'adresse (inscription).
+	 * Utilise le template Facturio avec lien de confirmation.
+	 */
+	async sendVerifyEmail(options: {
+		to: string;
+		firstName?: string | null;
+		verifyUrl: string;
+	}): Promise<void> {
+		const subject = 'Confirmez votre adresse email - Facturio';
+		const html = this.getVerifyEmailTemplate({
+			firstName: options.firstName,
+			verifyUrl: options.verifyUrl,
+		});
+		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ''},\n\nCliquez sur le lien suivant pour confirmer votre adresse email et activer votre compte Facturio :\n${options.verifyUrl}\n\nCe lien est valide 24 heures.\n\nL'équipe Facturio`;
+		await this.send({
+			to: options.to,
+			subject,
+			html,
+			text,
+		});
+	}
+
+	/**
+	 * Envoie l'email de réinitialisation de mot de passe avec template soigné.
+	 */
+	async sendPasswordReset(options: {
+		to: string;
+		firstName?: string | null;
+		resetUrl: string;
+	}): Promise<void> {
+		const subject = 'Réinitialisation de votre mot de passe - Facturio';
+		const html = this.getPasswordResetTemplate({
+			firstName: options.firstName,
+			resetUrl: options.resetUrl,
+		});
+		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ''},\n\nVous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le lien ci-dessous (valide 1 heure) :\n${options.resetUrl}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet email.\n\nL'équipe Facturio`;
+		await this.send({
+			to: options.to,
+			subject,
+			html,
+			text,
+		});
+	}
+
+	/**
+	 * Layout HTML commun (Facturio) pour emails transactionnels.
+	 */
+	private getBaseLayout(data: { title: string; content: string }): string {
+		const legal = this.getLegalFooter();
+		return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>${data.title}</title>
+	<style>
+		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background: #f3f4f6; }
+		.wrapper { padding: 40px 20px; }
+		.container { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); overflow: hidden; }
+		.header { background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 32px 24px; text-align: center; }
+		.header h1 { margin: 0; font-size: 1.75rem; font-weight: 700; color: #ffffff; letter-spacing: -0.025em; }
+		.header .logo { color: rgba(255,255,255,0.95); font-size: 1rem; margin-top: 4px; }
+		.content { padding: 32px 24px; }
+		.content p { margin: 0 0 16px; color: #374151; }
+		.btn { display: inline-block; padding: 14px 28px; background: #0d9488; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 8px 0 24px; }
+		.btn:hover { background: #0f766e; }
+		.footer { padding: 20px 24px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; line-height: 1.5; }
+		.footer p { margin: 0; }
+		.link-plain { color: #0d9488; word-break: break-all; }
+	</style>
+</head>
+<body>
+	<div class="wrapper">
+		<div class="container">
+			<div class="header">
+				<h1>Facturio</h1>
+				<div class="logo">${data.title}</div>
+			</div>
+			<div class="content">
+				${data.content}
+			</div>
+			<div class="footer">
+				<p>${legal}</p>
+				<p>Cet email a été envoyé automatiquement par Facturio.</p>
+			</div>
+		</div>
+	</div>
+</body>
+</html>`;
+	}
+
+	/**
+	 * Template HTML pour vérification d'email (inscription).
+	 */
+	private getVerifyEmailTemplate(data: { firstName?: string | null; verifyUrl: string }): string {
+		const greeting = data.firstName ? `Bonjour ${data.firstName},` : 'Bonjour,';
+		const content = `
+			<p>${greeting}</p>
+			<p>Merci d'avoir créé un compte sur Facturio. Pour activer votre compte et accéder à toutes les fonctionnalités, veuillez confirmer votre adresse email en cliquant sur le bouton ci-dessous.</p>
+			<p><a href="${data.verifyUrl}" class="btn">Confirmer mon adresse email</a></p>
+			<p>Ce lien est valide <strong>24 heures</strong>. Si vous n'avez pas créé de compte Facturio, vous pouvez ignorer cet email.</p>
+			<p>À bientôt,<br><strong>L'équipe Facturio</strong></p>`;
+		return this.getBaseLayout({
+			title: 'Confirmez votre adresse email',
+			content,
+		});
+	}
+
+	/**
+	 * Template HTML pour réinitialisation du mot de passe.
+	 */
+	private getPasswordResetTemplate(data: { firstName?: string | null; resetUrl: string }): string {
+		const greeting = data.firstName ? `Bonjour ${data.firstName},` : 'Bonjour,';
+		const content = `
+			<p>${greeting}</p>
+			<p>Vous avez demandé la réinitialisation de votre mot de passe Facturio. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.</p>
+			<p><a href="${data.resetUrl}" class="btn">Réinitialiser mon mot de passe</a></p>
+			<p>Ce lien est valide <strong>1 heure</strong>. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email en toute sécurité.</p>
+			<p>Cordialement,<br><strong>L'équipe Facturio</strong></p>`;
+		return this.getBaseLayout({
+			title: 'Réinitialisation de votre mot de passe',
+			content,
+		});
+	}
+
+	/**
 	 * Formate un montant en devise
 	 */
 	private formatCurrency(amount: number): string {

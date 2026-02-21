@@ -42,6 +42,14 @@ model User {
   emailVerifiedAt   DateTime?
   lastLoginAt       DateTime?
   
+  // Vérification email (inscription)
+  emailVerificationToken   String?   @unique
+  emailVerificationExpires DateTime?
+  
+  // Réinitialisation mot de passe
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+  
   // OAuth Google
   googleId          String?        @unique // Google user ID
   googleEmail       String?        // Email Google (peut différer de email)
@@ -260,9 +268,11 @@ POST   /auth/signup          // Inscription email/password
 POST   /auth/login           // Connexion email/password
 POST   /auth/logout          // Déconnexion
 POST   /auth/refresh         // Rafraîchir token
-POST   /auth/forgot-password // Mot de passe oublié
-POST   /auth/reset-password  // Réinitialiser mot de passe
-POST   /auth/verify-email    // Vérifier email
+POST   /auth/forgot-password     // Mot de passe oublié
+POST   /auth/reset-password      // Réinitialiser mot de passe
+GET    /auth/verify-email?token=xxx  // Vérifier email (lien dans email)
+POST   /auth/verify-email        // Vérifier email (body: { token })
+POST   /auth/resend-verification // Renvoyer email de vérification
 
 // Authentification Google OAuth
 GET    /auth/google          // Initier connexion Google
@@ -294,7 +304,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
     
     if (!user || user.status !== 'ACTIVE') {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Compte non actif');
+    }
+    
+    if (!user.emailVerified) {
+      throw new UnauthorizedException('Veuillez vérifier votre adresse email pour accéder à votre compte');
     }
     
     return user;
@@ -707,8 +721,13 @@ npm install --save-dev @types/passport-google-oauth20
 - **Mots de passe** : Hash bcrypt (rounds: 12) - optionnel si OAuth uniquement
 - **JWT** : Expiration 24h, refresh token 7 jours
 - **OAuth** : Vérifier token Google côté serveur
-- **Rate limiting** : Limiter tentatives de connexion
-- **Validation email** : Vérification obligatoire (sauf OAuth qui valide automatiquement)
+- **Rate limiting** : Protection anti-force brute (5 tentatives login/15min, 3 signup/heure, 3 reset/heure)
+- **Validation email** : Vérification obligatoire avant accès (sauf OAuth qui valide automatiquement)
+  - Email de vérification envoyé à l'inscription
+  - Token valide 24h
+  - Comptes non vérifiés supprimés automatiquement après 24h
+- **Protection XSS** : Sanitization des inputs (suppression caractères dangereux)
+- **Validation stricte** : DTOs avec class-validator (email, longueur, caractères autorisés)
 - **Documents** : Validation par admin avant utilisation
 - **CORS** : Configuré pour domaines autorisés
 - **HTTPS** : Obligatoire en production (OAuth nécessite HTTPS)

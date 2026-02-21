@@ -6,6 +6,7 @@ import { ListQueryDto } from '../common/dto/list-query.dto';
 import { Response } from 'express';
 import { PdfService } from '../common/pdf.service';
 import { EmailService } from '../common/email.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('invoices')
@@ -13,7 +14,8 @@ export class InvoicesController {
 	constructor(
 		private readonly invoices: InvoicesService,
 		private readonly pdfService: PdfService,
-		private readonly email: EmailService
+		private readonly email: EmailService,
+		private readonly organizations: OrganizationsService
 	) {}
 
 	@Post()
@@ -49,7 +51,8 @@ export class InvoicesController {
 	@Header('Content-Type', 'application/pdf')
 	async downloadPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response, @CurrentUser() user: any) {
 		const invoice = await this.invoices.findOne(id, user.organizationId);
-		const buf = await this.pdfService.generateInvoicePdf(invoice);
+		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
+		const buf = await this.pdfService.generateInvoicePdf(invoice, organization);
 		res.setHeader('Content-Disposition', `inline; filename=invoice-${invoice.number}.pdf`);
 		return res.send(buf);
 	}
@@ -72,7 +75,8 @@ export class InvoicesController {
 	async sendInvoice(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
 		const result = await this.invoices.sendInvoice(id, user.organizationId);
 		const invoice = await this.invoices.findOne(id, user.organizationId);
-		const pdf = await this.pdfService.generateInvoicePdf(invoice);
+		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
+		const pdf = await this.pdfService.generateInvoicePdf(invoice, organization);
 		if (invoice.client?.email) {
 			const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
 			const trackOpenUrl = `${apiUrl}/api/track/opened/invoice/${result.publicToken}`;
@@ -92,7 +96,7 @@ export class InvoicesController {
 
 /**
  * Controller public pour les factures (accès par token, sans auth).
- * Routes exclues du guard local par préfixe /api/public.
+ * Routes publiques (accès par token, sans auth).
  */
 @Controller('public/invoices')
 export class PublicInvoicesController {

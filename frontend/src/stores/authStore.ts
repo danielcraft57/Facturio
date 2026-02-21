@@ -63,14 +63,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   /**
-   * Inscription d'un nouvel utilisateur
+   * Inscription d'un nouvel utilisateur.
+   * Si le serveur renvoie needVerification (validation email), ne connecte pas l'utilisateur.
    */
   signup: async (data: SignupDto) => {
     set({ isLoading: true, error: null })
     try {
       const response = await authService.signup(data)
+      if ((response as any).needVerification) {
+        set({ isLoading: false, error: null })
+        return response as any
+      }
       set({
-        user: response.user,
+        user: (response as any).user,
         isAuthenticated: true,
         isLoading: false,
         error: null,
@@ -87,26 +92,21 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   /**
-   * Déconnexion d'un utilisateur
+   * Déconnexion : nettoie le store, le localStorage/sessionStorage et le cookie côté serveur, puis redirige vers /login
    */
   logout: async () => {
     set({ isLoading: true })
     try {
       await authService.logout()
-      set({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-      })
-    } catch (error: any) {
-      // Même en cas d'erreur, on nettoie l'état local
-      set({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-      })
+    } catch (_) {}
+    set({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+    })
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login'
     }
   },
 

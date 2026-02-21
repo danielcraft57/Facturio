@@ -34,9 +34,10 @@ export class DashboardService {
 	 * @param endDate - Date de fin (optionnel, défaut: maintenant)
 	 * @returns Statistiques complètes du dashboard
 	 */
-	async getStats(startDate?: string, endDate?: string) {
+	async getStats(startDate?: string, endDate?: string, organizationId?: number) {
 		const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 		const end = endDate ? new Date(endDate) : new Date();
+		const orgFilter = organizationId != null ? { organizationId } : {};
 
 		// Revenus (optimisé: agrégations SQL au lieu de charger toutes les factures)
 		const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -46,24 +47,15 @@ export class DashboardService {
 
 		const [totalRevenueData, thisMonthRevenueData, lastMonthRevenueData] = await Promise.all([
 			this.prisma.invoice.aggregate({
-				where: {
-					status: { in: ['PAID', 'SENT'] },
-					date: { gte: start, lte: end }
-				},
+				where: { ...orgFilter, status: { in: ['PAID', 'SENT'] }, date: { gte: start, lte: end } },
 				_sum: { total: true }
 			}),
 			this.prisma.invoice.aggregate({
-				where: {
-					status: { in: ['PAID', 'SENT'] },
-					date: { gte: thisMonthStart, lte: thisMonthEnd }
-				},
+				where: { ...orgFilter, status: { in: ['PAID', 'SENT'] }, date: { gte: thisMonthStart, lte: thisMonthEnd } },
 				_sum: { total: true }
 			}),
 			this.prisma.invoice.aggregate({
-				where: {
-					status: { in: ['PAID', 'SENT'] },
-					date: { gte: lastMonthStart, lte: lastMonthEnd }
-				},
+				where: { ...orgFilter, status: { in: ['PAID', 'SENT'] }, date: { gte: lastMonthStart, lte: lastMonthEnd } },
 				_sum: { total: true }
 			})
 		]);
@@ -76,6 +68,7 @@ export class DashboardService {
 		// Factures
 		const invoiceStats = await this.prisma.invoice.groupBy({
 			by: ['status'],
+			where: orgFilter,
 			_count: { id: true }
 		});
 		const invoiceCounts = invoiceStats.reduce((acc, s) => {
@@ -84,35 +77,36 @@ export class DashboardService {
 		}, {} as Record<string, number>);
 
 		const thisMonthInvoiceCount = await this.prisma.invoice.count({
-			where: { date: { gte: thisMonthStart, lte: thisMonthEnd } }
+			where: { ...orgFilter, date: { gte: thisMonthStart, lte: thisMonthEnd } }
 		});
 		const lastMonthInvoiceCount = await this.prisma.invoice.count({
-			where: { date: { gte: lastMonthStart, lte: lastMonthEnd } }
+			where: { ...orgFilter, date: { gte: lastMonthStart, lte: lastMonthEnd } }
 		});
 
 		// Clients
-		const totalClients = await this.prisma.client.count();
+		const totalClients = await this.prisma.client.count({ where: orgFilter });
 		const activeClients = await this.prisma.client.count({
 			where: {
+				...orgFilter,
 				invoices: { some: { date: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) } } }
 			}
 		});
 		const newClientsThisMonth = await this.prisma.client.count({
-			where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd } }
+			where: { ...orgFilter, createdAt: { gte: thisMonthStart, lte: thisMonthEnd } }
 		});
 
 		// Top clients par revenus (optimisé: une seule requête au lieu de N+1)
 		const topClientsData = await this.prisma.invoice.groupBy({
 			by: ['clientId'],
 			_sum: { total: true },
-			where: { status: { in: ['PAID', 'SENT'] }, date: { gte: start, lte: end } },
+			where: { ...orgFilter, status: { in: ['PAID', 'SENT'] }, date: { gte: start, lte: end } },
 			orderBy: { _sum: { total: 'desc' } },
 			take: 5
 		});
 
 		const clientIds = topClientsData.map((item) => item.clientId);
 		const clients = await this.prisma.client.findMany({
-			where: { id: { in: clientIds } },
+			where: { ...orgFilter, id: { in: clientIds } },
 			select: { id: true, name: true }
 		});
 		const clientMap = new Map(clients.map((c) => [c.id, c]));
@@ -126,6 +120,7 @@ export class DashboardService {
 
 		// Activité récente (optimisé: select au lieu de include)
 		const recentInvoices = await this.prisma.invoice.findMany({
+			where: orgFilter,
 			take: 10,
 			orderBy: { createdAt: 'desc' },
 			select: {
@@ -155,10 +150,7 @@ export class DashboardService {
 			const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() - i + 1, 0);
 			monthlyRevenuePromises.push(
 				this.prisma.invoice.aggregate({
-					where: {
-						status: { in: ['PAID', 'SENT'] },
-						date: { gte: monthStart, lte: monthEnd }
-					},
+					where: { ...orgFilter, status: { in: ['PAID', 'SENT'] }, date: { gte: monthStart, lte: monthEnd } },
 					_sum: { total: true }
 				}).then((result) => ({
 					month: monthStart.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),

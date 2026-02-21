@@ -10,8 +10,12 @@ import {
   Alert,
   Divider,
   Link,
+  InputAdornment,
+  IconButton,
 } from '@mui/material'
 import GoogleIcon from '@mui/icons-material/Google'
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { useAuthStore } from '../../../stores/authStore'
 import { authService } from '../../../services/authService'
 
@@ -36,6 +40,8 @@ export function SignupPage() {
     lastName: '',
     organizationName: '',
   })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
   // Rediriger si déjà authentifié
@@ -74,13 +80,17 @@ export function SignupPage() {
     }
 
     try {
-      await signup({
+      const result = await signup({
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName || undefined,
         lastName: formData.lastName || undefined,
         organizationName: formData.organizationName,
       })
+      if (result && (result as any).needVerification) {
+        navigate('/login', { replace: true, state: { message: (result as any).message } })
+        return
+      }
       navigate('/dashboard', { replace: true })
     } catch (err: any) {
       setLocalError(err.message || 'Erreur lors de l\'inscription')
@@ -170,7 +180,7 @@ export function SignupPage() {
             <TextField
               fullWidth
               label="Mot de passe"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               name="password"
               value={formData.password}
               onChange={handleChange}
@@ -178,17 +188,43 @@ export function SignupPage() {
               required
               autoComplete="new-password"
               helperText="Au moins 6 caractères"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                      onClick={() => setShowPassword((v) => !v)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             <TextField
               fullWidth
               label="Confirmer le mot de passe"
-              type="password"
+              type={showConfirmPassword ? 'text' : 'password'}
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
               margin="normal"
               required
               autoComplete="new-password"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      edge="end"
+                    >
+                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             <Button
               type="submit"

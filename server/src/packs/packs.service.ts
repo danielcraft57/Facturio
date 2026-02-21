@@ -18,7 +18,7 @@ import { UpdatePackDto } from './dto/update-pack.dto';
 export class PacksService {
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(data: CreatePackDto) {
+	async create(data: CreatePackDto, organizationId?: number) {
 		// Calculer totalHours et totalPrice depuis les produits
 		const productIds = data.products.map((id) => Number(id)).filter((id) => !isNaN(id));
 		const products = await this.prisma.product.findMany({
@@ -39,19 +39,21 @@ export class PacksService {
 				totalHours,
 				totalPrice,
 				features: data.features ? JSON.stringify(data.features) : null,
-				deliveryTime: data.deliveryTime
+				deliveryTime: data.deliveryTime,
+				organizationId: organizationId ?? undefined
 			}
 		});
 
 		return this.formatPack(pack);
 	}
 
-	async findAll(query: ListQueryDto) {
+	async findAll(query: ListQueryDto, organizationId?: number) {
 		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
 		const pageSize = query?.pageSize ? parseInt(query.pageSize.toString(), 10) : 20;
 		const skip = (page - 1) * pageSize;
 
 		const where: any = {};
+		if (organizationId != null) where.organizationId = organizationId;
 		if (query.search) {
 			where.OR = [{ name: { contains: query.search } }, { description: { contains: query.search } }];
 		}
@@ -74,16 +76,18 @@ export class PacksService {
 		};
 	}
 
-	async findOne(id: number) {
-		const pack = await this.prisma.pack.findUnique({ where: { id } });
+	async findOne(id: number, organizationId?: number) {
+		const where: { id: number; organizationId?: number } = { id };
+		if (organizationId != null) where.organizationId = organizationId;
+		const pack = await this.prisma.pack.findFirst({ where });
 		if (!pack) {
 			throw new NotFoundException('Pack non trouve');
 		}
 		return this.formatPack(pack);
 	}
 
-	async update(id: number, data: UpdatePackDto) {
-		await this.findOne(id);
+	async update(id: number, data: UpdatePackDto, organizationId?: number) {
+		await this.findOne(id, organizationId);
 
 		const updateData: any = {};
 		if (data.name !== undefined) updateData.name = data.name;
@@ -111,8 +115,8 @@ export class PacksService {
 		return this.formatPack(updated);
 	}
 
-	async remove(id: number) {
-		await this.findOne(id);
+	async remove(id: number, organizationId?: number) {
+		await this.findOne(id, organizationId);
 		await this.prisma.pack.delete({ where: { id } });
 		return { success: true };
 	}

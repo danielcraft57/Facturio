@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
 import { CreatePlanDto, CreateSubscriptionDto, SubscriptionsService, UpdatePlanDto, UpdateSubscriptionDto } from './subscriptions.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('subscriptions')
 export class SubscriptionsController {
@@ -33,33 +34,33 @@ export class SubscriptionsController {
 
 	// Subscriptions
 	@Post()
-	create(@Body() data: CreateSubscriptionDto) {
-		return this.subs.createSubscription(data);
+	create(@Body() data: CreateSubscriptionDto, @CurrentUser() user: any) {
+		return this.subs.createSubscription(data, user.organizationId);
 	}
 
 	@Get()
-	list() {
-		return this.subs.listSubscriptions();
+	list(@CurrentUser() user: any) {
+		return this.subs.listSubscriptions(user.organizationId);
 	}
 
 	@Get(':id')
-	get(@Param('id', ParseIntPipe) id: number) {
-		return this.subs.getSubscription(id);
+	get(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.subs.getSubscription(id, user.organizationId);
 	}
 
 	@Patch(':id')
-	update(@Param('id', ParseIntPipe) id: number, @Body() data: UpdateSubscriptionDto) {
-		return this.subs.updateSubscription(id, data);
+	update(@Param('id', ParseIntPipe) id: number, @Body() data: UpdateSubscriptionDto, @CurrentUser() user: any) {
+		return this.subs.updateSubscription(id, data, user.organizationId);
 	}
 
 	@Post(':id/cancel-at-period-end')
-	cancelAtPeriodEnd(@Param('id', ParseIntPipe) id: number) {
-		return this.subs.cancelAtPeriodEnd(id);
+	cancelAtPeriodEnd(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.subs.cancelAtPeriodEnd(id, user.organizationId);
 	}
 
 	@Post(':id/cancel-now')
-	cancelNow(@Param('id', ParseIntPipe) id: number) {
-		return this.subs.cancelNow(id);
+	cancelNow(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.subs.cancelNow(id, user.organizationId);
 	}
 }
 

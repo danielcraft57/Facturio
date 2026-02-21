@@ -129,7 +129,7 @@ export class SubscriptionsService {
 	}
 
 	// Subscriptions
-	async createSubscription(data: CreateSubscriptionDto) {
+	async createSubscription(data: CreateSubscriptionDto, organizationId?: number) {
 		const start = data.startDate ? new Date(data.startDate) : new Date();
 		const plan = await this.getPlan(data.planId);
 		const periodStart = start;
@@ -145,32 +145,45 @@ export class SubscriptionsService {
 				planId: data.planId,
 				quantity: data.quantity ?? 1,
 				currentPeriodStart: periodStart,
-				currentPeriodEnd: periodEnd
+				currentPeriodEnd: periodEnd,
+				organizationId: organizationId ?? undefined
 			},
 			include: { plan: true, client: true }
 		});
 	}
 
-	listSubscriptions() {
-		return this.prisma.subscription.findMany({ orderBy: { createdAt: 'desc' }, include: { plan: true, client: true } });
+	listSubscriptions(organizationId?: number) {
+		const where = organizationId != null ? { organizationId } : {};
+		return this.prisma.subscription.findMany({
+			where,
+			orderBy: { createdAt: 'desc' },
+			include: { plan: true, client: true }
+		});
 	}
 
-	async getSubscription(id: number) {
-		const sub = await this.prisma.subscription.findUnique({ where: { id }, include: { plan: true, client: true } });
+	async getSubscription(id: number, organizationId?: number) {
+		const where: { id: number; organizationId?: number } = { id };
+		if (organizationId != null) where.organizationId = organizationId;
+		const sub = await this.prisma.subscription.findFirst({
+			where,
+			include: { plan: true, client: true }
+		});
 		if (!sub) throw new NotFoundException('Abonnement introuvable');
 		return sub;
 	}
 
-	async updateSubscription(id: number, data: UpdateSubscriptionDto) {
-		await this.getSubscription(id);
+	async updateSubscription(id: number, data: UpdateSubscriptionDto, organizationId?: number) {
+		await this.getSubscription(id, organizationId);
 		return this.prisma.subscription.update({ where: { id }, data, include: { plan: true, client: true } });
 	}
 
-	async cancelAtPeriodEnd(id: number) {
+	async cancelAtPeriodEnd(id: number, organizationId?: number) {
+		await this.getSubscription(id, organizationId);
 		return this.prisma.subscription.update({ where: { id }, data: { cancelAtPeriodEnd: true } });
 	}
 
-	async cancelNow(id: number) {
+	async cancelNow(id: number, organizationId?: number) {
+		await this.getSubscription(id, organizationId);
 		return this.prisma.subscription.update({ where: { id }, data: { status: SubscriptionStatus.CANCELED, canceledAt: new Date() } });
 	}
 }

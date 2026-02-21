@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
-import { LocalOnlyGuard } from './auth/guards/local-only.guard';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { RateLimitMiddleware, RateLimitService } from './common/rate-limit.middleware';
 import { ClientsModule } from './clients/clients.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { TaxesModule } from './taxes/taxes.module';
@@ -49,8 +49,14 @@ import { ConfigModule } from './config/config.module';
 	],
 	controllers: [WebhooksController],
 	providers: [
-		{ provide: APP_GUARD, useClass: LocalOnlyGuard },
 		{ provide: APP_GUARD, useClass: JwtAuthGuard },
+		RateLimitService,
 	]
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+	configure(consumer: MiddlewareConsumer) {
+		consumer
+			.apply(RateLimitMiddleware)
+			.forRoutes('auth/login', 'auth/signup', 'auth/forgot-password');
+	}
+}

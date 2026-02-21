@@ -19,11 +19,11 @@ export class PdfService {
 	/**
 	 * Génère un PDF de facture professionnel
 	 */
-	generateInvoicePdf(invoice: any): Promise<Buffer> {
+	generateInvoicePdf(invoice: any, organization?: any): Promise<Buffer> {
 		return new Promise((resolve, reject) => {
 			try {
-				const doc = new PDFDocument({ 
-					size: 'A4', 
+				const doc = new PDFDocument({
+					size: 'A4',
 					margin: 50,
 					info: {
 						Title: `Facture ${invoice.number}`,
@@ -38,7 +38,7 @@ export class PdfService {
 					this.logger.error('Erreur génération PDF', err);
 					reject(err);
 				});
-				this.buildInvoice(doc, invoice);
+				this.buildInvoice(doc, invoice, organization);
 			} catch (error) {
 				this.logger.error('Erreur lors de la création du PDF', error);
 				reject(error);
@@ -49,11 +49,11 @@ export class PdfService {
 	/**
 	 * Génère un PDF de devis professionnel
 	 */
-	generateQuotePdf(quote: any): Promise<Buffer> {
+	generateQuotePdf(quote: any, organization?: any): Promise<Buffer> {
 		return new Promise((resolve, reject) => {
 			try {
-				const doc = new PDFDocument({ 
-					size: 'A4', 
+				const doc = new PDFDocument({
+					size: 'A4',
 					margin: 50,
 					info: {
 						Title: `Devis ${quote.number}`,
@@ -68,7 +68,7 @@ export class PdfService {
 					this.logger.error('Erreur génération PDF', err);
 					reject(err);
 				});
-				this.buildQuote(doc, quote);
+				this.buildQuote(doc, quote, organization);
 			} catch (error) {
 				this.logger.error('Erreur lors de la création du PDF', error);
 				reject(error);
@@ -79,12 +79,12 @@ export class PdfService {
 	/**
 	 * Construit le contenu d'une facture PDF
 	 */
-	private buildInvoice(doc: any, invoice: any): void {
+	private buildInvoice(doc: any, invoice: any, organization?: any): void {
 		// En-tête
-		this.buildHeader(doc, `FACTURE ${invoice.number}`, invoice.issueDate || invoice.createdAt);
+		this.buildHeader(doc, `FACTURE ${invoice.number}`, invoice.date || invoice.createdAt);
 		
-		// Informations entreprise (à configurer via variables d'environnement)
-		this.buildCompanyInfo(doc);
+		// Informations entreprise (profil organisation ou variables d'environnement)
+		this.buildCompanyInfo(doc, organization);
 		
 		doc.moveDown(1);
 		
@@ -107,8 +107,8 @@ export class PdfService {
 		
 		doc.moveDown(2);
 		
-		// Mentions légales
-		this.buildLegalMentions(doc, 'facture');
+		// Conditions de paiement et mentions légales (conformité Axonaut / art. 289 CGI)
+		this.buildPaymentTermsAndLegalMentions(doc, 'facture', organization, invoice);
 		
 		// Pied de page
 		this.buildFooter(doc);
@@ -119,12 +119,12 @@ export class PdfService {
 	/**
 	 * Construit le contenu d'un devis PDF
 	 */
-	private buildQuote(doc: any, quote: any): void {
+	private buildQuote(doc: any, quote: any, organization?: any): void {
 		// En-tête
 		this.buildHeader(doc, `DEVIS ${quote.number}`, quote.createdAt);
 		
 		// Informations entreprise
-		this.buildCompanyInfo(doc);
+		this.buildCompanyInfo(doc, organization);
 		
 		doc.moveDown(1);
 		
@@ -156,8 +156,8 @@ export class PdfService {
 		
 		doc.moveDown(2);
 		
-		// Mentions légales
-		this.buildLegalMentions(doc, 'devis');
+		// Conditions et mentions légales devis
+		this.buildPaymentTermsAndLegalMentions(doc, 'devis', organization, quote);
 		
 		// Pied de page
 		this.buildFooter(doc);
@@ -201,26 +201,36 @@ export class PdfService {
 	}
 
 	/**
-	 * Construit les informations entreprise (style DanielCraftFr)
+	 * Construit les informations entreprise (profil organisation ou variables d'environnement)
 	 */
-	private buildCompanyInfo(doc: any): void {
-		const companyName = process.env.COMPANY_NAME || 'Votre Entreprise';
-		const companyAddress = process.env.COMPANY_ADDRESS || 'Adresse de votre entreprise';
-		const companySiret = process.env.COMPANY_SIRET || '';
-		const companyTva = process.env.COMPANY_VAT || '';
-		const companyPhone = process.env.COMPANY_PHONE || '';
-		const companyEmail = process.env.COMPANY_EMAIL || '';
-		
+	private buildCompanyInfo(doc: any, organization?: any): void {
+		// Mention EI obligatoire (décret 2022) pour entreprise individuelle
+		const isEI = organization?.companyStatus === 'AUTO_ENTREPRENEUR' || organization?.companyStatus === 'MICRO_ENTERPRISE';
+		const nameRaw = organization?.name ?? process.env.COMPANY_NAME ?? 'Votre Entreprise';
+		const companyName = isEI ? `Entrepreneur Individuel ${nameRaw}` : nameRaw;
+		const parts = [
+			organization?.address,
+			organization?.address2,
+			[organization?.zipCode, organization?.city].filter(Boolean).join(' '),
+			organization?.country
+		].filter(Boolean);
+		const companyAddress = parts.length ? parts.join('\n') : (process.env.COMPANY_ADDRESS ?? 'Adresse de votre entreprise');
+		const companySiret = organization?.siret ?? process.env.COMPANY_SIRET ?? '';
+		const companyTva = organization?.vatNumber ?? process.env.COMPANY_VAT ?? '';
+		const companyPhone = organization?.phone ?? process.env.COMPANY_PHONE ?? '';
+		const companyEmail = organization?.email ?? process.env.COMPANY_EMAIL ?? '';
+		const companyRcs = organization?.rcs ? (organization?.rcsCity ? `RCS ${organization.rcs} ${organization.rcsCity}` : `RCS ${organization.rcs}`) : '';
+
 		doc.fontSize(14)
 			.fillColor('#1f2937')
 			.font('Helvetica-Bold')
 			.text(companyName);
-		
+
 		doc.fontSize(10)
 			.fillColor('#374151')
 			.font('Helvetica')
 			.text(companyAddress);
-		
+
 		if (companyPhone) {
 			doc.text(`Tél. : ${companyPhone}`);
 		}
@@ -229,6 +239,9 @@ export class PdfService {
 		}
 		if (companySiret) {
 			doc.text(`SIRET : ${companySiret}`);
+		}
+		if (companyRcs) {
+			doc.text(companyRcs);
 		}
 		if (companyTva) {
 			doc.text(`TVA : ${companyTva}`);
@@ -261,9 +274,12 @@ export class PdfService {
 		if (client.email) {
 			doc.text(client.email);
 		}
-		
-		if (client.vatNumber) {
-			doc.text(`TVA : ${client.vatNumber}`);
+		// B2B : SIRET/SIREN obligatoires depuis 2022 (article décret 2022-1299)
+		if (client.isCompany && client.vatNumber) {
+			doc.text(`N° TVA : ${client.vatNumber}`);
+		}
+		if (client.isCompany && (client as any).siret) {
+			doc.text(`SIRET : ${(client as any).siret}`);
 		}
 	}
 
@@ -354,28 +370,40 @@ export class PdfService {
 	}
 
 	/**
-	 * Construit les mentions légales
+	 * Construit les conditions de paiement et mentions légales (conformité loi factures, Axonaut).
+	 * Facture : date d'échéance, escompte, pénalités de retard, mention TVA franchise si applicable.
+	 * Devis : validité, conditions d'acceptation.
 	 */
-	private buildLegalMentions(doc: any, type: 'facture' | 'devis'): void {
-		const mentions = process.env.LEGAL_MENTIONS || '';
-		
-		if (mentions) {
-			doc.fontSize(8)
-				.fillColor('#6b7280')
-				.font('Helvetica')
-				.text(mentions, { align: 'justify' });
+	private buildPaymentTermsAndLegalMentions(doc: any, type: 'facture' | 'devis', organization?: any, document?: any): void {
+		doc.fontSize(8).fillColor('#6b7280').font('Helvetica');
+		const lines: string[] = [];
+
+		if (type === 'facture') {
+			if (document?.dueDate) {
+				lines.push(`Date d'échéance : ${new Date(document.dueDate).toLocaleDateString('fr-FR')}.`);
+			}
+			lines.push('Escompte pour paiement anticipé : néant.');
+			lines.push('Pénalités de retard : au taux légal en vigueur (3 fois le taux d\'intérêt légal). Indemnité forfaitaire pour frais de recouvrement : 40 €.');
+			if (document?.legalMention) {
+				lines.push(document.legalMention);
+			}
+			// Franchise de TVA (auto-entrepreneur / art. 293 B CGI)
+			const vatExempt = organization?.taxRegime && String(organization.taxRegime).toLowerCase().includes('franchise') ||
+				organization?.companyStatus === 'AUTO_ENTREPRENEUR' || organization?.companyStatus === 'MICRO_ENTERPRISE';
+			if (vatExempt) {
+				lines.push('TVA non applicable, article 293 B du CGI.');
+			}
+			lines.push('Facture établie conformément aux dispositions légales en vigueur.');
 		} else {
-			// Mentions par défaut (style DanielCraftFr)
-			doc.fontSize(8)
-				.fillColor('#6b7280')
-				.font('Helvetica')
-				.text(
-					type === 'facture' 
-						? 'Facture établie conformément aux dispositions légales en vigueur.'
-						: 'Devis valable 30 jours. Acceptation par signature ou bon de commande.',
-					{ align: 'justify' }
-				);
+			lines.push('Devis valable 30 jours à compter de la date d\'émission (à moins qu\'une autre durée ne soit indiquée).');
+			lines.push('Acceptation par signature ou bon de commande.');
 		}
+
+		const customMentions = process.env.LEGAL_MENTIONS || (organization as any)?.legalMentions;
+		if (customMentions) {
+			lines.push(customMentions);
+		}
+		doc.text(lines.join(' '), { align: 'justify' });
 	}
 
 	/**

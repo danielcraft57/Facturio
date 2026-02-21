@@ -83,7 +83,7 @@ export class AvoirsService {
 		return `AVO-${year}-${padded}`;
 	}
 
-	async create(data: CreateAvoirDto) {
+	async create(data: CreateAvoirDto, organizationId?: number) {
 		if (!data.clientId) {
 			throw new BadRequestException('Client requis');
 		}
@@ -98,12 +98,14 @@ export class AvoirsService {
 			if (l.unitPrice < 0) throw new BadRequestException('Prix unitaire invalide');
 		}
 
-		// Vérifier que le client existe
+		// Vérifier que le client existe et appartient à l'organisation
 		const client = await this.prisma.client.findUnique({ where: { id: data.clientId } });
 		if (!client) {
 			throw new NotFoundException('Client introuvable');
 		}
-
+		if (organizationId != null && client.organizationId !== organizationId) {
+			throw new NotFoundException('Client introuvable');
+		}
 		if (!client.organizationId) {
 			throw new BadRequestException('Le client doit appartenir à une organisation');
 		}
@@ -179,13 +181,13 @@ export class AvoirsService {
 		return this.formatAvoir(created);
 	}
 
-	async findAll(query: ListQueryDto) {
+	async findAll(query: ListQueryDto, organizationId?: number) {
 		const page = parseInt(String(query.page || 1), 10);
 		const pageSize = parseInt(String(query.pageSize || 20), 10);
 		const skip = (page - 1) * pageSize;
 
 		const where: any = {};
-
+		if (organizationId != null) where.organizationId = organizationId;
 		if (query.search) {
 			where.OR = [
 				{ number: { contains: query.search, mode: 'insensitive' } },
@@ -227,9 +229,11 @@ export class AvoirsService {
 		};
 	}
 
-	async findOne(id: number) {
-		const avoir = await this.prisma.avoir.findUnique({
-			where: { id },
+	async findOne(id: number, organizationId?: number) {
+		const where: { id: number; organizationId?: number } = { id };
+		if (organizationId != null) where.organizationId = organizationId;
+		const avoir = await this.prisma.avoir.findFirst({
+			where,
 			include: {
 				lines: true,
 				client: true,
@@ -249,8 +253,8 @@ export class AvoirsService {
 		return this.formatAvoir(avoir);
 	}
 
-	async update(id: number, data: UpdateAvoirDto) {
-		await this.findOne(id);
+	async update(id: number, data: UpdateAvoirDto, organizationId?: number) {
+		await this.findOne(id, organizationId);
 
 		const lines = data.lines ?? [];
 		if (lines.length > 0) {
@@ -347,8 +351,8 @@ export class AvoirsService {
 		return this.formatAvoir(updated);
 	}
 
-	async remove(id: number) {
-		const avoir = await this.findOne(id);
+	async remove(id: number, organizationId?: number) {
+		const avoir = await this.findOne(id, organizationId);
 
 		// Vérifier qu'il n'y a pas d'imputations
 		if (avoir.applications && avoir.applications.length > 0) {
@@ -359,8 +363,8 @@ export class AvoirsService {
 		return { success: true };
 	}
 
-	async apply(avoirId: number, data: ApplyAvoirDto) {
-		const avoir = await this.findOne(avoirId);
+	async apply(avoirId: number, data: ApplyAvoirDto, organizationId?: number) {
+		const avoir = await this.findOne(avoirId, organizationId);
 
 		if (avoir.status === 'CANCELLED') {
 			throw new BadRequestException('Impossible d\'imputer un avoir annulé');

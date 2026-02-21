@@ -11,7 +11,7 @@ const PIXEL_GIF = Buffer.from(
 /**
  * Controller pour le tracking des emails (pixel lu/non lu).
  *
- * Les routes sont publiques (préfixe /api/track exclu du guard local).
+ * Les routes sont publiques (tracking ouvert sans auth).
  * Enregistre un événement "opened" et renvoie une image 1x1 pour être inclus dans l'email.
  */
 @Controller('track')

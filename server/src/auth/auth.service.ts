@@ -1,7 +1,9 @@
-import { Injectable, BadRequestException, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../common/email.service';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 
@@ -22,6 +24,7 @@ export class AuthService {
 	constructor(
 		private prisma: PrismaService,
 		private jwtService: JwtService,
+		private emailService: EmailService,
 	) {}
 
 	private readonly logger = new Logger(AuthService.name);
@@ -53,7 +56,6 @@ export class AuthService {
 	 */
 	async signup(data: SignupDto) {
 		this.logger.log(`Signup attempt for ${data.email}`);
-		// Vérifier si l'email existe déjà
 		const existingUser = await this.prisma.user.findUnique({
 			where: { email: data.email },
 		});
@@ -63,10 +65,7 @@ export class AuthService {
 			throw new ConflictException('Cet email est déjà utilisé');
 		}
 
-		// Hasher le mot de passe
 		const hashedPassword = await bcrypt.hash(data.password, 12);
-
-		// Créer l'organisation
 		const organization = await this.prisma.organization.create({
 			data: {
 				name: data.organizationName,
@@ -74,7 +73,9 @@ export class AuthService {
 			},
 		});
 
-		// Créer l'utilisateur
+		const verificationToken = crypto.randomBytes(32).toString('hex');
+		const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
 		const user = await this.prisma.user.create({
 			data: {
 				email: data.email,
@@ -82,16 +83,29 @@ export class AuthService {
 				firstName: data.firstName,
 				lastName: data.lastName,
 				organizationId: organization.id,
-				status: 'ACTIVE', // En production, mettre PENDING et envoyer email de vérification
-				emailVerified: true, // En production, mettre false
-				emailVerifiedAt: new Date(),
-				role: 'ADMIN', // Premier utilisateur = admin
+				status: 'PENDING',
+				emailVerified: false,
+				emailVerifiedAt: null,
+				emailVerificationToken: verificationToken,
+				emailVerificationExpires: verificationExpires,
+				role: 'ADMIN',
 			},
 			include: { organization: true },
 		});
 
-		this.logger.log(`Signup success for ${data.email} (userId=${user.id}, orgId=${organization.id})`);
-		return this.generateTokens(user);
+		const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+		const verifyUrl = `${baseUrl}/verifier-email/${verificationToken}`;
+		await this.emailService.sendVerifyEmail({
+			to: user.email,
+			firstName: user.firstName,
+			verifyUrl,
+		});
+
+		this.logger.log(`Signup success for ${data.email}, verification email sent (userId=${user.id})`);
+		return {
+			message: 'Un email de confirmation vous a été envoyé. Cliquez sur le lien pour activer votre compte.',
+			needVerification: true,
+		};
 	}
 
 	/**
@@ -142,7 +156,15 @@ export class AuthService {
 
 		if (user.status !== 'ACTIVE') {
 			this.logger.warn(`Login failed for ${data.email}: status=${user.status}`);
+			if (user.status === 'PENDING' && !user.emailVerified) {
+				throw new UnauthorizedException('Veuillez vérifier votre adresse email. Consultez votre boîte de réception ou demandez un nouvel email de confirmation.');
+			}
 			throw new UnauthorizedException('Compte non actif');
+		}
+
+		if (!user.emailVerified) {
+			this.logger.warn(`Login failed for ${data.email}: email not verified`);
+			throw new UnauthorizedException('Veuillez vérifier votre adresse email. Consultez votre boîte de réception ou demandez un nouvel email de confirmation.');
 		}
 
 		// Mettre à jour dernière connexion
@@ -248,6 +270,139 @@ export class AuthService {
 		});
 
 		return this.generateTokens(user);
+	}
+
+	/**
+	 * Demande de réinitialisation du mot de passe (mot de passe oublié).
+	 * Envoie un email avec un lien contenant un token valide 1h.
+	 *
+	 * @param email - Email du compte
+	 * @throws {NotFoundException} Si l'email n'est pas associé à un compte (message générique pour la confidentialité)
+	 */
+	async forgotPassword(email: string) {
+		const user = await this.prisma.user.findUnique({
+			where: { email: email.trim().toLowerCase() },
+		});
+		if (!user) {
+			this.logger.warn(`Forgot password: email not found ${email}`);
+			throw new NotFoundException('Si ce compte existe, un email de réinitialisation a été envoyé.');
+		}
+		if (!user.password) {
+			this.logger.warn(`Forgot password: account has no password (Google-only) ${email}`);
+			throw new NotFoundException('Si ce compte existe, un email de réinitialisation a été envoyé.');
+		}
+		const token = crypto.randomBytes(32).toString('hex');
+		const expires = new Date(Date.now() + 60 * 60 * 1000);
+		await this.prisma.user.update({
+			where: { id: user.id },
+			data: { passwordResetToken: token, passwordResetExpires: expires },
+		});
+		const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+		const resetUrl = `${baseUrl}/reinitialiser-mot-de-passe/${token}`;
+		await this.emailService.sendPasswordReset({
+			to: user.email,
+			firstName: user.firstName,
+			resetUrl,
+		});
+		this.logger.log(`Forgot password email sent to ${user.email}`);
+		return { message: 'Si ce compte existe, un email de réinitialisation a été envoyé.' };
+	}
+
+	/**
+	 * Réinitialise le mot de passe avec le token reçu par email.
+	 *
+	 * @param token - Token reçu par email
+	 * @param newPassword - Nouveau mot de passe
+	 * @throws {BadRequestException} Si le token est invalide ou expiré
+	 */
+	async resetPassword(token: string, newPassword: string) {
+		const user = await this.prisma.user.findFirst({
+			where: {
+				passwordResetToken: token,
+				passwordResetExpires: { gt: new Date() },
+			},
+		});
+		if (!user) {
+			throw new BadRequestException('Lien invalide ou expiré. Veuillez refaire une demande de réinitialisation.');
+		}
+		const hashedPassword = await bcrypt.hash(newPassword, 12);
+		await this.prisma.user.update({
+			where: { id: user.id },
+			data: {
+				password: hashedPassword,
+				passwordResetToken: null,
+				passwordResetExpires: null,
+			},
+		});
+		this.logger.log(`Password reset success for user ${user.id}`);
+		return { message: 'Mot de passe mis à jour. Vous pouvez vous connecter.' };
+	}
+
+	/**
+	 * Vérifie l'adresse email avec le token reçu par email (inscription).
+	 * Active le compte (status ACTIVE, emailVerified true) et efface le token.
+	 *
+	 * @param token - Token reçu par email
+	 * @returns Message de succès
+	 * @throws {BadRequestException} Si le token est invalide ou expiré
+	 */
+	async verifyEmail(token: string) {
+		const user = await this.prisma.user.findFirst({
+			where: {
+				emailVerificationToken: token,
+				emailVerificationExpires: { gt: new Date() },
+			},
+		});
+		if (!user) {
+			throw new BadRequestException('Lien invalide ou expiré. Vous pouvez demander un nouvel email de confirmation depuis la page de connexion.');
+		}
+		await this.prisma.user.update({
+			where: { id: user.id },
+			data: {
+				emailVerified: true,
+				emailVerifiedAt: new Date(),
+				status: 'ACTIVE',
+				emailVerificationToken: null,
+				emailVerificationExpires: null,
+			},
+		});
+		this.logger.log(`Email verified for user ${user.id}`);
+		return { message: 'Adresse email confirmée. Vous pouvez maintenant vous connecter.' };
+	}
+
+	/**
+	 * Renvoie l'email de vérification pour un compte non encore activé.
+	 *
+	 * @param email - Email du compte
+	 * @throws {NotFoundException} Si l'email n'existe pas ou est déjà vérifié (message générique)
+	 */
+	async resendVerificationEmail(email: string) {
+		const user = await this.prisma.user.findUnique({
+			where: { email: email.trim().toLowerCase() },
+		});
+		if (!user) {
+			this.logger.warn(`Resend verification: email not found ${email}`);
+			throw new NotFoundException('Si un compte existe avec cet email, un nouvel email de confirmation a été envoyé.');
+		}
+		if (user.emailVerified) {
+			this.logger.warn(`Resend verification: already verified ${email}`);
+			throw new NotFoundException('Si un compte existe avec cet email, un nouvel email de confirmation a été envoyé.');
+		}
+		const token = crypto.randomBytes(32).toString('hex');
+		const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+		await this.prisma.user.update({
+			where: { id: user.id },
+			data: { emailVerificationToken: token, emailVerificationExpires: expires },
+		});
+		const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+		const verifyUrl = `${baseUrl}/verifier-email/${token}`;
+		await this.emailService.sendVerifyEmail({
+			to: user.email,
+			firstName: user.firstName,
+			verifyUrl,
+		});
+		this.logger.log(`Verification email resent to ${user.email}`);
+		return { message: 'Si un compte existe avec cet email, un nouvel email de confirmation a été envoyé.' };
 	}
 
 	/**

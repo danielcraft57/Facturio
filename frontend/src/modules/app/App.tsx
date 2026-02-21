@@ -18,6 +18,9 @@ import { PublicQuotePage } from './pages/PublicQuotePage'
 import { PublicQuoteAcceptPage } from './pages/PublicQuoteAcceptPage'
 import { PublicQuoteRejectPage } from './pages/PublicQuoteRejectPage'
 import { PublicInvoicePage } from './pages/PublicInvoicePage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
 // Lazy loading des pages pour optimiser les performances
 const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -32,6 +35,7 @@ const TaxesPage = lazy(() => import('../taxes/TaxesPage').then(m => ({ default: 
 const SubscriptionsPage = lazy(() => import('../subscriptions/SubscriptionsPage').then(m => ({ default: m.SubscriptionsPage })))
 const FilingsPage = lazy(() => import('../filings/FilingsPage').then(m => ({ default: m.FilingsPage })))
 const AccountingPage = lazy(() => import('../accounting/AccountingPage').then(m => ({ default: m.AccountingPage })))
+const AccountPage = lazy(() => import('../account/AccountPage').then(m => ({ default: m.AccountPage })))
 const GlobalStateDemo = lazy(() => import('../../components/GlobalStateDemo').then(m => ({ default: m.GlobalStateDemo })))
 const LoaderDemo = lazy(() => import('../../components/LoaderDemo').then(m => ({ default: m.LoaderDemo })))
 
@@ -148,6 +152,30 @@ export function App() {
                 element={
                   <PublicLayout>
                     <SignupPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
+                path="/mot-de-passe-oublie"
+                element={
+                  <PublicLayout>
+                    <ForgotPasswordPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
+                path="/reinitialiser-mot-de-passe/:token"
+                element={
+                  <PublicLayout>
+                    <ResetPasswordPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
+                path="/verifier-email/:token"
+                element={
+                  <PublicLayout>
+                    <VerifyEmailPage />
                   </PublicLayout>
                 }
               />
@@ -284,6 +312,14 @@ export function App() {
                 element={
                   <PrivateRouteWrapper>
                     <AccountingPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/parametres"
+                element={
+                  <PrivateRouteWrapper>
+                    <AccountPage />
                   </PrivateRouteWrapper>
                 }
               />

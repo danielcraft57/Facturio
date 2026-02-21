@@ -133,10 +133,24 @@ nano .env  # Ajuster JWT_SECRET, SMTP, etc.
 
 Le mot de passe PostgreSQL est défini dans `env.prod.example` (utilisateur `facturio`, base `facturio`). Pour le changer, modifier `.env` et recréer l'utilisateur PostgreSQL en conséquence.
 
+**Variables SMTP obligatoires** (pour validation email) :
+```bash
+SMTP_HOST=votre-serveur-smtp.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=votre-utilisateur
+SMTP_PASS=votre-mot-de-passe
+MAIL_FROM=noreply@votre-domaine.fr
+MAIL_FROM_NAME=Facturio
+FRONTEND_URL=https://facturio.votre-domaine.fr
+```
+
 **Accès public (derrière reverse proxy)** : ajouter dans `.env` pour autoriser les requêtes qui ne viennent pas de localhost (login/signup depuis le domaine public) :
 ```bash
 ALLOW_PUBLIC_ACCESS=true
 ```
+
+**Pour les tests** : Utiliser Mailpit (voir `docs/deployment/MIGRATION_VALIDATION_EMAIL.md`).
 
 ### 2.6. Build de l'application (PostgreSQL)
 
@@ -148,8 +162,11 @@ cd /opt/facturio/server
 # Générer le client Prisma pour PostgreSQL
 npm run prisma:prod
 
-# Créer les tables en base (équivalent migrate deploy pour PostgreSQL)
-npm run db:push:prod
+# Appliquer les migrations (recommandé en production)
+npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+
+# OU créer les tables en base (si migrations déjà appliquées)
+# npm run db:push:prod
 
 # Build backend (TypeScript → JavaScript, avec client PostgreSQL)
 npm run build:prod
@@ -160,6 +177,8 @@ cd frontend
 npm run build
 cd ..
 ```
+
+**Note** : Pour les mises à jour avec nouvelles migrations, voir `docs/deployment/MIGRATION_VALIDATION_EMAIL.md`.
 
 **Alternative : build en local (recommandé si le serveur a peu de RAM, ex. Raspberry Pi 1 Go)**  
 Ne pas builder sur le serveur. Utiliser les scripts qui buildent en local puis copient uniquement le dossier `dist` :
@@ -480,10 +499,15 @@ cd /opt/facturio
 # Si utilisation de git
 git pull
 
-# Rebuild backend
+# Installer nouvelles dépendances
 cd server
 npm install
-npm run build
+
+# Appliquer migrations Prisma (si nouvelles migrations)
+npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+
+# Rebuild backend
+npm run build:prod
 cd ..
 
 # Rebuild frontend
@@ -496,6 +520,8 @@ cd ..
 sudo systemctl restart facturio
 sudo systemctl reload nginx
 ```
+
+**⚠️ Important** : Pour les mises à jour majeures (ex: validation email), consulter le guide de migration spécifique : `docs/deployment/MIGRATION_VALIDATION_EMAIL.md`
 
 ### 6.3. Sauvegarde de la base de données
 

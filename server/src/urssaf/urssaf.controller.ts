@@ -17,8 +17,6 @@ import { CurrentOrg } from '../auth/decorators/current-org.decorator';
 /**
  * Controller pour la gestion des cotisations URSSAF
  *
- * Accès restreint au réseau local (guard global).
- *
  * @see UrssafService pour la logique métier
  * @see docs/api/URSSAF_API.md pour la documentation complète de l'API
  */

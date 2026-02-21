@@ -37,7 +37,7 @@ async function main(): Promise<void> {
 		console.log('✅ Base purgée\n');
 	}
 
-	// 0. Utilisateur et organisation par défaut (pour accès local)
+	// 0. Utilisateur et organisation par défaut (premier compte après seed)
 	console.log('👤 Vérification utilisateur par défaut...');
 	await seedDefaultUser(prisma);
 	console.log('✅ Utilisateur par défaut prêt\n');

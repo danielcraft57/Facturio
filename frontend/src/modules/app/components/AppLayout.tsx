@@ -33,6 +33,7 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SettingsIcon from '@mui/icons-material/Settings'
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import LogoutIcon from '@mui/icons-material/Logout'
@@ -129,6 +130,12 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
       label: 'Comptabilité', 
       icon: <AccountBalanceIcon />,
       description: 'Suivi comptable'
+    },
+    { 
+      to: '/parametres', 
+      label: 'Paramètres / Compte', 
+      icon: <ManageAccountsIcon />,
+      description: 'Infos entreprise (devis, factures)'
     },
   ]
 

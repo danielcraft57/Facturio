@@ -220,39 +220,52 @@ export class QuotesService {
 	}
 
 	/**
-	 * Liste tous les devis
-	 * 
+	 * Liste les devis de l'organisation
+	 *
+	 * @param organizationId - ID de l'organisation (filtre multi-tenant)
 	 * @returns Liste des devis avec lignes et client, triés par date décroissante
 	 */
-	findAll() {
-		return this.prisma.quote.findMany({ orderBy: { createdAt: 'desc' }, include: { lines: true, client: true } });
+	findAll(organizationId?: number) {
+		const where = organizationId != null ? { organizationId } : {};
+		return this.prisma.quote.findMany({
+			where,
+			orderBy: { createdAt: 'desc' },
+			include: { lines: true, client: true }
+		});
 	}
 
 	/**
 	 * Récupère un devis par ID
-	 * 
+	 *
 	 * @param id - ID du devis
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
 	 * @returns Devis avec lignes et client
 	 * @throws {NotFoundException} Si devis non trouvé
 	 */
-	async findOne(id: number) {
-		const quote = await this.prisma.quote.findUnique({ where: { id }, include: { lines: true, client: true } });
+	async findOne(id: number, organizationId?: number) {
+		const where: { id: number; organizationId?: number } = { id };
+		if (organizationId != null) where.organizationId = organizationId;
+		const quote = await this.prisma.quote.findFirst({
+			where,
+			include: { lines: true, client: true }
+		});
 		if (!quote) throw new NotFoundException('Devis non trouve');
 		return quote;
 	}
 
 	/**
 	 * Met à jour un devis
-	 * 
+	 *
 	 * Si le statut passe à REJECTED ou EXPIRED, contre-passe l'écriture hors-bilan.
-	 * 
+	 *
 	 * @param id - ID du devis
 	 * @param data - Données de mise à jour
+	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
 	 * @returns Devis mis à jour
 	 * @throws {NotFoundException} Si devis non trouvé
 	 */
-	async update(id: number, data: UpdateQuoteDto) {
-		await this.findOne(id);
+	async update(id: number, data: UpdateQuoteDto, organizationId?: number) {
+		await this.findOne(id, organizationId);
 		const lines = data.lines ?? [];
 		const totals = this.computeTotals(lines);
 		const updated = await this.prisma.quote.update({
@@ -286,8 +299,8 @@ export class QuotesService {
 		return updated;
 	}
 
-	async remove(id: number) {
-		await this.findOne(id);
+	async remove(id: number, organizationId?: number) {
+		await this.findOne(id, organizationId);
 		await this.prisma.quote.delete({ where: { id } });
 		return { success: true };
 	}
@@ -305,8 +318,8 @@ export class QuotesService {
 	 * @returns URL publique et confirmation
 	 * @throws {NotFoundException} Si devis non trouvé
 	 */
-	async send(id: number) {
-		const quote = await this.findOne(id);
+	async send(id: number, organizationId?: number) {
+		const quote = await this.findOne(id, organizationId);
 		const token = quote.publicToken ?? this.ensureToken();
 		const updated = await this.prisma.quote.update({
 			where: { id },
@@ -383,8 +396,8 @@ export class QuotesService {
 		return { ok: true };
 	}
 
-	async sendQuote(id: number) {
-		const quote = await this.findOne(id);
+	async sendQuote(id: number, organizationId?: number) {
+		const quote = await this.findOne(id, organizationId);
 		if (!quote) throw new NotFoundException('Quote not found');
 
 		const publicToken = crypto.randomBytes(32).toString('hex');

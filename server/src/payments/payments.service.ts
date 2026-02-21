@@ -50,9 +50,9 @@ export class PaymentsService {
 		private readonly accounting: AccountingService
 	) {}
 
-	async create(data: CreatePaymentDto) {
-		const invoice = await this.prisma.invoice.findUnique({
-			where: { id: data.invoiceId },
+	async create(data: CreatePaymentDto, organizationId?: number) {
+		const invoice = await this.prisma.invoice.findFirst({
+			where: { id: data.invoiceId, ...(organizationId != null ? { organizationId } : {}) },
 			include: { payments: true }
 		});
 		if (!invoice) {
@@ -101,8 +101,10 @@ export class PaymentsService {
 		};
 	}
 
-	async findAll(invoiceId?: number) {
-		const where = invoiceId ? { invoiceId } : undefined;
+	async findAll(invoiceId?: number, organizationId?: number) {
+		const where: any = {};
+		if (invoiceId) where.invoiceId = invoiceId;
+		if (organizationId != null) where.invoice = { organizationId };
 		const payments = await this.prisma.payment.findMany({
 			where,
 			include: { invoice: { include: { client: true } } },
@@ -115,12 +117,15 @@ export class PaymentsService {
 		}));
 	}
 
-	async findOne(id: number) {
+	async findOne(id: number, organizationId?: number) {
 		const payment = await this.prisma.payment.findUnique({
 			where: { id },
 			include: { invoice: { include: { client: true } } }
 		});
 		if (!payment) {
+			throw new NotFoundException('Paiement non trouve');
+		}
+		if (organizationId != null && (payment.invoice as any)?.organizationId !== organizationId) {
 			throw new NotFoundException('Paiement non trouve');
 		}
 		return {
@@ -129,8 +134,8 @@ export class PaymentsService {
 		};
 	}
 
-	async update(id: number, data: UpdatePaymentDto) {
-		const payment = await this.findOne(id);
+	async update(id: number, data: UpdatePaymentDto, organizationId?: number) {
+		const payment = await this.findOne(id, organizationId);
 		const invoice = await this.prisma.invoice.findUnique({
 			where: { id: payment.invoiceId },
 			include: { payments: true }
@@ -180,8 +185,8 @@ export class PaymentsService {
 		};
 	}
 
-	async remove(id: number) {
-		const payment = await this.findOne(id);
+	async remove(id: number, organizationId?: number) {
+		const payment = await this.findOne(id, organizationId);
 		const invoice = await this.prisma.invoice.findUnique({
 			where: { id: payment.invoiceId },
 			include: { payments: true }

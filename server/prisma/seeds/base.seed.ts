@@ -89,7 +89,7 @@ export async function seedChartOfAccounts(prisma: PrismaClient): Promise<{ accou
 
 /**
  * Crée un utilisateur et une organisation par défaut si aucun utilisateur n'existe.
- * Nécessaire pour le guard LocalOnly (accès restreint local sans mot de passe).
+ * Compte utilisable pour la première connexion après seed.
  */
 export async function seedDefaultUser(prisma: PrismaClient): Promise<void> {
 	const count = await prisma.user.count();
@@ -105,13 +105,13 @@ export async function seedDefaultUser(prisma: PrismaClient): Promise<void> {
 			phone: process.env.COMPANY_PHONE || null,
 		},
 	});
-	const hashedPassword = await bcrypt.hash('facturio-local', 12);
+	const hashedPassword = await bcrypt.hash('facturio', 12);
 	await prisma.user.create({
 		data: {
-			email: 'admin@local.facturio',
+			email: 'admin@facturio.local',
 			password: hashedPassword,
 			firstName: 'Admin',
-			lastName: 'Local',
+			lastName: 'Facturio',
 			organizationId: org.id,
 			status: 'ACTIVE',
 			emailVerified: true,
