@@ -1,8 +1,8 @@
 #!/bin/bash
 # Synchronise uniquement les fichiers vers la prod (pas d'installation npm ni de build)
 # Utilise quand tu as modifie du code en local et veux juste pousser les changements.
-# Usage : DEPLOY_APP_SERVER=serveur.lan DEPLOY_SSH_USER=votre_user ./deploy-sync.sh
-# Ou : ./deploy-sync.sh serveur.lan votre_user
+# Usage : DEPLOY_APP_SERVER=serveur.lan DEPLOY_SSH_USER=votre_user ./scripts/linux/deploy-sync.sh
+# Ou : ./scripts/linux/deploy-sync.sh serveur.lan votre_user
 
 set -e
 
@@ -13,7 +13,7 @@ LOCAL_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 if [ -z "$APP_SERVER" ]; then
     echo "ERREUR: Serveur applicatif non configuré."
-    echo "  Usage: ./deploy-sync.sh votre-server.lan votre_user"
+    echo "  Usage: ./scripts/linux/deploy-sync.sh votre-server.lan votre_user"
     exit 1
 fi
 
@@ -48,3 +48,4 @@ echo "=== Synchronisation terminée ==="
 echo "Fichiers à jour. Redémarrer les services si besoin :"
 echo "  ssh ${APP_USER}@${APP_SERVER} 'sudo systemctl restart facturio'"
 echo "  (et Nginx frontend si tu sers le build depuis le serveur applicatif)"
+

@@ -15,7 +15,7 @@ $localDir = Resolve-Path (Join-Path $scriptDir "..\..")
 
 if ([string]::IsNullOrWhiteSpace($AppServer)) {
     Write-Host "ERREUR: Serveur applicatif non configuré." -ForegroundColor Red
-    Write-Host "  Exemple: .\deploy-sync.ps1 -AppServer votre-server.lan -AppUser votre_user" -ForegroundColor Yellow
+    Write-Host "  Exemple: .\scripts\windows\deploy-sync.ps1 -AppServer votre-server.lan -AppUser votre_user" -ForegroundColor Yellow
     exit 1
 }
 
@@ -66,3 +66,4 @@ Write-Host "=== Synchronisation terminée ===" -ForegroundColor Green
 Write-Host "Fichiers à jour. Redémarrer les services si besoin :"
 Write-Host "  ssh ${AppUser}@${AppServer} 'sudo systemctl restart facturio'"
 Write-Host "  (et Nginx frontend si tu sers le build depuis le serveur applicatif)"
+

@@ -7,8 +7,8 @@ SSH_USER="${DEPLOY_SSH_USER:-}"
 
 if [ -z "$SERVERS_STR" ]; then
     echo "ERREUR: Liste de serveurs non configurée."
-    echo "  Exemple: export DEPLOY_SERVERS='server1.lan,server2.lan'; ./examine-servers.sh"
-    echo "  Ou: DEPLOY_SERVERS='server1.lan' DEPLOY_SSH_USER=votre_user ./examine-servers.sh"
+    echo "  Exemple: export DEPLOY_SERVERS='server1.lan,server2.lan'; ./scripts/linux/examine-servers.sh"
+    echo "  Ou: DEPLOY_SERVERS='server1.lan' DEPLOY_SSH_USER=votre_user ./scripts/linux/examine-servers.sh"
     exit 1
 fi
 
@@ -39,3 +39,4 @@ echo "- RAM disponible (minimum 2GB)"
 echo "- Ports 3000 et 5173 libres"
 echo "- Node.js 20+ installé"
 echo "- PostgreSQL installé (optionnel mais recommandé)"
+

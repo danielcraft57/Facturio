@@ -66,6 +66,12 @@ async function bootstrap(): Promise<void> {
 	logger.log(`🚀 API démarrée sur http://localhost:${port}`);
 	logger.log(`📦 Environnement: ${config.environment}`);
 	logger.log(`🗄️  Base de données: ${config.databaseUrl}`);
+	const dbUrl = config.databaseUrl;
+	if (dbUrl.startsWith('file:')) {
+		const path = await import('path');
+		const filePath = path.resolve(process.cwd(), dbUrl.replace(/^file:\/?/, ''));
+		logger.log(`🗄️  Fichier DB (absolu): ${filePath}`);
+	}
 	logger.log(`🌐 CORS: ${Array.isArray(config.corsOrigin) ? config.corsOrigin.join(', ') : config.corsOrigin}`);
 	logger.log(`📝 Log level: ${config.logLevel}`);
 }

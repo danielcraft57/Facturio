@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script pour déployer Facturio sur un serveur applicatif
-# Usage : DEPLOY_APP_SERVER=votre-server.lan DEPLOY_SSH_USER=votre_user ./deploy-app.sh
-# Ou : ./deploy-app.sh votre-server.lan votre_user
+# Usage : DEPLOY_APP_SERVER=votre-server.lan DEPLOY_SSH_USER=votre_user ./scripts/linux/deploy-app.sh
+# Ou : ./scripts/linux/deploy-app.sh votre-server.lan votre_user
 
 set -e
 
@@ -12,14 +12,14 @@ LOCAL_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 if [ -z "$APP_SERVER" ]; then
     echo "ERREUR: Serveur applicatif non configuré."
-    echo "  Usage: ./deploy-app.sh votre-server.lan votre_user"
-    echo "  Ou: export DEPLOY_APP_SERVER=votre-server.lan DEPLOY_SSH_USER=votre_user; ./deploy-app.sh"
+    echo "  Usage: ./scripts/linux/deploy-app.sh votre-server.lan votre_user"
+    echo "  Ou: export DEPLOY_APP_SERVER=votre-server.lan DEPLOY_SSH_USER=votre_user; ./scripts/linux/deploy-app.sh"
     exit 1
 fi
 
 if [ -z "$APP_USER" ]; then
     echo "ERREUR: Utilisateur SSH non configuré."
-    echo "  Usage: ./deploy-app.sh $APP_SERVER votre_user"
+    echo "  Usage: ./scripts/linux/deploy-app.sh $APP_SERVER votre_user"
     exit 1
 fi
 
@@ -68,3 +68,4 @@ echo "2. Configurer .env : ssh ${APP_USER}@${APP_SERVER} 'cd $APP_DIR/server && 
 echo "3. Créer les tables et seed : ssh ${APP_USER}@${APP_SERVER} 'cd $APP_DIR/server && npm run db:push:prod && npm run seed:prod'"
 echo "4. Configurer le service systemd : voir docs/deployment/DEPLOIEMENT_PRODUCTION.md"
 echo "5. Configurer Nginx local pour le frontend : voir docs/deployment/DEPLOIEMENT_PRODUCTION.md"
+

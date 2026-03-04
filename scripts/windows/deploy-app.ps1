@@ -14,14 +14,14 @@ $localDir = Resolve-Path (Join-Path $scriptDir "..\..")
 
 if ([string]::IsNullOrWhiteSpace($AppServer)) {
     Write-Host "ERREUR: Serveur applicatif non configuré." -ForegroundColor Red
-    Write-Host "  Exemple: .\deploy-app.ps1 -AppServer votre-server.lan -AppUser votre_user" -ForegroundColor Yellow
-    Write-Host "  Ou: `$env:DEPLOY_APP_SERVER = 'votre-server.lan'; `$env:DEPLOY_SSH_USER = 'votre_user'; .\deploy-app.ps1" -ForegroundColor Yellow
+    Write-Host "  Exemple: .\scripts\windows\deploy-app.ps1 -AppServer votre-server.lan -AppUser votre_user" -ForegroundColor Yellow
+    Write-Host "  Ou: `$env:DEPLOY_APP_SERVER = 'votre-server.lan'; `$env:DEPLOY_SSH_USER = 'votre_user'; .\scripts\windows\deploy-app.ps1" -ForegroundColor Yellow
     exit 1
 }
 
 if ([string]::IsNullOrWhiteSpace($AppUser)) {
     Write-Host "ERREUR: Utilisateur SSH non configuré." -ForegroundColor Red
-    Write-Host "  Exemple: .\deploy-app.ps1 -AppServer $AppServer -AppUser votre_user" -ForegroundColor Yellow
+    Write-Host "  Exemple: .\scripts\windows\deploy-app.ps1 -AppServer $AppServer -AppUser votre_user" -ForegroundColor Yellow
     exit 1
 }
 
@@ -103,3 +103,4 @@ Write-Host "2. Configurer .env : ssh ${AppUser}@${AppServer} 'cd $AppDir/server 
 Write-Host "3. Créer les tables et seed : ssh ${AppUser}@${AppServer} 'cd $AppDir/server && npm run db:push:prod && npm run seed:prod'"
 Write-Host "4. Configurer le service systemd : voir docs/deployment/DEPLOIEMENT_PRODUCTION.md"
 Write-Host "5. Configurer Nginx local pour le frontend : voir docs/deployment/DEPLOIEMENT_PRODUCTION.md"
+

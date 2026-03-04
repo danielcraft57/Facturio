@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script pour déployer la configuration Nginx (reverse proxy)
-# Usage : DEPLOY_APP_SERVER=app.lan DEPLOY_NGINX_SERVER=nginx.lan DEPLOY_SSH_USER=user DEPLOY_DOMAIN=example.fr DEPLOY_EMAIL=admin@example.fr ./deploy-nginx-config.sh
-# Ou : ./deploy-nginx-config.sh app.lan nginx.lan user example.fr admin@example.fr
+# Usage : DEPLOY_APP_SERVER=app.lan DEPLOY_NGINX_SERVER=nginx.lan DEPLOY_SSH_USER=user DEPLOY_DOMAIN=example.fr DEPLOY_EMAIL=admin@example.fr ./scripts/linux/deploy-nginx-config.sh
+# Ou : ./scripts/linux/deploy-nginx-config.sh app.lan nginx.lan user example.fr admin@example.fr
 
 set -e
 
@@ -13,7 +13,7 @@ EMAIL="${5:-$DEPLOY_EMAIL}"
 
 if [ -z "$APP_SERVER" ]; then
     echo "ERREUR: Serveur applicatif non configuré."
-    echo "  Usage: ./deploy-nginx-config.sh app.lan nginx.lan votre_user votre-domaine.fr admin@votre-domaine.fr"
+    echo "  Usage: ./scripts/linux/deploy-nginx-config.sh app.lan nginx.lan votre_user votre-domaine.fr admin@votre-domaine.fr"
     exit 1
 fi
 
@@ -98,3 +98,4 @@ echo "=== Configuration Nginx déployée ==="
 echo "Prochaine étape : Configurer SSL avec Certbot"
 echo "  ssh ${SSH_USER}@${NGINX_SERVER}"
 echo "  sudo certbot --nginx -d facturio.${DOMAIN} -d devis.${DOMAIN} -d facture.${DOMAIN} --non-interactive --agree-tos --email ${EMAIL} --redirect"
+

@@ -1,5 +1,5 @@
 # Script pour installer et configurer automatiquement les dépendances sur le serveur
-# Usage: .\setup-server.ps1 -Server votre_user@votre-app.lan
+# Usage: .\scripts\windows\setup-server.ps1 -Server votre_user@votre-app.lan
 
 param(
     [Parameter(Mandatory=$true)]
@@ -156,7 +156,7 @@ echo "Architecture: `$(uname -m)"
 echo ""
 echo "=== Installation terminée ==="
 echo "Prochaines étapes:"
-echo "1. Déployer l'application avec: .\deploy-app.ps1 -AppServer ${SshHost}"
+echo "1. Déployer l'application avec: ./scripts/windows/deploy-app.ps1 -AppServer ${SshHost}"
 echo "2. Configurer le fichier .env dans /opt/facturio/server/.env"
 echo "3. Initialiser la base de données"
 echo "4. Configurer les services systemd et Nginx"
@@ -197,7 +197,8 @@ Write-Host ""
 Write-Host "=== Installation terminée avec succès ===" -ForegroundColor Green
 Write-Host ""
 Write-Host "Prochaines étapes:" -ForegroundColor Cyan
-Write-Host "1. Déployer l'application: .\deploy-app.ps1 -AppServer ${SshHost} -AppUser ${SshUser}"
+Write-Host "1. Déployer l'application: .\scripts\windows\deploy-app.ps1 -AppServer ${SshHost} -AppUser ${SshUser}"
 Write-Host "2. Configurer le fichier .env dans /opt/facturio/server/.env"
 Write-Host "3. Initialiser la base de données"
 Write-Host "4. Configurer les services systemd et Nginx (voir docs/deployment/DEPLOIEMENT_PRODUCTION.md)"
+

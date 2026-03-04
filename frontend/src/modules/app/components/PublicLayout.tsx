@@ -13,6 +13,7 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  ListItemIcon,
   useScrollTrigger,
   CssBaseline,
   alpha,
@@ -20,13 +21,18 @@ import {
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import CloseIcon from '@mui/icons-material/Close'
+import HomeIcon from '@mui/icons-material/Home'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import EuroIcon from '@mui/icons-material/Euro'
+import LoginIcon from '@mui/icons-material/Login'
+import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../../stores/authStore'
 
 const navItems = [
-  { to: '/', label: 'Accueil' },
-  { to: '/#fonctionnalites', label: 'Fonctionnalités' },
-  { to: '/#tarifs', label: 'Tarifs' },
+  { to: '/', label: 'Accueil', icon: <HomeIcon fontSize="small" /> },
+  { to: '/#fonctionnalites', label: 'Fonctionnalités', icon: <AutoAwesomeIcon fontSize="small" /> },
+  { to: '/#tarifs', label: 'Tarifs', icon: <EuroIcon fontSize="small" /> },
 ]
 
 /** Lien navbar : style texte discret, pas bouton */
@@ -150,7 +156,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
               color="inherit"
               aria-label="menu"
               onClick={handleDrawerToggle}
-              sx={{ display: { md: 'none' }, color: 'text.primary' }}
+              sx={{ display: { md: 'none' }, color: 'text.primary', ml: 'auto' }}
             >
               <MenuIcon />
             </IconButton>
@@ -159,6 +165,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       </AppBar>
 
       <Drawer
+        anchor="right"
         variant="temporary"
         open={mobileOpen}
         onClose={handleDrawerToggle}
@@ -166,18 +173,46 @@ export function PublicLayout({ children }: PublicLayoutProps) {
         sx={{
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
-            width: 280,
+            width: 300,
+            maxWidth: '85vw',
             boxSizing: 'border-box',
             pt: 2,
+            pb: 3,
+            borderRadius: '16px 0 0 16px',
+            boxShadow: (t) => t.shadows[10],
+            backgroundImage: (t) =>
+              `linear-gradient(135deg, ${alpha(t.palette.background.paper, 0.98)}, ${alpha(
+                t.palette.primary.light,
+                0.08
+              )})`,
           },
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', pr: 2 }}>
-          <IconButton onClick={handleDrawerToggle} aria-label="fermer">
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            px: 2,
+            pb: 1,
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            Menu
+          </Typography>
+          <IconButton onClick={handleDrawerToggle} aria-label="fermer" size="small">
             <CloseIcon />
           </IconButton>
         </Box>
-        <List sx={{ px: 1 }}>
+        <List
+          sx={{
+            px: 1,
+            pt: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0.5,
+          }}
+        >
           {navItems.map((item) => (
             <ListItem key={item.to} disablePadding>
               <ListItemButton
@@ -185,8 +220,25 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 to={item.to}
                 onClick={handleDrawerToggle}
                 selected={location.pathname === item.to}
-                sx={{ borderRadius: 1 }}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.1,
+                  px: 1.5,
+                  transition: 'background-color 0.18s ease, transform 0.16s ease',
+                  '& .MuiListItemText-primary': {
+                    fontWeight: 500,
+                    letterSpacing: 0.1,
+                  },
+                  '&:hover': {
+                    transform: 'translateX(-4px)',
+                  },
+                }}
               >
+                {item.icon && (
+                  <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}>
+                    {item.icon}
+                  </ListItemIcon>
+                )}
                 <ListItemText primary={item.label} />
               </ListItemButton>
             </ListItem>
@@ -210,7 +262,23 @@ export function PublicLayout({ children }: PublicLayoutProps) {
           ) : (
             <>
               <ListItem disablePadding>
-                <ListItemButton component={RouterLink} to="/login" onClick={handleDrawerToggle} sx={{ borderRadius: 1 }}>
+                <ListItemButton
+                  component={RouterLink}
+                  to="/login"
+                  onClick={handleDrawerToggle}
+                  sx={{
+                    borderRadius: 2,
+                    py: 1.1,
+                    px: 1.5,
+                    transition: 'background-color 0.18s ease, transform 0.16s ease',
+                    '&:hover': {
+                      transform: 'translateX(-4px)',
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>
+                    <LoginIcon fontSize="small" />
+                  </ListItemIcon>
                   <ListItemText primary="Connexion" />
                 </ListItemButton>
               </ListItem>
@@ -220,12 +288,23 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                   to="/signup"
                   onClick={handleDrawerToggle}
                   sx={{
-                    borderRadius: 1,
+                    borderRadius: 2,
+                    py: 1.1,
+                    px: 1.5,
                     bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
                     color: 'primary.main',
                     fontWeight: 600,
+                    transition: 'background-color 0.18s ease, transform 0.16s ease, box-shadow 0.18s ease',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      transform: 'translateX(-4px)',
+                      boxShadow: (t) => t.shadows[3],
+                    },
                   }}
                 >
+                  <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}>
+                    <PersonAddAltIcon fontSize="small" />
+                  </ListItemIcon>
                   <ListItemText primary="Inscription" />
                 </ListItemButton>
               </ListItem>

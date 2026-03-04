@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($AppServer)) {
     Write-Host "ERREUR: Serveur applicatif non configuré (ex. votre-app.lan)." -ForegroundColor Red
-    Write-Host "  .\deploy-nginx-config.ps1 -AppServer votre-app.lan -NginxServer votre-nginx.lan -SshUser votre_user -Domain votre-domaine.fr -Email admin@votre-domaine.fr" -ForegroundColor Yellow
+    Write-Host "  .\scripts\windows\deploy-nginx-config.ps1 -AppServer votre-app.lan -NginxServer votre-nginx.lan -SshUser votre_user -Domain votre-domaine.fr -Email admin@votre-domaine.fr" -ForegroundColor Yellow
     exit 1
 }
 
@@ -90,30 +90,6 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Remplacer la variable PowerShell dans le script bash
-$installScript = @"
-#!/bin/bash
-set -e
-SITE_CONFIG_NAME="$siteConfigName"
-# Supprimer le BOM UTF-8 si présent
-sed -i '1s/^\xEF\xBB\xBF//' /tmp/facturio_nginx_config.conf
-sudo mv /tmp/facturio_nginx_config.conf /etc/nginx/sites-available/`${SITE_CONFIG_NAME}
-if ! grep -q "server_names_hash_bucket_size 128" /etc/nginx/nginx.conf; then
-    sudo sed -i '/^http {/a\    server_names_hash_bucket_size 128;' /etc/nginx/nginx.conf
-fi
-sudo ln -sf /etc/nginx/sites-available/`${SITE_CONFIG_NAME} /etc/nginx/sites-enabled/
-sudo nginx -t
-NGINX_TEST=`$?
-if [ `$NGINX_TEST -eq 0 ]; then
-    echo "Configuration Nginx valide. Rechargement..."
-    sudo systemctl reload nginx
-    echo "Configuration déployée avec succès !"
-else
-    echo "ERREUR: Configuration Nginx invalide. Vérifiez les logs."
-    exit 1
-fi
-"@
-
 Write-Host "Installation de la configuration..." -ForegroundColor Yellow
 
 # Exécuter les commandes directement sur le serveur (plus simple et plus fiable)
@@ -152,3 +128,4 @@ Write-Host "Pour activer HTTPS, sur le serveur Nginx exécuter :" -ForegroundCol
 Write-Host "  ssh ${SshUser}@${NginxServer}"
 Write-Host "  sudo certbot --nginx -d facturio.${Domain} -d devis.${Domain} -d facture.${Domain} --non-interactive --agree-tos --email ${Email} --redirect"
 Write-Host "Puis tester : https://facturio.${Domain}"
+

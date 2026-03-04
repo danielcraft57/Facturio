@@ -10,8 +10,8 @@ $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($Servers)) {
     Write-Host "ERREUR: Liste de serveurs non configurée." -ForegroundColor Red
-    Write-Host "  Exemple: `$env:DEPLOY_SERVERS = 'server1.lan,server2.lan'; .\examine-servers.ps1" -ForegroundColor Yellow
-    Write-Host "  Ou: .\examine-servers.ps1 -Servers 'server1.lan,server2.lan' -SshUser votre_user" -ForegroundColor Yellow
+    Write-Host "  Exemple: `$env:DEPLOY_SERVERS = 'server1.lan,server2.lan'; .\scripts\windows\examine-servers.ps1" -ForegroundColor Yellow
+    Write-Host "  Ou: .\scripts\windows\examine-servers.ps1 -Servers 'server1.lan,server2.lan' -SshUser votre_user" -ForegroundColor Yellow
     exit 1
 }
 
@@ -45,3 +45,4 @@ Write-Host "- RAM disponible (minimum 2GB)"
 Write-Host "- Ports 3000 et 5173 libres"
 Write-Host "- Node.js 20+ installé"
 Write-Host "- PostgreSQL installé (optionnel mais recommandé)"
+

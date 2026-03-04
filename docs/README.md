@@ -40,7 +40,7 @@ Guide pour contribuer au projet : workflow, structure du code, tests, bonnes pra
 Documentation sur l'intégration continue et le déploiement de Facturio.
 
 ### [Déploiement production](./deployment/DEPLOIEMENT_PRODUCTION.md)
-Guide complet pour déployer Facturio en production (serveur applicatif, Nginx, SSL, build local). Voir aussi `scripts/deploy/README.md` pour les scripts PowerShell.
+Guide complet pour déployer Facturio en production (serveur applicatif, Nginx, SSL, build local). Voir aussi `scripts/deploy/README.md` pour la liste des scripts (Windows et Linux).
 
 ### [Optimisation](./development/OPTIMIZATION.md)
 Guide d'optimisation des performances et des ressources.

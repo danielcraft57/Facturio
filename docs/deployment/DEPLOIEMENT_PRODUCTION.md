@@ -37,14 +37,14 @@ Utiliser les scripts de déploiement avec variables d'environnement :
 # Windows (PowerShell)
 $env:DEPLOY_SERVERS = "server1.lan,server2.lan"
 $env:DEPLOY_SSH_USER = "votre_user"
-.\scripts\deploy\examine-servers.ps1
+.\scripts\windows\examine-servers.ps1
 ```
 
 ```bash
 # Linux/Mac
 export DEPLOY_SERVERS="server1.lan,server2.lan"
 export DEPLOY_SSH_USER="votre_user"
-./scripts/deploy/examine-servers.sh
+./scripts/linux/examine-servers.sh
 ```
 
 **Critères de choix** :
@@ -184,10 +184,9 @@ cd ..
 Ne pas builder sur le serveur. Utiliser les scripts qui buildent en local puis copient uniquement le dossier `dist` :
 ```powershell
 # Depuis ta machine (PowerShell)
-cd Facturio\scripts\deploy
 $env:DEPLOY_APP_SERVER = "votre-app.lan"; $env:DEPLOY_SSH_USER = "votre_user"
-.\deploy-backend-build.ps1   # Backend : build local, copie dist, redémarre facturio
-.\deploy-frontend-build.ps1 # Frontend : build local, copie dist (évite OOM)
+.\scripts\windows\deploy-backend-build.ps1   # Backend : build local, copie dist, redémarre facturio
+.\scripts\windows\deploy-frontend-build.ps1 # Frontend : build local, copie dist (évite OOM)
 ```
 Voir `scripts/deploy/README.md` pour les détails. **Important** : le script backend ne copie que `dist`, pas `node_modules`. Toutes les dépendances utilisées au runtime doivent être dans `dependencies` (et non seulement en devDependencies) du `package.json` ; sur le serveur, exécuter `npm install` après toute modification de `package.json`, puis `sudo systemctl restart facturio`.
 

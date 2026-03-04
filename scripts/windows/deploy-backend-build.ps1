@@ -2,7 +2,7 @@
 # Utile quand le serveur a peu de RAM (ex. Raspberry Pi) ou une version Node differente.
 #
 # Usage:
-#   $env:DEPLOY_APP_SERVER = "votre-app.lan"; $env:DEPLOY_SSH_USER = "votre_user"; .\deploy-backend-build.ps1
+#   $env:DEPLOY_APP_SERVER = "votre-app.lan"; $env:DEPLOY_SSH_USER = "votre_user"; .\scripts\windows\deploy-backend-build.ps1
 
 param(
     [string]$AppServer = $env:DEPLOY_APP_SERVER,
@@ -18,7 +18,7 @@ $serverDir = Join-Path $facturioRoot "server"
 
 if ([string]::IsNullOrWhiteSpace($AppServer)) {
     Write-Host "ERREUR: Serveur non configure." -ForegroundColor Red
-    Write-Host "  Exemple: `$env:DEPLOY_APP_SERVER = 'votre-app.lan'; `$env:DEPLOY_SSH_USER = 'votre_user'; .\deploy-backend-build.ps1" -ForegroundColor Yellow
+    Write-Host "  Exemple: `$env:DEPLOY_APP_SERVER = 'votre-app.lan'; `$env:DEPLOY_SSH_USER = 'votre_user'; .\scripts\windows\deploy-backend-build.ps1" -ForegroundColor Yellow
     exit 1
 }
 
@@ -80,3 +80,4 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host ""
 Write-Host "=== Termine ===" -ForegroundColor Green
 Write-Host "Backend (dist) deploye sur ${AppServer}:${AppDir}/server/dist - service facturio redemarre."
+

@@ -2,7 +2,7 @@
 # Necessaire sur les serveurs a faible RAM (ex. Raspberry Pi 1 Go) car "npm run build" depasse la heap Node.
 #
 # Usage:
-#   $env:DEPLOY_APP_SERVER = "votre-app.lan"; $env:DEPLOY_SSH_USER = "votre_user"; .\deploy-frontend-build.ps1
+#   $env:DEPLOY_APP_SERVER = "votre-app.lan"; $env:DEPLOY_SSH_USER = "votre_user"; .\scripts\windows\deploy-frontend-build.ps1
 
 param(
     [string]$AppServer = $env:DEPLOY_APP_SERVER,
@@ -18,7 +18,7 @@ $frontendDir = Join-Path $facturioRoot "frontend"
 
 if ([string]::IsNullOrWhiteSpace($AppServer)) {
     Write-Host "ERREUR: Serveur non configure." -ForegroundColor Red
-    Write-Host "  Exemple: `$env:DEPLOY_APP_SERVER = 'votre-app.lan'; `$env:DEPLOY_SSH_USER = 'votre_user'; .\deploy-frontend-build.ps1" -ForegroundColor Yellow
+    Write-Host "  Exemple: `$env:DEPLOY_APP_SERVER = 'votre-app.lan'; `$env:DEPLOY_SSH_USER = 'votre_user'; .\scripts\windows\deploy-frontend-build.ps1" -ForegroundColor Yellow
     exit 1
 }
 
@@ -81,3 +81,4 @@ Write-Host ""
 Write-Host "=== Termine ===" -ForegroundColor Green
 Write-Host "Frontend (dist) deploye sur ${AppServer}:${AppDir}/frontend/dist"
 Write-Host "Si tu utilises Nginx pour servir le frontend, recharger Nginx. Sinon tu peux lancer 'npm run dev -- --host 0.0.0.0' pour le mode dev."
+

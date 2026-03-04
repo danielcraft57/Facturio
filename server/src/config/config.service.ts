@@ -38,7 +38,7 @@ export class ConfigService {
 	}
 
 	get databaseUrl(): string {
-		return process.env.DATABASE_URL || 'file:./prisma/dev.db';
+		return process.env.DATABASE_URL || 'file:./prisma/prisma/dev.db';
 	}
 
 	get corsOrigin(): string | string[] | boolean {
