@@ -32,6 +32,13 @@ rm -f "prisma/prisma/dev.db"
 rm -f "prisma/prisma/dev.db-journal"
 rm -f "prisma/prisma/test.db"
 rm -f "prisma/prisma/test.db-journal"
+# Sécurité : si Prisma a été lancé depuis server/prisma
+# avec DATABASE_URL=file:./prisma/prisma/dev.db,
+# il peut créer un dev.db dans prisma/prisma/prisma.
+rm -f "prisma/prisma/prisma/dev.db"
+rm -f "prisma/prisma/prisma/dev.db-journal"
+rm -f "prisma/prisma/prisma/test.db"
+rm -f "prisma/prisma/prisma/test.db-journal"
 
 export NODE_ENV="dev"
 export DATABASE_URL="file:./prisma/prisma/dev.db"

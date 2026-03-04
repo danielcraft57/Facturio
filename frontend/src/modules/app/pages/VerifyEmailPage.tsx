@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom'
 import {
   Container,
@@ -21,13 +21,18 @@ export function VerifyEmailPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState<string>('')
+  const hasVerifiedRef = useRef(false)
 
   useEffect(() => {
+    // En dev avec React.StrictMode, les effets peuvent être appelés 2 fois.
+    // On s'assure de ne déclencher la vérification qu'une seule fois.
+    if (hasVerifiedRef.current) return
     if (!token?.trim()) {
       setStatus('error')
       setMessage('Lien invalide.')
       return
     }
+    hasVerifiedRef.current = true
     authService
       .verifyEmail(token.trim())
       .then((res) => {

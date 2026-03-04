@@ -49,6 +49,12 @@ API backend pour la gestion de clients, devis, factures, taxes et dépôts (TVA)
 - Prisma ORM
 - SQLite (dev par défaut) / Postgres (recommandé en prod)
 
+### Identité visuelle & emails
+- Tous les templates email (`EmailService`) s’appuient sur l’identité visuelle du site `https://danielcraft.fr/` : fond clair rosé, typographie Inter et **rouge DanielCraft** (dégradés autour de `#b91c1c`, `#dc2626`, `#f97373`) pour les headers et boutons.
+- En cas de refonte du site, mettre à jour en priorité :
+  - le layout commun des emails (`getBaseLayout`) pour rester cohérent avec le design DanielCraft,
+  - les templates spécifiques (confirmation d’email, reset mot de passe, devis, factures, relances).
+
 ## Prérequis
 - Node 20+ et npm
 

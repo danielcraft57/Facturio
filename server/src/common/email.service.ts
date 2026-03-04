@@ -17,10 +17,13 @@ export class EmailService {
 	private transporter: Transporter;
 	private readonly fromEmail: string;
 	private readonly fromName: string;
+	/** Adresse no-reply dédiée (pour confirmations, reset, etc.). */
+	private readonly noReplyEmail: string;
 
 	constructor() {
 		this.fromEmail = process.env.MAIL_FROM || 'no-reply@example.com';
 		this.fromName = process.env.MAIL_FROM_NAME || 'Facturio';
+		this.noReplyEmail = process.env.MAIL_FROM_NO_REPLY || this.fromEmail || 'no-reply@example.com';
 
 		if (process.env.NODE_ENV === 'test') {
 			this.transporter = nodemailer.createTransport({ jsonTransport: true }) as Transporter;
@@ -53,6 +56,13 @@ export class EmailService {
 	private get quoteFrom(): string {
 		const addr = process.env.MAIL_FROM_QUOTE || 'devis@danielcraft.fr';
 		const name = process.env.MAIL_FROM_QUOTE_NAME || 'Facturio Devis';
+		return `${name} <${addr}>`;
+	}
+
+	/** Adresse d'envoi des emails transactionnels "no-reply". */
+	private get verifyFrom(): string {
+		const addr = this.noReplyEmail || 'no-reply@example.com';
+		const name = this.fromName || 'Facturio';
 		return `${name} <${addr}>`;
 	}
 
@@ -224,14 +234,15 @@ export class EmailService {
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Facture ${data.invoiceNumber}</title>
 	<style>
-		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background: #ffffff; }
+		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #fdf2f2; }
 		.container { max-width: 600px; margin: 0 auto; padding: 24px; }
-		.header { background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); padding: 24px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #dc2626; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
-		.header h2 { margin: 0; font-size: 1.5rem; color: #dc2626; font-weight: 700; }
+		/* Entête aligné sur la même ligne visuelle que la confirmation : rouge → bleu, titre noir */
+		.header { background: linear-gradient(135deg, #b91c1c 0%, #dc2626 30%, #2563eb 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 18px 45px rgba(185,28,28,0.55); }
+		.header h2 { margin: 0; font-size: 1.4rem; color: #111827; font-weight: 700; letter-spacing: -0.02em; }
 		.content { padding: 0 0 24px; }
-		.content p { margin: 0 0 12px; color: #374151; }
-		.total { font-size: 1.125rem; font-weight: 600; color: #dc2626; }
-		.footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; line-height: 1.5; }
+		.content p { margin: 0 0 12px; color: #1f2933; font-size: 15px; }
+		.total { font-size: 1.1rem; font-weight: 600; color: #b91c1c; }
+		.footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #fecaca; font-size: 11px; color: #6b7280; line-height: 1.5; }
 	</style>
 </head>
 <body>
@@ -290,14 +301,14 @@ export class EmailService {
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Devis ${data.quoteNumber}</title>
 	<style>
-		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background: #ffffff; }
+		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #fdf2f2; }
 		.container { max-width: 600px; margin: 0 auto; padding: 24px; }
-		.header { background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); padding: 24px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #dc2626; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
-		.header h2 { margin: 0; font-size: 1.5rem; color: #dc2626; font-weight: 700; }
+		.header { background: linear-gradient(135deg, #b91c1c 0%,rgb(231, 166, 166) 30%, #2563eb 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 18px 45px rgba(185,28,28,0.55); }
+		.header h2 { margin: 0; font-size: 1.4rem; color: #111827; font-weight: 700; letter-spacing: -0.02em; }
 		.content { padding: 0 0 24px; }
-		.content p { margin: 0 0 12px; color: #374151; }
-		.total { font-size: 1.125rem; font-weight: 600; color: #dc2626; }
-		.footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; line-height: 1.5; }
+		.content p { margin: 0 0 12px; color: #1f2933; font-size: 15px; }
+		.total { font-size: 1.1rem; font-weight: 600; color: #b91c1c; }
+		.footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #fecaca; font-size: 11px; color: #6b7280; line-height: 1.5; }
 	</style>
 </head>
 <body>
@@ -343,11 +354,11 @@ export class EmailService {
 			<head>
 				<meta charset="UTF-8">
 				<style>
-					body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-					.container { max-width: 600px; margin: 0 auto; padding: 20px; }
-					.header { background-color: #fff3cd; padding: 20px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #ffc107; }
-					.content { padding: 20px 0; }
-					.footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+					body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #fdf2f2; }
+					.container { max-width: 600px; margin: 0 auto; padding: 24px; }
+					.header { background: linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #f97373 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 18px 45px rgba(185,28,28,0.55); }
+					.content { padding: 0 0 24px; }
+					.footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #fecaca; font-size: 12px; color: #6b7280; }
 				</style>
 			</head>
 			<body>
@@ -385,8 +396,9 @@ export class EmailService {
 			firstName: options.firstName,
 			verifyUrl: options.verifyUrl,
 		});
-		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ''},\n\nCliquez sur le lien suivant pour confirmer votre adresse email et activer votre compte Facturio :\n${options.verifyUrl}\n\nCe lien est valide 24 heures.\n\nL'équipe Facturio`;
+		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ''},\n\nCliquez sur le lien suivant pour confirmer votre adresse email et activer votre compte Facturio :\n${options.verifyUrl}\n\nCe lien est valide 24 heures.\n\nCet email est envoyé depuis une adresse no-reply, merci de ne pas y répondre.\n\nL'équipe Facturio`;
 		await this.send({
+			from: this.verifyFrom,
 			to: options.to,
 			subject,
 			html,
@@ -429,26 +441,29 @@ export class EmailService {
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>${data.title}</title>
 	<style>
-		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background: #f3f4f6; }
-		.wrapper { padding: 40px 20px; }
-		.container { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); overflow: hidden; }
-		.header { background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 32px 24px; text-align: center; }
-		.header h1 { margin: 0; font-size: 1.75rem; font-weight: 700; color: #ffffff; letter-spacing: -0.025em; }
-		.header .logo { color: rgba(255,255,255,0.95); font-size: 1rem; margin-top: 4px; }
-		.content { padding: 32px 24px; }
-		.content p { margin: 0 0 16px; color: #374151; }
-		.btn { display: inline-block; padding: 14px 28px; background: #0d9488; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 8px 0 24px; }
-		.btn:hover { background: #0f766e; }
+		/* Couleurs texte globales */
+		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #fdf2f2; }
+		/* Ratio global : largeur 560px, padding vertical ~34px (≈ 560 / φ²) pour un équilibre visuel */
+		.wrapper { padding: 34px 21px; }
+		.container { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 18px; box-shadow: 0 22px 55px rgba(15,23,42,0.25); overflow: hidden; }
+		/* Entête dégradé DanielCraft : rouge → ton clair → bleu (pastel, sobre) */
+		.header { background: linear-gradient(135deg, #fecaca 0%, #ffe4e6 40%, #bfdbfe 100%); padding: 30px 24px 22px; text-align: left; border-bottom: 1px solid rgba(248,113,113,0.25); }
+		.header h1 { margin: 0; font-size: 1.72rem; font-weight: 700; color: #111827; letter-spacing: -0.03em; }
+		.header .logo { color: #111827; font-size: 0.95rem; margin-top: 4px; opacity: 0.85; }
+		.content { padding: 28px 24px 24px; }
+		.content p { margin: 0 0 16px; color: #111827; font-size: 15px; }
+		.btn { display: inline-block; padding: 14px 28px; background: #dc2626; color: #ffffff !important; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 15px; margin: 8px 0 24px; box-shadow: 0 12px 30px rgba(220,38,38,0.55); }
+		.btn:hover { background: #b91c1c; }
 		.footer { padding: 20px 24px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; line-height: 1.5; }
 		.footer p { margin: 0; }
-		.link-plain { color: #0d9488; word-break: break-all; }
+		.link-plain { color: #dc2626; word-break: break-all; }
 	</style>
 </head>
 <body>
 	<div class="wrapper">
 		<div class="container">
 			<div class="header">
-				<h1>Facturio</h1>
+				<h1>Danielcraft.fr</h1>
 				<div class="logo">${data.title}</div>
 			</div>
 			<div class="content">

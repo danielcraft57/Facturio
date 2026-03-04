@@ -65,7 +65,14 @@ if ($Mode -eq "dev") {
 		"prisma\prisma\dev.db",
 		"prisma\prisma\dev.db-journal",
 		"prisma\prisma\test.db",
-		"prisma\prisma\test.db-journal"
+		"prisma\prisma\test.db-journal",
+		# Sécurité : au cas où Prisma a été lancé depuis server\prisma
+		# avec DATABASE_URL=file:./prisma/prisma/dev.db, ce qui crée
+		# un fichier supplémentaire dans prisma\prisma\prisma\*.db.
+		"prisma\prisma\prisma\dev.db",
+		"prisma\prisma\prisma\dev.db-journal",
+		"prisma\prisma\prisma\test.db",
+		"prisma\prisma\prisma\test.db-journal"
 	)
 
 	foreach ($f in $dbFiles) {
