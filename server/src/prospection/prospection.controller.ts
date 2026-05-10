@@ -1,7 +1,16 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { ProspectionService } from './prospection.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UpdateProspectionConfigDto } from './dto/update-prospection-config.dto';
+
+function requireOrganizationId(user: any): number {
+	const raw = user?.organizationId ?? user?.organization?.id;
+	const id = typeof raw === 'string' ? parseInt(raw, 10) : Number(raw);
+	if (raw == null || Number.isNaN(id) || id < 1) {
+		throw new BadRequestException('Organisation utilisateur introuvable');
+	}
+	return id;
+}
 
 @Controller('prospection')
 export class ProspectionController {
@@ -13,12 +22,12 @@ export class ProspectionController {
 	 */
 	@Get('config')
 	getConfig(@CurrentUser() user: any) {
-		return this.prospection.getConfig(user.organizationId);
+		return this.prospection.getConfig(requireOrganizationId(user));
 	}
 
 	@Patch('config')
 	updateConfig(@Body() body: UpdateProspectionConfigDto, @CurrentUser() user: any) {
-		return this.prospection.updateConfig(user.organizationId, body);
+		return this.prospection.updateConfig(requireOrganizationId(user), body);
 	}
 
 	/**

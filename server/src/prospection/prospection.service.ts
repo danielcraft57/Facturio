@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { ConfigService } from '../config/config.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -42,10 +43,11 @@ export class ProspectionService {
 	}
 
 	private async getOrganizationProspectLabConfig(organizationId: number): Promise<{ apiUrl?: string; apiKey?: string }> {
-		const row = await this.prisma.organization.findUnique({
-			where: { id: organizationId },
-			select: { prospectLabApiUrl: true, prospectLabApiKey: true }
-		});
+		// Identifiants entre guillemets : obligatoire sur PostgreSQL avec les tables Prisma ("Organization", camelCase colonnes).
+		const rows = await this.prisma.$queryRaw<{ prospectLabApiUrl: string | null; prospectLabApiKey: string | null }[]>(
+			Prisma.sql`SELECT "prospectLabApiUrl", "prospectLabApiKey" FROM "Organization" WHERE id = ${organizationId} LIMIT 1`
+		);
+		const row = rows?.[0];
 		return {
 			apiUrl: row?.prospectLabApiUrl ?? undefined,
 			apiKey: row?.prospectLabApiKey ?? undefined
@@ -70,22 +72,19 @@ export class ProspectionService {
 		organizationId: number,
 		payload: { apiUrl?: string; apiKey?: string }
 	) {
-		const data: { prospectLabApiUrl?: string | null; prospectLabApiKey?: string | null } = {};
-
 		if (payload.apiUrl !== undefined) {
 			const v = payload.apiUrl?.trim();
-			data.prospectLabApiUrl = v ? v.replace(/\/$/, '') : null;
+			const url = v ? v.replace(/\/$/, '') : null;
+			await this.prisma.$executeRaw(
+				Prisma.sql`UPDATE "Organization" SET "prospectLabApiUrl" = ${url} WHERE id = ${organizationId}`
+			);
 		}
 		if (payload.apiKey !== undefined) {
 			const v = payload.apiKey?.trim();
-			data.prospectLabApiKey = v && v.length > 0 ? v : null;
-		}
-
-		if (Object.keys(data).length > 0) {
-			await this.prisma.organization.update({
-				where: { id: organizationId },
-				data
-			});
+			const key = v && v.length > 0 ? v : null;
+			await this.prisma.$executeRaw(
+				Prisma.sql`UPDATE "Organization" SET "prospectLabApiKey" = ${key} WHERE id = ${organizationId}`
+			);
 		}
 
 		return this.getConfig(organizationId);
