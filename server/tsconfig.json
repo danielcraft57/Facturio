@@ -22,6 +22,7 @@
     "**/*.spec.ts",
     "**/*.e2e-spec.ts",
     "**/*.test.ts",
+    "src/**/test-helpers/**",
     "node_modules",
     "dist"
   ]
