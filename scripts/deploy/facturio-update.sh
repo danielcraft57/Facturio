@@ -38,10 +38,21 @@ cd "$APP_DIR/server"
 npm install --omit=dev
 npm run prisma:prod
 
-# The migration history in this repo is for SQLite, and `prisma migrate deploy`
-# will fail on Postgres with P3019 (provider mismatch). For prod, sync schema.
-npx prisma db push --accept-data-loss --schema=prisma/schema.postgresql.prisma
+# The migration history in this repo is for SQLite (P3019 with migrate deploy).
+# Prisma `db push` can also be non-idempotent in some drift scenarios, so we apply
+# the minimal Postgres DDL required by the current code in an idempotent way.
+sudo -u postgres psql -d facturio -v ON_ERROR_STOP=1 <<'SQL'
+ALTER TABLE "User"
+  ADD COLUMN IF NOT EXISTS "passwordResetToken" TEXT,
+  ADD COLUMN IF NOT EXISTS "passwordResetExpires" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "emailVerificationToken" TEXT,
+  ADD COLUMN IF NOT EXISTS "emailVerificationExpires" TIMESTAMP(3);
 
+CREATE UNIQUE INDEX IF NOT EXISTS "User_passwordResetToken_key" ON "User"("passwordResetToken");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_emailVerificationToken_key" ON "User"("emailVerificationToken");
+CREATE INDEX IF NOT EXISTS "User_passwordResetToken_idx" ON "User"("passwordResetToken");
+CREATE INDEX IF NOT EXISTS "User_emailVerificationToken_idx" ON "User"("emailVerificationToken");
+SQL
 
 npm run build:prod
 
