@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
 	'/api/auth/verify-email',
 	'/api/auth/resend-verification',
 	'/api/auth/google',
+	'/api/auth/google/callback',
 	'/api/public',
 	'/api/track',
 ];

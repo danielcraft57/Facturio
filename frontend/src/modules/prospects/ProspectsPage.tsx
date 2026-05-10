@@ -48,6 +48,24 @@ import { EditProspectDialog } from './EditProspectDialog';
 import { ProspectDetails } from './ProspectDetails';
 import { prospectionService } from '../../services/prospectionService';
 
+const DEFAULT_PROSPECTLAB_API_URL = 'https://prospectlab.danielcraft.fr';
+
+/** Corrige une URL collée tronquée (ex. prospectlab.daniel → danielcraft.fr). */
+function normalizeProspectLabApiUrl(raw: string): string {
+  const t = raw.trim();
+  if (!t) return DEFAULT_PROSPECTLAB_API_URL;
+  try {
+    const href = /^https?:\/\//i.test(t) ? t : `https://${t}`;
+    const u = new URL(href);
+    if (u.hostname === 'prospectlab.daniel') {
+      u.hostname = 'prospectlab.danielcraft.fr';
+    }
+    return u.origin;
+  } catch {
+    return DEFAULT_PROSPECTLAB_API_URL;
+  }
+}
+
 const statusColors: Record<ProspectStatus, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
   new: 'default',
   contacted: 'info',
@@ -121,7 +139,7 @@ export const ProspectsPage: React.FC = () => {
   const [prospectLabLimit, setProspectLabLimit] = useState(20);
   const [prospectLabSearch, setProspectLabSearch] = useState('');
   const [showProspectLabConfig, setShowProspectLabConfig] = useState(false);
-  const [prospectLabApiUrlDraft, setProspectLabApiUrlDraft] = useState('https://prospectlab.danielcraft.fr');
+  const [prospectLabApiUrlDraft, setProspectLabApiUrlDraft] = useState(DEFAULT_PROSPECTLAB_API_URL);
   const [prospectLabApiKeyDraft, setProspectLabApiKeyDraft] = useState('');
   const [savingProspectLabConfig, setSavingProspectLabConfig] = useState(false);
 
@@ -435,14 +453,47 @@ export const ProspectsPage: React.FC = () => {
             </Link>
             , puis collez-le ci-dessous.
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 2, mt: 2, alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Utilise l’URL complète <strong>{DEFAULT_PROSPECTLAB_API_URL}</strong>. Coche sur ProspectLab les accès aux{' '}
+            <strong>emails / contacts</strong> si tu veux les voir dans le détail d’une entreprise (sinon seules les infos « entreprise » sont visibles).
+          </Typography>
+          <Box
+            component="form"
+            sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 2, mt: 2, alignItems: 'center' }}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                setSavingProspectLabConfig(true);
+                const apiUrl = normalizeProspectLabApiUrl(prospectLabApiUrlDraft);
+                setProspectLabApiUrlDraft(apiUrl);
+                const updated = await prospectionService.updateConfig({
+                  apiUrl,
+                  apiKey: prospectLabApiKeyDraft || undefined
+                });
+                setProspectionConfig(updated);
+                setProspectLabApiKeyDraft('');
+                setProspectLabError(null);
+                setProspectLabPage(1);
+                setProspectLabLimit(20);
+                setProspectLabSearch('');
+                const r = await prospectionService.getProspects(1, 20);
+                setProspectLabData({ data: r.data, total: r.total });
+              } catch (err: any) {
+                setProspectLabError(err?.message || 'Erreur sauvegarde ProspectLab');
+              } finally {
+                setSavingProspectLabConfig(false);
+              }
+            }}
+          >
             <TextField
               label="URL API ProspectLab"
               value={prospectLabApiUrlDraft}
               onChange={(e) => setProspectLabApiUrlDraft(e.target.value)}
-              placeholder="https://prospectlab.danielcraft.fr"
+              placeholder={DEFAULT_PROSPECTLAB_API_URL}
               size="small"
               fullWidth
+              name="prospectlab-api-url"
+              autoComplete="url"
             />
             <TextField
               label="Token API (Bearer)"
@@ -452,31 +503,11 @@ export const ProspectsPage: React.FC = () => {
               size="small"
               fullWidth
               type="password"
+              name="prospectlab-api-token"
+              autoComplete="new-password"
+              inputProps={{ autoComplete: 'new-password' }}
             />
-            <Button
-              variant="contained"
-              disabled={savingProspectLabConfig}
-              onClick={async () => {
-                try {
-                  setSavingProspectLabConfig(true);
-                  const updated = await prospectionService.updateConfig({
-                    apiUrl: prospectLabApiUrlDraft || undefined,
-                    apiKey: prospectLabApiKeyDraft || undefined
-                  });
-                  setProspectionConfig(updated);
-                  setProspectLabApiKeyDraft('');
-                  setProspectLabError(null);
-                  // Basculer sur ProspectLab et recharger
-                  setProspectLabPage(1);
-                  setProspectLabLimit(20);
-                  setProspectLabSearch('');
-                } catch (err: any) {
-                  setProspectLabError(err?.message || 'Erreur sauvegarde ProspectLab');
-                } finally {
-                  setSavingProspectLabConfig(false);
-                }
-              }}
-            >
+            <Button type="submit" variant="contained" disabled={savingProspectLabConfig}>
               Enregistrer
             </Button>
           </Box>
@@ -527,13 +558,41 @@ export const ProspectsPage: React.FC = () => {
           <Typography variant="body2" color="text.secondary" gutterBottom>
             Le token est enregistré côté serveur pour ton organisation (il n’est pas renvoyé au navigateur).
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 2, alignItems: 'center' }}>
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+            Permissions ProspectLab : pour les contacts détaillés, active aussi « emails » (ou équivalent) sur le token.
+          </Typography>
+          <Box
+            component="form"
+            sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 2, alignItems: 'center' }}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                setSavingProspectLabConfig(true);
+                const apiUrl = normalizeProspectLabApiUrl(prospectLabApiUrlDraft);
+                setProspectLabApiUrlDraft(apiUrl);
+                const updated = await prospectionService.updateConfig({
+                  apiUrl,
+                  apiKey: prospectLabApiKeyDraft || undefined
+                });
+                setProspectionConfig(updated);
+                setProspectLabApiKeyDraft('');
+                setProspectLabError(null);
+                handleRefresh();
+              } catch (err: any) {
+                setProspectLabError(err?.message || 'Erreur sauvegarde ProspectLab');
+              } finally {
+                setSavingProspectLabConfig(false);
+              }
+            }}
+          >
             <TextField
               label="URL API ProspectLab"
               value={prospectLabApiUrlDraft}
               onChange={(e) => setProspectLabApiUrlDraft(e.target.value)}
               size="small"
               fullWidth
+              name="prospectlab-api-url-2"
+              autoComplete="url"
             />
             <TextField
               label={prospectionConfig.hasToken ? 'Token (déjà configuré) — recoller pour remplacer' : 'Token API (Bearer)'}
@@ -542,28 +601,11 @@ export const ProspectsPage: React.FC = () => {
               size="small"
               fullWidth
               type="password"
+              name="prospectlab-api-token-2"
+              autoComplete="new-password"
+              inputProps={{ autoComplete: 'new-password' }}
             />
-            <Button
-              variant="contained"
-              disabled={savingProspectLabConfig}
-              onClick={async () => {
-                try {
-                  setSavingProspectLabConfig(true);
-                  const updated = await prospectionService.updateConfig({
-                    apiUrl: prospectLabApiUrlDraft,
-                    apiKey: prospectLabApiKeyDraft || undefined
-                  });
-                  setProspectionConfig(updated);
-                  setProspectLabApiKeyDraft('');
-                  setProspectLabError(null);
-                  handleRefresh();
-                } catch (err: any) {
-                  setProspectLabError(err?.message || 'Erreur sauvegarde ProspectLab');
-                } finally {
-                  setSavingProspectLabConfig(false);
-                }
-              }}
-            >
+            <Button type="submit" variant="contained" disabled={savingProspectLabConfig}>
               Sauvegarder
             </Button>
           </Box>

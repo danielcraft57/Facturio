@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,7 +13,9 @@ import {
   ListItemIcon,
   ListItemText,
   Paper,
-  IconButton
+  IconButton,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -30,6 +32,59 @@ import {
   Work as WorkIcon
 } from '@mui/icons-material';
 import { Prospect, ProspectStatus, Priority, CompanySize, BudgetRange } from '../../types/prospect';
+import { prospectionService } from '../../services/prospectionService';
+
+function renderProspectLabEmailsPayload(payload: unknown): React.ReactNode {
+  if (payload == null) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        Aucune donnée de contact renvoyée par ProspectLab pour cette entreprise.
+      </Typography>
+    );
+  }
+  if (Array.isArray(payload)) {
+    if (payload.length === 0) {
+      return <Typography variant="body2" color="text.secondary">Liste vide.</Typography>;
+    }
+    return (
+      <List dense>
+        {payload.map((row, i) => {
+          const o = row && typeof row === 'object' ? (row as Record<string, unknown>) : null;
+          const email = o && typeof o.email === 'string' ? o.email : typeof o?.courriel === 'string' ? o.courriel : null;
+          const nom =
+            o &&
+            [o.prenom, o.nom]
+              .filter((x) => typeof x === 'string')
+              .join(' ')
+              .trim();
+          const primary = email || nom || (typeof row === 'string' ? row : `Contact ${i + 1}`);
+          const secondary =
+            email && nom
+              ? `${nom} · ${typeof o?.poste === 'string' ? o.poste : typeof o?.fonction === 'string' ? o.fonction : ''}`
+              : typeof o?.poste === 'string'
+                ? o.poste
+                : undefined;
+          return (
+            <ListItem key={i}>
+              <ListItemIcon>
+                <EmailIcon color="action" />
+              </ListItemIcon>
+              <ListItemText primary={primary} secondary={secondary || undefined} />
+            </ListItem>
+          );
+        })}
+      </List>
+    );
+  }
+  if (typeof payload === 'object' && payload !== null && 'data' in payload && Array.isArray((payload as { data: unknown }).data)) {
+    return renderProspectLabEmailsPayload((payload as { data: unknown }).data);
+  }
+  return (
+    <Typography variant="caption" component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+      {JSON.stringify(payload, null, 2)}
+    </Typography>
+  );
+}
 
 interface ProspectDetailsProps {
   prospect: Prospect | null;
@@ -77,6 +132,43 @@ export const ProspectDetails: React.FC<ProspectDetailsProps> = ({
   onClose,
   onEdit
 }) => {
+  const [plEmails, setPlEmails] = useState<{ loading: boolean; error: string | null; data: unknown }>({
+    loading: false,
+    error: null,
+    data: null
+  });
+
+  const isProspectLab = !!(
+    prospect &&
+    (prospect.source?.name === 'ProspectLab' || prospect.source?.id === 'prospectlab')
+  );
+
+  useEffect(() => {
+    if (!open || !prospect || !isProspectLab) {
+      setPlEmails({ loading: false, error: null, data: null });
+      return;
+    }
+    let cancelled = false;
+    setPlEmails({ loading: true, error: null, data: null });
+    prospectionService
+      .getEntrepriseEmails(prospect.id)
+      .then((data) => {
+        if (!cancelled) setPlEmails({ loading: false, error: null, data });
+      })
+      .catch((err: Error) => {
+        if (!cancelled) {
+          setPlEmails({
+            loading: false,
+            error: err?.message || 'Impossible de charger les contacts',
+            data: null
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, prospect?.id, prospect?.source?.id, prospect?.source?.name, isProspectLab]);
+
   if (!prospect) return null;
 
   const handleEdit = () => {
@@ -85,7 +177,7 @@ export const ProspectDetails: React.FC<ProspectDetailsProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth disableRestoreFocus>
       <DialogTitle>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Box display="flex" alignItems="center" gap={2}>
@@ -199,7 +291,7 @@ export const ProspectDetails: React.FC<ProspectDetailsProps> = ({
               <Typography variant="h6" gutterBottom>
                 Contact principal
               </Typography>
-              {prospect.decisionMaker && (
+              {prospect.decisionMaker ? (
                 <List dense>
                   <ListItem>
                     <ListItemIcon>
@@ -244,6 +336,12 @@ export const ProspectDetails: React.FC<ProspectDetailsProps> = ({
                     </ListItem>
                   )}
                 </List>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  {isProspectLab
+                    ? 'Pas de contact nominatif dans la fiche entreprise. Les emails détaillés peuvent apparaître ci‑dessous (endpoint ProspectLab) si ton token y donne accès.'
+                    : 'Aucun décideur renseigné.'}
+                </Typography>
               )}
             </Paper>
           </Box>
@@ -304,6 +402,38 @@ export const ProspectDetails: React.FC<ProspectDetailsProps> = ({
               )}
             </List>
           </Paper>
+
+          {isProspectLab && (
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Contacts / emails (ProspectLab)
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                Nécessite un token avec les permissions « emails » ou équivalent sur{' '}
+                <a href="https://prospectlab.danielcraft.fr/tokens" target="_blank" rel="noopener noreferrer">
+                  la page des tokens
+                </a>
+                . Sinon seules les données publiques de l’entreprise sont disponibles.
+              </Typography>
+              {plEmails.loading && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={20} />
+                  <Typography variant="body2">Chargement…</Typography>
+                </Box>
+              )}
+              {plEmails.error && (
+                <Alert severity="warning" sx={{ mt: 1 }}>
+                  {plEmails.error}
+                  {(plEmails.error.includes('401') || plEmails.error.toLowerCase().includes('interdit')) && (
+                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                      Regénère un token en cochant les accès aux emails / contacts dans ProspectLab.
+                    </Typography>
+                  )}
+                </Alert>
+              )}
+              {!plEmails.loading && !plEmails.error && renderProspectLabEmailsPayload(plEmails.data)}
+            </Paper>
+          )}
 
           {/* Description */}
           {prospect.description && (
@@ -397,13 +527,15 @@ export const ProspectDetails: React.FC<ProspectDetailsProps> = ({
         <Button onClick={onClose}>
           Fermer
         </Button>
-        <Button
-          variant="contained"
-          startIcon={<EditIcon />}
-          onClick={handleEdit}
-        >
-          Modifier
-        </Button>
+        {!isProspectLab && (
+          <Button
+            variant="contained"
+            startIcon={<EditIcon />}
+            onClick={handleEdit}
+          >
+            Modifier
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

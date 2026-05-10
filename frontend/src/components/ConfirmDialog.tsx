@@ -113,6 +113,7 @@ export function ConfirmDialog({
       onClose={onClose}
       maxWidth={maxWidth}
       fullWidth={fullWidth}
+      disableRestoreFocus
       PaperProps={{
         sx: {
           borderRadius: 2,
