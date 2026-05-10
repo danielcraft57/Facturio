@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
+	private readonly logger = new Logger(GoogleStrategy.name);
+
 	constructor() {
 		// En mode test, on utilise des valeurs mockées pour éviter l'erreur OAuth2Strategy
 		const isTest = process.env.NODE_ENV === 'test' || !process.env.GOOGLE_CLIENT_ID;
@@ -13,6 +15,15 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 			callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
 			scope: ['email', 'profile'],
 		});
+
+		const id = process.env.GOOGLE_CLIENT_ID;
+		if (!isTest && id?.startsWith('GOCSPX')) {
+			this.logger.warn(
+				'GOOGLE_CLIENT_ID commence par GOCSPX- : en général c’est le *secret client*, pas l’ID. ' +
+					'L’ID client OAuth (Application Web) se termine par .apps.googleusercontent.com. ' +
+					'Sinon Google renvoie invalid_client (401).'
+			);
+		}
 	}
 
 	async validate(

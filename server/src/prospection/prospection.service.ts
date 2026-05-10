@@ -1,5 +1,4 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { ConfigService } from '../config/config.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -43,11 +42,10 @@ export class ProspectionService {
 	}
 
 	private async getOrganizationProspectLabConfig(organizationId: number): Promise<{ apiUrl?: string; apiKey?: string }> {
-		// On passe par queryRaw pour éviter de dépendre d'un Prisma Client "generate" (Windows EPERM).
-		const rows = await this.prisma.$queryRaw<{ prospectLabApiUrl: string | null; prospectLabApiKey: string | null }[]>(
-			Prisma.sql`SELECT prospectLabApiUrl, prospectLabApiKey FROM Organization WHERE id = ${organizationId} LIMIT 1`
-		);
-		const row = rows?.[0];
+		const row = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: { prospectLabApiUrl: true, prospectLabApiKey: true }
+		});
 		return {
 			apiUrl: row?.prospectLabApiUrl ?? undefined,
 			apiKey: row?.prospectLabApiKey ?? undefined
@@ -72,12 +70,24 @@ export class ProspectionService {
 		organizationId: number,
 		payload: { apiUrl?: string; apiKey?: string }
 	) {
-		const apiUrl = payload.apiUrl ? payload.apiUrl.trim().replace(/\/$/, '') : null;
-		const apiKey = payload.apiKey ? payload.apiKey.trim() : null;
+		const data: { prospectLabApiUrl?: string | null; prospectLabApiKey?: string | null } = {};
 
-		await this.prisma.$executeRaw(
-			Prisma.sql`UPDATE Organization SET prospectLabApiUrl = ${apiUrl}, prospectLabApiKey = ${apiKey} WHERE id = ${organizationId}`
-		);
+		if (payload.apiUrl !== undefined) {
+			const v = payload.apiUrl?.trim();
+			data.prospectLabApiUrl = v ? v.replace(/\/$/, '') : null;
+		}
+		if (payload.apiKey !== undefined) {
+			const v = payload.apiKey?.trim();
+			data.prospectLabApiKey = v && v.length > 0 ? v : null;
+		}
+
+		if (Object.keys(data).length > 0) {
+			await this.prisma.organization.update({
+				where: { id: organizationId },
+				data
+			});
+		}
+
 		return this.getConfig(organizationId);
 	}
 

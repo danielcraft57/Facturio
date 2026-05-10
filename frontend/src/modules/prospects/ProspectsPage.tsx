@@ -460,8 +460,8 @@ export const ProspectsPage: React.FC = () => {
                 try {
                   setSavingProspectLabConfig(true);
                   const updated = await prospectionService.updateConfig({
-                    apiUrl: prospectLabApiUrlDraft,
-                    apiKey: prospectLabApiKeyDraft
+                    apiUrl: prospectLabApiUrlDraft || undefined,
+                    apiKey: prospectLabApiKeyDraft || undefined
                   });
                   setProspectionConfig(updated);
                   setProspectLabApiKeyDraft('');
