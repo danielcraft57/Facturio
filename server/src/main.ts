@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import * as path from 'path';
+import * as dotenv from 'dotenv';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
@@ -7,6 +9,8 @@ import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { winstonConfig } from './logger/winston.config';
+
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create(AppModule, {

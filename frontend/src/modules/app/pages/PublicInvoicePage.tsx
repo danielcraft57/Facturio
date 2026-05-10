@@ -5,7 +5,9 @@ import { ApiClient } from '../../../services/apiClient'
 import { formatCurrency, formatDate } from '../../../utils/formatters'
 
 const api = ApiClient.getInstance()
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const API_BASE = (import.meta.env.DEV || import.meta.env.MODE === 'development')
+  ? '/api'
+  : (import.meta.env.VITE_API_URL || '/api')
 
 /**
  * Page publique d'affichage d'une facture par token.

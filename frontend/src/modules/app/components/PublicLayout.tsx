@@ -50,7 +50,6 @@ const NavLink = ({
     to={to}
     underline="none"
     sx={{
-      color: 'text.primary',
       fontSize: '0.9375rem',
       fontWeight: primary ? 600 : 500,
       px: primary ? 2 : 1.5,
@@ -64,6 +63,7 @@ const NavLink = ({
             '&:hover': { bgcolor: (t) => alpha(t.palette.primary.main, 0.18), color: 'primary.dark' },
           }
         : {
+            color: 'text.primary',
             '&:hover': { color: 'primary.main', bgcolor: (t) => alpha(t.palette.primary.main, 0.06) },
           }),
     }}

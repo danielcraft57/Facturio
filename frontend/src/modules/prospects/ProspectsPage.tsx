@@ -21,7 +21,8 @@ import {
   Stack,
   Badge,
   Snackbar,
-  Alert
+  Alert,
+  Link
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -45,6 +46,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Toast } from '../../components/Toast';
 import { EditProspectDialog } from './EditProspectDialog';
 import { ProspectDetails } from './ProspectDetails';
+import { prospectionService } from '../../services/prospectionService';
 
 const statusColors: Record<ProspectStatus, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
   new: 'default',
@@ -110,21 +112,72 @@ export const ProspectsPage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success');
 
-  useEffect(() => {
-    fetchProspects();
-  }, [fetchProspects]);
+  // ProspectLab (API /api/prospection)
+  const [prospectionConfig, setProspectionConfig] = useState<{ configured: boolean; hasToken?: boolean; apiUrl?: string; tokensUrl: string } | null>(null);
+  const [prospectLabLoading, setProspectLabLoading] = useState(false);
+  const [prospectLabError, setProspectLabError] = useState<string | null>(null);
+  const [prospectLabData, setProspectLabData] = useState<{ data: Prospect[]; total: number }>({ data: [], total: 0 });
+  const [prospectLabPage, setProspectLabPage] = useState(1);
+  const [prospectLabLimit, setProspectLabLimit] = useState(20);
+  const [prospectLabSearch, setProspectLabSearch] = useState('');
+  const [showProspectLabConfig, setShowProspectLabConfig] = useState(false);
+  const [prospectLabApiUrlDraft, setProspectLabApiUrlDraft] = useState('https://prospectlab.danielcraft.fr');
+  const [prospectLabApiKeyDraft, setProspectLabApiKeyDraft] = useState('');
+  const [savingProspectLabConfig, setSavingProspectLabConfig] = useState(false);
+
+  const useProspectLab = prospectionConfig?.configured ?? false;
 
   useEffect(() => {
-    if (filters) {
+    prospectionService.getConfig().then((c) => {
+      setProspectionConfig(c);
+      if (c?.apiUrl) setProspectLabApiUrlDraft(c.apiUrl);
+      if (c.configured) {
+        setProspectLabLoading(true);
+        setProspectLabError(null);
+        prospectionService
+          .getProspects(1, 20)
+          .then((r) => {
+            setProspectLabData({ data: r.data, total: r.total });
+            setProspectLabPage(1);
+            setProspectLabLimit(20);
+          })
+          .catch((err) => setProspectLabError(err?.message || 'Erreur ProspectLab'))
+          .finally(() => setProspectLabLoading(false));
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (prospectionConfig !== null && !useProspectLab) {
       fetchProspects();
     }
-  }, [filters, page, limit]);
+  }, [fetchProspects, useProspectLab, prospectionConfig]);
+
+  useEffect(() => {
+    if (prospectionConfig !== null && !useProspectLab && filters) {
+      fetchProspects();
+    }
+  }, [filters, page, limit, useProspectLab, prospectionConfig]);
+
+  useEffect(() => {
+    if (useProspectLab) {
+      setProspectLabLoading(true);
+      prospectionService
+        .getProspects(prospectLabPage, prospectLabLimit, prospectLabSearch || undefined)
+        .then((r) => setProspectLabData({ data: r.data, total: r.total }))
+        .catch((err) => setProspectLabError(err?.message || 'Erreur ProspectLab'))
+        .finally(() => setProspectLabLoading(false));
+    }
+  }, [useProspectLab, prospectLabPage, prospectLabLimit, prospectLabSearch]);
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(event.target.value);
-    // Recherche en temps réel
-    if (event.target.value.length >= 2 || event.target.value.length === 0) {
-      setFilters({ ...filters, search: event.target.value });
+    const value = event.target.value;
+    setSearchTerm(value);
+    if (useProspectLab) {
+      setProspectLabSearch(value);
+      setProspectLabPage(1);
+    } else if (value.length >= 2 || value.length === 0) {
+      setFilters({ ...filters, search: value });
     }
   };
 
@@ -197,6 +250,24 @@ export const ProspectsPage: React.FC = () => {
   };
 
   const stats = getStats();
+  const displayProspects = useProspectLab ? prospectLabData.data : prospects;
+  const displayTotal = useProspectLab ? prospectLabData.total : total;
+  const displayLoading = prospectionConfig === null ? true : useProspectLab ? prospectLabLoading : loading;
+  const displayPage = useProspectLab ? prospectLabPage : page;
+  const displayLimit = useProspectLab ? prospectLabLimit : limit;
+  const setDisplayPage = useProspectLab ? (p: number) => setProspectLabPage(p) : setPage;
+  const setDisplayLimit = useProspectLab ? (n: number) => { setProspectLabLimit(n); setProspectLabPage(1); } : setLimit;
+  const handleRefresh = useProspectLab
+    ? () => {
+        setProspectLabLoading(true);
+        prospectionService
+          .getProspects(prospectLabPage, prospectLabLimit, prospectLabSearch || undefined)
+          .then((r) => setProspectLabData({ data: r.data, total: r.total }))
+          .finally(() => setProspectLabLoading(false));
+      }
+    : refreshProspects;
+
+  const isProspectLabRow = (p: Prospect) => p.source?.name === 'ProspectLab' || String(p.id).startsWith('pl-');
 
   const columns: Column<Prospect>[] = [
     {
@@ -308,42 +379,116 @@ export const ProspectsPage: React.FC = () => {
       id: 'actions',
       label: 'Actions',
       minWidth: 120,
-      render: (prospect: Prospect) => (
-        <Box>
-          <Tooltip title="Voir détails">
-            <IconButton
-              size="small"
-              onClick={() => setSelectedProspect(prospect)}
-              color="primary"
-            >
-              <BusinessIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Modifier">
-            <IconButton
-              size="small"
-              onClick={() => handleEditProspect(prospect)}
-              color="secondary"
-            >
-              <AddIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Supprimer">
-            <IconButton
-              size="small"
-              onClick={() => handleDeleteProspect(prospect)}
-              color="error"
-            >
-              <AddIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      )
+      render: (prospect: Prospect) => {
+        const readOnly = isProspectLabRow(prospect);
+        return (
+          <Box>
+            <Tooltip title="Voir détails">
+              <IconButton
+                size="small"
+                onClick={() => setSelectedProspect(prospect)}
+                color="primary"
+              >
+                <BusinessIcon />
+              </IconButton>
+            </Tooltip>
+            {!readOnly && (
+              <>
+                <Tooltip title="Modifier">
+                  <IconButton
+                    size="small"
+                    onClick={() => handleEditProspect(prospect)}
+                    color="secondary"
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Supprimer">
+                  <IconButton
+                    size="small"
+                    onClick={() => handleDeleteProspect(prospect)}
+                    color="error"
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
+          </Box>
+        );
+      }
     }
   ];
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Bannière configuration ProspectLab */}
+      {prospectionConfig && !prospectionConfig.configured && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Afficher les prospects depuis ProspectLab
+          </Typography>
+          <Typography variant="body2">
+            Créez un token API sur{' '}
+            <Link href={prospectionConfig.tokensUrl} target="_blank" rel="noopener noreferrer">
+              {prospectionConfig.tokensUrl}
+            </Link>
+            , puis collez-le ci-dessous.
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 2, mt: 2, alignItems: 'center' }}>
+            <TextField
+              label="URL API ProspectLab"
+              value={prospectLabApiUrlDraft}
+              onChange={(e) => setProspectLabApiUrlDraft(e.target.value)}
+              placeholder="https://prospectlab.danielcraft.fr"
+              size="small"
+              fullWidth
+            />
+            <TextField
+              label="Token API (Bearer)"
+              value={prospectLabApiKeyDraft}
+              onChange={(e) => setProspectLabApiKeyDraft(e.target.value)}
+              placeholder="Collez votre token"
+              size="small"
+              fullWidth
+              type="password"
+            />
+            <Button
+              variant="contained"
+              disabled={savingProspectLabConfig}
+              onClick={async () => {
+                try {
+                  setSavingProspectLabConfig(true);
+                  const updated = await prospectionService.updateConfig({
+                    apiUrl: prospectLabApiUrlDraft,
+                    apiKey: prospectLabApiKeyDraft
+                  });
+                  setProspectionConfig(updated);
+                  setProspectLabApiKeyDraft('');
+                  setProspectLabError(null);
+                  // Basculer sur ProspectLab et recharger
+                  setProspectLabPage(1);
+                  setProspectLabLimit(20);
+                  setProspectLabSearch('');
+                } catch (err: any) {
+                  setProspectLabError(err?.message || 'Erreur sauvegarde ProspectLab');
+                } finally {
+                  setSavingProspectLabConfig(false);
+                }
+              }}
+            >
+              Enregistrer
+            </Button>
+          </Box>
+        </Alert>
+      )}
+
+      {useProspectLab && prospectLabError && (
+        <Alert severity="warning" sx={{ mb: 3 }} onClose={() => setProspectLabError(null)}>
+          {prospectLabError}
+        </Alert>
+      )}
+
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
@@ -351,18 +496,85 @@ export const ProspectsPage: React.FC = () => {
             Prospection
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Gestion des prospects et pipeline commercial
+            {useProspectLab ? 'Prospects ProspectLab' : 'Gestion des prospects et pipeline commercial'}
           </Typography>
+          {useProspectLab && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+              <Chip label="Source : ProspectLab" size="small" color="primary" variant="outlined" />
+              <Button size="small" variant="text" onClick={() => setShowProspectLabConfig(v => !v)}>
+                Configurer
+              </Button>
+            </Box>
+          )}
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreateProspect}
-          size="large"
-        >
-          Nouveau Prospect
-        </Button>
+        {!useProspectLab && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreateProspect}
+            size="large"
+          >
+            Nouveau Prospect
+          </Button>
+        )}
       </Box>
+
+      {useProspectLab && showProspectLabConfig && prospectionConfig && (
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+            Configuration ProspectLab
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Le token est enregistré côté serveur pour ton organisation (il n’est pas renvoyé au navigateur).
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 2, alignItems: 'center' }}>
+            <TextField
+              label="URL API ProspectLab"
+              value={prospectLabApiUrlDraft}
+              onChange={(e) => setProspectLabApiUrlDraft(e.target.value)}
+              size="small"
+              fullWidth
+            />
+            <TextField
+              label={prospectionConfig.hasToken ? 'Token (déjà configuré) — recoller pour remplacer' : 'Token API (Bearer)'}
+              value={prospectLabApiKeyDraft}
+              onChange={(e) => setProspectLabApiKeyDraft(e.target.value)}
+              size="small"
+              fullWidth
+              type="password"
+            />
+            <Button
+              variant="contained"
+              disabled={savingProspectLabConfig}
+              onClick={async () => {
+                try {
+                  setSavingProspectLabConfig(true);
+                  const updated = await prospectionService.updateConfig({
+                    apiUrl: prospectLabApiUrlDraft,
+                    apiKey: prospectLabApiKeyDraft || undefined
+                  });
+                  setProspectionConfig(updated);
+                  setProspectLabApiKeyDraft('');
+                  setProspectLabError(null);
+                  handleRefresh();
+                } catch (err: any) {
+                  setProspectLabError(err?.message || 'Erreur sauvegarde ProspectLab');
+                } finally {
+                  setSavingProspectLabConfig(false);
+                }
+              }}
+            >
+              Sauvegarder
+            </Button>
+          </Box>
+          <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+            Créer/renouveler un token :{' '}
+            <Link href={prospectionConfig.tokensUrl} target="_blank" rel="noopener noreferrer">
+              {prospectionConfig.tokensUrl}
+            </Link>
+          </Typography>
+        </Paper>
+      )}
 
       {/* Statistiques */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 3, mb: 3 }}>
@@ -372,7 +584,7 @@ export const ProspectsPage: React.FC = () => {
               Total Prospects
             </Typography>
             <Typography variant="h4" fontWeight="bold">
-              {stats.total}
+              {useProspectLab ? displayTotal : stats.total}
             </Typography>
           </CardContent>
         </Card>
@@ -382,7 +594,7 @@ export const ProspectsPage: React.FC = () => {
               Qualifiés
             </Typography>
             <Typography variant="h4" fontWeight="bold" color="primary">
-              {stats.byStatus.qualified || 0}
+              {useProspectLab ? 0 : (stats.byStatus.qualified || 0)}
             </Typography>
           </CardContent>
         </Card>
@@ -392,7 +604,7 @@ export const ProspectsPage: React.FC = () => {
               En négociation
             </Typography>
             <Typography variant="h4" fontWeight="bold" color="warning">
-              {stats.byStatus.negotiation || 0}
+              {useProspectLab ? 0 : (stats.byStatus.negotiation || 0)}
             </Typography>
           </CardContent>
         </Card>
@@ -402,7 +614,7 @@ export const ProspectsPage: React.FC = () => {
               Gagnés
             </Typography>
             <Typography variant="h4" fontWeight="bold" color="success">
-              {stats.byStatus.closed_won || 0}
+              {useProspectLab ? 0 : (stats.byStatus.closed_won || 0)}
             </Typography>
           </CardContent>
         </Card>
@@ -426,7 +638,7 @@ export const ProspectsPage: React.FC = () => {
           />
 
           <Stack direction="row" spacing={2} alignItems="center">
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: 120 }} disabled={useProspectLab}>
               <InputLabel>Statut</InputLabel>
               <Select
                 multiple
@@ -442,7 +654,7 @@ export const ProspectsPage: React.FC = () => {
               </Select>
             </FormControl>
 
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: 120 }} disabled={useProspectLab}>
               <InputLabel>Industrie</InputLabel>
               <Select
                 multiple
@@ -450,7 +662,7 @@ export const ProspectsPage: React.FC = () => {
                 onChange={handleIndustryFilter}
                 label="Industrie"
               >
-                {Array.from(new Set(prospects.map(p => p.industry))).map((industry) => (
+                {Array.from(new Set(displayProspects.map(p => p.industry).filter(Boolean))).map((industry) => (
                   <MenuItem key={industry} value={industry}>
                     {industry}
                   </MenuItem>
@@ -458,7 +670,7 @@ export const ProspectsPage: React.FC = () => {
               </Select>
             </FormControl>
 
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: 120 }} disabled={useProspectLab}>
               <InputLabel>Priorité</InputLabel>
               <Select
                 multiple
@@ -476,8 +688,8 @@ export const ProspectsPage: React.FC = () => {
 
             <Button
               startIcon={<RefreshIcon />}
-              onClick={refreshProspects}
-              disabled={loading}
+              onClick={handleRefresh}
+              disabled={displayLoading}
             >
               Actualiser
             </Button>
@@ -488,15 +700,15 @@ export const ProspectsPage: React.FC = () => {
       {/* Table des prospects */}
       <Paper sx={{ width: '100%' }}>
         <DataTable
-          data={prospects}
+          data={displayProspects}
           columns={columns}
-          loading={loading}
-          total={total}
-          page={page - 1}
-          rowsPerPage={limit}
+          loading={displayLoading}
+          total={displayTotal}
+          page={displayPage - 1}
+          rowsPerPage={displayLimit}
           rowsPerPageOptions={[5, 10, 20, 25, 50]}
-          onPageChange={(p) => setPage(p + 1)}
-          onRowsPerPageChange={(n) => setLimit(n)}
+          onPageChange={(p) => setDisplayPage(p + 1)}
+          onRowsPerPageChange={(n) => setDisplayLimit(n)}
           getRowId={(row) => row.id}
         />
       </Paper>

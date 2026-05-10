@@ -40,3 +40,6 @@ server/prisma/prisma/
 
 # Temporaires
 **/tmp/
+
+# Notes locales agent (ne pas versionner)
+AGENT.md

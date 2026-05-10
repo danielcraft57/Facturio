@@ -128,6 +128,10 @@ model Organization {
   defaultLanguage String  @default("fr")
   timezone        String  @default("Europe/Paris")
 
+  // Prospection externe (ProspectLab)
+  prospectLabApiUrl String?
+  prospectLabApiKey String?
+
   // Relations
   users          User[]
   clients        Client[]

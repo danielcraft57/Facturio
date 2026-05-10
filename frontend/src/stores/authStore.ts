@@ -16,7 +16,7 @@ interface AuthState {
  */
 interface AuthActions {
   login: (credentials: LoginDto) => Promise<void>
-  signup: (data: SignupDto) => Promise<void>
+  signup: (data: SignupDto) => Promise<void | { needVerification: true; message?: string }>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
   clearError: () => void

@@ -6,6 +6,14 @@ export default defineConfig(({ mode }) => {
   const isDev = mode === 'development'
   const isProd = mode === 'production'
   const env = loadEnv(mode, process.cwd(), '')
+  // Backend ciblé par le proxy Vite.
+  // - En dev : toujours localhost:3000 (sauf si VITE_API_PROXY_TARGET est défini explicitement)
+  // - En build/prod : on se base sur VITE_API_URL (domaine public), sinon fallback sur localhost.
+  const proxyTargetRaw = isDev
+    ? (env.VITE_API_PROXY_TARGET || 'http://localhost:3000')
+    : (env.VITE_API_URL?.replace(/\/api\/?$/, '') || env.VITE_API_PROXY_TARGET || 'http://localhost:3000')
+
+  const proxyTarget = proxyTargetRaw.replace(/\/$/, '')
 
   return {
   plugins: [react()],
@@ -22,9 +30,10 @@ export default defineConfig(({ mode }) => {
         : true,
     proxy: {
       '/api': {
-          // En dev, toujours utiliser le backend local (node13.lan:3000 ou localhost:3000)
-          // En prod (build), cette config n'est pas utilisée (les requêtes vont directement vers VITE_API_URL)
-          target: isDev ? 'http://localhost:3000' : (env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'),
+          // En dev, on proxy /api vers le backend local pour éviter le CORS.
+          // En prod, ce proxy n'est pas utilisé (build statique).
+          // Pour forcer un autre backend en dev : VITE_API_PROXY_TARGET=http://node13.lan:3000
+          target: proxyTarget,
         changeOrigin: true,
       },
     },

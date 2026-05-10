@@ -17,6 +17,7 @@ import { CommonModule } from './common/common.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ProspectsModule } from './prospects/prospects.module';
+import { ProspectionModule } from './prospection/prospection.module';
 import { PacksModule } from './packs/packs.module';
 import { AvoirsModule } from './avoirs/avoirs.module';
 import { UsersModule } from './users/users.module';
@@ -40,6 +41,7 @@ import { ConfigModule } from './config/config.module';
 		DashboardModule,
 		PaymentsModule,
 		ProspectsModule,
+		ProspectionModule,
 		PacksModule,
 		AvoirsModule,
 		AuthModule,

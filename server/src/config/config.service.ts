@@ -182,5 +182,21 @@ export class ConfigService {
 	get urssafFiscalRateServiceBnc(): number {
 		return process.env.URSSAF_FISCAL_RATE_SERVICE_BNC ? Number(process.env.URSSAF_FISCAL_RATE_SERVICE_BNC) : 0.022;
 	}
+
+	// ========================================
+	// PROSPECTLAB
+	// ========================================
+
+	get prospectLabApiUrl(): string {
+		return process.env.PROSPECTLAB_API_URL || 'https://prospectlab.danielcraft.fr';
+	}
+
+	get prospectLabApiKey(): string {
+		return process.env.PROSPECTLAB_API_KEY || '';
+	}
+
+	get prospectLabConfigured(): boolean {
+		return !!process.env.PROSPECTLAB_API_KEY?.trim();
+	}
 }
 

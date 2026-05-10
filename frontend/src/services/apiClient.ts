@@ -7,9 +7,16 @@ class ApiClient {
   private axiosInstance: AxiosInstance;
 
   private constructor() {
+    const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
+    // En dev, on force /api pour passer par le proxy Vite et éviter le CORS.
+    // En prod, si VITE_API_URL n'est pas défini, /api fonctionne quand le frontend
+    // est servi sur le même domaine que le backend.
+    const baseURL = isDev ? '/api' : (import.meta.env.VITE_API_URL || '/api');
+
     this.axiosInstance = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+      baseURL,
       timeout: 10000,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },

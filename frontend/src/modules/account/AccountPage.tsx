@@ -136,7 +136,7 @@ export function AccountPage() {
               <BusinessIcon /> Identité et légal
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   label="Nom affiché"
@@ -146,7 +146,7 @@ export function AccountPage() {
                   helperText="Nom de l'entreprise sur les documents"
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   label="Raison sociale"
@@ -154,34 +154,34 @@ export function AccountPage() {
                   onChange={handleChange('legalName')}
                 />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="SIRET" value={form.siret ?? ''} onChange={handleChange('siret')} />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="SIREN" value={form.siren ?? ''} onChange={handleChange('siren')} />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="N° TVA" value={form.vatNumber ?? ''} onChange={handleChange('vatNumber')} />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="RCS" value={form.rcs ?? ''} onChange={handleChange('rcs')} />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="Ville RCS" value={form.rcsCity ?? ''} onChange={handleChange('rcsCity')} />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="Forme juridique" value={form.legalForm ?? ''} onChange={handleChange('legalForm')} placeholder="ex. SARL, SAS" />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="Capital" value={form.capital ?? ''} onChange={handleChange('capital')} />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="Code APE" value={form.apeCode ?? ''} onChange={handleChange('apeCode')} />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="Représentant légal" value={form.legalRepresentative ?? ''} onChange={handleChange('legalRepresentative')} />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <TextField fullWidth label="Fonction" value={form.legalRepresentativeRole ?? ''} onChange={handleChange('legalRepresentativeRole')} placeholder="ex. Gérant" />
               </Grid>
             </Grid>
@@ -194,7 +194,7 @@ export function AccountPage() {
               <LocationOnIcon /> Adresse
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   label="Adresse"
@@ -203,16 +203,16 @@ export function AccountPage() {
                   placeholder="Numéro et voie"
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField fullWidth label="Complément" value={form.address2 ?? ''} onChange={handleChange('address2')} />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField fullWidth label="Code postal" value={form.zipCode ?? ''} onChange={handleChange('zipCode')} />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField fullWidth label="Ville" value={form.city ?? ''} onChange={handleChange('city')} />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField fullWidth label="Pays" value={form.country ?? 'FR'} onChange={handleChange('country')} />
               </Grid>
             </Grid>
@@ -225,7 +225,7 @@ export function AccountPage() {
               <ContactMailIcon /> Contact
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   type="email"
@@ -235,10 +235,10 @@ export function AccountPage() {
                   InputProps={{ startAdornment: <InputAdornment position="start">@</InputAdornment> }}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField fullWidth label="Téléphone" value={form.phone ?? ''} onChange={handleChange('phone')} />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField fullWidth label="Site web" value={form.website ?? ''} onChange={handleChange('website')} placeholder="https://..." />
               </Grid>
             </Grid>
