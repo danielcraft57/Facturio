@@ -198,5 +198,25 @@ export class ConfigService {
 	get prospectLabConfigured(): boolean {
 		return !!process.env.PROSPECTLAB_API_KEY?.trim();
 	}
+
+	// ========================================
+	// STRIPE
+	// ========================================
+
+	get stripeSecretKey(): string {
+		return process.env.STRIPE_SECRET_KEY || '';
+	}
+
+	get stripePublishableKey(): string {
+		return process.env.STRIPE_PUBLISHABLE_KEY || '';
+	}
+
+	get stripeWebhookSecret(): string {
+		return process.env.STRIPE_WEBHOOK_SECRET || '';
+	}
+
+	get stripeConfigured(): boolean {
+		return !!this.stripeSecretKey.trim();
+	}
 }
 

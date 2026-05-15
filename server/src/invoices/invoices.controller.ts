@@ -8,6 +8,8 @@ import { PdfService } from '../common/pdf.service';
 import { EmailService } from '../common/email.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { StripeService } from '../stripe/stripe.service';
+import { assertValidPublicToken } from './public-token.util';
 
 @Controller('invoices')
 export class InvoicesController {
@@ -77,9 +79,10 @@ export class InvoicesController {
 		const invoice = await this.invoices.findOne(id, user.organizationId);
 		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
 		const pdf = await this.pdfService.generateInvoicePdf(invoice, organization);
-		if (invoice.client?.email) {
+		if (invoice.client?.email && result.publicToken) {
 			const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
 			const trackOpenUrl = `${apiUrl}/api/track/opened/invoice/${result.publicToken}`;
+			const paymentUrl = InvoicesService.buildPublicPaymentUrl(result.publicToken);
 			await this.email.sendInvoice({
 				to: invoice.client.email,
 				invoiceNumber: invoice.number,
@@ -87,7 +90,8 @@ export class InvoicesController {
 				clientName: (invoice.client as any).name || (invoice.client as any).companyName || '',
 				total: Number(invoice.total),
 				pdfBuffer: pdf,
-				trackOpenUrl
+				trackOpenUrl,
+				paymentUrl
 			});
 		}
 		return result;
@@ -102,8 +106,20 @@ export class InvoicesController {
 export class PublicInvoicesController {
 	constructor(
 		private readonly invoices: InvoicesService,
-		private readonly pdfService: PdfService
+		private readonly pdfService: PdfService,
+		private readonly stripe: StripeService
 	) {}
+
+	@Get(':token/checkout')
+	async checkout(@Param('token') token: string) {
+		assertValidPublicToken(token);
+		const invoice = await this.invoices.publicView(token);
+		let payment: { clientSecret: string; amount: number; currency: string } | null = null;
+		if (invoice.canPayOnline) {
+			payment = await this.stripe.createPaymentIntentForInvoice(token);
+		}
+		return { invoice, payment };
+	}
 
 	@Get(':token')
 	async view(@Param('token') token: string) {
@@ -113,7 +129,8 @@ export class PublicInvoicesController {
 	@Get(':token/pdf')
 	@Header('Content-Type', 'application/pdf')
 	async downloadPdf(@Param('token') token: string, @Res() res: Response) {
-		const invoice = await this.invoices.publicView(token);
+		assertValidPublicToken(token);
+		const invoice = await this.invoices.findByPublicTokenForPdf(token);
 		const buf = await this.pdfService.generateInvoicePdf(invoice);
 		res.setHeader('Content-Disposition', `inline; filename=facture-${invoice.number}.pdf`);
 		return res.send(buf);

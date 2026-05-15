@@ -4,6 +4,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RateLimitMiddleware, RateLimitService } from './common/rate-limit.middleware';
+import { PublicAccessRateLimitMiddleware } from './common/public-access-rate-limit.middleware';
 import { ClientsModule } from './clients/clients.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { TaxesModule } from './taxes/taxes.module';
@@ -24,10 +25,12 @@ import { UsersModule } from './users/users.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { UrssafModule } from './urssaf/urssaf.module';
 import { ConfigModule } from './config/config.module';
+import { StripeModule } from './stripe/stripe.module';
 
 @Module({
 	imports: [
 		ConfigModule,
+		StripeModule,
 		PrismaModule,
 		CommonModule,
 		ClientsModule,
@@ -53,6 +56,7 @@ import { ConfigModule } from './config/config.module';
 	providers: [
 		{ provide: APP_GUARD, useClass: JwtAuthGuard },
 		RateLimitService,
+		PublicAccessRateLimitMiddleware,
 	]
 })
 export class AppModule implements NestModule {
@@ -60,5 +64,8 @@ export class AppModule implements NestModule {
 		consumer
 			.apply(RateLimitMiddleware)
 			.forRoutes('auth/login', 'auth/signup', 'auth/forgot-password');
+		consumer
+			.apply(PublicAccessRateLimitMiddleware)
+			.forRoutes('public/invoices', 'public/quotes');
 	}
 }

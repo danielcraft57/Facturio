@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { BrowserRouter, Route, Routes as RouterRoutes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes as RouterRoutes, useParams } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import { CssBaseline, CircularProgress, Box } from '@mui/material'
 import { useState, useEffect, lazy, Suspense } from 'react'
@@ -17,7 +17,8 @@ import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { PublicQuotePage } from './pages/PublicQuotePage'
 import { PublicQuoteAcceptPage } from './pages/PublicQuoteAcceptPage'
 import { PublicQuoteRejectPage } from './pages/PublicQuoteRejectPage'
-import { PublicInvoicePage } from './pages/PublicInvoicePage'
+import { ClientInvoicePage } from './pages/ClientInvoicePage'
+import { ClientPaymentLayout } from './components/ClientPaymentLayout'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
@@ -54,6 +55,11 @@ function AppWithToasts({ children }: { children: ReactNode }) {
       {children}
     </>
   )
+}
+
+function LegacyPublicInvoiceRedirect() {
+  const { token } = useParams<{ token: string }>()
+  return <Navigate to={token ? `/facture/${token}` : '/'} replace />
 }
 
 export function App() {
@@ -210,12 +216,16 @@ export function App() {
                 }
               />
               <Route
-                path="/public/factures/:token"
+                path="/facture/:token"
                 element={
-                  <PublicLayout>
-                    <PublicInvoicePage />
-                  </PublicLayout>
+                  <ClientPaymentLayout>
+                    <ClientInvoicePage />
+                  </ClientPaymentLayout>
                 }
+              />
+              <Route
+                path="/public/factures/:token"
+                element={<LegacyPublicInvoiceRedirect />}
               />
 
               {/* Routes privées (protégées) */}

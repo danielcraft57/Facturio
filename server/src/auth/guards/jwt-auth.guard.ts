@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
 	'/api/auth/google/callback',
 	'/api/public',
 	'/api/track',
+	'/api/webhooks',
 ];
 
 /**

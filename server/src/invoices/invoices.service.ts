@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { AccountingService } from '../accounting/accounting.service';
 import { ConfigService } from '../config/config.service';
+import { assertValidPublicToken } from './public-token.util';
 
 /**
  * Ligne de facture
@@ -501,13 +502,98 @@ export class InvoicesService {
 	 * @returns Données facture pour affichage public
 	 * @throws {NotFoundException} Si facture non trouvée
 	 */
-	async publicView(token: string) {
+	/**
+	 * Réponse publique minimale (aucune donnée interne sensible).
+	 */
+	private toPublicInvoiceDto(
+		invoice: {
+			number: string;
+			date: Date;
+			dueDate: Date | null;
+			status: string;
+			currency: string;
+			subtotal: unknown;
+			tax: unknown;
+			total: unknown;
+			legalMention: string | null;
+			sentAt: Date | null;
+			lines: { description: string; quantity: unknown; unitPrice: unknown; total: unknown }[];
+			client: { name: string | null; companyName: string | null } | null;
+			organization: { name: string | null; legalName: string | null } | null;
+			payments: { amount: unknown }[];
+		},
+		balance: number,
+		totalPaid: number
+	) {
+		const stripeEnabled = !!process.env.STRIPE_SECRET_KEY?.trim();
+		const canPayOnline = balance > 0 && stripeEnabled && invoice.status !== 'CANCELLED';
+		return {
+			number: invoice.number,
+			date: invoice.date,
+			dueDate: invoice.dueDate,
+			status: invoice.status,
+			currency: invoice.currency || 'EUR',
+			subtotal: Number(invoice.subtotal),
+			tax: Number(invoice.tax),
+			total: Number(invoice.total),
+			balance,
+			totalPaid,
+			legalMention: invoice.legalMention,
+			stripeEnabled,
+			canPayOnline,
+			issuerName:
+				invoice.organization?.legalName ||
+				invoice.organization?.name ||
+				process.env.COMPANY_NAME ||
+				'',
+			client: {
+				name: invoice.client?.name || invoice.client?.companyName || ''
+			},
+			lines: invoice.lines.map((line) => ({
+				description: line.description,
+				quantity: Number(line.quantity),
+				unitPrice: Number(line.unitPrice),
+				total: Number(line.total)
+			}))
+		};
+	}
+
+	/** Charge la facture complète pour génération PDF (accès token + envoyée). */
+	async findByPublicTokenForPdf(token: string) {
+		const safeToken = assertValidPublicToken(token);
 		const invoice = await this.prisma.invoice.findUnique({
-			where: { publicToken: token },
+			where: { publicToken: safeToken },
 			include: { lines: true, client: true }
 		});
-		if (!invoice) throw new NotFoundException('Facture introuvable');
+		if (!invoice || !invoice.sentAt) {
+			throw new NotFoundException('Facture introuvable');
+		}
 		return invoice;
+	}
+
+	async publicView(token: string) {
+		const safeToken = assertValidPublicToken(token);
+		const invoice = await this.prisma.invoice.findUnique({
+			where: { publicToken: safeToken },
+			include: {
+				lines: true,
+				client: true,
+				payments: true,
+				organization: { select: { name: true, legalName: true } }
+			}
+		});
+		if (!invoice || !invoice.sentAt) {
+			throw new NotFoundException('Facture introuvable');
+		}
+		const totalPaid = invoice.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+		const total = Number(invoice.total);
+		const balance = Math.round((total - totalPaid) * 100) / 100;
+		return this.toPublicInvoiceDto(invoice, balance, totalPaid);
+	}
+
+	static buildPublicPaymentUrl(token: string): string {
+		const baseUrl = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+		return `${baseUrl.replace(/\/$/, '')}/facture/${token}`;
 	}
 
 	/**
@@ -520,7 +606,7 @@ export class InvoicesService {
 	 */
 	async sendInvoice(id: number, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
-		const token = invoice.publicToken ?? randomBytes(24).toString('hex');
+		const token = invoice.publicToken ?? randomBytes(32).toString('hex');
 		const updated = await this.prisma.invoice.update({
 			where: { id },
 			data: { publicToken: token, sentAt: new Date(), status: 'SENT' },
@@ -529,8 +615,8 @@ export class InvoicesService {
 		await this.prisma.emailEvent.create({
 			data: { invoiceId: id, type: 'sent' }
 		});
-		const baseUrl = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
-		return { ...updated, publicUrl: `${baseUrl}/public/factures/${token}` };
+		const publicUrl = InvoicesService.buildPublicPaymentUrl(token);
+		return { ...updated, publicUrl };
 	}
 }
 

@@ -1,9 +1,15 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Headers, Post, Req } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import { Request } from 'express';
 import { PrismaService } from './prisma/prisma.service';
+import { StripeService } from './stripe/stripe.service';
 
 @Controller('webhooks')
 export class WebhooksController {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly stripeService: StripeService
+	) {}
 
 	@Post('email')
 	async email(@Body() event: any) {
@@ -21,5 +27,20 @@ export class WebhooksController {
 			}
 		});
 		return { ok: true };
+	}
+
+	@Post('stripe')
+	async stripe(
+		@Req() req: RawBodyRequest<Request>,
+		@Headers('stripe-signature') signature: string | undefined
+	) {
+		if (!signature) {
+			throw new BadRequestException('En-tête stripe-signature manquant');
+		}
+		const rawBody = req.rawBody;
+		if (!rawBody) {
+			throw new BadRequestException('Corps brut requis pour le webhook Stripe');
+		}
+		return this.stripeService.handleWebhook(rawBody, signature);
 	}
 }

@@ -15,6 +15,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create(AppModule, {
 		logger: WinstonModule.createLogger(winstonConfig),
+		rawBody: true
 	});
 
 	const config = app.get(ConfigService);
