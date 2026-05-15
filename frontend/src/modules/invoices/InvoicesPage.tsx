@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -25,59 +25,72 @@ import {
   useTheme,
   useMediaQuery,
   CircularProgress,
-  Alert
+  Alert,
 } from '@mui/material'
 import {
   Add,
   Search,
   FilterList,
-  MoreVert,
   Edit,
   Visibility,
   Send,
-  Download
+  Download,
+  NotificationsActive,
 } from '@mui/icons-material'
-import { invoiceService } from '../../services/invoices'
+import { logActivity } from '../../utils/activity'
+import { apiClient } from '../../services/api'
+import {
+  invoiceService,
+  normalizeInvoiceFromApi,
+  parseInvoicesListResponse,
+  toCreateInvoiceApiBody,
+  unwrapApiPayload,
+} from '../../services/invoices'
+import type { CreateInvoiceData, Invoice } from '../../services/invoices'
+import { useToast } from '../../components/Toast'
+import { PageHeader } from '../../components/finance/PageHeader'
+import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
 import { CreateInvoiceDialog } from './components/CreateInvoiceDialog'
-import type { Invoice } from '../../services/invoices'
 
 export function InvoicesPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isTablet = useMediaQuery(theme.breakpoints.down('md'))
-  
+
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadInvoices()
-  }, [])
-
-  const loadInvoices = async () => {
+  const loadInvoices = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
+      apiClient.invalidateCache('/invoices')
       const response = await invoiceService.getInvoices({ page: 1, limit: 100 })
-      setInvoices(response.data?.invoices || [])
-    } catch (err) {
-      setError('Erreur lors du chargement des factures')
-      console.error('Invoices error:', err)
+      setInvoices(parseInvoicesListResponse(response))
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erreur lors du chargement des factures'
+      setError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- toast stable enough for errors
+  }, [])
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount)
-  }
+  useEffect(() => {
+    loadInvoices()
+  }, [loadInvoices])
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -101,117 +114,143 @@ export function InvoicesPage() {
     }
   }
 
-  const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.client.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredInvoices = invoices.filter((invoice) => {
+    const matchesSearch =
+      invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.client.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter
     return matchesSearch && matchesStatus
   })
 
-  const handleCreateInvoice = async (data: any) => {
+  const handleCreateInvoice = async (data: CreateInvoiceData) => {
     try {
-      console.log('Création de facture:', data)
-      
-      // Simulation de création
-      const newInvoice: Invoice = {
-        id: Math.random().toString(36).substr(2, 9),
-        number: `FAC-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
-        clientId: data.clientId,
-        client: {
-          id: data.clientId,
-          name: invoices.find(inv => inv.clientId === data.clientId)?.client.name || 'Client inconnu',
-          email: invoices.find(inv => inv.clientId === data.clientId)?.client.email || ''
-        },
-        status: 'draft',
-        issueDate: data.issueDate,
-        dueDate: data.dueDate,
-        items: data.items.map((item: any, index: number) => ({
-          id: (index + 1).toString(),
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          taxRate: item.taxRate,
-          total: item.quantity * item.unitPrice,
-          totalWithTax: (item.quantity * item.unitPrice) * (1 + item.taxRate / 100)
-        })),
-        subtotal: data.items.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0),
-        taxTotal: data.items.reduce((sum: number, item: any) => sum + ((item.quantity * item.unitPrice) * item.taxRate / 100), 0),
-        total: data.items.reduce((sum: number, item: any) => sum + ((item.quantity * item.unitPrice) * (1 + item.taxRate / 100)), 0),
-        currency: data.currency,
-        notes: data.notes,
-        terms: data.terms,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-      
-      setInvoices(prev => [newInvoice, ...prev])
+      setCreating(true)
+      const response = await invoiceService.createInvoiceFromApi(toCreateInvoiceApiBody(data))
+      const created = normalizeInvoiceFromApi(
+        unwrapApiPayload<Record<string, unknown>>(response)
+      )
+      setInvoices((prev) => [created, ...prev.filter((i) => i.id !== created.id)])
       setCreateDialogOpen(false)
-    } catch (error) {
-      console.error('Erreur lors de la création de la facture:', error)
+      toast.success(`Facture ${created.number} créée`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Impossible de créer la facture'
+      toast.error(message)
+      throw err
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleSendInvoice = async (invoice: Invoice) => {
+    try {
+      setActionLoadingId(invoice.id)
+      await invoiceService.sendInvoice(invoice.id)
+      toast.success(`Facture ${invoice.number} envoyée par email`)
+      logActivity({
+        type: 'success',
+        title: 'Facture envoyée',
+        message: `${invoice.number} envoyée à ${invoice.client.email || invoice.client.name}`,
+        category: 'invoice',
+        href: `/factures/${invoice.id}`,
+      })
+      await loadInvoices()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de l\'envoi')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const canRemind = (status: Invoice['status']) => status === 'sent' || status === 'overdue'
+
+  const handleSendReminder = async (invoice: Invoice) => {
+    if (!window.confirm(`Envoyer une relance pour la facture ${invoice.number} à ${invoice.client.email || 'ce client'} ?`)) {
+      return
+    }
+    try {
+      setActionLoadingId(invoice.id)
+      const res = await invoiceService.sendReminder(invoice.id)
+      const days = res.data?.daysOverdue
+      toast.success(
+        days
+          ? `Relance envoyée (${days} jour(s) de retard)`
+          : `Relance envoyée pour ${invoice.number}`
+      )
+      logActivity({
+        type: 'info',
+        title: 'Relance envoyée',
+        message: `Rappel de paiement — ${invoice.number}`,
+        category: 'invoice',
+        href: `/factures/${invoice.id}`,
+      })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la relance')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleDownloadPdf = async (invoice: Invoice) => {
+    try {
+      setActionLoadingId(invoice.id)
+      const blob = await invoiceService.generatePDF(invoice.id)
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `facture-${invoice.number}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      toast.success('PDF téléchargé')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors du téléchargement du PDF')
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
   if (loading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '50vh',
-        p: { xs: 1, sm: 2, md: 3 }
-      }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', p: 3 }}>
         <CircularProgress size={60} />
       </Box>
     )
   }
 
-  if (error) {
-    return (
-      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-        <Alert severity="error" sx={{ mb: 3 }}>
+  return (
+    <Box sx={{ p: financePagePadding }}>
+      <PageHeader
+        title="Factures"
+        subtitle="Émission, envoi par email et relances de paiement"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => setCreateDialogOpen(true)}
+            sx={{ minWidth: { xs: '100%', sm: 'auto' }, ...financePrimaryButtonSx }}
+          >
+            Nouvelle facture
+          </Button>
+        }
+      />
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
-      </Box>
-    )
-  }
+      )}
 
-  return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      {/* En-tête */}
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between', 
-        alignItems: { xs: 'stretch', sm: 'center' }, 
-        mb: 3,
-        gap: { xs: 2, sm: 0 }
-      }}>
-        <Typography variant="h4" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-          Factures
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => setCreateDialogOpen(true)}
-          sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
-        >
-          Nouvelle facture
-        </Button>
-      </Box>
-
-      {/* Filtres */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ mb: 3, ...financeCardSx }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: { 
-              xs: '1fr', 
-              sm: '1fr 1fr',
-              md: '2fr 1fr 1fr' 
-            }, 
-            gap: { xs: 2, sm: 2, md: 2 }, 
-            alignItems: 'center' 
-          }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '2fr 1fr 1fr' },
+              gap: 2,
+              alignItems: 'center',
+            }}
+          >
             <TextField
               fullWidth
               placeholder="Rechercher une facture..."
@@ -227,11 +266,7 @@ export function InvoicesPage() {
             />
             <FormControl fullWidth>
               <InputLabel>Statut</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Statut"
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
+              <Select value={statusFilter} label="Statut" onChange={(e) => setStatusFilter(e.target.value)}>
                 <MenuItem value="all">Tous</MenuItem>
                 <MenuItem value="draft">Brouillons</MenuItem>
                 <MenuItem value="sent">Envoyées</MenuItem>
@@ -252,132 +287,143 @@ export function InvoicesPage() {
         </CardContent>
       </Card>
 
-      {/* Tableau des factures */}
-      <Card>
+      <Card sx={financeCardSx}>
         <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
           <TableContainer sx={{ maxHeight: 600 }}>
-            <Table size={isMobile ? "small" : "medium"}>
+            <Table size={isMobile ? 'small' : 'medium'}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>N° Facture</TableCell>
-                  <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Client</TableCell>
-                  <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Statut</TableCell>
-                  {!isMobile && <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Montant</TableCell>}
-                  {!isTablet && <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Échéance</TableCell>}
-                  <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Actions</TableCell>
+                  <TableCell>N° Facture</TableCell>
+                  <TableCell>Client</TableCell>
+                  <TableCell>Statut</TableCell>
+                  {!isMobile && <TableCell align="right">Montant</TableCell>}
+                  {!isTablet && <TableCell>Échéance</TableCell>}
+                  <TableCell align="center">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        {invoice.number}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
-                        {new Date(invoice.issueDate).toLocaleDateString('fr-FR')}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar sx={{ 
-                          width: { xs: 24, sm: 32 }, 
-                          height: { xs: 24, sm: 32 }, 
-                          mr: { xs: 1, sm: 2 }, 
-                          bgcolor: 'primary.main',
-                          fontSize: { xs: '0.75rem', sm: '0.875rem' }
-                        }}>
-                          {invoice.client.name.charAt(0)}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                            {invoice.client.name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
-                            {invoice.client.email}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={getStatusLabel(invoice.status)} 
-                        color={getStatusColor(invoice.status) as any}
-                        size="small"
-                        sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}
-                      />
-                    </TableCell>
-                    {!isMobile && (
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight="medium" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          {formatCurrency(invoice.total)}
-                        </Typography>
-                      </TableCell>
-                    )}
-                    {!isTablet && (
+                {filteredInvoices.map((invoice) => {
+                  const busy = actionLoadingId === invoice.id
+                  return (
+                    <TableRow key={invoice.id} hover>
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          {new Date(invoice.dueDate).toLocaleDateString('fr-FR')}
+                        <Typography variant="body2" fontWeight={500}>
+                          {invoice.number}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(invoice.issueDate).toLocaleDateString('fr-FR')}
                         </Typography>
                       </TableCell>
-                    )}
-                    <TableCell align="center">
-                      <Stack direction="row" spacing={0.5} justifyContent="center">
-                        <IconButton 
-                          size="small" 
-                          sx={{ p: 0.5 }} 
-                          title="Voir"
-                          onClick={() => navigate(`/factures/${invoice.id}`)}
-                        >
-                          <Visibility sx={{ fontSize: 16 }} />
-                        </IconButton>
-                        <IconButton size="small" sx={{ p: 0.5 }} title="Éditer">
-                          <Edit sx={{ fontSize: 16 }} />
-                        </IconButton>
-                        {invoice.status === 'draft' && (
-                          <IconButton size="small" sx={{ p: 0.5 }} title="Envoyer">
-                            <Send sx={{ fontSize: 16 }} />
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Avatar sx={{ width: 32, height: 32, mr: 1.5, bgcolor: 'primary.main' }}>
+                            {(invoice.client.name || '?').charAt(0)}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" fontWeight={500}>
+                              {invoice.client.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {invoice.client.email}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getStatusLabel(invoice.status)}
+                          color={getStatusColor(invoice.status) as 'success' | 'info' | 'error' | 'warning' | 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      {!isMobile && (
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight="medium">
+                            {formatCurrency(invoice.total)}
+                          </Typography>
+                        </TableCell>
+                      )}
+                      {!isTablet && (
+                        <TableCell>
+                          {invoice.dueDate
+                            ? new Date(invoice.dueDate).toLocaleDateString('fr-FR')
+                            : '—'}
+                        </TableCell>
+                      )}
+                      <TableCell align="center">
+                        <Stack direction="row" spacing={0.5} justifyContent="center">
+                          <IconButton
+                            size="small"
+                            title="Voir"
+                            disabled={busy}
+                            onClick={() => navigate(`/factures/${invoice.id}`)}
+                          >
+                            <Visibility fontSize="small" />
                           </IconButton>
-                        )}
-                        <IconButton size="small" sx={{ p: 0.5 }} title="Télécharger">
-                          <Download sx={{ fontSize: 16 }} />
-                        </IconButton>
-                        <IconButton size="small" sx={{ p: 0.5 }} title="Plus d'actions">
-                          <MoreVert sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          <IconButton
+                            size="small"
+                            title="Éditer"
+                            disabled={busy}
+                            onClick={() => navigate(`/factures/${invoice.id}`)}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                          {invoice.status === 'draft' && (
+                            <IconButton
+                              size="small"
+                              title="Envoyer"
+                              disabled={busy}
+                              onClick={() => handleSendInvoice(invoice)}
+                            >
+                              <Send fontSize="small" />
+                            </IconButton>
+                          )}
+                          {canRemind(invoice.status) && (
+                            <IconButton
+                              size="small"
+                              title="Relancer (rappel de paiement)"
+                              disabled={busy}
+                              color="warning"
+                              onClick={() => handleSendReminder(invoice)}
+                            >
+                              <NotificationsActive fontSize="small" />
+                            </IconButton>
+                          )}
+                          <IconButton
+                            size="small"
+                            title="Télécharger le PDF"
+                            disabled={busy}
+                            onClick={() => handleDownloadPdf(invoice)}
+                          >
+                            <Download fontSize="small" />
+                          </IconButton>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </TableContainer>
-          
+
           {filteredInvoices.length === 0 && (
-            <Box sx={{ 
-              textAlign: 'center', 
-              py: 4,
-              color: 'text.secondary'
-            }}>
+            <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
               <Typography variant="body1">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'Aucune facture ne correspond aux critères de recherche'
-                  : 'Aucune facture trouvée'
-                }
+                {searchTerm || statusFilter !== 'all'
+                  ? 'Aucune facture ne correspond aux critères'
+                  : 'Aucune facture — créez-en une avec « Nouvelle facture »'}
               </Typography>
             </Box>
           )}
         </CardContent>
       </Card>
 
-      {/* Dialogue de création */}
       <CreateInvoiceDialog
         open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
+        onClose={() => !creating && setCreateDialogOpen(false)}
         onSubmit={handleCreateInvoice}
+        submitting={creating}
       />
     </Box>
   )
 }
-
-

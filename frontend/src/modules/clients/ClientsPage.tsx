@@ -45,8 +45,24 @@ import {
   Upload,
   Download
 } from '@mui/icons-material'
-import { clientService } from '../../services/clients'
+import {
+  clientService,
+  mapApiClientToClient,
+  parseClientsListResponse,
+  toCreateClientPayload,
+  unwrapApiPayload,
+} from '../../services/clients'
 import type { Client } from '../../services/clients'
+import { PageHeader } from '../../components/finance/PageHeader'
+import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
+
+const emptyClientForm = {
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  status: 'prospect' as Client['status'],
+}
 
 export function ClientsPage() {
   const navigate = useNavigate()
@@ -65,6 +81,9 @@ export function ClientsPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importProgress, setImportProgress] = useState(0)
+  const [clientForm, setClientForm] = useState(emptyClientForm)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -97,9 +116,7 @@ export function ClientsPage() {
         setLoading(true)
         setError(null)
         const response = await clientService.getClients({ page: 1, limit: 100 })
-        const payload = response.data
-        const list = payload?.clients ?? []
-        setClients(Array.isArray(list) ? list : [])
+        setClients(parseClientsListResponse(response))
       } catch (err) {
         setError('Erreur lors du chargement des clients')
         console.error('Clients error:', err)
@@ -145,6 +162,59 @@ export function ClientsPage() {
     }
   }
 
+  const resetClientForm = () => {
+    setClientForm(emptyClientForm)
+    setCreateError(null)
+  }
+
+  const handleOpenCreateDialog = () => {
+    resetClientForm()
+    setOpenDialog(true)
+  }
+
+  const handleCreateClient = async () => {
+    const name = clientForm.name.trim()
+    const email = clientForm.email.trim()
+    if (!name) {
+      setCreateError('Le nom du client est obligatoire')
+      return
+    }
+    if (!email) {
+      setCreateError('L\'email est obligatoire')
+      return
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setCreateError('Email invalide')
+      return
+    }
+
+    try {
+      setCreating(true)
+      setCreateError(null)
+      const payload = toCreateClientPayload({
+        name,
+        email,
+        phone: clientForm.phone,
+        address: clientForm.address,
+        isCompany: true,
+        companyName: name,
+      })
+      const response = await clientService.createClient(payload as any)
+      const created = mapApiClientToClient(
+        unwrapApiPayload<Record<string, unknown>>(response),
+        clientForm.status
+      )
+      setClients((prev) => [created, ...prev])
+      setOpenDialog(false)
+      resetClientForm()
+    } catch (err: any) {
+      setCreateError(err?.message || 'Impossible de créer le client')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   const handleImportClients = async () => {
     if (!importFile) return
     
@@ -161,9 +231,7 @@ export function ClientsPage() {
         setImportProgress(0)
         // Recharger la liste
         const listResponse = await clientService.getClients({ page: 1, limit: 100 })
-        const payload = listResponse.data
-        const list = payload?.clients ?? []
-        setClients(Array.isArray(list) ? list : [])
+        setClients(parseClientsListResponse(listResponse))
       }
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'import')
@@ -195,48 +263,41 @@ export function ClientsPage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between', 
-        alignItems: { xs: 'stretch', sm: 'center' }, 
-        mb: 3,
-        gap: { xs: 2, sm: 0 }
-      }}>
-        <Typography variant="h4" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-          Clients
-        </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Button
-            variant="outlined"
-            startIcon={<Upload />}
-            onClick={() => setImportDialogOpen(true)}
-            sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
-          >
-            Importer CSV
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<Download />}
-            onClick={handleExportClients}
-            sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
-          >
-            Exporter CSV
-          </Button>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => setOpenDialog(true)}
-          sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
-        >
-          Nouveau client
-        </Button>
-        </Stack>
-      </Box>
+    <Box sx={{ p: financePagePadding }}>
+      <PageHeader
+        title="Clients"
+        subtitle="Carnet clients, contacts et historique commercial"
+        actions={
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Button
+              variant="outlined"
+              startIcon={<Upload />}
+              onClick={() => setImportDialogOpen(true)}
+              sx={{ minWidth: { xs: '100%', sm: 'auto' }, textTransform: 'none', fontWeight: 600 }}
+            >
+              Importer CSV
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Download />}
+              onClick={handleExportClients}
+              sx={{ minWidth: { xs: '100%', sm: 'auto' }, textTransform: 'none', fontWeight: 600 }}
+            >
+              Exporter CSV
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={handleOpenCreateDialog}
+              sx={{ minWidth: { xs: '100%', sm: 'auto' }, ...financePrimaryButtonSx }}
+            >
+              Nouveau client
+            </Button>
+          </Stack>
+        }
+      />
 
-      {/* Filtres */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ mb: 3, ...financeCardSx }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           <Box sx={{ 
             display: 'grid', 
@@ -287,7 +348,7 @@ export function ClientsPage() {
       </Card>
 
       {/* Tableau des clients */}
-      <Card>
+      <Card sx={financeCardSx}>
         <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
           <TableContainer sx={{ maxHeight: 600 }}>
             <Table size={isMobile ? "small" : "medium"}>
@@ -493,25 +554,59 @@ export function ClientsPage() {
       {/* Dialog nouveau client */}
       <Dialog 
         open={openDialog} 
-        onClose={() => setOpenDialog(false)} 
+        onClose={() => {
+          if (creating) return
+          setOpenDialog(false)
+          resetClientForm()
+        }} 
         maxWidth="md" 
         fullWidth
         fullScreen={isMobile}
       >
         <DialogTitle sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Nouveau client</DialogTitle>
         <DialogContent>
+          {createError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setCreateError(null)}>
+              {createError}
+            </Alert>
+          )}
           <Box sx={{ 
             display: 'grid', 
             gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, 
             gap: 2, 
             mt: 1 
           }}>
-            <TextField fullWidth label="Nom de l'entreprise" />
-            <TextField fullWidth label="Email" type="email" />
-            <TextField fullWidth label="Téléphone" />
+            <TextField
+              fullWidth
+              required
+              label="Nom de l'entreprise"
+              value={clientForm.name}
+              onChange={(e) => setClientForm((f) => ({ ...f, name: e.target.value }))}
+            />
+            <TextField
+              fullWidth
+              required
+              label="Email"
+              type="email"
+              value={clientForm.email}
+              onChange={(e) => setClientForm((f) => ({ ...f, email: e.target.value }))}
+            />
+            <TextField
+              fullWidth
+              label="Téléphone"
+              value={clientForm.phone}
+              onChange={(e) => setClientForm((f) => ({ ...f, phone: e.target.value }))}
+              helperText="Optionnel (affichage local uniquement)"
+            />
             <FormControl fullWidth>
-              <InputLabel>Statut</InputLabel>
-              <Select label="Statut" defaultValue="prospect">
+              <InputLabel>Statut (affichage)</InputLabel>
+              <Select
+                label="Statut (affichage)"
+                value={clientForm.status}
+                onChange={(e) =>
+                  setClientForm((f) => ({ ...f, status: e.target.value as Client['status'] }))
+                }
+              >
                 <MenuItem value="active">Actif</MenuItem>
                 <MenuItem value="inactive">Inactif</MenuItem>
                 <MenuItem value="prospect">Prospect</MenuItem>
@@ -521,15 +616,25 @@ export function ClientsPage() {
               fullWidth 
               label="Adresse" 
               multiline 
-              rows={3} 
+              rows={3}
+              value={clientForm.address}
+              onChange={(e) => setClientForm((f) => ({ ...f, address: e.target.value }))}
               sx={{ gridColumn: { xs: '1', md: '1 / -1' } }} 
             />
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: { xs: 2, sm: 3 } }}>
-          <Button onClick={() => setOpenDialog(false)}>Annuler</Button>
-          <Button variant="contained" onClick={() => setOpenDialog(false)}>
-            Créer le client
+          <Button
+            onClick={() => {
+              setOpenDialog(false)
+              resetClientForm()
+            }}
+            disabled={creating}
+          >
+            Annuler
+          </Button>
+          <Button variant="contained" onClick={handleCreateClient} disabled={creating}>
+            {creating ? <CircularProgress size={22} color="inherit" /> : 'Créer le client'}
           </Button>
         </DialogActions>
       </Dialog>

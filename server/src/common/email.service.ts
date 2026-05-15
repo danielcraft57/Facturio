@@ -77,11 +77,26 @@ export class EmailService {
 		text?: string;
 		attachments?: { filename: string; content: Buffer; contentType?: string }[];
 		from?: string;
+		replyTo?: string;
 	}): Promise<void> {
 		try {
 			const from = options.from ?? `${this.fromName} <${this.fromEmail}>`;
-			const { from: _omit, ...rest } = options;
-			await this.transporter.sendMail({ from, ...rest });
+			const { from: _omit, replyTo, ...rest } = options;
+			const reply =
+				replyTo ||
+				process.env.COMPANY_EMAIL ||
+				process.env.MAIL_FROM_INVOICE ||
+				this.fromEmail;
+			await this.transporter.sendMail({
+				from,
+				replyTo: reply,
+				...rest,
+				headers: {
+					'Auto-Submitted': 'auto-generated',
+					'X-Auto-Response-Suppress': 'All',
+					...(rest as { headers?: Record<string, string> }).headers
+				}
+			});
 			this.logger.log(`Email envoyé à ${options.to}: ${options.subject}`);
 		} catch (error) {
 			this.logger.error(`Erreur envoi email à ${options.to}`, error);
@@ -102,7 +117,8 @@ export class EmailService {
 		trackOpenUrl?: string;
 		paymentUrl?: string;
 	}): Promise<void> {
-		const subject = `Facture ${options.invoiceNumber}`;
+		const company = process.env.COMPANY_NAME || 'Facturio';
+		const subject = `Facture ${options.invoiceNumber} — ${company}`;
 		const html = this.getInvoiceTemplate({
 			invoiceNumber: options.invoiceNumber,
 			invoiceDate: options.invoiceDate,
@@ -112,12 +128,21 @@ export class EmailService {
 			paymentUrl: options.paymentUrl
 		});
 
+		const paymentLine = options.paymentUrl
+			? `\n\nConsulter et payer en ligne :\n${options.paymentUrl}\n`
+			: '';
+
 		await this.send({
 			from: this.invoiceFrom,
 			to: options.to,
 			subject,
 			html,
-			text: `Bonjour,\n\nVeuillez trouver ci-joint la facture ${options.invoiceNumber} d'un montant de ${this.formatCurrency(options.total)}.\n\nCordialement`,
+			text:
+				`Bonjour ${options.clientName},\n\n` +
+				`Veuillez trouver ci-joint la facture ${options.invoiceNumber} ` +
+				`du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')} ` +
+				`d'un montant de ${this.formatCurrency(options.total)}.${paymentLine}\n` +
+				`Cordialement,\n${company}`,
 			attachments: [{
 				filename: `facture-${options.invoiceNumber}.pdf`,
 				content: options.pdfBuffer,
@@ -177,21 +202,34 @@ export class EmailService {
 		clientName: string;
 		amount: number;
 		daysOverdue?: number;
+		paymentUrl?: string;
+		pdfBuffer?: Buffer;
 	}): Promise<void> {
-		const subject = `Rappel - Facture ${options.invoiceNumber}`;
+		const subject = options.daysOverdue
+			? `Relance - Facture ${options.invoiceNumber} (${options.daysOverdue} jour(s) de retard)`
+			: `Relance - Facture ${options.invoiceNumber}`;
 		const html = this.getReminderTemplate({
 			invoiceNumber: options.invoiceNumber,
 			invoiceDate: options.invoiceDate,
 			clientName: options.clientName,
 			amount: options.amount,
-			daysOverdue: options.daysOverdue
+			daysOverdue: options.daysOverdue,
+			paymentUrl: options.paymentUrl
 		});
+		const payLine = options.paymentUrl
+			? `\n\nConsulter ou régler en ligne : ${options.paymentUrl}`
+			: '';
+		const text = `Bonjour ${options.clientName},\n\nNous vous rappelons que la facture ${options.invoiceNumber} d'un montant de ${this.formatCurrency(options.amount)} est toujours en attente de paiement.${payLine}\n\nCordialement`;
 
 		await this.send({
+			from: this.invoiceFrom,
 			to: options.to,
 			subject,
 			html,
-			text: `Bonjour,\n\nNous vous rappelons que la facture ${options.invoiceNumber} d'un montant de ${this.formatCurrency(options.amount)} est toujours en attente de paiement.\n\nCordialement`
+			text,
+			attachments: options.pdfBuffer
+				? [{ filename: `facture-${options.invoiceNumber}.pdf`, content: options.pdfBuffer, contentType: 'application/pdf' }]
+				: undefined
 		});
 	}
 
@@ -357,10 +395,14 @@ export class EmailService {
 		clientName: string;
 		amount: number;
 		daysOverdue?: number;
+		paymentUrl?: string;
 	}): string {
 		const overdueText = data.daysOverdue 
 			? `<p><strong>Cette facture est en retard de ${data.daysOverdue} jour(s).</strong></p>`
 			: '<p><strong>Cette facture est en attente de paiement.</strong></p>';
+		const payBtn = data.paymentUrl
+			? `<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 20px;"><tr><td style="border-radius: 8px; background: #2563eb;"><a href="${data.paymentUrl}" style="display: inline-block; padding: 12px 24px; color: #fff; text-decoration: none; font-weight: 600;">Voir la facture et payer en ligne</a></td></tr></table>`
+			: '';
 		
 		return `
 			<!DOCTYPE html>
@@ -386,6 +428,7 @@ export class EmailService {
 						${overdueText}
 						<p><strong>Montant à régler : ${this.formatCurrency(data.amount)}</strong></p>
 						<p>Merci de procéder au règlement dans les plus brefs délais.</p>
+						${payBtn}
 					</div>
 					<div class="footer">
 						<p>Cet email a été envoyé automatiquement par Facturio.</p>

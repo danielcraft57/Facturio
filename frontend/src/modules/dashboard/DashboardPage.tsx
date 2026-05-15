@@ -32,6 +32,8 @@ import { RevenueChart } from './components/RevenueChart'
 import { TopClientsChart } from './components/TopClientsChart'
 import { InvoiceStatusChart } from './components/InvoiceStatusChart'
 import { PeriodFilter } from './components/PeriodFilter'
+import { PageHeader } from '../../components/finance/PageHeader'
+import { financeCardSx, financeKpiGradients, financePagePadding } from '../../components/finance/financeStyles'
 
 export function DashboardPage() {
   const dashboardStore = useDashboard()
@@ -118,10 +120,11 @@ export function DashboardPage() {
     : 0;
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 4, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-        Tableau de bord
-      </Typography>
+    <Box sx={{ p: financePagePadding }}>
+      <PageHeader
+        title="Tableau de bord"
+        subtitle="Indicateurs clés, trésorerie et suivi de l'activité"
+      />
 
       <PeriodFilter period={period} onPeriodChange={setPeriod} />
 
@@ -136,7 +139,7 @@ export function DashboardPage() {
         gap: { xs: 2, sm: 3 }, 
         mb: 4 
       }}>
-        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+        <Card sx={{ height: '100%', background: financeKpiGradients.revenue }}>
           <CardContent sx={{ color: 'white', p: { xs: 2, sm: 3 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box>
@@ -158,7 +161,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
+        <Card sx={{ height: '100%', background: financeKpiGradients.unpaid }}>
           <CardContent sx={{ color: 'white', p: { xs: 2, sm: 3 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box>
@@ -177,7 +180,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
+        <Card sx={{ height: '100%', background: financeKpiGradients.clients }}>
           <CardContent sx={{ color: 'white', p: { xs: 2, sm: 3 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box>
@@ -196,7 +199,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }}>
+        <Card sx={{ height: '100%', background: financeKpiGradients.conversion }}>
           <CardContent sx={{ color: 'white', p: { xs: 2, sm: 3 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box>
@@ -268,10 +271,10 @@ export function DashboardPage() {
         gap: { xs: 3, lg: 4 } 
       }}>
         {/* Factures récentes */}
-        <Card>
+        <Card sx={financeCardSx}>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-              <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+              <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, fontWeight: 700 }}>
                 Factures récentes
               </Typography>
               <Chip 
@@ -362,10 +365,10 @@ export function DashboardPage() {
         </Card>
 
         {/* Clients récents */}
-        <Card>
+        <Card sx={financeCardSx}>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-              <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+              <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' }, fontWeight: 700 }}>
                 Clients récents
               </Typography>
               <Chip 

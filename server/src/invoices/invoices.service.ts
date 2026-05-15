@@ -6,6 +6,7 @@ import { ListQueryDto } from '../common/dto/list-query.dto';
 import { AccountingService } from '../accounting/accounting.service';
 import { ConfigService } from '../config/config.service';
 import { assertValidPublicToken } from './public-token.util';
+import { buildPublicInvoiceUrl } from '../common/public-app-url';
 
 /**
  * Ligne de facture
@@ -592,8 +593,7 @@ export class InvoicesService {
 	}
 
 	static buildPublicPaymentUrl(token: string): string {
-		const baseUrl = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
-		return `${baseUrl.replace(/\/$/, '')}/facture/${token}`;
+		return buildPublicInvoiceUrl(token);
 	}
 
 	/**
@@ -617,6 +617,41 @@ export class InvoicesService {
 		});
 		const publicUrl = InvoicesService.buildPublicPaymentUrl(token);
 		return { ...updated, publicUrl };
+	}
+
+	/**
+	 * Prépare une relance : vérifie que la facture a été envoyée et n'est pas soldée.
+	 */
+	async prepareReminder(id: number, organizationId?: number) {
+		const invoice = await this.findOne(id, organizationId);
+		if (!invoice.sentAt) {
+			throw new BadRequestException('Envoyez la facture au client avant d\'envoyer une relance');
+		}
+		if (invoice.status === 'PAID' || invoice.status === 'CANCELLED') {
+			throw new BadRequestException('Impossible de relancer une facture payée ou annulée');
+		}
+		const email = (invoice.client as { email?: string | null })?.email;
+		if (!email) {
+			throw new BadRequestException('Le client n\'a pas d\'adresse email');
+		}
+		const token = invoice.publicToken;
+		if (!token) {
+			throw new BadRequestException('Lien public de la facture indisponible');
+		}
+		let daysOverdue: number | undefined;
+		if (invoice.dueDate) {
+			const due = new Date(invoice.dueDate);
+			const diff = Math.floor((Date.now() - due.getTime()) / (1000 * 60 * 60 * 24));
+			if (diff > 0) daysOverdue = diff;
+		}
+		await this.prisma.emailEvent.create({
+			data: { invoiceId: id, type: 'reminder' }
+		});
+		return {
+			invoice,
+			daysOverdue,
+			publicUrl: InvoicesService.buildPublicPaymentUrl(token)
+		};
 	}
 }
 

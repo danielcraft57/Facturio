@@ -1,17 +1,15 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import Stripe from 'stripe';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ConfigService } from '../config/config.service';
 import { assertValidPublicToken } from '../invoices/public-token.util';
+import { createStripeClient, type StripeClient } from './stripe-client';
 
 export interface PaymentIntentResponse {
 	clientSecret: string;
 	amount: number;
 	currency: string;
 }
-
-type StripeClient = InstanceType<typeof Stripe>;
 
 interface StripePaymentIntentPayload {
 	id: string;
@@ -30,7 +28,7 @@ export class StripeService {
 		private readonly payments: PaymentsService
 	) {
 		const secretKey = config.stripeSecretKey;
-		this.stripe = secretKey ? new Stripe(secretKey) : null;
+		this.stripe = secretKey ? createStripeClient(secretKey) : null;
 	}
 
 	isConfigured(): boolean {

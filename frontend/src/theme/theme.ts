@@ -11,6 +11,7 @@ export type ThemeSettings = {
 }
 
 export const THEME_PRESETS: Array<Pick<ThemeSettings, 'primary' | 'secondary' | 'radius' | 'density'> & { id: string; label: string }> = [
+  { id: 'finance', label: 'Finance', primary: '#1e40af', secondary: '#047857', radius: 10, density: 'comfortable' },
   { id: 'business', label: 'Business', primary: '#1976d2', secondary: '#9c27b0', radius: 10, density: 'comfortable' },
   { id: 'minimal', label: 'Minimal', primary: '#111827', secondary: '#6b7280', radius: 6, density: 'comfortable' },
   { id: 'energique', label: 'Énergique', primary: '#f43f5e', secondary: '#06b6d4', radius: 14, density: 'compact' },
@@ -28,8 +29,8 @@ export function createCustomTheme(settings: ThemeSettings) {
         main: secondary,
       },
       background: {
-        default: mode === 'light' ? '#f5f5f5' : '#121212',
-        paper: mode === 'light' ? '#ffffff' : '#1e1e1e',
+        default: mode === 'light' ? '#f1f5f9' : '#0c1222',
+        paper: mode === 'light' ? '#ffffff' : '#151b28',
       },
     },
     shape: { borderRadius: radius },
@@ -58,11 +59,7 @@ export function createCustomTheme(settings: ThemeSettings) {
         },
       },
       MuiAppBar: {
-        styleOverrides: {
-          root: {
-            backgroundColor: mode === 'light' ? '#1976d2' : '#1e1e1e',
-          },
-        },
+        defaultProps: { elevation: 0, color: 'default' },
       },
       MuiDrawer: {
         styleOverrides: {

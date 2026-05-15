@@ -24,7 +24,8 @@ import {
 
   Divider,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  CircularProgress,
 } from '@mui/material'
 import {
   Add,
@@ -33,7 +34,8 @@ import {
   Save,
   Cancel
 } from '@mui/icons-material'
-import { clientService } from '../../../services/clients'
+import { apiClient } from '../../../services/api'
+import { clientService, parseClientsListResponse } from '../../../services/clients'
 import type { Client } from '../../../services/clients'
 
 interface InvoiceItem {
@@ -59,34 +61,33 @@ interface CreateInvoiceData {
 interface CreateInvoiceDialogProps {
   open: boolean
   onClose: () => void
-  onSubmit: (data: CreateInvoiceData) => void
+  onSubmit: (data: CreateInvoiceData) => void | Promise<void>
+  submitting?: boolean
 }
 
-export function CreateInvoiceDialog({ open, onClose, onSubmit }: CreateInvoiceDialogProps) {
+function createEmptyInvoiceForm(): CreateInvoiceData {
+  return {
+    clientId: '',
+    issueDate: new Date().toISOString().split('T')[0],
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    items: [{ description: '', quantity: 1, unitPrice: 0, taxRate: 20 }],
+    notes: '',
+    terms: 'Paiement à 30 jours',
+    currency: 'EUR',
+  }
+}
+
+export function CreateInvoiceDialog({ open, onClose, onSubmit, submitting = false }: CreateInvoiceDialogProps) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<CreateInvoiceData>({
-    clientId: '',
-    issueDate: new Date().toISOString().split('T')[0],
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    items: [
-      {
-        description: '',
-        quantity: 1,
-        unitPrice: 0,
-        taxRate: 20
-      }
-    ],
-    notes: '',
-    terms: 'Paiement à 30 jours',
-    currency: 'EUR'
-  })
+  const [formData, setFormData] = useState<CreateInvoiceData>(createEmptyInvoiceForm)
 
   useEffect(() => {
     if (open) {
+      setFormData(createEmptyInvoiceForm())
       loadClients()
     }
   }, [open])
@@ -94,10 +95,12 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit }: CreateInvoiceDi
   const loadClients = async () => {
     try {
       setLoading(true)
+      apiClient.invalidateCache('/clients')
       const response = await clientService.getClients({ page: 1, limit: 100 })
-      setClients(response.data?.clients || [])
+      setClients(parseClientsListResponse(response))
     } catch (error) {
       console.error('Erreur lors du chargement des clients:', error)
+      setClients([])
     } finally {
       setLoading(false)
     }
@@ -153,13 +156,11 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit }: CreateInvoiceDi
     return { subtotal, taxTotal, total }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.clientId || formData.items.some(item => !item.description || item.unitPrice <= 0)) {
       return
     }
-    
-    onSubmit(formData)
-    onClose()
+    await onSubmit(formData)
   }
 
   const { subtotal, taxTotal, total } = calculateTotals()
@@ -197,6 +198,11 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit }: CreateInvoiceDi
                 onChange={(e) => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
                 disabled={loading}
               >
+                {clients.length === 0 && !loading && (
+                  <MenuItem disabled value="">
+                    Aucun client — créez-en un dans Clients
+                  </MenuItem>
+                )}
                 {clients.map((client) => (
                   <MenuItem key={client.id} value={client.id}>
                     {client.name}
@@ -389,10 +395,14 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit }: CreateInvoiceDi
         <Button 
           onClick={handleSubmit} 
           variant="contained" 
-          startIcon={<Save />}
-          disabled={!formData.clientId || formData.items.some(item => !item.description || item.unitPrice <= 0)}
+          startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <Save />}
+          disabled={
+            submitting ||
+            !formData.clientId ||
+            formData.items.some(item => !item.description || item.unitPrice <= 0)
+          }
         >
-          Créer la facture
+          {submitting ? 'Création...' : 'Créer la facture'}
         </Button>
       </DialogActions>
     </Dialog>

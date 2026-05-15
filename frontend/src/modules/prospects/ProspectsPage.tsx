@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Button,
-  Paper,
   Chip,
   IconButton,
   Tooltip,
@@ -47,6 +46,10 @@ import { Toast } from '../../components/Toast';
 import { EditProspectDialog } from './EditProspectDialog';
 import { ProspectDetails } from './ProspectDetails';
 import { prospectionService } from '../../services/prospectionService';
+import { PageHeader } from '../../components/finance/PageHeader';
+import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles';
+import { PageHeader } from '../../components/finance/PageHeader';
+import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles';
 
 const DEFAULT_PROSPECTLAB_API_URL = 'https://prospectlab.danielcraft.fr';
 
@@ -439,7 +442,7 @@ export const ProspectsPage: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: financePagePadding }}>
       {/* Bannière configuration ProspectLab */}
       {prospectionConfig && !prospectionConfig.configured && (
         <Alert severity="info" sx={{ mb: 3 }}>
@@ -520,38 +523,40 @@ export const ProspectsPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
-            Prospection
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {useProspectLab ? 'Prospects ProspectLab' : 'Gestion des prospects et pipeline commercial'}
-          </Typography>
-          {useProspectLab && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-              <Chip label="Source : ProspectLab" size="small" color="primary" variant="outlined" />
-              <Button size="small" variant="text" onClick={() => setShowProspectLabConfig(v => !v)}>
-                Configurer
+      <PageHeader
+        title="Prospection"
+        subtitle={
+          useProspectLab
+            ? 'Prospects synchronisés depuis ProspectLab'
+            : 'Pipeline commercial et suivi des opportunités'
+        }
+        actions={
+          <>
+            {useProspectLab && (
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Chip label="Source : ProspectLab" size="small" color="primary" variant="outlined" />
+                <Button size="small" variant="outlined" onClick={() => setShowProspectLabConfig((v) => !v)} sx={{ textTransform: 'none', fontWeight: 600 }}>
+                  Configurer
+                </Button>
+              </Stack>
+            )}
+            {!useProspectLab && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleCreateProspect}
+                sx={financePrimaryButtonSx}
+              >
+                Nouveau prospect
               </Button>
-            </Box>
-          )}
-        </Box>
-        {!useProspectLab && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateProspect}
-            size="large"
-          >
-            Nouveau Prospect
-          </Button>
-        )}
-      </Box>
+            )}
+          </>
+        }
+      />
 
       {useProspectLab && showProspectLabConfig && prospectionConfig && (
-        <Paper sx={{ p: 2, mb: 3 }}>
+        <Card sx={{ mb: 3, ...financeCardSx }}>
+        <CardContent sx={{ p: 2 }}>
           <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
             Configuration ProspectLab
           </Typography>
@@ -605,7 +610,7 @@ export const ProspectsPage: React.FC = () => {
               autoComplete="new-password"
               inputProps={{ autoComplete: 'new-password' }}
             />
-            <Button type="submit" variant="contained" disabled={savingProspectLabConfig}>
+            <Button type="submit" variant="contained" disabled={savingProspectLabConfig} sx={financePrimaryButtonSx}>
               Sauvegarder
             </Button>
           </Box>
@@ -615,55 +620,56 @@ export const ProspectsPage: React.FC = () => {
               {prospectionConfig.tokensUrl}
             </Link>
           </Typography>
-        </Paper>
+        </CardContent>
+        </Card>
       )}
 
       {/* Statistiques */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 3, mb: 3 }}>
-        <Card>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+        <Card sx={financeCardSx}>
           <CardContent>
-            <Typography color="text.secondary" gutterBottom>
-              Total Prospects
+            <Typography color="text.secondary" variant="body2" gutterBottom>
+              Total prospects
             </Typography>
-            <Typography variant="h4" fontWeight="bold">
+            <Typography variant="h4" fontWeight={800}>
               {useProspectLab ? displayTotal : stats.total}
             </Typography>
           </CardContent>
         </Card>
-        <Card>
+        <Card sx={financeCardSx}>
           <CardContent>
-            <Typography color="text.secondary" gutterBottom>
+            <Typography color="text.secondary" variant="body2" gutterBottom>
               Qualifiés
             </Typography>
-            <Typography variant="h4" fontWeight="bold" color="primary">
+            <Typography variant="h4" fontWeight={800} color="primary.main">
               {useProspectLab ? 0 : (stats.byStatus.qualified || 0)}
             </Typography>
           </CardContent>
         </Card>
-        <Card>
+        <Card sx={financeCardSx}>
           <CardContent>
-            <Typography color="text.secondary" gutterBottom>
+            <Typography color="text.secondary" variant="body2" gutterBottom>
               En négociation
             </Typography>
-            <Typography variant="h4" fontWeight="bold" color="warning">
+            <Typography variant="h4" fontWeight={800} color="warning.main">
               {useProspectLab ? 0 : (stats.byStatus.negotiation || 0)}
             </Typography>
           </CardContent>
         </Card>
-        <Card>
+        <Card sx={financeCardSx}>
           <CardContent>
-            <Typography color="text.secondary" gutterBottom>
+            <Typography color="text.secondary" variant="body2" gutterBottom>
               Gagnés
             </Typography>
-            <Typography variant="h4" fontWeight="bold" color="success">
+            <Typography variant="h4" fontWeight={800} color="success.main">
               {useProspectLab ? 0 : (stats.byStatus.closed_won || 0)}
             </Typography>
           </CardContent>
         </Card>
       </Box>
 
-      {/* Filtres et recherche */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Card sx={{ mb: 3, ...financeCardSx }}>
+        <CardContent sx={{ p: 2 }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 2fr' }, gap: 2, alignItems: 'center' }}>
           <TextField
             fullWidth
@@ -729,18 +735,20 @@ export const ProspectsPage: React.FC = () => {
             </FormControl>
 
             <Button
+              variant="outlined"
               startIcon={<RefreshIcon />}
               onClick={handleRefresh}
               disabled={displayLoading}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
             >
               Actualiser
             </Button>
           </Stack>
         </Box>
-      </Paper>
+        </CardContent>
+      </Card>
 
-      {/* Table des prospects */}
-      <Paper sx={{ width: '100%' }}>
+      <Card sx={{ width: '100%', ...financeCardSx }}>
         <DataTable
           data={displayProspects}
           columns={columns}
@@ -753,7 +761,7 @@ export const ProspectsPage: React.FC = () => {
           onRowsPerPageChange={(n) => setDisplayLimit(n)}
           getRowId={(row) => row.id}
         />
-      </Paper>
+      </Card>
 
       {/* Dialogs */}
       <EditProspectDialog

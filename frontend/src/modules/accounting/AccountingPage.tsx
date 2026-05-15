@@ -21,7 +21,6 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
-  Paper,
 } from '@mui/material'
 import {
   Download,
@@ -31,6 +30,10 @@ import {
 } from '@mui/icons-material'
 import { accountingService, type Account, type TrialBalance, type GeneralLedgerEntry } from '../../services/accounting'
 import { formatCurrency, formatDate } from '../../utils/formatters'
+import { PageHeader } from '../../components/finance/PageHeader'
+import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
+import { PageHeader } from '../../components/finance/PageHeader'
+import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -135,19 +138,21 @@ export function AccountingPage() {
   const safeAccounts = Array.isArray(accounts) ? accounts : []
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
-        <Typography variant="h4" sx={{ flexGrow: 1 }}>
-          Comptabilité
-        </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<Download />}
-          onClick={handleExportFEC}
-        >
-          Exporter FEC
-        </Button>
-      </Stack>
+    <Box sx={{ p: financePagePadding }}>
+      <PageHeader
+        title="Comptabilité"
+        subtitle="Plan comptable, balance des comptes, grand livre et export FEC"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<Download />}
+            onClick={handleExportFEC}
+            sx={financePrimaryButtonSx}
+          >
+            Exporter FEC
+          </Button>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -155,8 +160,7 @@ export function AccountingPage() {
         </Alert>
       )}
 
-      {/* Filtres de période */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ mb: 3, ...financeCardSx }}>
         <CardContent>
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
@@ -205,8 +209,7 @@ export function AccountingPage() {
         </CardContent>
       </Card>
 
-      {/* Onglets */}
-      <Card>
+      <Card sx={financeCardSx}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
             <Tab icon={<AccountBalance />} label="Plan comptable" />

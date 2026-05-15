@@ -17,6 +17,9 @@ import {
   Skeleton
 } from '@mui/material';
 //
+import { Card, CardContent } from '@mui/material';
+import { PageHeader } from '../../components/finance/PageHeader';
+import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles';
 import {
   Add as AddIcon,
   Search as SearchIcon,
@@ -269,24 +272,24 @@ export function QuotesPage() {
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Devis
-        </Typography>
-        
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreateDialogOpen(true)}
-        >
-          Nouveau devis
-        </Button>
-      </Box>
+    <Box sx={{ p: financePagePadding }}>
+      <PageHeader
+        title="Devis"
+        subtitle="Propositions commerciales et suivi des conversions"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setCreateDialogOpen(true)}
+            sx={financePrimaryButtonSx}
+          >
+            Nouveau devis
+          </Button>
+        }
+      />
 
-      {/* Filtres */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Card sx={{ mb: 3, ...financeCardSx }}>
+        <CardContent sx={{ p: 2 }}>
         <Box
           sx={{
             display: 'grid',
@@ -340,7 +343,8 @@ export function QuotesPage() {
             Actualiser
           </Button>
         </Box>
-      </Paper>
+        </CardContent>
+      </Card>
 
       {/* Statistiques */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>

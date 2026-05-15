@@ -55,10 +55,70 @@ export interface ClientFilters {
 
 export interface ClientListResponse {
   clients: Client[]
+  items?: Client[]
   total: number
   page: number
   limit: number
+  pageSize?: number
   totalPages: number
+}
+
+/** Déballage réponse NestJS + intercepteur axios. */
+export function unwrapApiPayload<T>(response: unknown): T {
+  const raw: any = (response as any)?.data ?? response
+  return (raw?.data ?? raw) as T
+}
+
+/** Mappe un client API (Prisma) vers le modèle UI. */
+export function mapApiClientToClient(c: Record<string, unknown>, uiStatus?: Client['status']): Client {
+  const addressStr = typeof c.address === 'string' ? c.address : undefined
+  return {
+    id: String(c.id),
+    name: String(c.name || c.companyName || ''),
+    email: String(c.email || ''),
+    phone: typeof c.phone === 'string' ? c.phone : undefined,
+    address: addressStr
+      ? { street: addressStr, city: '', postalCode: '', country: String(c.countryCode || 'FR') }
+      : undefined,
+    company: c.companyName
+      ? { name: String(c.companyName), siret: undefined, tva: c.vatNumber ? String(c.vatNumber) : undefined }
+      : undefined,
+    status: uiStatus || (c.status as Client['status']) || 'active',
+    createdAt: String(c.createdAt || new Date().toISOString()),
+    updatedAt: String(c.updatedAt || new Date().toISOString()),
+  }
+}
+
+export function parseClientsListResponse(response: unknown): Client[] {
+  const payload = unwrapApiPayload<{ items?: unknown[]; clients?: unknown[] }>(response)
+  const list = Array.isArray(payload?.items)
+    ? payload.items
+    : Array.isArray(payload?.clients)
+      ? payload.clients
+      : Array.isArray(payload)
+        ? payload
+        : []
+  return list.map((c) => mapApiClientToClient(c as Record<string, unknown>))
+}
+
+/** Corps attendu par POST /api/clients */
+export function toCreateClientPayload(data: {
+  name: string
+  email: string
+  phone?: string
+  address?: string
+  isCompany?: boolean
+  companyName?: string
+}): Record<string, unknown> {
+  const name = data.name.trim()
+  return {
+    name,
+    email: data.email.trim(),
+    address: data.address?.trim() || undefined,
+    isCompany: data.isCompany ?? !!data.companyName,
+    companyName: data.companyName?.trim() || (data.isCompany ? name : undefined),
+    countryCode: 'FR',
+  }
 }
 
 // Service pour les clients

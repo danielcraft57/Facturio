@@ -96,6 +96,25 @@ export class InvoicesController {
 		}
 		return result;
 	}
+
+	@Post(':id/remind')
+	async sendReminder(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		const { invoice, daysOverdue, publicUrl } = await this.invoices.prepareReminder(id, user.organizationId);
+		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
+		const pdf = await this.pdfService.generateInvoicePdf(invoice, organization);
+		const client = invoice.client as { email?: string; name?: string; companyName?: string };
+		await this.email.sendReminder({
+			to: client.email!,
+			invoiceNumber: invoice.number,
+			invoiceDate: invoice.date,
+			clientName: client.name || client.companyName || '',
+			amount: Number(invoice.total),
+			daysOverdue,
+			paymentUrl: publicUrl,
+			pdfBuffer: pdf
+		});
+		return { success: true, invoiceId: id, daysOverdue: daysOverdue ?? null };
+	}
 }
 
 /**

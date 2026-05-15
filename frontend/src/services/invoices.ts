@@ -64,10 +64,84 @@ export interface InvoiceFilters {
 
 export interface InvoiceListResponse {
   invoices: Invoice[]
+  items?: Invoice[]
   total: number
   page: number
   limit: number
   totalPages: number
+}
+
+export function unwrapApiPayload<T>(response: unknown): T {
+  const raw: any = (response as any)?.data ?? response
+  return (raw?.data ?? raw) as T
+}
+
+/** Normalise une facture renvoyée par l'API NestJS / Prisma. */
+export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
+  const client = (raw.client as Record<string, unknown>) ?? {}
+  const status = String(raw.status ?? 'DRAFT').toLowerCase() as Invoice['status']
+  return {
+    id: String(raw.id ?? ''),
+    number: String(raw.number ?? ''),
+    clientId: String(raw.clientId ?? client.id ?? ''),
+    client: {
+      id: String(client.id ?? ''),
+      name: String(client.name ?? client.companyName ?? 'Client'),
+      email: String(client.email ?? ''),
+    },
+    status,
+    issueDate: String(raw.date ?? raw.issueDate ?? new Date().toISOString()),
+    dueDate: String(raw.dueDate ?? ''),
+    items: ((raw.lines as unknown[]) ?? (raw.items as unknown[]) ?? []).map((ln: unknown) => {
+      const line = ln as Record<string, unknown>
+      const qty = Number(line.quantity ?? 0)
+      const unit = Number(line.unitPrice ?? 0)
+      const rate = Number(line.taxRate ?? 0)
+      const total = Number(line.total ?? qty * unit * (1 + rate))
+      return {
+        id: String(line.id ?? ''),
+        description: String(line.description ?? ''),
+        quantity: qty,
+        unitPrice: unit,
+        taxRate: rate > 1 ? rate : rate * 100,
+        total: qty * unit,
+        totalWithTax: total,
+      }
+    }),
+    subtotal: Number(raw.subtotal ?? 0),
+    taxTotal: Number(raw.tax ?? raw.taxTotal ?? 0),
+    total: Number(raw.total ?? 0),
+    currency: String(raw.currency ?? 'EUR'),
+    notes: raw.legalMention ? String(raw.legalMention) : undefined,
+    terms: raw.terms ? String(raw.terms) : undefined,
+    createdAt: String(raw.createdAt ?? ''),
+    updatedAt: String(raw.updatedAt ?? ''),
+    paidAt: raw.paidAt ? String(raw.paidAt) : undefined,
+  }
+}
+
+export function parseInvoicesListResponse(response: unknown): Invoice[] {
+  const payload = unwrapApiPayload<{ invoices?: unknown[]; items?: unknown[] }>(response)
+  const list = Array.isArray(payload?.invoices)
+    ? payload.invoices
+    : Array.isArray(payload?.items)
+      ? payload.items
+      : []
+  return list.map((row) => normalizeInvoiceFromApi(row as Record<string, unknown>))
+}
+
+export function toCreateInvoiceApiBody(data: CreateInvoiceData): Record<string, unknown> {
+  return {
+    clientId: Number(data.clientId),
+    dueDate: data.dueDate,
+    currency: data.currency || 'EUR',
+    lines: data.items.map((item) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      taxRate: item.taxRate > 1 ? item.taxRate / 100 : item.taxRate,
+    })),
+  }
 }
 
 // Service pour les factures
@@ -99,14 +173,16 @@ export class InvoiceService {
     return apiClient.getCached<Invoice>(`${this.baseUrl}/${id}`, 5 * 60 * 1000) // Cache 5 minutes
   }
 
-  // Créer une nouvelle facture
-  async createInvoice(data: CreateInvoiceData): Promise<ApiResponse<Invoice>> {
-    const response = await apiClient.post<Invoice>(this.baseUrl, data)
-    
-    // Invalider le cache des listes
+  // Créer une nouvelle facture (corps API NestJS)
+  async createInvoiceFromApi(data: Record<string, unknown>): Promise<unknown> {
+    const response = await apiClient.post(this.baseUrl, data)
     apiClient.invalidateCache('/invoices')
-    
     return response
+  }
+
+  /** @deprecated Préférer createInvoiceFromApi + toCreateInvoiceApiBody */
+  async createInvoice(data: CreateInvoiceData): Promise<ApiResponse<Invoice>> {
+    return this.createInvoiceFromApi(toCreateInvoiceApiBody(data)) as Promise<ApiResponse<Invoice>>
   }
 
   // Mettre à jour une facture
@@ -190,8 +266,11 @@ export class InvoiceService {
     const response = await apiClient.client.get(`${this.baseUrl}/${id}/pdf`, {
       responseType: 'blob',
     })
-
-    return response.data
+    const data = response.data
+    if (data instanceof Blob) return data
+    const nested = (data as { data?: Blob })?.data
+    if (nested instanceof Blob) return nested
+    throw new Error('Réponse PDF invalide')
   }
 
   // Exporter les factures en CSV
@@ -243,7 +322,17 @@ export class InvoiceService {
     return apiClient.getCached<Invoice[]>(`${this.baseUrl}/overdue`, 5 * 60 * 1000) // Cache 5 minutes
   }
 
-  // Envoyer des relances automatiques
+  /** Envoie une relance par email (facture déjà envoyée, non payée). */
+  async sendReminder(id: string): Promise<ApiResponse<{ success: boolean; invoiceId: number; daysOverdue: number | null }>> {
+    const response = await apiClient.post<{ success: boolean; invoiceId: number; daysOverdue: number | null }>(
+      `${this.baseUrl}/${id}/remind`
+    )
+    apiClient.invalidateCache(`/invoices/${id}`)
+    apiClient.invalidateCache('/invoices')
+    return response
+  }
+
+  // Envoyer des relances automatiques (batch — route à venir)
   async sendReminders(invoiceIds: string[]): Promise<ApiResponse<{ sent: number; errors: string[] }>> {
     const response = await apiClient.post<{ sent: number; errors: string[] }>(`${this.baseUrl}/reminders`, {
       invoiceIds,

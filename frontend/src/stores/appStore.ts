@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 
 // Types pour l'état global
 export interface AppState {
@@ -28,8 +29,10 @@ export interface AppState {
   setLoading: (loading: boolean, message?: string) => void;
   setOnline: (online: boolean) => void;
   setLastSync: (date: Date) => void;
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   removeNotification: (id: string) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
   clearNotifications: () => void;
   setError: (error: AppError | null) => void;
   clearError: () => void;
@@ -59,6 +62,8 @@ export interface Notification {
   duration?: number;
   timestamp: Date;
   read?: boolean;
+  category?: 'invoice' | 'quote' | 'client' | 'payment' | 'system';
+  href?: string;
 }
 
 export interface AppError {
@@ -142,6 +147,20 @@ export const useAppStore = create<AppState>()(
         removeNotification: (id) => {
           set((state) => ({
             notifications: state.notifications.filter((n) => n.id !== id),
+          }));
+        },
+
+        markNotificationRead: (id) => {
+          set((state) => ({
+            notifications: state.notifications.map((n) =>
+              n.id === id ? { ...n, read: true } : n
+            ),
+          }));
+        },
+
+        markAllNotificationsRead: () => {
+          set((state) => ({
+            notifications: state.notifications.map((n) => ({ ...n, read: true })),
           }));
         },
 
@@ -407,36 +426,54 @@ export const useApp = <T>(selector: (state: AppState) => T) => {
   return useAppStore(selector);
 };
 
-// Hooks spécialisés pour des parties spécifiques de l'état
-export const useAppLoading = () => useApp((state) => ({ 
-  loading: state.loading, 
-  loadingMessage: state.loadingMessage 
-}));
+// Hooks spécialisés — useShallow évite une nouvelle référence objet à chaque rendu (boucle React)
+export const useAppLoading = () =>
+  useAppStore(
+    useShallow((state) => ({
+      loading: state.loading,
+      loadingMessage: state.loadingMessage,
+    }))
+  );
 
-export const useAppNotifications = () => useApp((state) => ({
-  notifications: state.notifications,
-  addNotification: state.addNotification,
-  removeNotification: state.removeNotification,
-  clearNotifications: state.clearNotifications,
-}));
+export const useAppNotifications = () =>
+  useAppStore(
+    useShallow((state) => ({
+      notifications: state.notifications,
+      unreadCount: state.notifications.filter((n) => !n.read).length,
+      addNotification: state.addNotification,
+      removeNotification: state.removeNotification,
+      markNotificationRead: state.markNotificationRead,
+      markAllNotificationsRead: state.markAllNotificationsRead,
+      clearNotifications: state.clearNotifications,
+    }))
+  );
 
-export const useAppCache = () => useApp((state) => ({
-  isCacheValid: state.isCacheValid,
-  invalidateCache: state.invalidateCache,
-  setCacheExpiry: state.setCacheExpiry,
-}));
+export const useAppCache = () =>
+  useAppStore(
+    useShallow((state) => ({
+      isCacheValid: state.isCacheValid,
+      invalidateCache: state.invalidateCache,
+      setCacheExpiry: state.setCacheExpiry,
+    }))
+  );
 
-export const useAppSync = () => useApp((state) => ({
-  syncInProgress: state.syncInProgress,
-  lastSync: state.lastSync,
-  isOnline: state.isOnline,
-  startSync: state.startSync,
-  endSync: state.endSync,
-}));
+export const useAppSync = () =>
+  useAppStore(
+    useShallow((state) => ({
+      syncInProgress: state.syncInProgress,
+      lastSync: state.lastSync,
+      isOnline: state.isOnline,
+      startSync: state.startSync,
+      endSync: state.endSync,
+    }))
+  );
 
-export const useAppTabs = () => useApp((state) => ({
-  tabId: state.tabId,
-  isPrimaryTab: state.isPrimaryTab,
-  otherTabs: state.otherTabs,
-  notifyOtherTabs: state.notifyOtherTabs,
-}));
+export const useAppTabs = () =>
+  useAppStore(
+    useShallow((state) => ({
+      tabId: state.tabId,
+      isPrimaryTab: state.isPrimaryTab,
+      otherTabs: state.otherTabs,
+      notifyOtherTabs: state.notifyOtherTabs,
+    }))
+  );

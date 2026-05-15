@@ -16,9 +16,9 @@ export interface ThemeState {
 // Paramètres par défaut
 const defaultSettings: ThemeSettings = {
   mode: 'light',
-  primary: '#1976d2',
-  secondary: '#dc004e',
-  radius: 8,
+  primary: '#1e40af',
+  secondary: '#047857',
+  radius: 10,
   density: 'comfortable',
 };
 

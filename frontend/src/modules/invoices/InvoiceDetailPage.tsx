@@ -37,9 +37,12 @@ import {
   Print,
   Email,
   Cancel,
-  Receipt
+  Receipt,
+  NotificationsActive,
 } from '@mui/icons-material'
 import { invoiceService, type Invoice } from '../../services/invoices'
+import { useToast } from '../../components/Toast'
+import { logActivity } from '../../utils/activity'
 import { apiClient } from '../../services/api'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { CreateCreditNoteDialog } from './components/CreateCreditNoteDialog'
@@ -69,6 +72,7 @@ export function InvoiceDetailPage() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0])
   const [paymentNotes, setPaymentNotes] = useState('')
   const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
     if (id) {
@@ -173,14 +177,39 @@ export function InvoiceDetailPage() {
   }
 
   const handleSendEmail = async () => {
-    if (!id) return
-    
+    if (!id || !invoice) return
     try {
       await invoiceService.sendInvoice(id)
-      // Afficher un toast de succès (à implémenter)
-      alert('Facture envoyée par email avec succès')
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de l\'envoi de l\'email')
+      toast.success('Facture envoyée par email')
+      logActivity({
+        type: 'success',
+        title: 'Facture envoyée',
+        message: invoice.number,
+        category: 'invoice',
+        href: `/factures/${id}`,
+      })
+      await loadData()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur lors de l'envoi")
+    }
+  }
+
+  const handleSendReminder = async () => {
+    if (!id || !invoice) return
+    if (!window.confirm(`Envoyer une relance pour ${invoice.number} ?`)) return
+    try {
+      const res = await invoiceService.sendReminder(id)
+      const days = res.data?.daysOverdue
+      toast.success(days ? `Relance envoyée (${days} j. de retard)` : 'Relance envoyée')
+      logActivity({
+        type: 'info',
+        title: 'Relance envoyée',
+        message: invoice.number,
+        category: 'invoice',
+        href: `/factures/${id}`,
+      })
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la relance')
     }
   }
 
@@ -310,15 +339,25 @@ export function InvoiceDetailPage() {
             </>
           )}
           
-          {invoice.status === 'sent' && (
-            <Button
-              variant="contained"
-              startIcon={<Payment />}
-              onClick={() => setPaymentDialogOpen(true)}
-              color="success"
-            >
-              Enregistrer paiement
-            </Button>
+          {(invoice.status === 'sent' || invoice.status === 'overdue') && (
+            <>
+              <Button
+                variant="contained"
+                startIcon={<Payment />}
+                onClick={() => setPaymentDialogOpen(true)}
+                color="success"
+              >
+                Enregistrer paiement
+              </Button>
+              <Button
+                variant="contained"
+                color="warning"
+                startIcon={<NotificationsActive />}
+                onClick={handleSendReminder}
+              >
+                Relancer
+              </Button>
+            </>
           )}
           
           <Button

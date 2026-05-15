@@ -4,6 +4,7 @@ import { QuoteStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import * as crypto from 'crypto';
 import { AccountingService } from '../accounting/accounting.service';
+import { buildPublicQuoteUrl } from '../common/public-app-url';
 
 /**
  * Ligne de devis
@@ -401,7 +402,7 @@ export class QuotesService {
 		if (!quote) throw new NotFoundException('Quote not found');
 
 		const publicToken = crypto.randomBytes(32).toString('hex');
-		const publicUrl = `${process.env.PUBLIC_APP_URL || 'http://localhost:3000'}/public/quotes/${publicToken}`;
+		const publicUrl = buildPublicQuoteUrl(publicToken);
 
 		const updated = await this.prisma.quote.update({
 			where: { id },

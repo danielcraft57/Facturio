@@ -23,7 +23,8 @@ import {
   Stack
 } from '@mui/material';
 import { Add, Delete, Close, ShoppingCart } from '@mui/icons-material';
-import { clientService } from '../../../services/clients';
+import { apiClient } from '../../../services/api';
+import { clientService, parseClientsListResponse } from '../../../services/clients';
 import { useProductsStore } from '../../../stores/productsStore';
 import type { CreateQuoteLineData } from '../../../types/quote';
 
@@ -67,13 +68,17 @@ export function CreateQuoteDialog({ open, onClose, onSubmit }: CreateQuoteDialog
   const loadClients = async () => {
     try {
       setLoading(true);
+      apiClient.invalidateCache('/clients');
       const res = await clientService.getClients({ page: 1, limit: 100 });
-      const raw: any = (res as any)?.data ?? res;
-      const payload = raw?.data ?? raw;
-      const list = Array.isArray(payload?.items) ? payload.items : Array.isArray(payload?.clients) ? payload.clients : Array.isArray(payload) ? payload : [];
-      setClients(list.map((c: any) => ({ id: Number(c.id), name: c.name || c.companyName || String(c.id) })));
+      setClients(
+        parseClientsListResponse(res).map((c) => ({
+          id: Number(c.id),
+          name: c.name,
+        }))
+      );
     } catch (error) {
       console.error('Erreur chargement clients:', error);
+      setClients([]);
     } finally {
       setLoading(false);
     }
