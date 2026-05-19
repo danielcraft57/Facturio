@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
 	'/api/auth/reset-password',
 	'/api/auth/verify-email',
 	'/api/auth/resend-verification',
+	'/api/auth/verify-device',
 	'/api/auth/google',
 	'/api/auth/google/callback',
 	'/api/public',

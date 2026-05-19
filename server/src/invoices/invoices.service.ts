@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { AccountingService } from '../accounting/accounting.service';
 import { ConfigService } from '../config/config.service';
+import { BillingService } from '../billing/billing.service';
 import { assertValidPublicToken } from './public-token.util';
 import { buildPublicInvoiceUrl } from '../common/public-app-url';
 
@@ -93,7 +94,8 @@ export class InvoicesService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly accounting: AccountingService,
-		private readonly config: ConfigService
+		private readonly config: ConfigService,
+		private readonly billing: BillingService
 	) {}
 
 	/**
@@ -257,6 +259,8 @@ export class InvoicesService {
 		if (!organization) {
 			throw new NotFoundException(`Organisation avec l'ID ${orgId} introuvable`);
 		}
+
+		await this.billing.assertCanCreateInvoice(orgId);
 		
 		const created = await this.prisma.invoice.create({
 			data: {
@@ -520,13 +524,23 @@ export class InvoicesService {
 			sentAt: Date | null;
 			lines: { description: string; quantity: unknown; unitPrice: unknown; total: unknown }[];
 			client: { name: string | null; companyName: string | null } | null;
-			organization: { name: string | null; legalName: string | null } | null;
+			organization: {
+				name: string | null;
+				legalName: string | null;
+				privacyPolicyUrl?: string | null;
+				dataControllerEmail?: string | null;
+				invoiceStripeSecretKey?: string | null;
+				invoiceStripePublishableKey?: string | null;
+			} | null;
 			payments: { amount: unknown }[];
 		},
 		balance: number,
 		totalPaid: number
 	) {
-		const stripeEnabled = !!process.env.STRIPE_SECRET_KEY?.trim();
+		const org = invoice.organization;
+		const stripeEnabled = !!(
+			org?.invoiceStripeSecretKey?.trim() && org?.invoiceStripePublishableKey?.trim()
+		);
 		const canPayOnline = balance > 0 && stripeEnabled && invoice.status !== 'CANCELLED';
 		return {
 			number: invoice.number,
@@ -541,12 +555,15 @@ export class InvoicesService {
 			totalPaid,
 			legalMention: invoice.legalMention,
 			stripeEnabled,
+			stripePublishableKey: org?.invoiceStripePublishableKey?.trim() || null,
 			canPayOnline,
 			issuerName:
 				invoice.organization?.legalName ||
 				invoice.organization?.name ||
 				process.env.COMPANY_NAME ||
 				'',
+			privacyPolicyUrl: org?.privacyPolicyUrl?.trim() || null,
+			dataControllerEmail: org?.dataControllerEmail?.trim() || null,
 			client: {
 				name: invoice.client?.name || invoice.client?.companyName || ''
 			},
@@ -580,7 +597,16 @@ export class InvoicesService {
 				lines: true,
 				client: true,
 				payments: true,
-				organization: { select: { name: true, legalName: true } }
+				organization: {
+					select: {
+						name: true,
+						legalName: true,
+						privacyPolicyUrl: true,
+						dataControllerEmail: true,
+						invoiceStripeSecretKey: true,
+						invoiceStripePublishableKey: true,
+					},
+				},
 			}
 		});
 		if (!invoice || !invoice.sentAt) {

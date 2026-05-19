@@ -18,8 +18,7 @@ export function AuthCallbackPage() {
     const handleCallback = async () => {
       try {
         await checkAuth()
-        // Rediriger vers le dashboard après authentification réussie
-        navigate('/dashboard', { replace: true })
+        navigate('/auth/session?from=/dashboard', { replace: true })
       } catch (error) {
         // En cas d'erreur, rediriger vers login
         navigate('/login', { replace: true })

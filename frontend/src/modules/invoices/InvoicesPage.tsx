@@ -50,6 +50,7 @@ import type { CreateInvoiceData, Invoice } from '../../services/invoices'
 import { useToast } from '../../components/Toast'
 import { PageHeader } from '../../components/finance/PageHeader'
 import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
+import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { CreateInvoiceDialog } from './components/CreateInvoiceDialog'
 
 export function InvoicesPage() {
@@ -212,8 +213,8 @@ export function InvoicesPage() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', p: 3 }}>
-        <CircularProgress size={60} />
+      <Box sx={{ p: financePagePadding }}>
+        <TablePageSkeleton />
       </Box>
     )
   }

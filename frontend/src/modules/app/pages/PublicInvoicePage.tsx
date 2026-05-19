@@ -19,13 +19,13 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 import { loadStripe, type Stripe } from '@stripe/stripe-js'
 import { ApiClient } from '../../../services/apiClient'
 import { formatCurrency, formatDate } from '../../../utils/formatters'
+import { PublicDataProcessingNotice } from '../../legal/PublicDataProcessingNotice'
+import { InvoicePublicSkeleton } from '../../../components/loading/InvoicePublicSkeleton'
 
 const api = ApiClient.getInstance()
 const API_BASE = (import.meta.env.DEV || import.meta.env.MODE === 'development')
   ? '/api'
   : (import.meta.env.VITE_API_URL || '/api')
-
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined
 
 function InvoicePaymentForm({
   amount,
@@ -84,7 +84,7 @@ function InvoicePaymentForm({
 
 /**
  * Page publique d'affichage d'une facture par token.
- * Affiche le détail, le PDF et le paiement Stripe si configuré.
+ * Paiement via le Stripe **prestataire** (clés organisation), pas le Stripe plateforme Facturio.
  */
 export function PublicInvoicePage() {
   const { token } = useParams<{ token: string }>()
@@ -95,12 +95,17 @@ export function PublicInvoicePage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
+  const [orgPublishableKey, setOrgPublishableKey] = useState<string | null>(null)
 
   const reloadInvoice = useCallback(() => {
     if (!token) return
     return api.get<any>(`public/invoices/${token}`).then((res: any) => {
-      if (res?.id) setInvoice(res)
-      else if (res?.error) setError(res.error)
+      const data = res?.id ? res : res?.data?.data ?? res?.data
+      if (data?.id || data?.number) {
+        setInvoice(data)
+        const pk = data.stripePublishableKey?.trim() || null
+        if (pk) setOrgPublishableKey(pk)
+      } else if (res?.error) setError(res.error)
       else setError('Facture introuvable')
     }).catch(() => setError('Facture introuvable'))
   }, [token])
@@ -110,27 +115,36 @@ export function PublicInvoicePage() {
   }, [reloadInvoice])
 
   useEffect(() => {
-    if (stripePublishableKey) {
-      setStripePromise(loadStripe(stripePublishableKey))
+    if (orgPublishableKey) {
+      setStripePromise(loadStripe(orgPublishableKey))
+    } else {
+      setStripePromise(null)
     }
-  }, [])
+  }, [orgPublishableKey])
 
   const canPayOnline = useMemo(() => {
     if (!invoice || paymentSuccess) return false
     const balance = Number(invoice.balance ?? invoice.total ?? 0)
-    return balance > 0 && !!invoice.stripeEnabled && !!stripePublishableKey
-  }, [invoice, paymentSuccess])
+    return balance > 0 && !!invoice.stripeEnabled && !!orgPublishableKey
+  }, [invoice, paymentSuccess, orgPublishableKey])
 
   const startPayment = async () => {
     if (!token) return
     setPaymentError(null)
     setPaymentLoading(true)
     try {
-      const res: { clientSecret?: string; data?: { clientSecret?: string }; error?: string } =
-        await api.post(`public/invoices/${token}/create-payment-intent`, {}) as any
-      const clientSecret = res.clientSecret ?? res.data?.clientSecret
-      if (clientSecret) {
-        setClientSecret(clientSecret)
+      const res: {
+        clientSecret?: string
+        stripePublishableKey?: string
+        data?: { clientSecret?: string; stripePublishableKey?: string }
+        error?: string
+      } = await api.post(`public/invoices/${token}/create-payment-intent`, {}) as any
+      const payload = res?.clientSecret ? res : res?.data?.data ?? res?.data
+      const secret = payload?.clientSecret
+      const pk = payload?.stripePublishableKey
+      if (secret) {
+        setClientSecret(secret)
+        if (pk) setOrgPublishableKey(pk)
       } else {
         setPaymentError(res?.error || 'Impossible de préparer le paiement')
       }
@@ -162,11 +176,7 @@ export function PublicInvoicePage() {
   }
 
   if (!invoice) {
-    return (
-      <Container maxWidth="sm" sx={{ py: 4 }}>
-        <Typography>Chargement...</Typography>
-      </Container>
-    )
+    return <InvoicePublicSkeleton />
   }
 
   const clientName = invoice.client?.name || invoice.client?.companyName || ''
@@ -286,6 +296,10 @@ export function PublicInvoicePage() {
           </Paper>
         )}
       </Paper>
+      <PublicDataProcessingNotice
+        issuerName={invoice.issuerName || clientName}
+        privacyPolicyUrl={invoice.privacyPolicyUrl}
+      />
     </Container>
   )
 }

@@ -12,3 +12,6 @@ node_modules/
 # Build / cache
 dist/
 *.tsbuildinfo
+
+# Winston (conserver logs/.gitkeep)
+logs/*.log

@@ -26,11 +26,20 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { UrssafModule } from './urssaf/urssaf.module';
 import { ConfigModule } from './config/config.module';
 import { StripeModule } from './stripe/stripe.module';
+import { BillingModule } from './billing/billing.module';
+import { SecretsCryptoModule } from './crypto/secrets-crypto.module';
+import { GdprModule } from './gdpr/gdpr.module';
+import { EInvoicingModule } from './e-invoicing/e-invoicing.module';
+import { SecurityHeadersMiddleware } from './common/security-headers.middleware';
 
 @Module({
 	imports: [
 		ConfigModule,
+		SecretsCryptoModule,
+		GdprModule,
+		EInvoicingModule,
 		StripeModule,
+		BillingModule,
 		PrismaModule,
 		CommonModule,
 		ClientsModule,
@@ -61,6 +70,7 @@ import { StripeModule } from './stripe/stripe.module';
 })
 export class AppModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {
+		consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
 		consumer
 			.apply(RateLimitMiddleware)
 			.forRoutes('auth/login', 'auth/signup', 'auth/forgot-password');

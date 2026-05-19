@@ -17,11 +17,17 @@ docs/
 │   ├── README.md
 │   └── API.md                  # Documentation complète des endpoints
 │
+├── accreditation-pa/           # 📋 Dossier candidature Plateforme Agréée
+│   ├── README.md
+│   ├── 00-SYNTHESE-EXECUTIVE.md
+│   └── …                       # Technique, sécurité, checklist dépôt
+│
 ├── development/                # 💻 Guides de développement
 │   ├── README.md
 │   ├── ARCHITECTURE.md         # Vue d'ensemble de l'architecture
 │   ├── DEVELOPMENT.md          # Guide de développement
 │   ├── CI_CD.md                # Intégration continue
+│   ├── E_INVOICING.md          # Module facturation électronique
 │   └── OPTIMIZATION.md         # Optimisation des performances
 │
 ├── modules/                     # 🔧 Modules spécialisés

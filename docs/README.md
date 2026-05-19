@@ -2,12 +2,15 @@
 
 Documentation complète du projet Facturio, organisée par catégories.
 
+**Positionnement** : Facturio est orienté **prestations de services numériques** (développement web, logiciel sur mesure, automatisation, intégrations, maintenance, offres IA) — voir [Positionnement prestations](./planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md).
+
 ## Structure de la documentation
 
 ```
 docs/
 ├── getting-started/    # Démarrage rapide
 ├── api/                # Documentation API
+├── accreditation-pa/   # Dossier candidature Plateforme Agréée
 ├── deployment/         # Déploiement en production
 ├── development/        # Guides de développement
 ├── modules/            # Modules spécialisés
@@ -61,6 +64,21 @@ Liste complète des outils OSINT disponibles, gratuits et payants, pour l'intell
 ### [Roadmap globale](./planning/ROADMAP.md)
 Vue d'ensemble des fonctionnalités à venir, phases de développement et priorités, alignée avec l'état réel du projet (backend + frontend).
 
+### [Positionnement — Prestations services](./planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md)
+Vision produit (dev web, logiciel, automatisation) et développement du vertical en conformité avec la réforme.
+
+### [Monétisation (bootstrap)](./planning/MONETISATION.md)
+Méthode économique pour rentabiliser Facturio (freemium, dogfooding DanielCraft, PA partenaire, SEO).
+
+### [Facturation électronique 2026–2027](./planning/FACTURATION_ELECTRONIQUE_2026.md)
+Plan de mise en conformité avec la réforme française (PA, Factur-X, e-reporting, jalons sept. 2026 / 2027).
+
+### [Dossier accréditation PA](./accreditation-pa/README.md)
+Candidature immatriculation Plateforme Agréée (DanielCraft) + piste PA partenaire.
+
+### [Module e-invoicing (dev)](./development/E_INVOICING.md)
+API, tests et évolutions techniques du module conformité 2026.
+
 ### [TODO - Liste complète](./planning/TODO.md)
 Liste exhaustive de toutes les tâches restantes, organisée par priorité et domaine.
 
@@ -111,6 +129,9 @@ Notes techniques et décisions de développement pour les fonctionnalités prior
 
 ### Planning
 - [Roadmap](./planning/ROADMAP.md)
+- [Positionnement prestations services](./planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md)
+- [Monétisation](./planning/MONETISATION.md)
+- [Facturation électronique 2026](./planning/FACTURATION_ELECTRONIQUE_2026.md)
 - [TODO](./planning/TODO.md)
 - [Avancement](./planning/AVANCEMENT.md)
 

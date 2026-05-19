@@ -45,7 +45,7 @@ export function AppTopNav() {
   return (
     <Box
       sx={{
-        display: { xs: 'none', lg: 'flex' },
+        display: { xs: 'none', md: 'flex' },
         alignItems: 'center',
         gap: 0.25,
         flex: 1,

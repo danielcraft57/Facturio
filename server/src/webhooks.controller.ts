@@ -1,14 +1,16 @@
-import { BadRequestException, Body, Controller, Headers, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Headers, Param, Post, Req } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import { Request } from 'express';
 import { PrismaService } from './prisma/prisma.service';
 import { StripeService } from './stripe/stripe.service';
+import { PlatformStripeService } from './billing/platform-stripe.service';
 
 @Controller('webhooks')
 export class WebhooksController {
 	constructor(
 		private readonly prisma: PrismaService,
-		private readonly stripeService: StripeService
+		private readonly stripeService: StripeService,
+		private readonly platformStripe: PlatformStripeService,
 	) {}
 
 	@Post('email')
@@ -23,16 +25,17 @@ export class WebhooksController {
 				invoiceId: invoiceId ? Number(invoiceId) : undefined,
 				type,
 				providerId,
-				meta: event
-			}
+				meta: event,
+			},
 		});
 		return { ok: true };
 	}
 
-	@Post('stripe')
-	async stripe(
+	/** Webhook Stripe plateforme — abonnement Facturio (clés .env) */
+	@Post('stripe/platform')
+	async stripePlatform(
 		@Req() req: RawBodyRequest<Request>,
-		@Headers('stripe-signature') signature: string | undefined
+		@Headers('stripe-signature') signature: string | undefined,
 	) {
 		if (!signature) {
 			throw new BadRequestException('En-tête stripe-signature manquant');
@@ -41,6 +44,36 @@ export class WebhooksController {
 		if (!rawBody) {
 			throw new BadRequestException('Corps brut requis pour le webhook Stripe');
 		}
-		return this.stripeService.handleWebhook(rawBody, signature);
+		return this.platformStripe.handlePlatformWebhook(rawBody, signature);
+	}
+
+	/** Webhook Stripe prestataire — paiement facture client (clés BDD par organisation) */
+	@Post('stripe/invoices/:organizationId')
+	async stripeInvoiceOrg(
+		@Param('organizationId') organizationId: string,
+		@Req() req: RawBodyRequest<Request>,
+		@Headers('stripe-signature') signature: string | undefined,
+	) {
+		if (!signature) {
+			throw new BadRequestException('En-tête stripe-signature manquant');
+		}
+		const rawBody = req.rawBody;
+		if (!rawBody) {
+			throw new BadRequestException('Corps brut requis pour le webhook Stripe');
+		}
+		const orgId = Number(organizationId);
+		if (!orgId || Number.isNaN(orgId)) {
+			throw new BadRequestException('organizationId invalide');
+		}
+		return this.stripeService.handleOrgWebhook(orgId, rawBody, signature);
+	}
+
+	/** @deprecated Utiliser /webhooks/stripe/platform ou /webhooks/stripe/invoices/:orgId */
+	@Post('stripe')
+	async stripeLegacy(
+		@Req() req: RawBodyRequest<Request>,
+		@Headers('stripe-signature') signature: string | undefined,
+	) {
+		return this.stripePlatform(req, signature);
 	}
 }

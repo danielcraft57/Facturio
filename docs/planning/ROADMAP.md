@@ -2,6 +2,9 @@
 
 Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 
+**Positionnement** : facturation des **prestations de services numériques** (dev web, logiciel, automatisation, maintenance, IA) — voir [POSITIONNEMENT_PRESTATIONS_SERVICES.md](./POSITIONNEMENT_PRESTATIONS_SERVICES.md).  
+**Monétisation** : modèle bootstrap (freemium + e-facture 2026) — [MONETISATION.md](./MONETISATION.md).
+
 ### v0.1 - API minimale (terminer le socle)
 - [x] NestJS + structure de base
 - [x] Prisma + SQLite + migration initiale
@@ -80,16 +83,32 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - [ ] Intégration URSSAF (statuts entreprises, cotisations, échéances)
 - [ ] Dashboard des échéances fiscales et alertes automatiques
 
-### v1.3 - Intégrations
+### v1.2b - Vertical prestations services (métier)
+- [ ] Modèles de devis / factures par type d'offre (site, API, maintenance, IA)
+- [ ] Missions : lien devis → acomptes → solde
+- [ ] Catalogue personnalisable par organisation (hors seed DanielCraft seul)
+- [ ] Mentions légales et clauses types prestations intellectuelles
+- Voir [POSITIONNEMENT_PRESTATIONS_SERVICES.md](./POSITIONNEMENT_PRESTATIONS_SERVICES.md)
+
+### v1.3 - Facturation électronique B2B (réforme FR 2026–2027)
+- [ ] Cadrage stratégique (PA partenaire vs immatriculation PA Facturio)
+- [ ] Formats structurés (Factur-X prioritaire, UBL/CII)
+- [ ] Intégration API Plateforme Agréée partenaire (émission, statuts, annuaire)
+- [ ] Réception factures fournisseurs (entrant)
+- [ ] E-reporting (transactions, paiements)
+- [ ] UI : paramètres PA, envoi électronique, suivi des statuts
+- Voir le plan détaillé : [FACTURATION_ELECTRONIQUE_2026.md](./FACTURATION_ELECTRONIQUE_2026.md)
+
+### v1.4 - Intégrations
 - [ ] Intégrations paiements (Stripe/PayPal)
 - [ ] Connecteurs compta (Sage, Cegid, etc.)
 - [ ] Intégrations CRM / emailing (HubSpot, Salesforce, Mailchimp, SendGrid)
 
-### v1.4 - Mobile & PWA
+### v1.5 - Mobile & PWA
 - [ ] PWA complète (offline, sync, notifications push)
 - [ ] Optimisation responsive mobile (gestes, perfs)
 
-### v1.5 - IA & recommandations
+### v1.6 - IA & recommandations
 - [ ] Scoring de risque avancé (ML)
 - [ ] Prévisions de trésorerie et ventes
 - [ ] Suggestions de produits et optimisation des échéances

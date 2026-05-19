@@ -16,7 +16,6 @@ import {
   TableRow,
   Chip,
   IconButton,
-  CircularProgress,
   Alert,
   Paper,
   Dialog,
@@ -46,6 +45,8 @@ import { logActivity } from '../../utils/activity'
 import { apiClient } from '../../services/api'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { CreateCreditNoteDialog } from './components/CreateCreditNoteDialog'
+import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
+import { EInvoicingReadinessPanel } from '../e-invoicing/EInvoicingReadinessPanel'
 
 interface Payment {
   id: number
@@ -273,14 +274,8 @@ export function InvoiceDetailPage() {
 
   if (loading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '50vh',
-        p: { xs: 1, sm: 2, md: 3 }
-      }}>
-        <CircularProgress size={60} />
+      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+        <TablePageSkeleton rows={5} />
       </Box>
     )
   }
@@ -386,6 +381,8 @@ export function InvoiceDetailPage() {
           </Button>
         </Stack>
       </Stack>
+
+      <EInvoicingReadinessPanel invoiceId={Number(id)} />
 
       {/* Informations principales */}
       <GridLegacy container spacing={3} sx={{ mb: 3 }}>

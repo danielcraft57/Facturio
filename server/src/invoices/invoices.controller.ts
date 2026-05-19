@@ -133,7 +133,12 @@ export class PublicInvoicesController {
 	async checkout(@Param('token') token: string) {
 		assertValidPublicToken(token);
 		const invoice = await this.invoices.publicView(token);
-		let payment: { clientSecret: string; amount: number; currency: string } | null = null;
+		let payment: {
+			clientSecret: string;
+			amount: number;
+			currency: string;
+			stripePublishableKey: string;
+		} | null = null;
 		if (invoice.canPayOnline) {
 			payment = await this.stripe.createPaymentIntentForInvoice(token);
 		}

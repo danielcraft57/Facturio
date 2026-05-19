@@ -2,6 +2,94 @@
 
 Liste exhaustive de tout ce qu'il reste à faire dans le projet Facturio, organisée par priorité et domaine.
 
+**Positionnement produit** : prestations de services numériques (dev web, logiciel, automatisation, maintenance, IA) — [POSITIONNEMENT_PRESTATIONS_SERVICES.md](./POSITIONNEMENT_PRESTATIONS_SERVICES.md).
+
+## 💰 Monétisation (bootstrap)
+
+> Plan : [MONETISATION.md](./MONETISATION.md)
+
+- [ ] Dogfooding : 100 % facturation DanielCraft via Facturio
+- [ ] Paliers Stripe Billing : Free / Pro (9–15 €) / Pro+e-facture (19–29 €) / Agence (49–79 €)
+- [ ] Page tarifs + CTA depuis danielcraft.fr
+- [ ] Limites techniques plan Free (quota factures/mois)
+- [ ] Packs catalogue premium (import seed métier)
+- [ ] Accord commission ou bundle avec PA partenaire
+- [ ] Contenu SEO : réforme 2026 + facturation prestation dev
+- [ ] Branding optionnel PDF / page publique (« Propulsé par Facturio »)
+
+---
+
+## 🟣 Vertical prestations services (métier)
+
+> Plan : [POSITIONNEMENT_PRESTATIONS_SERVICES.md](./POSITIONNEMENT_PRESTATIONS_SERVICES.md) · Coupler avec la conformité e-facture (SIREN, libellés lignes, missions).
+
+### Catalogue & devis
+- [ ] Modèles de devis par offre (site vitrine, intégration API, maintenance, pack IA)
+- [ ] Descriptions de lignes structurées (périmètre, livrables, hors périmètre)
+- [ ] Catalogue personnalisable par organisation (clone du modèle DanielCraft)
+- [ ] Packs / options en lignes liées
+
+### Facturation services
+- [ ] Parcours acompte + solde lié au devis / mission
+- [ ] Unités métier : heure, forfait, mois (affichage + export)
+- [ ] Référence devis / mission sur chaque facture
+- [ ] Mentions légales prestations + modèles clauses PI
+
+### Clients & missions
+- [ ] Fiche client : SIREN, TVA intracom, contacts facturation vs technique
+- [ ] Vue mission : devis → factures → paiements par projet
+- [ ] Notes internes projet (hors document fiscal)
+
+### Conformité couplée (ne pas découpler du métier)
+- [ ] Champs catalogue → mapping Factur-X (libellé, unité, TVA)
+- [ ] Blocage envoi e-facture si client B2B sans SIREN
+- [ ] E-reporting paiements pour maintenance récurrente et Stripe
+
+---
+
+## 🔴 Facturation électronique (réforme 2026–2027)
+
+> Plan détaillé : [FACTURATION_ELECTRONIQUE_2026.md](./FACTURATION_ELECTRONIQUE_2026.md)  
+> Jalon critique : **réception** pour toutes les entreprises au **1er sept. 2026** ; **émission** ETI/GE même date, PME au **1er sept. 2027**.
+
+### Phase 0 — Cadrage (Q2 2026)
+- [ ] Décision stratégique : PA partenaire (solution compatible) vs immatriculation PA Facturio
+- [ ] Sélection et contrat avec une Plateforme Agréée partenaire
+- [x] Dossier candidature PA : [accreditation-pa/](../accreditation-pa/README.md)
+- [ ] Audit des champs manquants restants (mentions légales PDF, adresses normalisées)
+
+### Phase 1 — Fondations (Q2–Q3 2026)
+- [x] Étendre modèle `Client` (SIREN) ; profil org (SIRET/SIREN)
+- [ ] Mentions obligatoires réforme sur factures (modèle + PDF)
+- [x] Stockage empreinte XML + statuts `eInvoiceStatus`
+
+### Phase 2 — Formats structurés (Q3 2026)
+- [x] Module backend `e-invoicing`
+- [x] Génération XML simplifié (pré-Factur-X) depuis une facture
+- [ ] Factur-X complet PDF/A-3 + validation schéma
+- [x] Export / téléchargement XML côté frontend
+
+### Phase 3 — Intégration PA (Q3–Q4 2026)
+- [ ] Client API PA (sandbox + production)
+- [ ] Émission : envoi facture + suivi statuts
+- [ ] Annuaire SIREN / routage destinataire
+- [ ] Paramètres organisation + UI envoi électronique
+
+### Phase 4 — Réception fournisseurs (Q4 2026 – Q1 2027)
+- [ ] Webhook / sync factures entrantes via PA
+- [ ] Import entrant → brouillon achat / compta
+- [ ] UI boîte de réception fournisseurs
+
+### Phase 5 — E-reporting (Q1 2027)
+- [ ] Flux B2C / export / paiements → transmission PA
+- [ ] Dashboard statuts e-reporting
+
+### Phase 6 — PME & finition (avant sept. 2027)
+- [ ] Activation par défaut PME, tests E2E, doc utilisateur
+- [ ] DPA / conformité RGPD avec sous-traitant PA
+
+---
+
 ## 🔴 Priorité haute (Court terme - 1-2 mois)
 
 ### Backend - Qualité API (v0.2)

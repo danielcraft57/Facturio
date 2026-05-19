@@ -10,8 +10,14 @@ export interface TestUser {
 	token: string;
 }
 
+function parseCookies(setCookies: string[] | string | undefined): string[] {
+	if (!setCookies) return [];
+	return Array.isArray(setCookies) ? setCookies : [setCookies];
+}
+
 /**
- * Crée un utilisateur de test avec organisation et retourne les cookies d'authentification
+ * Crée un utilisateur de test avec organisation et retourne les cookies d'authentification.
+ * Gère le flux inscription + vérification email (activation manuelle en test puis login).
  */
 export async function createTestUser(
 	app: INestApplication,
@@ -27,8 +33,9 @@ export async function createTestUser(
 	const email = overrides?.email || `test-${Date.now()}@example.com`;
 	const password = overrides?.password || 'password123';
 	const organizationName = overrides?.organizationName || `Test Org ${Date.now()}`;
+	const httpServer = app.getHttpServer();
 
-	const response = await (request as any)(app.getHttpServer())
+	const signupRes = await (request as any)(httpServer)
 		.post('/api/auth/signup')
 		.send({
 			email,
@@ -36,14 +43,35 @@ export async function createTestUser(
 			firstName: overrides?.firstName || 'Test',
 			lastName: overrides?.lastName || 'User',
 			organizationName,
+			acceptTerms: true,
+			acceptPrivacy: true,
 		})
 		.expect(201);
 
-	const setCookies = response.headers['set-cookie'] as string[] | string | undefined;
-	const cookies = Array.isArray(setCookies) ? setCookies : setCookies ? [setCookies] : [];
-	const token = response.body.access_token;
+	let cookies = parseCookies(signupRes.headers['set-cookie']);
+	let token: string | undefined = signupRes.body?.access_token;
 
-	// Récupérer l'utilisateur depuis la base pour avoir l'ID
+	if (signupRes.body?.needVerification || !token) {
+		await prisma.user.update({
+			where: { email },
+			data: {
+				status: 'ACTIVE',
+				emailVerified: true,
+				emailVerifiedAt: new Date(),
+				emailVerificationToken: null,
+				emailVerificationExpires: null,
+			},
+		});
+
+		const loginRes = await (request as any)(httpServer)
+			.post('/api/auth/login')
+			.send({ email, password })
+			.expect(201);
+
+		cookies = parseCookies(loginRes.headers['set-cookie']);
+		token = loginRes.body.access_token;
+	}
+
 	const user = await prisma.user.findUnique({
 		where: { email },
 		include: { organization: true },
@@ -51,6 +79,10 @@ export async function createTestUser(
 
 	if (!user) {
 		throw new Error('Utilisateur non créé');
+	}
+
+	if (!token) {
+		throw new Error('Token JWT manquant après inscription/login test');
 	}
 
 	return {
@@ -72,10 +104,7 @@ export function authenticatedRequest(
 ): any {
 	const cookieString = Array.isArray(cookies) ? cookies.join('; ') : cookies;
 	const httpServer = app.getHttpServer();
-	// Utiliser request.agent() pour créer un agent qui maintient les cookies
 	const agent = (request as any).agent(httpServer);
-	// Définir les cookies manuellement
 	agent.set('Cookie', cookieString);
 	return agent;
 }
-

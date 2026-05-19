@@ -66,18 +66,13 @@ describe('Auth e2e', () => {
 					firstName: 'John',
 					lastName: 'Doe',
 					organizationName: 'Test Organization',
+					acceptTerms: true,
+					acceptPrivacy: true,
 				})
 				.expect(201)
 				.expect((res) => {
-					expect(res.body).toHaveProperty('access_token');
-					expect(res.body).toHaveProperty('user');
-					expect(res.body.user.email).toBe('test@example.com');
-					expect(res.body.user.organization).toBeDefined();
-					// Vérifier que le cookie est défini
-					expect(res.headers['set-cookie']).toBeDefined();
-					const cookies = res.headers['set-cookie'] as string[] | string;
-					const cookieArray = Array.isArray(cookies) ? cookies : [cookies];
-					expect(cookieArray.some((cookie: string) => cookie.startsWith('access_token='))).toBe(true);
+					expect(res.body.needVerification).toBe(true);
+					expect(res.body.message).toMatch(/confirmation/i);
 				});
 		});
 
@@ -89,6 +84,8 @@ describe('Auth e2e', () => {
 					email: 'existing@example.com',
 					password: 'password123',
 					organizationName: 'Test Org',
+					acceptTerms: true,
+					acceptPrivacy: true,
 				})
 				.expect(201);
 
@@ -99,6 +96,8 @@ describe('Auth e2e', () => {
 					email: 'existing@example.com',
 					password: 'password123',
 					organizationName: 'Test Org 2',
+					acceptTerms: true,
+					acceptPrivacy: true,
 				})
 				.expect(409);
 		});
@@ -113,6 +112,8 @@ describe('Auth e2e', () => {
 					email: 'login@example.com',
 					password: 'password123',
 					organizationName: 'Login Test Org',
+					acceptTerms: true,
+					acceptPrivacy: true,
 				});
 		});
 
@@ -156,6 +157,8 @@ describe('Auth e2e', () => {
 					email: 'me@example.com',
 					password: 'password123',
 					organizationName: 'Me Test Org',
+					acceptTerms: true,
+					acceptPrivacy: true,
 				});
 			const setCookies = response.headers['set-cookie'] as string[] | string | undefined;
 			cookies = Array.isArray(setCookies) ? setCookies : setCookies ? [setCookies] : [];
@@ -202,6 +205,8 @@ describe('Auth e2e', () => {
 					email: 'logout@example.com',
 					password: 'password123',
 					organizationName: 'Logout Test Org',
+					acceptTerms: true,
+					acceptPrivacy: true,
 				});
 			const setCookies = response.headers['set-cookie'] as string[] | string | undefined;
 			cookies = Array.isArray(setCookies) ? setCookies : setCookies ? [setCookies] : [];

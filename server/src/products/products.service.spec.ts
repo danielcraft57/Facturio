@@ -139,7 +139,8 @@ describe('ProductsService', () => {
 					where: {
 						OR: [
 							{ name: { contains: 'test' } },
-							{ sku: { contains: 'test' } }
+							{ sku: { contains: 'test' } },
+							{ description: { contains: 'test' } }
 						]
 					}
 				})

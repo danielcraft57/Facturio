@@ -35,6 +35,28 @@ export default defineConfig(({ mode }) => {
           // Pour forcer un autre backend en dev : VITE_API_PROXY_TARGET=http://node13.lan:3000
           target: proxyTarget,
         changeOrigin: true,
+        configure: (proxy) => {
+          let lastProxyErrorLog = 0
+          proxy.on('error', (err, _req, res) => {
+            const now = Date.now()
+            if (now - lastProxyErrorLog > 15_000) {
+              lastProxyErrorLog = now
+              console.warn(
+                `[vite proxy] Backend injoignable (${proxyTarget}). Démarrez le serveur Nest : cd server && npm run start:dev`,
+              )
+              console.warn(`[vite proxy] Détail :`, err.message)
+            }
+            if (res && !res.headersSent && 'writeHead' in res) {
+              res.writeHead(503, { 'Content-Type': 'application/json' })
+              res.end(
+                JSON.stringify({
+                  success: false,
+                  message: 'API indisponible — vérifiez que le backend tourne sur le port 3000.',
+                }),
+              )
+            }
+          })
+        },
       },
     },
   },

@@ -45,7 +45,7 @@ export class ProspectionController {
 	) {
 		const p = page ? parseInt(page, 10) : 1;
 		const ps = pageSize ? parseInt(pageSize, 10) : 20;
-		return this.prospection.getProspects(p, ps, search, secteur, statut, user?.organizationId);
+		return this.prospection.getProspects(p, ps, search, secteur, statut, requireOrganizationId(user));
 	}
 
 	// ==========================
@@ -67,17 +67,17 @@ export class ProspectionController {
 			secteur,
 			statut,
 			search
-		}, user?.organizationId);
+		}, requireOrganizationId(user));
 	}
 
 	@Get('entreprises/:id')
-	getEntreprise(@Param('id') id: string, @CurrentUser() user?: any) {
-		return this.prospection.getEntreprise(id, user?.organizationId);
+	getEntreprise(@Param('id') id: string, @CurrentUser() user: any) {
+		return this.prospection.getEntreprise(id, requireOrganizationId(user));
 	}
 
 	@Get('entreprises/:id/emails')
-	getEntrepriseEmails(@Param('id') id: string, @CurrentUser() user?: any) {
-		return this.prospection.getEntrepriseEmails(id, user?.organizationId);
+	getEntrepriseEmails(@Param('id') id: string, @CurrentUser() user: any) {
+		return this.prospection.getEntrepriseEmails(id, requireOrganizationId(user));
 	}
 
 	@Get('emails')
@@ -91,12 +91,12 @@ export class ProspectionController {
 			limit: limit ? parseInt(limit, 10) : undefined,
 			offset: offset ? parseInt(offset, 10) : undefined,
 			entreprise_id: entrepriseId ?? undefined
-		}, user?.organizationId);
+		}, requireOrganizationId(user));
 	}
 
 	@Get('statistics')
-	getStatistics(@CurrentUser() user?: any) {
-		return this.prospection.getStatistics(user?.organizationId);
+	getStatistics(@CurrentUser() user: any) {
+		return this.prospection.getStatistics(requireOrganizationId(user));
 	}
 
 	@Get('campagnes')
@@ -110,12 +110,12 @@ export class ProspectionController {
 			limit: limit ? parseInt(limit, 10) : undefined,
 			offset: offset ? parseInt(offset, 10) : undefined,
 			statut
-		}, user?.organizationId);
+		}, requireOrganizationId(user));
 	}
 
 	@Get('campagnes/:id')
-	getCampagne(@Param('id') id: string, @CurrentUser() user?: any) {
-		return this.prospection.getCampagne(id, user?.organizationId);
+	getCampagne(@Param('id') id: string, @CurrentUser() user: any) {
+		return this.prospection.getCampagne(id, requireOrganizationId(user));
 	}
 
 	@Get('campagnes/:id/emails')
@@ -130,11 +130,11 @@ export class ProspectionController {
 			limit: limit ? parseInt(limit, 10) : undefined,
 			offset: offset ? parseInt(offset, 10) : undefined,
 			statut
-		}, user?.organizationId);
+		}, requireOrganizationId(user));
 	}
 
 	@Get('campagnes/:id/statistics')
-	getCampagneStatistics(@Param('id') id: string, @CurrentUser() user?: any) {
-		return this.prospection.getCampagneStatistics(id, user?.organizationId);
+	getCampagneStatistics(@Param('id') id: string, @CurrentUser() user: any) {
+		return this.prospection.getCampagneStatistics(id, requireOrganizationId(user));
 	}
 }

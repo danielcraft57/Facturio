@@ -1,8 +1,10 @@
-Images pour la landing page Facturio
+Images marketing Facturio (public/images/)
 
-Placez ici les visuels suivants (générés par l'assistant) :
-- facturio-hero.png : illustration hero (facturation / tableau de bord)
-- facturio-features.png : visuel fonctionnalités
+- facturio-hero.png — accueil / hero classique
+- facturio-features.png — page fonctionnalités
+- facturio-prestations.png — catalogue prestations numériques
+- facturio-workflow.png — workflow devis → facture → paiement
+- facturio-efacture.png — réforme facturation électronique 2026
+- facturio-pricing.png — page tarifs
 
-Si les fichiers sont absents, la landing affichera les blocs sans image (alt text).
-Les images générées se trouvent dans le dossier assets du projet Cursor.
+Composants JS complémentaires : HeroDashboardMock (maquette animée), ScrollReveal, AnimatedCounter, FloatingOrbs.

@@ -76,6 +76,24 @@ enum DocumentStatus {
   EXPIRED
 }
 
+enum SaasBillingPlan {
+  FREE
+  PRO
+  PRO_EFACTURE
+  AGENCY
+}
+
+/** Statut préparation / envoi facture électronique (réforme 2026). */
+enum EInvoiceStatus {
+  NOT_READY
+  READY
+  XML_GENERATED
+  PENDING_PA
+  SENT
+  DELIVERED
+  ERROR
+}
+
 model Organization {
   id            Int            @id @default(autoincrement())
   name          String
@@ -132,6 +150,22 @@ model Organization {
   prospectLabApiUrl String?
   prospectLabApiKey String?
 
+  // Abonnement Facturio (SaaS) — clés Stripe plateforme dans .env uniquement
+  saasPlan               SaasBillingPlan @default(FREE)
+  saasPlanExpiresAt      DateTime?
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?
+
+  // Stripe prestataire (paiements des factures par ses clients) — stocké en BDD, RGPD
+  invoiceStripePublishableKey String?
+  invoiceStripeSecretKey      String?
+  invoiceStripeWebhookSecret  String?
+  invoiceStripeConfiguredAt   DateTime?
+
+  // RGPD — contact & politique affichés aux clients (factures / devis)
+  privacyPolicyUrl    String?
+  dataControllerEmail String?
+
   // Relations
   users          User[]
   clients        Client[]
@@ -182,8 +216,17 @@ model User {
   emailVerificationToken   String?   @unique
   emailVerificationExpires DateTime?
 
+  // Consentements RGPD (inscription)
+  privacyConsentAt DateTime?
+  termsAcceptedAt  DateTime?
+
+  // 2FA (TOTP — activation future)
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+
   organizationId Int
   organization   Organization @relation(fields: [organizationId], references: [id])
+  sessions       UserSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -193,6 +236,28 @@ model User {
   @@index([organizationId])
   @@index([passwordResetToken])
   @@index([emailVerificationToken])
+}
+
+/// Session navigateur (empreinte appareil, IP hashée) — anti-usurpation / connexions simultanées
+model UserSession {
+  id                  Int       @id @default(autoincrement())
+  userId              Int
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceFingerprint   String
+  userAgent           String?
+  ipHash              String?
+  trusted             Boolean   @default(false)
+  verifiedAt          DateTime?
+  verificationToken   String?   @unique
+  verificationExpires DateTime?
+  revokedAt           DateTime?
+  lastActivityAt      DateTime  @default(now())
+  createdAt           DateTime  @default(now())
+
+  @@index([userId])
+  @@index([userId, deviceFingerprint])
+  @@index([verificationToken])
+  @@index([lastActivityAt])
 }
 
 model OrganizationDocument {
@@ -234,6 +299,7 @@ model Client {
   // B2B/B2C
   isCompany         Boolean        @default(false)
   companyName       String?
+  siren             String?
   vatNumber         String?
   isVatExempt       Boolean        @default(false)
   taxRateOverrideId Int?
@@ -277,16 +343,20 @@ model Invoice {
   avoirs        Avoir[]            @relation("InvoiceAvoirs")
   appliedAvoirs AvoirApplication[] @relation("AppliedAvoirs")
   taxDeductions      TaxDeduction[]
-  publicToken        String?                 @unique
-  sentAt             DateTime?
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  publicToken         String?                 @unique
+  sentAt              DateTime?
+  eInvoiceStatus      EInvoiceStatus          @default(NOT_READY)
+  eInvoiceGeneratedAt DateTime?
+  eInvoiceXmlHash     String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
   @@index([status, date])
   @@index([clientId])
   @@index([number])
   @@index([organizationId])
   @@index([publicToken])
+  @@index([eInvoiceStatus])
 }
 
 model InvoiceLine {
@@ -432,14 +502,24 @@ model Product {
   kind             ProductKind    @default(SERVICE)
   unitPrice        Decimal? // optionnel si via plan
   defaultTaxRateId Int?
+  /** But métier : site web, SaaS, e-commerce, vitrine */
+  purpose          String?
   /** Catégorie fonctionnelle (SETUP, THEME, DEV, MAINTENANCE, etc.) */
   category         String?
   /** Langages / technos (ex: TypeScript, React, Nest) stockés en JSON array */
   languages        Json?
+  /** Points clés (bullet points) stockés en JSON array */
+  details          Json?
   /** Temps estimé en heures pour la prestation */
   estimatedHours   Int?
   /** Description technique détaillée du produit ou service */
   description      String?
+  /** Visuel catalogue : icon | library | custom */
+  visualType       String?        @default("icon")
+  /** Nom d'icône Font Awesome (ex: cloud, code) */
+  iconName         String?
+  /** Clé bibliothèque (library:xxx) ou data URL image personnalisée */
+  imageData        String?
   defaultTaxRate   TaxRate?       @relation("ProductDefaultTaxRate", fields: [defaultTaxRateId], references: [id])
   plans            Plan[]         @relation("PlanProduct")
   quoteLines       QuoteLine[]

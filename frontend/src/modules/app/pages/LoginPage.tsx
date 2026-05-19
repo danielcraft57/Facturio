@@ -18,6 +18,7 @@ import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { useAuthStore } from '../../../stores/authStore'
 import { authService } from '../../../services/authService'
+import type { DeviceVerificationResponse } from '../../../services/authService'
 
 /**
  * Page de connexion
@@ -46,7 +47,7 @@ export function LoginPage() {
   useEffect(() => {
     if (isAuthenticated) {
       const from = (location.state as any)?.from?.pathname || '/dashboard'
-      navigate(from, { replace: true })
+      navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
     }
   }, [isAuthenticated, navigate, location])
 
@@ -61,9 +62,13 @@ export function LoginPage() {
     }
 
     try {
-      await login({ email, password })
+      const result = await login({ email, password })
       const from = (location.state as any)?.from?.pathname || '/dashboard'
-      navigate(from, { replace: true })
+      if ((result as DeviceVerificationResponse | undefined)?.needDeviceVerification) {
+        navigate('/auth/session?pending=device', { replace: true })
+        return
+      }
+      navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
     } catch (err: any) {
       setLocalError(err.message || 'Erreur lors de la connexion')
     }

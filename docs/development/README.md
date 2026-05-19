@@ -7,6 +7,7 @@ Documentation pour les développeurs contribuant à Facturio.
 - [Architecture](./ARCHITECTURE.md) - Vue d'ensemble de l'architecture
 - [Guide de développement](./DEVELOPMENT.md) - Workflow et bonnes pratiques
 - [CI/CD](./CI_CD.md) - Intégration continue et déploiement
+- [E-invoicing](./E_INVOICING.md) - Module conformité réforme 2026
 - [Optimisation](./OPTIMIZATION.md) - Optimisation des performances
 
 ## 🛠️ Stack technique

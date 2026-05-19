@@ -1,0 +1,32 @@
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { BillingService } from './billing.service';
+import { PlatformStripeService } from './platform-stripe.service';
+import { CreateCheckoutDto } from './dto/create-checkout.dto';
+
+@Controller('billing')
+export class BillingController {
+	constructor(
+		private readonly billing: BillingService,
+		private readonly platformStripe: PlatformStripeService,
+	) {}
+
+	@Get('usage')
+	getUsage(@CurrentUser() user: { organizationId: number }) {
+		return this.billing.getUsage(user.organizationId);
+	}
+
+	/** Checkout Stripe plateforme (.env) — abonnement Facturio Pro */
+	@Post('checkout')
+	async createCheckout(
+		@CurrentUser() user: { organizationId: number; email: string },
+		@Body() body: CreateCheckoutDto,
+	) {
+		return this.platformStripe.createCheckoutSession(user.organizationId, user.email, body.plan);
+	}
+
+	@Get('platform-stripe-publishable-key')
+	getPlatformPublishableKey() {
+		return { publishableKey: this.platformStripe.getPlatformPublishableKey() };
+	}
+}

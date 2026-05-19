@@ -39,6 +39,13 @@ import {
   Note
 } from '@mui/icons-material'
 import { clientService, type Client } from '../../services/clients'
+import {
+  ClientFormDialog,
+  clientToFormValues,
+  emptyClientFormValues,
+  type ClientFormValues,
+} from './components/ClientFormDialog'
+import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { invoiceService, type Invoice } from '../../services/invoices'
 import { quoteService } from '../../services/quoteService'
 import type { Quote } from '../../types/quote'
@@ -71,6 +78,10 @@ export function ClientDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tabValue, setTabValue] = useState(0)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState<ClientFormValues>(emptyClientFormValues)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -89,6 +100,7 @@ export function ClientDetailPage() {
       const response = await clientService.getClient(id)
       if (response.data) {
         setClient(response.data)
+        setEditForm(clientToFormValues(response.data))
       }
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement du client')
@@ -150,16 +162,42 @@ export function ClientDetailPage() {
     .filter(inv => inv.status === 'sent' || inv.status === 'overdue')
     .reduce((sum, inv) => sum + inv.total, 0)
 
+  const handleSaveEdit = async () => {
+    if (!id || !client) return
+    const name = editForm.name.trim()
+    const email = editForm.email.trim()
+    if (!name || !email) {
+      setEditError('Nom et email sont obligatoires')
+      return
+    }
+    try {
+      setSaving(true)
+      setEditError(null)
+      const response = await clientService.updateClient({
+        id,
+        name,
+        email,
+        siren: editForm.siren || undefined,
+        address: editForm.address
+          ? { street: editForm.address, city: '', postalCode: '', country: 'FR' }
+          : undefined,
+        status: editForm.status,
+      })
+      if (response.data) {
+        setClient({ ...response.data, phone: editForm.phone || client.phone })
+        setEditOpen(false)
+      }
+    } catch (err: unknown) {
+      setEditError(err instanceof Error ? err.message : 'Mise à jour impossible')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '50vh',
-        p: { xs: 1, sm: 2, md: 3 }
-      }}>
-        <CircularProgress size={60} />
+      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+        <TablePageSkeleton rows={6} />
       </Box>
     )
   }
@@ -197,10 +235,23 @@ export function ClientDetailPage() {
         <Button
           variant="outlined"
           startIcon={<Edit />}
-          onClick={() => navigate(`/clients/${id}/edit`)}
+          onClick={() => {
+            if (client) setEditForm(clientToFormValues(client))
+            setEditError(null)
+            setEditOpen(true)
+          }}
         >
           Modifier
         </Button>
+        {client.email && (
+          <Button
+            variant="outlined"
+            startIcon={<Email />}
+            href={`mailto:${encodeURIComponent(client.email)}`}
+          >
+            Email
+          </Button>
+        )}
         <Button
           variant="contained"
           startIcon={<Receipt />}
@@ -249,6 +300,15 @@ export function ClientDetailPage() {
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Phone color="action" />
                       <Typography variant="body2">{client.phone}</Typography>
+                    </Stack>
+                  </GridLegacy>
+                )}
+
+                {client.siren && (
+                  <GridLegacy item xs={12} sm={6}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Business color="action" />
+                      <Typography variant="body2">SIREN {client.siren}</Typography>
                     </Stack>
                   </GridLegacy>
                 )}
@@ -492,6 +552,22 @@ export function ClientDetailPage() {
           </Stack>
         </GridLegacy>
       </GridLegacy>
+
+      <ClientFormDialog
+        open={editOpen}
+        mode="edit"
+        values={editForm}
+        error={editError}
+        saving={saving}
+        onClose={() => {
+          if (saving) return
+          setEditOpen(false)
+          if (client) setEditForm(clientToFormValues(client))
+        }}
+        onChange={setEditForm}
+        onSubmit={handleSaveEdit}
+        onClearError={() => setEditError(null)}
+      />
     </Box>
   )
 }

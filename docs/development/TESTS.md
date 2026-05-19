@@ -29,6 +29,7 @@ Tests d'intégration des endpoints complets.
 - `products.e2e-spec.ts` : Tests E2E des endpoints produits
 - `clients.e2e-spec.ts` : Tests E2E des endpoints clients
 - `invoices.e2e-spec.ts` : Tests E2E des endpoints factures
+- `e-invoicing.e2e-spec.ts` : Readiness, export XML, SIREN client
 
 ## Structure des tests
 

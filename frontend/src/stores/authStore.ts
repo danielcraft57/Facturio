@@ -1,5 +1,12 @@
 import { create } from 'zustand'
-import { authService, type User, type LoginDto, type SignupDto } from '../services/authService'
+import {
+  authService,
+  type User,
+  type LoginDto,
+  type SignupDto,
+  type DeviceVerificationResponse,
+} from '../services/authService'
+import { getDeviceFingerprint } from '../utils/deviceFingerprint'
 
 /**
  * État du store d'authentification
@@ -15,7 +22,8 @@ interface AuthState {
  * Actions du store d'authentification
  */
 interface AuthActions {
-  login: (credentials: LoginDto) => Promise<void>
+  login: (credentials: LoginDto) => Promise<void | DeviceVerificationResponse>
+  bootstrapSession: () => Promise<void | DeviceVerificationResponse>
   signup: (data: SignupDto) => Promise<void | { needVerification: true; message?: string }>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
@@ -44,9 +52,15 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   login: async (credentials: LoginDto) => {
     set({ isLoading: true, error: null })
     try {
-      const response = await authService.login(credentials)
+      const fingerprint = await getDeviceFingerprint()
+      const response = await authService.login({ ...credentials, deviceFingerprint: fingerprint })
+      if ((response as DeviceVerificationResponse).needDeviceVerification) {
+        set({ isLoading: false, error: null, user: null, isAuthenticated: false })
+        return response as DeviceVerificationResponse
+      }
+      const auth = response as { user: User }
       set({
-        user: response.user,
+        user: auth.user,
         isAuthenticated: true,
         isLoading: false,
         error: null,
@@ -115,12 +129,34 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
    * 
    * Récupère le profil utilisateur depuis le serveur pour valider le token.
    */
-  checkAuth: async () => {
-    if (!authService.isAuthenticated()) {
-      set({ user: null, isAuthenticated: false })
-      return
+  bootstrapSession: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const fingerprint = await getDeviceFingerprint()
+      const response = await authService.bootstrapSession(fingerprint)
+      if ((response as DeviceVerificationResponse).needDeviceVerification) {
+        set({ isLoading: false, user: null, isAuthenticated: false })
+        return response as DeviceVerificationResponse
+      }
+      const auth = response as { user: User }
+      set({
+        user: auth.user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      })
+    } catch (error: any) {
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: error.message || 'Session invalide',
+      })
+      throw error
     }
+  },
 
+  checkAuth: async () => {
     set({ isLoading: true })
     try {
       const user = await authService.getCurrentUser()
@@ -130,8 +166,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isLoading: false,
         error: null,
       })
-    } catch (error: any) {
-      // Token invalide ou expiré
+    } catch {
       set({
         user: null,
         isAuthenticated: false,

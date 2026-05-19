@@ -14,6 +14,7 @@ class ProductService {
     if (filters?.minPrice !== undefined) params.append('minPrice', String(filters.minPrice));
     if (filters?.maxPrice !== undefined) params.append('maxPrice', String(filters.maxPrice));
     if (filters?.language) params.append('language', filters.language);
+    if (filters?.visualType) params.append('visualType', filters.visualType);
     if (filters?.minHours !== undefined) params.append('minHours', String(filters.minHours));
     if (filters?.maxHours !== undefined) params.append('maxHours', String(filters.maxHours));
     params.append('page', String(page));

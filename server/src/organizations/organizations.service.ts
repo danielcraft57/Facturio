@@ -1,5 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { encryptOrgStripeFields } from '../crypto/organization-stripe-secrets.util';
+import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
+import { sanitizeOrganizationProfile } from './organization-profile.util';
+import { UpdateInvoiceStripeDto } from './dto/update-invoice-stripe.dto';
 
 /**
  * Service de gestion des organisations
@@ -15,7 +19,10 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class OrganizationsService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly secretsCrypto: SecretsCryptoService,
+	) {}
 
 	/**
 	 * Récupère le profil d'une organisation
@@ -41,7 +48,41 @@ export class OrganizationsService {
 			throw new NotFoundException('Organisation introuvable');
 		}
 
-		return organization;
+		return sanitizeOrganizationProfile(organization as Record<string, unknown>);
+	}
+
+	async updateInvoiceStripe(orgId: number, data: UpdateInvoiceStripeDto) {
+		const update: Record<string, unknown> = {};
+		if (data.invoiceStripePublishableKey !== undefined) {
+			update.invoiceStripePublishableKey = data.invoiceStripePublishableKey || null;
+		}
+		Object.assign(
+			update,
+			encryptOrgStripeFields(this.secretsCrypto, {
+				invoiceStripeSecretKey: data.invoiceStripeSecretKey,
+				invoiceStripeWebhookSecret: data.invoiceStripeWebhookSecret,
+			}),
+		);
+		if (
+			(data.invoiceStripeSecretKey && data.invoiceStripeSecretKey.trim()) ||
+			(data.invoiceStripePublishableKey && data.invoiceStripePublishableKey.trim())
+		) {
+			update.invoiceStripeConfiguredAt = new Date();
+		}
+
+		const organization = await this.prisma.organization.update({
+			where: { id: orgId },
+			data: update,
+		});
+		return sanitizeOrganizationProfile(organization as Record<string, unknown>);
+	}
+
+	getInvoiceStripeWebhookUrl(organizationId: number): string {
+		const base =
+			process.env.API_PUBLIC_URL?.trim() ||
+			process.env.BACKEND_URL?.trim() ||
+			'http://localhost:3000';
+		return `${base.replace(/\/$/, '')}/api/webhooks/stripe/invoices/${organizationId}`;
 	}
 
 	/**
@@ -59,7 +100,7 @@ export class OrganizationsService {
 	 * @returns Organisation mise à jour avec documents validés
 	 */
 	async updateProfile(orgId: number, data: any) {
-		return this.prisma.organization.update({
+		const organization = await this.prisma.organization.update({
 			where: { id: orgId },
 			data: {
 				name: data.name,
@@ -99,6 +140,8 @@ export class OrganizationsService {
 				defaultCurrency: data.defaultCurrency,
 				defaultLanguage: data.defaultLanguage,
 				timezone: data.timezone,
+				privacyPolicyUrl: data.privacyPolicyUrl,
+				dataControllerEmail: data.dataControllerEmail,
 			},
 			include: {
 				documents: {
@@ -107,6 +150,7 @@ export class OrganizationsService {
 				},
 			},
 		});
+		return sanitizeOrganizationProfile(organization as Record<string, unknown>);
 	}
 }
 

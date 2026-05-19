@@ -1,0 +1,152 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Box, LinearProgress, Typography, alpha, useTheme } from '@mui/material'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import MailOutlineIcon from '@mui/icons-material/MailOutline'
+import { useAuthStore } from '../../../stores/authStore'
+
+const MIN_DISPLAY_MS = 1200
+
+const STEPS = [
+  'Vérification de votre session…',
+  'Chargement de votre espace…',
+  'Préparation du tableau de bord…',
+] as const
+
+/**
+ * Page d’attente entre connexion et application (validation session + appareil).
+ */
+export function AuthBootPage() {
+  const theme = useTheme()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const { bootstrapSession } = useAuthStore()
+
+  const pendingDevice = searchParams.get('pending') === 'device'
+  const from = searchParams.get('from') || '/dashboard'
+
+  const [stepIndex, setStepIndex] = useState(0)
+  const [progress, setProgress] = useState(8)
+  const [error, setError] = useState<string | null>(null)
+
+  const stepLabel = useMemo(() => STEPS[Math.min(stepIndex, STEPS.length - 1)], [stepIndex])
+
+  useEffect(() => {
+    if (pendingDevice) return
+
+    let cancelled = false
+    const started = performance.now()
+
+    const stepTimer = window.setInterval(() => {
+      setStepIndex((i) => Math.min(i + 1, STEPS.length - 1))
+      setProgress((p) => Math.min(p + 18, 92))
+    }, 420)
+
+    const run = async () => {
+      try {
+        const result = await bootstrapSession()
+        if (cancelled) return
+        if (result?.needDeviceVerification) {
+          navigate(`/auth/session?pending=device`, { replace: true })
+          return
+        }
+        const elapsed = performance.now() - started
+        const wait = Math.max(0, MIN_DISPLAY_MS - elapsed)
+        window.setTimeout(() => {
+          if (!cancelled) navigate(from, { replace: true })
+        }, wait)
+      } catch (err: unknown) {
+        if (cancelled) return
+        const message = err instanceof Error ? err.message : 'Session invalide'
+        setError(message)
+        window.setTimeout(() => navigate('/login', { replace: true }), 2400)
+      }
+    }
+
+    void run()
+
+    return () => {
+      cancelled = true
+      window.clearInterval(stepTimer)
+    }
+  }, [bootstrapSession, from, navigate, pendingDevice])
+
+  if (pendingDevice) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          px: 2,
+          bgcolor: (t) => alpha(t.palette.primary.main, 0.04),
+        }}
+      >
+        <Box sx={{ maxWidth: 420, textAlign: 'center' }}>
+          <MailOutlineIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+          <Typography variant="h5" fontWeight={700} gutterBottom>
+            Confirmez cette connexion
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+            Nous avons détecté une connexion depuis un nouvel appareil ou pendant une session active
+            ailleurs. Un email vient de vous être envoyé — cliquez sur le lien pour accéder à
+            Facturio.
+          </Typography>
+        </Box>
+      </Box>
+    )
+  }
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: 2,
+        gap: 3,
+        bgcolor: (t) => alpha(t.palette.primary.main, 0.03),
+      }}
+    >
+      <Box
+        sx={{
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
+          color: 'primary.main',
+        }}
+      >
+        <LockOutlinedIcon />
+      </Box>
+
+      <Box sx={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          {error ? 'Connexion interrompue' : 'Ouverture de votre espace'}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, minHeight: 40 }}>
+          {error ?? stepLabel}
+        </Typography>
+        <LinearProgress
+          variant="determinate"
+          value={error ? 100 : progress}
+          sx={{
+            height: 4,
+            borderRadius: 2,
+            bgcolor: alpha(theme.palette.primary.main, 0.12),
+            '& .MuiLinearProgress-bar': {
+              borderRadius: 2,
+              transition: 'transform 0.35s ease',
+            },
+          }}
+        />
+      </Box>
+    </Box>
+  )
+}

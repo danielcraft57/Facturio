@@ -1,14 +1,16 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
-import { ConfigService } from '../config/config.service';
 import { assertValidPublicToken } from '../invoices/public-token.util';
+import { decryptOrgStripeSecrets } from '../crypto/organization-stripe-secrets.util';
+import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
 import { createStripeClient, type StripeClient } from './stripe-client';
 
 export interface PaymentIntentResponse {
 	clientSecret: string;
 	amount: number;
 	currency: string;
+	stripePublishableKey: string;
 }
 
 interface StripePaymentIntentPayload {
@@ -17,39 +19,70 @@ interface StripePaymentIntentPayload {
 	amount_received: number;
 }
 
+/**
+ * Paiements Stripe des **factures clients** — utilise les clés Stripe **de l'organisation** (BDD).
+ * Ne jamais utiliser les clés plateforme .env ici (réservées à l'abonnement Facturio).
+ */
 @Injectable()
 export class StripeService {
 	private readonly logger = new Logger(StripeService.name);
-	private readonly stripe: StripeClient | null;
 
 	constructor(
-		private readonly config: ConfigService,
 		private readonly prisma: PrismaService,
-		private readonly payments: PaymentsService
-	) {
-		const secretKey = config.stripeSecretKey;
-		this.stripe = secretKey ? createStripeClient(secretKey) : null;
+		private readonly payments: PaymentsService,
+		private readonly secretsCrypto: SecretsCryptoService,
+	) {}
+
+	private resolveOrgStripe(org: {
+		invoiceStripeSecretKey: string | null;
+		invoiceStripePublishableKey: string | null;
+		invoiceStripeWebhookSecret?: string | null;
+	}) {
+		return decryptOrgStripeSecrets(this.secretsCrypto, org);
 	}
 
-	isConfigured(): boolean {
-		return !!this.stripe;
-	}
-
-	private ensureStripe(): StripeClient {
-		if (!this.stripe) {
-			throw new ServiceUnavailableException('Paiement Stripe non configuré');
+	private getOrgStripeClient(org: {
+		invoiceStripeSecretKey: string | null;
+		invoiceStripePublishableKey: string | null;
+	}): StripeClient {
+		const { secretKey } = this.resolveOrgStripe(org);
+		if (!secretKey?.trim()) {
+			throw new ServiceUnavailableException(
+				'Paiement en ligne non configuré : ajoutez vos clés Stripe prestataire dans Paramètres.',
+			);
 		}
-		return this.stripe;
+		return createStripeClient(secretKey.trim());
+	}
+
+	isOrgStripeConfigured(org: {
+		invoiceStripeSecretKey: string | null;
+		invoiceStripePublishableKey: string | null;
+	}): boolean {
+		const { secretKey, publishableKey } = this.resolveOrgStripe(org);
+		return !!(secretKey?.trim() && publishableKey?.trim());
 	}
 
 	private async getInvoiceByPublicToken(token: string) {
 		const safeToken = assertValidPublicToken(token);
 		const invoice = await this.prisma.invoice.findUnique({
 			where: { publicToken: safeToken },
-			include: { payments: true }
+			include: {
+				payments: true,
+				organization: {
+					select: {
+						id: true,
+						invoiceStripeSecretKey: true,
+						invoiceStripePublishableKey: true,
+						invoiceStripeWebhookSecret: true,
+					},
+				},
+			},
 		});
 		if (!invoice || !invoice.sentAt) {
 			throw new NotFoundException('Facture introuvable');
+		}
+		if (!invoice.organization) {
+			throw new ServiceUnavailableException('Organisation de la facture introuvable');
 		}
 		return invoice;
 	}
@@ -61,8 +94,13 @@ export class StripeService {
 
 	async createPaymentIntentForInvoice(token: string): Promise<PaymentIntentResponse> {
 		const safeToken = assertValidPublicToken(token);
-		const stripe = this.ensureStripe();
 		const invoice = await this.getInvoiceByPublicToken(safeToken);
+		const org = invoice.organization!;
+		const stripe = this.getOrgStripeClient(org);
+		const { publishableKey } = this.resolveOrgStripe(org);
+		if (!publishableKey) {
+			throw new ServiceUnavailableException('Clé publishable Stripe prestataire manquante');
+		}
 		const remaining = this.getRemainingAmount(invoice);
 
 		if (remaining <= 0) {
@@ -77,10 +115,11 @@ export class StripeService {
 			currency,
 			metadata: {
 				invoiceId: String(invoice.id),
+				organizationId: String(org.id),
 				publicToken: safeToken,
-				invoiceNumber: invoice.number
+				invoiceNumber: invoice.number,
 			},
-			automatic_payment_methods: { enabled: true }
+			automatic_payment_methods: { enabled: true },
 		});
 
 		if (!paymentIntent.client_secret) {
@@ -90,23 +129,41 @@ export class StripeService {
 		return {
 			clientSecret: paymentIntent.client_secret,
 			amount: remaining,
-			currency: invoice.currency || 'EUR'
+			currency: invoice.currency || 'EUR',
+			stripePublishableKey: publishableKey,
 		};
 	}
 
-	async handleWebhook(rawBody: Buffer, signature: string): Promise<{ received: boolean }> {
-		const stripe = this.ensureStripe();
-		const webhookSecret = this.config.stripeWebhookSecret;
-
-		if (!webhookSecret) {
-			throw new BadRequestException('STRIPE_WEBHOOK_SECRET non configuré');
+	async handleOrgWebhook(
+		organizationId: number,
+		rawBody: Buffer,
+		signature: string,
+	): Promise<{ received: boolean }> {
+		const org = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: {
+				invoiceStripeSecretKey: true,
+				invoiceStripePublishableKey: true,
+				invoiceStripeWebhookSecret: true,
+			},
+		});
+		if (!org) {
+			throw new BadRequestException('Organisation introuvable');
+		}
+		const { secretKey, webhookSecret } = this.resolveOrgStripe(org);
+		if (!secretKey?.trim()) {
+			throw new BadRequestException('Stripe prestataire non configuré');
+		}
+		if (!webhookSecret?.trim()) {
+			throw new BadRequestException('invoiceStripeWebhookSecret non configuré pour cette organisation');
 		}
 
+		const stripe = createStripeClient(secretKey.trim());
 		let event: { type: string; data: { object: StripePaymentIntentPayload } };
 		try {
-			event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret) as typeof event;
+			event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret.trim()) as typeof event;
 		} catch (err) {
-			this.logger.warn(`Webhook Stripe invalide: ${(err as Error).message}`);
+			this.logger.warn(`Webhook Stripe org ${organizationId} invalide: ${(err as Error).message}`);
 			throw new BadRequestException('Signature webhook invalide');
 		}
 
@@ -119,12 +176,12 @@ export class StripeService {
 
 	async confirmPaymentIntentForInvoice(token: string, paymentIntentId: string): Promise<{ ok: boolean }> {
 		assertValidPublicToken(token);
-		const stripe = this.ensureStripe();
 		const invoice = await this.getInvoiceByPublicToken(token);
+		const stripe = this.getOrgStripeClient(invoice.organization!);
 
 		const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 		if (paymentIntent.status !== 'succeeded') {
-			throw new BadRequestException('Le paiement n\'est pas encore confirmé');
+			throw new BadRequestException("Le paiement n'est pas encore confirmé");
 		}
 		if (paymentIntent.metadata?.invoiceId !== String(invoice.id)) {
 			throw new BadRequestException('Paiement non associé à cette facture');
@@ -133,7 +190,7 @@ export class StripeService {
 		await this.fulfillPaymentIntent({
 			id: paymentIntent.id,
 			metadata: paymentIntent.metadata,
-			amount_received: paymentIntent.amount_received
+			amount_received: paymentIntent.amount_received,
 		});
 
 		return { ok: true };
@@ -148,15 +205,13 @@ export class StripeService {
 
 		const stripeRef = `stripe:${paymentIntent.id}`;
 		const existing = await this.prisma.payment.findFirst({
-			where: { notes: stripeRef }
+			where: { notes: stripeRef },
 		});
-		if (existing) {
-			return;
-		}
+		if (existing) return;
 
 		const invoice = await this.prisma.invoice.findUnique({
 			where: { id: invoiceId },
-			include: { payments: true }
+			include: { payments: true },
 		});
 		if (!invoice) {
 			this.logger.warn(`Facture ${invoiceId} introuvable pour PaymentIntent ${paymentIntent.id}`);
@@ -167,15 +222,13 @@ export class StripeService {
 		const paidAmount = Math.round((paymentIntent.amount_received / 100) * 100) / 100;
 		const amount = Math.min(paidAmount, remaining);
 
-		if (amount <= 0) {
-			return;
-		}
+		if (amount <= 0) return;
 
 		await this.payments.create({
 			invoiceId,
 			amount,
 			method: 'STRIPE',
-			notes: stripeRef
+			notes: stripeRef,
 		});
 	}
 }

@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  server:
-    name: server (test)
+  server-unit:
+    name: server (unit)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -30,11 +30,48 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: Unit tests
-        run: npm test
+        run: npm run test:unit
+        env:
+          NODE_ENV: test
+          DATABASE_URL: file:./prisma/prisma/test.db
 
       - name: Build
         run: npm run build
+
+  server-e2e:
+    name: server (e2e)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Prepare test database
+        run: npm run pretest:e2e
+        env:
+          NODE_ENV: test
+          DATABASE_URL: file:./prisma/prisma/test.db
+
+      - name: E2E tests
+        run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          DATABASE_URL: file:./prisma/prisma/test.db
 
   frontend:
     name: frontend (lint/test/build)
@@ -63,4 +100,3 @@ jobs:
 
       - name: Build
         run: npm run build
-

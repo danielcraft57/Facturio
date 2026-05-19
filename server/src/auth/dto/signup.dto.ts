@@ -1,4 +1,14 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import {
+	IsBoolean,
+	IsEmail,
+	Equals,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	MinLength,
+	MaxLength,
+	Matches,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /**
@@ -15,7 +25,7 @@ export class SignupDto {
 
 	@IsString({ message: 'Mot de passe invalide' })
 	@IsNotEmpty({ message: 'Mot de passe requis' })
-	@MinLength(6, { message: 'Le mot de passe doit contenir au moins 6 caractères' })
+	@MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
 	@MaxLength(128, { message: 'Mot de passe trop long' })
 	@Matches(/^[\x20-\x7E]*$/, { message: 'Le mot de passe contient des caractères non autorisés' })
 	password!: string;
@@ -37,5 +47,13 @@ export class SignupDto {
 	@MaxLength(200, { message: 'Nom d\'organisation trop long' })
 	@Transform(({ value }) => typeof value === 'string' ? value.trim().replace(/[<>]/g, '') : value)
 	organizationName!: string;
+
+	@IsBoolean()
+	@Equals(true, { message: 'Vous devez accepter les CGU' })
+	acceptTerms!: boolean;
+
+	@IsBoolean()
+	@Equals(true, { message: 'Vous devez accepter la politique de confidentialité' })
+	acceptPrivacy!: boolean;
 }
 

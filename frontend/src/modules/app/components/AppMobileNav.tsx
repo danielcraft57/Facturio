@@ -114,8 +114,8 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
   const settingsActive = isNavActive(location.pathname, navSettings.to)
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Box sx={{ px: 2, py: 1.5 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ px: 2, py: 1.5, flexShrink: 0 }}>
         <Button
           component={RouterLink}
           to="/factures"
@@ -138,7 +138,7 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
 
       <Divider />
 
-      <List sx={{ px: 1, pt: 1, flex: 1, overflow: 'auto' }}>
+      <List sx={{ px: 1, pt: 1, pb: 2 }}>
         <ListItem disablePadding sx={{ mb: 0.5 }}>
           <ListItemButton
             component={RouterLink}

@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { ListQueryDto } from '../common/dto/list-query.dto';
+
+type ProductWriteDto = CreateProductDto | UpdateProductDto;
+import { ListProductsQueryDto } from './dto/list-products-query.dto';
+import { Prisma } from '@prisma/client';
 
 /**
  * Service de gestion des produits
@@ -24,10 +27,19 @@ export class ProductsService {
 	 * @param data - Données du produit (nom, SKU, prix, taux TVA, etc.)
 	 * @returns Produit créé avec taux de TVA par défaut
 	 */
+	private toPrismaData(data: ProductWriteDto) {
+		const { languages, details, ...rest } = data as CreateProductDto;
+		return {
+			...rest,
+			...(languages !== undefined ? { languages: languages ?? [] } : {}),
+			...(details !== undefined ? { details: details ?? [] } : {}),
+		};
+	}
+
 	create(data: CreateProductDto) {
-		return this.prisma.product.create({ 
-			data,
-			include: { defaultTaxRate: true }
+		return this.prisma.product.create({
+			data: this.toPrismaData(data),
+			include: { defaultTaxRate: true },
 		});
 	}
 
@@ -37,39 +49,57 @@ export class ProductsService {
 	 * @param query - Paramètres de pagination/recherche/tri
 	 * @returns Liste paginée de produits avec taux de TVA
 	 */
-	async findAll(query?: ListQueryDto) {
+	async findAll(query?: ListProductsQueryDto) {
 		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
 		const pageSize = query?.pageSize ?? query?.limit;
 		const take = pageSize != null ? parseInt(String(pageSize), 10) : 20;
 		const skip = (page - 1) * take;
 
-		const where = query?.search
-			? {
-				OR: [
-					{ name: { contains: query.search } },
-					{ sku: { contains: query.search } }
-				]
-			}
-			: undefined;
+		const where: Prisma.ProductWhereInput = {};
+
+		if (query?.search) {
+			where.OR = [
+				{ name: { contains: query.search } },
+				{ sku: { contains: query.search } },
+				{ description: { contains: query.search } },
+			];
+		}
+		if (query?.kind) where.kind = query.kind;
+		if (query?.purpose) where.purpose = query.purpose;
+		if (query?.category) where.category = query.category;
+		if (query?.visualType) where.visualType = query.visualType;
+
+		const orderBy = query?.sortBy
+			? { [query.sortBy]: (query.order ?? 'desc') as 'asc' | 'desc' }
+			: { createdAt: 'desc' as const };
+
+		const include = { defaultTaxRate: true };
+
+		if (query?.language) {
+			const lang = query.language.toLowerCase();
+			const all = await this.prisma.product.findMany({ where, orderBy, include });
+			const filtered = all.filter(p => {
+				const langs = Array.isArray(p.languages) ? (p.languages as string[]) : [];
+				return langs.some(l => String(l).toLowerCase().includes(lang));
+			});
+			return {
+				items: filtered.slice(skip, skip + take),
+				total: filtered.length,
+				page,
+				pageSize: take,
+			};
+		}
 
 		const [items, total] = await this.prisma.$transaction([
-			this.prisma.product.findMany({
-				skip,
-				take,
-				where,
-				orderBy: query?.sortBy
-					? { [query.sortBy]: (query.order ?? 'desc') as any }
-					: { createdAt: 'desc' },
-				include: { defaultTaxRate: true }
-			}),
-			this.prisma.product.count({ where })
+			this.prisma.product.findMany({ skip, take, where, orderBy, include }),
+			this.prisma.product.count({ where }),
 		]);
 
 		return {
 			items,
 			total,
 			page,
-			pageSize: take
+			pageSize: take,
 		};
 	}
 
@@ -96,7 +126,11 @@ export class ProductsService {
 	 */
 	async update(id: number, data: UpdateProductDto) {
 		await this.findOne(id);
-		return this.prisma.product.update({ where: { id }, data, include: { defaultTaxRate: true } });
+		return this.prisma.product.update({
+			where: { id },
+			data: this.toPrismaData(data),
+			include: { defaultTaxRate: true },
+		});
 	}
 
 	/**

@@ -14,6 +14,8 @@ export type ProductCategory =
   | 'MOBILE'
   | 'API';
 
+export type ProductVisualType = 'icon' | 'library' | 'custom';
+
 export interface Product {
   id: number;
   name: string;
@@ -21,12 +23,15 @@ export interface Product {
   kind: ProductKind;
   unitPrice?: number;
   defaultTaxRateId?: number;
-  purpose?: ProductPurpose; // but: site web, saas, ecommerce, vitrine
-  category?: ProductCategory; // catégorie fonctionnelle (setup, theme, dev, ...)
-  languages?: string[];     // langages/technos principales (ex: ts, react, nest)
-  estimatedHours?: number;  // temps de conception estimé
-  description?: string;     // détails du module/prestation
-  details?: string[];       // points clés (bullet points)
+  purpose?: ProductPurpose;
+  category?: ProductCategory;
+  languages?: string[];
+  estimatedHours?: number;
+  description?: string;
+  details?: string[];
+  visualType?: ProductVisualType;
+  iconName?: string;
+  imageData?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +48,9 @@ export interface CreateProductData {
   estimatedHours?: number;
   description?: string;
   details?: string[];
+  visualType?: ProductVisualType;
+  iconName?: string;
+  imageData?: string;
 }
 
 export interface UpdateProductData {
@@ -57,6 +65,9 @@ export interface UpdateProductData {
   estimatedHours?: number;
   description?: string;
   details?: string[];
+  visualType?: ProductVisualType;
+  iconName?: string;
+  imageData?: string;
 }
 
 export interface ProductFilters {
@@ -66,7 +77,8 @@ export interface ProductFilters {
   maxPrice?: number;
   purpose?: ProductPurpose;
   category?: ProductCategory;
-  language?: string; // contient dans languages
+  language?: string;
+  visualType?: ProductVisualType;
   minHours?: number;
   maxHours?: number;
 }

@@ -46,6 +46,9 @@ import { Toast } from '../../components/Toast';
 import { EditProspectDialog } from './EditProspectDialog';
 import { ProspectDetails } from './ProspectDetails';
 import { prospectionService } from '../../services/prospectionService';
+import { billingService, type BillingUsage } from '../../services/billing';
+import { unwrapApiPayload } from '../../services/clients';
+import { Link as RouterLink } from 'react-router-dom';
 import { PageHeader } from '../../components/finance/PageHeader';
 import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles';
 import { PageHeader } from '../../components/finance/PageHeader';
@@ -145,14 +148,23 @@ export const ProspectsPage: React.FC = () => {
   const [prospectLabApiUrlDraft, setProspectLabApiUrlDraft] = useState(DEFAULT_PROSPECTLAB_API_URL);
   const [prospectLabApiKeyDraft, setProspectLabApiKeyDraft] = useState('');
   const [savingProspectLabConfig, setSavingProspectLabConfig] = useState(false);
+  const [billingUsage, setBillingUsage] = useState<BillingUsage | null>(null);
 
   const useProspectLab = prospectionConfig?.configured ?? false;
+  const prospectionAllowed = billingUsage?.limits.prospection !== false;
+
+  useEffect(() => {
+    billingService
+      .getUsage()
+      .then((res) => setBillingUsage(unwrapApiPayload<BillingUsage>(res)))
+      .catch(() => setBillingUsage(null));
+  }, []);
 
   useEffect(() => {
     prospectionService.getConfig().then((c) => {
       setProspectionConfig(c);
       if (c?.apiUrl) setProspectLabApiUrlDraft(c.apiUrl);
-      if (c.configured) {
+      if (c.configured && prospectionAllowed) {
         setProspectLabLoading(true);
         setProspectLabError(null);
         prospectionService
@@ -166,7 +178,7 @@ export const ProspectsPage: React.FC = () => {
           .finally(() => setProspectLabLoading(false));
       }
     });
-  }, []);
+  }, [prospectionAllowed]);
 
   useEffect(() => {
     if (prospectionConfig !== null && !useProspectLab) {
@@ -443,6 +455,20 @@ export const ProspectsPage: React.FC = () => {
 
   return (
     <Box sx={{ p: financePagePadding }}>
+      {billingUsage && !prospectionAllowed && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3 }}
+          action={
+            <Button component={RouterLink} to="/parametres" color="inherit" size="small">
+              Passer Pro
+            </Button>
+          }
+        >
+          La prospection ProspectLab est réservée au plan Pro. Vous pouvez préparer votre token ci-dessous, mais
+          l&apos;import et la consultation des entreprises seront actifs après passage au plan Pro.
+        </Alert>
+      )}
       {/* Bannière configuration ProspectLab */}
       {prospectionConfig && !prospectionConfig.configured && (
         <Alert severity="info" sx={{ mb: 3 }}>

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { productService } from '../services/productService';
 import type { Product, ProductFilters, CreateProductData, UpdateProductData } from '../types/product';
+import { normalizeProductFromApi } from '../modules/products/utils/productVisual';
 
 interface ProductsState {
   products: Product[];
@@ -36,7 +37,7 @@ const initialState = {
   isUpdating: false,
   isDeleting: false,
   filters: {},
-  pagination: { page: 1, limit: 10, total: 0 },
+  pagination: { page: 1, limit: 48, total: 0 },
   lastFetch: null,
   isStale: true,
 };
@@ -51,7 +52,8 @@ export const useProductsStore = create<ProductsState>()(
         try {
           const res = await productService.getProducts(filters, page, get().pagination.limit);
           const raw: any = res?.data ?? res;
-          const list = Array.isArray(raw?.items) ? raw.items : Array.isArray(raw?.data) ? raw.data : [];
+          const rawList = Array.isArray(raw?.items) ? raw.items : Array.isArray(raw?.data) ? raw.data : [];
+          const list = rawList.map((p: Record<string, unknown>) => normalizeProductFromApi(p));
           const total = raw?.total ?? 0;
           const pageNum = raw?.page ?? page;
           const limit = raw?.pageSize ?? raw?.limit ?? get().pagination.limit;
@@ -72,7 +74,7 @@ export const useProductsStore = create<ProductsState>()(
         set({ isLoading: true });
         try {
           const res = await productService.getProduct(id);
-          if (res.success && res.data) set({ selectedProduct: res.data });
+          if (res.success && res.data) set({ selectedProduct: normalizeProductFromApi(res.data as unknown as Record<string, unknown>) });
         } finally {
           set({ isLoading: false });
         }
@@ -83,9 +85,10 @@ export const useProductsStore = create<ProductsState>()(
         try {
           const res = await productService.createProduct(data);
           if (res.success && res.data) {
-            set(s => ({ products: [res.data!, ...s.products], selectedProduct: res.data! }));
+            const created = normalizeProductFromApi(res.data as unknown as Record<string, unknown>);
+            set(s => ({ products: [created, ...s.products], selectedProduct: created }));
             get().markAsStale();
-            return res.data!;
+            return created;
           }
         } finally {
           set({ isCreating: false });
@@ -98,12 +101,13 @@ export const useProductsStore = create<ProductsState>()(
         try {
           const res = await productService.updateProduct(id, data);
           if (res.success && res.data) {
+            const updated = normalizeProductFromApi(res.data as unknown as Record<string, unknown>);
             set(s => ({
-              products: s.products.map(p => (p.id === id ? res.data! : p)),
-              selectedProduct: s.selectedProduct?.id === id ? res.data! : s.selectedProduct,
+              products: s.products.map(p => (p.id === id ? updated : p)),
+              selectedProduct: s.selectedProduct?.id === id ? updated : s.selectedProduct,
             }));
             get().markAsStale();
-            return res.data!;
+            return updated;
           }
         } finally {
           set({ isUpdating: false });

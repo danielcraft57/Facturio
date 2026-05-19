@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, UnauthorizedException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
+import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../common/email.service';
@@ -6,6 +7,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
+import { AuthSessionService, type LoginDeviceContext } from './auth-session.service';
 
 /**
  * Service d'authentification
@@ -25,6 +27,7 @@ export class AuthService {
 		private prisma: PrismaService,
 		private jwtService: JwtService,
 		private emailService: EmailService,
+		private authSessionService: AuthSessionService,
 	) {}
 
 	private readonly logger = new Logger(AuthService.name);
@@ -76,6 +79,7 @@ export class AuthService {
 		const verificationToken = crypto.randomBytes(32).toString('hex');
 		const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
+		const consentAt = new Date();
 		const user = await this.prisma.user.create({
 			data: {
 				email: data.email,
@@ -89,6 +93,8 @@ export class AuthService {
 				emailVerificationToken: verificationToken,
 				emailVerificationExpires: verificationExpires,
 				role: 'ADMIN',
+				termsAcceptedAt: data.acceptTerms ? consentAt : null,
+				privacyConsentAt: data.acceptPrivacy ? consentAt : null,
 			},
 			include: { organization: true },
 		});
@@ -130,7 +136,7 @@ export class AuthService {
 	 * });
 	 * ```
 	 */
-	async login(data: LoginDto) {
+	async login(data: LoginDto, deviceContext: LoginDeviceContext = {}) {
 		this.logger.log(`Login attempt for ${data.email}`);
 		const user = await this.prisma.user.findUnique({
 			where: { email: data.email },
@@ -174,7 +180,87 @@ export class AuthService {
 		});
 
 		this.logger.log(`Login success for ${data.email} (userId=${user.id})`);
-		return this.generateTokens(user);
+		return this.finishLogin(user, {
+			...deviceContext,
+			deviceFingerprint: data.deviceFingerprint ?? deviceContext.deviceFingerprint,
+		});
+	}
+
+	async finishLogin(user: any, ctx: LoginDeviceContext) {
+		const { sessionId, needDeviceVerification } = await this.authSessionService.createLoginSession(
+			user.id,
+			ctx,
+		);
+		if (needDeviceVerification) {
+			return {
+				needDeviceVerification: true as const,
+				message:
+					'Connexion depuis un nouvel appareil ou une session active ailleurs. Consultez votre email pour confirmer.',
+				email: this.maskEmail(user.email),
+			};
+		}
+		return this.generateTokens(user, sessionId);
+	}
+
+	async completeDeviceVerification(token: string) {
+		const { userId, sessionId } = await this.authSessionService.verifyDeviceToken(token);
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+			include: { organization: true },
+		});
+		if (!user || user.status !== 'ACTIVE') {
+			throw new BadRequestException('Compte introuvable ou inactif');
+		}
+		return this.generateTokens(user, sessionId);
+	}
+
+	async bootstrapSession(user: any, ctx: LoginDeviceContext) {
+		let sessionId = user.sessionId as number | undefined;
+		if (!sessionId) {
+			const created = await this.authSessionService.createLoginSession(user.id, ctx);
+			if (created.needDeviceVerification) {
+				return {
+					needDeviceVerification: true as const,
+					message:
+						'Confirmez cette connexion via le lien envoyé par email avant d\'accéder au tableau de bord.',
+					email: this.maskEmail(user.email),
+				};
+			}
+			sessionId = created.sessionId;
+		} else {
+			await this.authSessionService.assertSessionActive(sessionId, user.id);
+		}
+		return this.generateTokens(user, sessionId);
+	}
+
+	async revokeCurrentSession(sessionId: number, userId: number): Promise<void> {
+		await this.authSessionService.revokeSession(sessionId, userId);
+	}
+
+	async revokeFromRequest(req: Request): Promise<void> {
+		const cookieToken = req.cookies?.['access_token'];
+		const authHeader = req.headers.authorization;
+		const bearer =
+			typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+				? authHeader.slice(7)
+				: undefined;
+		const token = cookieToken || bearer;
+		if (!token) return;
+		try {
+			const payload = this.jwtService.verify(token) as { sub?: number; sid?: number };
+			if (payload.sid && payload.sub) {
+				await this.authSessionService.revokeSession(payload.sid, payload.sub);
+			}
+		} catch {
+			// Token expiré ou invalide
+		}
+	}
+
+	private maskEmail(email: string): string {
+		const [local, domain] = email.split('@');
+		if (!domain) return '***';
+		const visible = local.length <= 2 ? local[0] : local.slice(0, 2);
+		return `${visible}***@${domain}`;
 	}
 
 	/**
@@ -200,7 +286,7 @@ export class AuthService {
 	 * });
 	 * ```
 	 */
-	async validateGoogleUser(googleUser: any) {
+	async validateGoogleUser(googleUser: any, deviceContext: LoginDeviceContext = {}) {
 		// Chercher utilisateur existant par googleId
 		let user = await this.prisma.user.findUnique({
 			where: { googleId: googleUser.googleId },
@@ -213,7 +299,7 @@ export class AuthService {
 				where: { id: user.id },
 				data: { lastLoginAt: new Date() },
 			});
-			return this.generateTokens(user);
+			return this.finishLogin(user, deviceContext);
 		}
 
 		// Chercher par email si pas de googleId
@@ -240,7 +326,7 @@ export class AuthService {
 				},
 				include: { organization: true },
 			});
-			return this.generateTokens(user);
+			return this.finishLogin(user, deviceContext);
 		}
 
 		// Créer nouvel utilisateur avec organisation par défaut
@@ -269,7 +355,7 @@ export class AuthService {
 			include: { organization: true },
 		});
 
-		return this.generateTokens(user);
+		return this.finishLogin(user, deviceContext);
 	}
 
 	/**
@@ -470,12 +556,13 @@ export class AuthService {
 	 * 
 	 * @private
 	 */
-	private generateTokens(user: any) {
+	generateTokens(user: any, sessionId: number) {
 		const payload = {
 			sub: user.id,
 			email: user.email,
 			role: user.role,
 			organizationId: user.organizationId,
+			sid: sessionId,
 		};
 
 		return {

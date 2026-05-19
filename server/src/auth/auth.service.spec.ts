@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../common/email.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -27,6 +28,10 @@ describe('AuthService', () => {
 		sign: jest.fn(),
 	};
 
+	const mockEmailService = {
+		sendVerifyEmail: jest.fn().mockResolvedValue(undefined),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -38,6 +43,10 @@ describe('AuthService', () => {
 				{
 					provide: JwtService,
 					useValue: mockJwtService,
+				},
+				{
+					provide: EmailService,
+					useValue: mockEmailService,
 				},
 			],
 		}).compile();
@@ -52,6 +61,8 @@ describe('AuthService', () => {
 	describe('signup', () => {
 		it('devrait créer un nouvel utilisateur et organisation', async () => {
 			const signupDto = {
+				acceptTerms: true,
+				acceptPrivacy: true,
 				email: 'test@example.com',
 				password: 'password123',
 				firstName: 'John',
@@ -74,14 +85,16 @@ describe('AuthService', () => {
 
 			const result = await service.signup(signupDto);
 
-			expect(result).toHaveProperty('access_token');
-			expect(result).toHaveProperty('user');
+			expect(result).toHaveProperty('needVerification', true);
+			expect(mockEmailService.sendVerifyEmail).toHaveBeenCalled();
 			expect(mockPrismaService.organization.create).toHaveBeenCalled();
 			expect(mockPrismaService.user.create).toHaveBeenCalled();
 		});
 
 		it('devrait rejeter un email déjà utilisé', async () => {
 			const signupDto = {
+				acceptTerms: true,
+				acceptPrivacy: true,
 				email: 'existing@example.com',
 				password: 'password123',
 				organizationName: 'Test Org',

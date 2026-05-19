@@ -1,6 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { BillingService } from '../billing/billing.service';
 import { ConfigService } from '../config/config.service';
+import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const PROSPECTLAB_TOKENS_URL = 'https://prospectlab.danielcraft.fr/tokens';
@@ -44,8 +46,18 @@ interface ProspectLabCompany {
 export class ProspectionService {
 	constructor(
 		private readonly config: ConfigService,
-		private readonly prisma: PrismaService
+		private readonly prisma: PrismaService,
+		private readonly billing: BillingService,
+		private readonly secretsCrypto: SecretsCryptoService,
 	) {}
+
+	private async ensureProspectionAllowed(organizationId?: number): Promise<number> {
+		if (organizationId == null || Number.isNaN(Number(organizationId)) || organizationId < 1) {
+			throw new BadRequestException('Organisation utilisateur introuvable');
+		}
+		await this.billing.assertCanUseProspection(organizationId);
+		return organizationId;
+	}
 
 	getTokensUrl(): string {
 		return PROSPECTLAB_TOKENS_URL;
@@ -57,9 +69,10 @@ export class ProspectionService {
 			Prisma.sql`SELECT "prospectLabApiUrl", "prospectLabApiKey" FROM "Organization" WHERE id = ${organizationId} LIMIT 1`
 		);
 		const row = rows?.[0];
+		const storedKey = row?.prospectLabApiKey;
 		return {
 			apiUrl: row?.prospectLabApiUrl ?? undefined,
-			apiKey: row?.prospectLabApiKey ?? undefined
+			apiKey: storedKey ? this.secretsCrypto.decrypt(storedKey) ?? undefined : undefined,
 		};
 	}
 
@@ -90,7 +103,8 @@ export class ProspectionService {
 		}
 		if (payload.apiKey !== undefined) {
 			const v = payload.apiKey?.trim();
-			const key = v && v.length > 0 ? v : null;
+			const plain = v && v.length > 0 ? v : null;
+			const key = plain ? this.secretsCrypto.encrypt(plain) : null;
 			await this.prisma.$executeRaw(
 				Prisma.sql`UPDATE "Organization" SET "prospectLabApiKey" = ${key} WHERE id = ${organizationId}`
 			);
@@ -109,14 +123,14 @@ export class ProspectionService {
 		query?: Record<string, string | number | undefined>,
 		organizationId?: number
 	): Promise<T> {
+		const orgId = await this.ensureProspectionAllowed(organizationId);
+
 		let apiUrl = this.config.prospectLabApiUrl;
 		let apiKey = this.config.prospectLabApiKey;
 
-		if (organizationId) {
-			const org = await this.getOrganizationProspectLabConfig(organizationId);
-			if (org.apiUrl) apiUrl = org.apiUrl;
-			if (org.apiKey) apiKey = org.apiKey;
-		}
+		const org = await this.getOrganizationProspectLabConfig(orgId);
+		if (org.apiUrl) apiUrl = org.apiUrl;
+		if (org.apiKey) apiKey = org.apiKey;
 
 		if (!apiKey || !apiKey.trim()) {
 			throw new UnauthorizedException(

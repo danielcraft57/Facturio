@@ -820,6 +820,36 @@ curl -X POST http://localhost:3000/invoices \
   }'
 ```
 
+## Facturation électronique (e-invoicing)
+
+Préfixe : `/api/e-invoicing` — authentification requise (cookie JWT).
+
+### Préparation organisation
+
+```http
+GET /api/e-invoicing/readiness
+```
+
+Réponse : `score`, `checks[]`, `planAllowsEInvoicing`, `reformDates`, `nextSteps`.
+
+### Préparation facture
+
+```http
+GET /api/e-invoicing/invoices/:id/readiness
+```
+
+### Export Factur-X (XML simplifié)
+
+```http
+GET /api/e-invoicing/invoices/:id/factur-x
+```
+
+- Plan requis : `PRO_EFACTURE` ou `AGENCY`
+- Facture doit être conforme (envoyée, SIREN client B2B, profil org complet)
+- Réponse : `application/xml` (fichier en pièce jointe)
+
+Voir [E_INVOICING.md](../development/E_INVOICING.md).
+
 ## Notes
 
 - Tous les montants sont en décimal (pas de float)

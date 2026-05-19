@@ -443,6 +443,42 @@ export class EmailService {
 	 * Envoie l'email de vérification d'adresse (inscription).
 	 * Utilise le template Facturio avec lien de confirmation.
 	 */
+	/**
+	 * Connexion depuis un nouvel appareil ou en parallèle — confirmation par email.
+	 */
+	async sendDeviceLoginEmail(options: {
+		to: string;
+		firstName?: string | null;
+		verifyUrl: string;
+		userAgent?: string | null;
+	}): Promise<void> {
+		const subject = 'Confirmez cette connexion - Facturio';
+		const deviceHint = options.userAgent
+			? `<p style="color:#6b7280;font-size:0.9rem;">Appareil détecté : ${options.userAgent.slice(0, 120)}</p>`
+			: '';
+		const html = this.getBaseLayout({
+			title: subject,
+			content: `
+				<p>Bonjour${options.firstName ? ` ${options.firstName}` : ''},</p>
+				<p>Une connexion à votre compte Facturio a été détectée depuis un <strong>nouvel appareil</strong> ou pendant une session déjà active ailleurs.</p>
+				${deviceHint}
+				<p>Si c'était vous, confirmez cette connexion :</p>
+				<p style="text-align:center;margin:28px 0;">
+					<a href="${options.verifyUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Confirmer cette connexion</a>
+				</p>
+				<p style="color:#6b7280;font-size:0.9rem;">Ce lien expire dans 1 heure. Sinon, ignorez cet email et changez votre mot de passe si vous suspectez une intrusion.</p>
+			`,
+		});
+		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ''},\n\nConfirmez cette connexion : ${options.verifyUrl}\n\nLien valide 1 heure.\n\nL'équipe Facturio`;
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			subject,
+			html,
+			text,
+		});
+	}
+
 	async sendVerifyEmail(options: {
 		to: string;
 		firstName?: string | null;

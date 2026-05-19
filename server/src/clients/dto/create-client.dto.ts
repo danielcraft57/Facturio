@@ -22,6 +22,11 @@ export class CreateClientDto {
 
 	@IsOptional()
 	@IsString()
+	@Transform(({ value }) => (typeof value === 'string' ? value.replace(/\D/g, '') || null : value))
+	siren?: string | null;
+
+	@IsOptional()
+	@IsString()
 	vatNumber?: string | null;
 
 	@IsOptional()

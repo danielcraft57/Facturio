@@ -8,12 +8,36 @@ import { AppLayout } from './components/AppLayout'
 import { PublicLayout } from './components/PublicLayout'
 import { ThemeSettingsDrawer } from './components/ThemeSettingsDrawer'
 import { ToastContainer, useToast } from '../../components/Toast'
-import { ModernPageLoader } from '../../components/AdvancedPageLoader'
+import { TopRouteProgress } from '../../components/TopRouteProgress'
 import { ProtectedRoute } from '../../components/ProtectedRoute'
-import { LandingPage } from './pages/LandingPage'
+const LandingPage = lazy(() =>
+  import('../marketing/pages/LandingPage').then((m) => ({ default: m.LandingPage })),
+)
+const PrestationsPage = lazy(() =>
+  import('../marketing/pages/PrestationsPage').then((m) => ({ default: m.PrestationsPage })),
+)
+const FeaturesPage = lazy(() =>
+  import('../marketing/pages/FeaturesPage').then((m) => ({ default: m.FeaturesPage })),
+)
+const ElectronicInvoicingPage = lazy(() =>
+  import('../marketing/pages/ElectronicInvoicingPage').then((m) => ({ default: m.ElectronicInvoicingPage })),
+)
+const PricingPage = lazy(() =>
+  import('../marketing/pages/PricingPage').then((m) => ({ default: m.PricingPage })),
+)
+const LegalPage = lazy(() => import('../marketing/pages/LegalPage').then((m) => ({ default: m.LegalPage })))
+const PrivacyPage = lazy(() =>
+  import('../marketing/pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })),
+)
+const TermsPage = lazy(() => import('../marketing/pages/TermsPage').then((m) => ({ default: m.TermsPage })))
+const SalesTermsPage = lazy(() =>
+  import('../marketing/pages/SalesTermsPage').then((m) => ({ default: m.SalesTermsPage })),
+)
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
+import { AuthBootPage } from './pages/AuthBootPage'
+import { ConfirmDevicePage } from './pages/ConfirmDevicePage'
 import { PublicQuotePage } from './pages/PublicQuotePage'
 import { PublicQuoteAcceptPage } from './pages/PublicQuoteAcceptPage'
 import { PublicQuoteRejectPage } from './pages/PublicQuoteRejectPage'
@@ -36,7 +60,28 @@ const TaxesPage = lazy(() => import('../taxes/TaxesPage').then(m => ({ default: 
 const SubscriptionsPage = lazy(() => import('../subscriptions/SubscriptionsPage').then(m => ({ default: m.SubscriptionsPage })))
 const FilingsPage = lazy(() => import('../filings/FilingsPage').then(m => ({ default: m.FilingsPage })))
 const AccountingPage = lazy(() => import('../accounting/AccountingPage').then(m => ({ default: m.AccountingPage })))
-const AccountPage = lazy(() => import('../account/AccountPage').then(m => ({ default: m.AccountPage })))
+const SettingsLayout = lazy(() => import('../account/SettingsLayout').then(m => ({ default: m.SettingsLayout })))
+const SettingsIndexPage = lazy(() =>
+  import('../account/pages/SettingsIndexPage').then(m => ({ default: m.SettingsIndexPage })),
+)
+const SettingsCompanyPage = lazy(() =>
+  import('../account/pages/SettingsCompanyPage').then(m => ({ default: m.SettingsCompanyPage })),
+)
+const SettingsBillingPage = lazy(() =>
+  import('../account/pages/SettingsBillingPage').then(m => ({ default: m.SettingsBillingPage })),
+)
+const SettingsEInvoicingPage = lazy(() =>
+  import('../account/pages/SettingsEInvoicingPage').then(m => ({ default: m.SettingsEInvoicingPage })),
+)
+const SettingsPaymentsPage = lazy(() =>
+  import('../account/pages/SettingsPaymentsPage').then(m => ({ default: m.SettingsPaymentsPage })),
+)
+const SettingsPrivacyPage = lazy(() =>
+  import('../account/pages/SettingsPrivacyPage').then(m => ({ default: m.SettingsPrivacyPage })),
+)
+const SettingsDataPage = lazy(() =>
+  import('../account/pages/SettingsDataPage').then(m => ({ default: m.SettingsDataPage })),
+)
 const GlobalStateDemo = lazy(() => import('../../components/GlobalStateDemo').then(m => ({ default: m.GlobalStateDemo })))
 const LoaderDemo = lazy(() => import('../../components/LoaderDemo').then(m => ({ default: m.LoaderDemo })))
 
@@ -123,12 +168,7 @@ export function App() {
       <CssBaseline />
       <AppWithToasts>
         <BrowserRouter>
-          {/* Barre de chargement moderne entre les pages */}
-          <ModernPageLoader 
-            height={3}
-            duration={600}
-            color="rainbow"
-          />
+          <TopRouteProgress />
           
           <Suspense fallback={
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
@@ -145,6 +185,14 @@ export function App() {
                   </PublicLayout>
                 }
               />
+              <Route path="/prestations" element={<PublicLayout><PrestationsPage /></PublicLayout>} />
+              <Route path="/fonctionnalites" element={<PublicLayout><FeaturesPage /></PublicLayout>} />
+              <Route path="/facturation-electronique" element={<PublicLayout><ElectronicInvoicingPage /></PublicLayout>} />
+              <Route path="/tarifs" element={<PublicLayout><PricingPage /></PublicLayout>} />
+              <Route path="/legal" element={<PublicLayout><LegalPage /></PublicLayout>} />
+              <Route path="/privacy" element={<PublicLayout><PrivacyPage /></PublicLayout>} />
+              <Route path="/terms" element={<PublicLayout><TermsPage /></PublicLayout>} />
+              <Route path="/cgv" element={<PublicLayout><SalesTermsPage /></PublicLayout>} />
               <Route
                 path="/login"
                 element={
@@ -189,6 +237,8 @@ export function App() {
                 path="/auth/callback"
                 element={<AuthCallbackPage />}
               />
+              <Route path="/auth/session" element={<AuthBootPage />} />
+              <Route path="/auth/confirmer-appareil" element={<ConfirmDevicePage />} />
 
               {/* Routes publiques devis / factures (accès par token) */}
               <Route
@@ -329,10 +379,18 @@ export function App() {
                 path="/parametres"
                 element={
                   <PrivateRouteWrapper>
-                    <AccountPage />
+                    <SettingsLayout />
                   </PrivateRouteWrapper>
                 }
-              />
+              >
+                <Route index element={<SettingsIndexPage />} />
+                <Route path="entreprise" element={<SettingsCompanyPage />} />
+                <Route path="abonnement" element={<SettingsBillingPage />} />
+                <Route path="facturation-electronique" element={<SettingsEInvoicingPage />} />
+                <Route path="paiements" element={<SettingsPaymentsPage />} />
+                <Route path="confidentialite" element={<SettingsPrivacyPage />} />
+                <Route path="donnees" element={<SettingsDataPage />} />
+              </Route>
               <Route
                 path="/demo"
                 element={

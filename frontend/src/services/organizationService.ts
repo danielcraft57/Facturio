@@ -34,7 +34,20 @@ export interface OrganizationProfile {
 	signature?: string | null;
 	createdAt?: string;
 	updatedAt?: string;
+	invoiceStripePublishableKey?: string | null;
+	invoiceStripePublishableKeyPreview?: string | null;
+	invoiceStripeSecretKeySet?: boolean;
+	invoiceStripeWebhookSecretSet?: boolean;
+	invoiceStripeConfiguredAt?: string | null;
+	privacyPolicyUrl?: string | null;
+	dataControllerEmail?: string | null;
 }
+
+export type UpdateInvoiceStripe = {
+	invoiceStripePublishableKey?: string | null;
+	invoiceStripeSecretKey?: string | null;
+	invoiceStripeWebhookSecret?: string | null;
+};
 
 /**
  * Données de mise à jour du profil (champs optionnels)
@@ -60,5 +73,13 @@ export const organizationService = {
 		const res = await apiClient.patch<OrganizationProfile>('/organization/profile', data);
 		apiClient.invalidateCache('/organization');
 		return res;
+	},
+
+	async updateInvoiceStripe(data: UpdateInvoiceStripe): Promise<ApiResponse<OrganizationProfile>> {
+		return apiClient.patch<OrganizationProfile>('/organization/invoice-stripe', data);
+	},
+
+	async getInvoiceStripeWebhookUrl(): Promise<ApiResponse<{ webhookUrl: string }>> {
+		return apiClient.get<{ webhookUrl: string }>('/organization/invoice-stripe/webhook-url');
 	},
 };

@@ -6,6 +6,13 @@ import { apiClient } from './api'
 export interface LoginDto {
   email: string
   password: string
+  deviceFingerprint?: string
+}
+
+export interface DeviceVerificationResponse {
+  needDeviceVerification: true
+  message: string
+  email?: string
 }
 
 export interface SignupDto {
@@ -14,6 +21,8 @@ export interface SignupDto {
   firstName?: string
   lastName?: string
   organizationName: string
+  acceptTerms: boolean
+  acceptPrivacy: boolean
 }
 
 export interface User {
@@ -74,19 +83,23 @@ class AuthService {
    * @returns Token JWT et informations utilisateur
    * @throws {Error} Si les identifiants sont incorrects
    */
-  async login(credentials: LoginDto): Promise<AuthResponse> {
+  async login(credentials: LoginDto): Promise<AuthResponse | DeviceVerificationResponse> {
     try {
-      const response = await apiClient.post<AuthResponse>(
+      const response = await apiClient.post<AuthResponse | DeviceVerificationResponse>(
         `${this.baseUrl}/login`,
         credentials
       )
-      const payload = this.unwrap<AuthResponse>(response)
+      const payload = this.unwrap<AuthResponse | DeviceVerificationResponse>(response)
 
-      if (payload && payload.access_token) {
-        // Stocker le token dans localStorage (le cookie est géré côté serveur)
-        localStorage.setItem('auth_token', payload.access_token)
-        localStorage.setItem('user', JSON.stringify(payload.user))
-        return payload
+      if (payload && (payload as DeviceVerificationResponse).needDeviceVerification) {
+        return payload as DeviceVerificationResponse
+      }
+
+      const auth = payload as AuthResponse
+      if (auth?.access_token) {
+        localStorage.setItem('auth_token', auth.access_token)
+        localStorage.setItem('user', JSON.stringify(auth.user))
+        return auth
       }
 
       throw new Error('Réponse invalide du serveur')
@@ -186,6 +199,33 @@ class AuthService {
    * @returns Informations utilisateur
    * @throws {Error} Si l'utilisateur n'est pas authentifié
    */
+  async bootstrapSession(deviceFingerprint: string): Promise<AuthResponse | DeviceVerificationResponse> {
+    const response = await apiClient.post<AuthResponse | DeviceVerificationResponse>(
+      `${this.baseUrl}/session/bootstrap`,
+      { deviceFingerprint },
+    )
+    const payload = this.unwrap<AuthResponse | DeviceVerificationResponse>(response)
+    if ((payload as DeviceVerificationResponse).needDeviceVerification) {
+      return payload as DeviceVerificationResponse
+    }
+    const auth = payload as AuthResponse
+    if (auth?.access_token) {
+      localStorage.setItem('auth_token', auth.access_token)
+      localStorage.setItem('user', JSON.stringify(auth.user))
+    }
+    return auth
+  }
+
+  async verifyDevice(token: string): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>(`${this.baseUrl}/verify-device`, { token })
+    const payload = this.unwrap<AuthResponse>(response)
+    if (payload?.access_token) {
+      localStorage.setItem('auth_token', payload.access_token)
+      localStorage.setItem('user', JSON.stringify(payload.user))
+    }
+    return payload
+  }
+
   async getCurrentUser(): Promise<User> {
     try {
       const response = await apiClient.get<User>(`${this.baseUrl}/me`)
@@ -213,8 +253,7 @@ class AuthService {
    * @returns true si un token est présent
    */
   isAuthenticated(): boolean {
-    const token = localStorage.getItem('auth_token')
-    return !!token
+    return !!localStorage.getItem('auth_token') || !!localStorage.getItem('user')
   }
 
   /**

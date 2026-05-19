@@ -12,6 +12,7 @@ export interface Client {
     postalCode: string
     country: string
   }
+  siren?: string
   company?: {
     name: string
     siret?: string
@@ -32,6 +33,7 @@ export interface CreateClientData {
     postalCode: string
     country: string
   }
+  siren?: string
   company?: {
     name: string
     siret?: string
@@ -80,6 +82,7 @@ export function mapApiClientToClient(c: Record<string, unknown>, uiStatus?: Clie
     address: addressStr
       ? { street: addressStr, city: '', postalCode: '', country: String(c.countryCode || 'FR') }
       : undefined,
+    siren: typeof c.siren === 'string' && c.siren ? c.siren : undefined,
     company: c.companyName
       ? { name: String(c.companyName), siret: undefined, tva: c.vatNumber ? String(c.vatNumber) : undefined }
       : undefined,
@@ -107,16 +110,19 @@ export function toCreateClientPayload(data: {
   email: string
   phone?: string
   address?: string
+  siren?: string
   isCompany?: boolean
   companyName?: string
 }): Record<string, unknown> {
   const name = data.name.trim()
+  const sirenDigits = data.siren?.replace(/\D/g, '') || ''
   return {
     name,
     email: data.email.trim(),
     address: data.address?.trim() || undefined,
     isCompany: data.isCompany ?? !!data.companyName,
     companyName: data.companyName?.trim() || (data.isCompany ? name : undefined),
+    ...(sirenDigits.length === 9 ? { siren: sirenDigits } : {}),
     countryCode: 'FR',
   }
 }
@@ -144,7 +150,12 @@ export class ClientService {
 
   // Récupérer un client par ID
   async getClient(id: string): Promise<ApiResponse<Client>> {
-    return apiClient.getCached<Client>(`${this.baseUrl}/${id}`, 5 * 60 * 1000) // Cache 5 minutes
+    const response = await apiClient.getCached<Record<string, unknown>>(
+      `${this.baseUrl}/${id}`,
+      5 * 60 * 1000
+    )
+    const client = mapApiClientToClient(unwrapApiPayload<Record<string, unknown>>(response))
+    return { data: client, success: true }
   }
 
   // Créer un nouveau client
@@ -159,14 +170,26 @@ export class ClientService {
 
   // Mettre à jour un client
   async updateClient(data: UpdateClientData): Promise<ApiResponse<Client>> {
-    const { id, ...updateData } = data
-    const response = await apiClient.put<Client>(`${this.baseUrl}/${id}`, updateData)
-    
-    // Invalider les caches
+    const { id, status: _uiStatus, ...rest } = data
+    const sirenDigits = rest.siren?.replace(/\D/g, '')
+    const payload = {
+      name: rest.name,
+      email: rest.email,
+      address: typeof rest.address === 'string' ? rest.address : rest.address?.street,
+      companyName: rest.company?.name ?? rest.name,
+      isCompany: true,
+      ...(sirenDigits && sirenDigits.length === 9 ? { siren: sirenDigits } : {}),
+    }
+    const response = await apiClient.patch<Record<string, unknown>>(`${this.baseUrl}/${id}`, payload)
+    const client = mapApiClientToClient(
+      unwrapApiPayload<Record<string, unknown>>(response),
+      data.status
+    )
+
     apiClient.invalidateCache('/clients')
     apiClient.invalidateCache(`/clients/${id}`)
-    
-    return response
+
+    return { data: client, success: true }
   }
 
   // Supprimer un client

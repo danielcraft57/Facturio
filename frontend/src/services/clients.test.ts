@@ -10,7 +10,7 @@ vi.mock('./api', async () => {
       ...actual.apiClient,
       getCached: vi.fn(),
       post: vi.fn(),
-      put: vi.fn(),
+      patch: vi.fn(),
       delete: vi.fn(),
       invalidateCache: vi.fn(),
     },

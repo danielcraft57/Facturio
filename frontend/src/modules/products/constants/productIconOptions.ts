@@ -1,0 +1,92 @@
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import {
+  faBox,
+  faCloud,
+  faCode,
+  faCartShopping,
+  faCreditCard,
+  faDatabase,
+  faGlobe,
+  faImage,
+  faLayerGroup,
+  faMobileScreen,
+  faPalette,
+  faPenNib,
+  faPlug,
+  faRocket,
+  faScrewdriverWrench,
+  faServer,
+  faStore,
+  faTag,
+  faWrench,
+  faWindowMaximize,
+  faMagnifyingGlass,
+  faShieldHalved,
+  faChartLine,
+  faUsers,
+  faFileCode,
+  faGear,
+  faLock,
+  faBell,
+  faEnvelope,
+  faCalendar,
+  faTruck,
+  faHeadset,
+  faBriefcase,
+  faLightbulb,
+  faPuzzlePiece,
+} from '@fortawesome/free-solid-svg-icons';
+import { faReact, faNodeJs, faStripe, faShopify, faAws } from '@fortawesome/free-brands-svg-icons';
+
+export type ProductIconOption = {
+  name: string;
+  label: string;
+  icon: IconDefinition;
+};
+
+export const PRODUCT_ICON_OPTIONS: ProductIconOption[] = [
+  { name: 'box', label: 'Produit', icon: faBox },
+  { name: 'cloud', label: 'Cloud / SaaS', icon: faCloud },
+  { name: 'code', label: 'Développement', icon: faCode },
+  { name: 'cart-shopping', label: 'E-commerce', icon: faCartShopping },
+  { name: 'credit-card', label: 'Paiement', icon: faCreditCard },
+  { name: 'database', label: 'Base de données', icon: faDatabase },
+  { name: 'globe', label: 'Web', icon: faGlobe },
+  { name: 'image', label: 'Média', icon: faImage },
+  { name: 'layer-group', label: 'Modules', icon: faLayerGroup },
+  { name: 'mobile-screen', label: 'Mobile', icon: faMobileScreen },
+  { name: 'palette', label: 'Design', icon: faPalette },
+  { name: 'pen-nib', label: 'Contenu', icon: faPenNib },
+  { name: 'plug', label: 'Intégration', icon: faPlug },
+  { name: 'rocket', label: 'Déploiement', icon: faRocket },
+  { name: 'screwdriver-wrench', label: 'Setup', icon: faScrewdriverWrench },
+  { name: 'server', label: 'Hébergement', icon: faServer },
+  { name: 'store', label: 'Boutique', icon: faStore },
+  { name: 'tag', label: 'Catalogue', icon: faTag },
+  { name: 'wrench', label: 'Maintenance', icon: faWrench },
+  { name: 'window-maximize', label: 'Vitrine', icon: faWindowMaximize },
+  { name: 'magnifying-glass', label: 'SEO', icon: faMagnifyingGlass },
+  { name: 'shield-halved', label: 'Sécurité', icon: faShieldHalved },
+  { name: 'chart-line', label: 'Analytics', icon: faChartLine },
+  { name: 'users', label: 'Équipe', icon: faUsers },
+  { name: 'file-code', label: 'Source', icon: faFileCode },
+  { name: 'gear', label: 'Configuration', icon: faGear },
+  { name: 'lock', label: 'Auth', icon: faLock },
+  { name: 'bell', label: 'Notifications', icon: faBell },
+  { name: 'envelope', label: 'Email', icon: faEnvelope },
+  { name: 'calendar', label: 'Planning', icon: faCalendar },
+  { name: 'truck', label: 'Livraison', icon: faTruck },
+  { name: 'headset', label: 'Support', icon: faHeadset },
+  { name: 'briefcase', label: 'Business', icon: faBriefcase },
+  { name: 'lightbulb', label: 'Conseil', icon: faLightbulb },
+  { name: 'puzzle-piece', label: 'Extension', icon: faPuzzlePiece },
+  { name: 'react', label: 'React', icon: faReact },
+  { name: 'node-js', label: 'Node.js', icon: faNodeJs },
+  { name: 'stripe', label: 'Stripe', icon: faStripe },
+  { name: 'shopify', label: 'Shopify', icon: faShopify },
+  { name: 'aws', label: 'AWS', icon: faAws },
+];
+
+export function getIconByName(name?: string): IconDefinition | undefined {
+  return PRODUCT_ICON_OPTIONS.find(o => o.name === name)?.icon;
+}

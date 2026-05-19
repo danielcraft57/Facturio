@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req, Res, UseGuards, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res, UseGuards, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -60,11 +60,45 @@ export class AuthController {
 	 */
 	@Post('login')
 	async login(@Body() data: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-		const result = await this.authService.login(data);
-		// Réinitialiser le rate limit après connexion réussie
+		const deviceContext = this.buildDeviceContext(req, data.deviceFingerprint);
+		const result = await this.authService.login(data, deviceContext);
+		if ((result as { needDeviceVerification?: boolean }).needDeviceVerification) {
+			return result;
+		}
 		const ip = this.rateLimitService.getClientIp(req);
 		this.rateLimitService.resetLimit(ip, this.rateLimitService.loginAttempts);
-		// Définir le cookie avec le token
+		this.setAuthCookie(res, (result as { access_token: string }).access_token);
+		return result;
+	}
+
+	/**
+	 * Initialise la session SPA après connexion (cookie ou Bearer) — retourne le token pour localStorage.
+	 */
+	@Post('session/bootstrap')
+	async bootstrapSession(
+		@CurrentUser() user: any,
+		@Body() body: { deviceFingerprint?: string },
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+	) {
+		const deviceContext = this.buildDeviceContext(req, body?.deviceFingerprint);
+		const result = await this.authService.bootstrapSession(user, deviceContext);
+		if ((result as { needDeviceVerification?: boolean }).needDeviceVerification) {
+			return result;
+		}
+		this.setAuthCookie(res, (result as { access_token: string }).access_token);
+		return result;
+	}
+
+	/**
+	 * Confirme une connexion depuis un nouvel appareil (lien reçu par email).
+	 */
+	@Post('verify-device')
+	async verifyDevice(@Body() body: { token: string }, @Res({ passthrough: true }) res: Response) {
+		if (!body?.token?.trim()) {
+			throw new BadRequestException('Token requis');
+		}
+		const result = await this.authService.completeDeviceVerification(body.token.trim());
 		this.setAuthCookie(res, result.access_token);
 		return result;
 	}
@@ -78,7 +112,8 @@ export class AuthController {
 	 * @returns Message de confirmation
 	 */
 	@Post('logout')
-	async logout(@Res({ passthrough: true }) res: Response) {
+	async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+		await this.authService.revokeFromRequest(req);
 		res.clearCookie('access_token', {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
@@ -135,11 +170,25 @@ export class AuthController {
 	 * Renvoie l'email de vérification pour un compte non encore activé.
 	 */
 	@Post('resend-verification')
-	async resendVerification(@Body() body: { email: string }) {
+	async resendVerification(@Body() body: { email: string }, @Req() req: Request) {
 		if (!body?.email?.trim()) {
 			throw new BadRequestException('Email requis');
 		}
-		return this.authService.resendVerificationEmail(body.email.trim());
+		const email = body.email.trim().toLowerCase();
+		if (
+			!this.rateLimitService.checkLimit(
+				`resend:${email}`,
+				this.rateLimitService.passwordResetAttempts,
+				3,
+				60 * 60 * 1000,
+			)
+		) {
+			throw new HttpException(
+				'Trop de demandes. Veuillez réessayer dans une heure.',
+				HttpStatus.TOO_MANY_REQUESTS,
+			);
+		}
+		return this.authService.resendVerificationEmail(email);
 	}
 
 	/**
@@ -191,11 +240,22 @@ export class AuthController {
 	@Get('google/callback')
 	@UseGuards(GoogleAuthGuard)
 	async googleCallback(@Req() req: Request, @Res() res: Response) {
-		const result = await this.authService.validateGoogleUser(req.user as any);
-		// Définir le cookie avec le token
-		this.setAuthCookie(res, result.access_token);
+		const deviceContext = this.buildDeviceContext(req);
+		const result = await this.authService.validateGoogleUser(req.user as any, deviceContext);
 		const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-		res.redirect(`${frontendUrl}/auth/callback`);
+		if ((result as { needDeviceVerification?: boolean }).needDeviceVerification) {
+			return res.redirect(`${frontendUrl}/auth/session?pending=device`);
+		}
+		this.setAuthCookie(res, (result as { access_token: string }).access_token);
+		res.redirect(`${frontendUrl}/auth/session`);
+	}
+
+	private buildDeviceContext(req: Request, deviceFingerprint?: string) {
+		return {
+			ip: this.rateLimitService.getClientIp(req),
+			userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
+			deviceFingerprint,
+		};
 	}
 
 	/**

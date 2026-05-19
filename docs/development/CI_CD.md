@@ -1,182 +1,58 @@
 # CI/CD - Facturio
 
-Documentation sur l'intégration continue et le déploiement de Facturio.
+Documentation sur l'intégration continue (GitHub Actions).
 
-## Vue d'ensemble
+## Workflows
 
-Facturio utilise GitHub Actions pour l'intégration continue et le déploiement automatique.
+| Fichier | Déclencheur | Rôle |
+|---------|-------------|------|
+| [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | push/PR sur `main` | Tests + build |
+| [`.github/workflows/cd-artifacts.yml`](../../.github/workflows/cd-artifacts.yml) | tags `v*` / manuel | Artefacts de build |
 
-## Workflow CI
+## Job `server-unit`
 
-### Fichier de configuration
+1. Checkout, Node 20, `npm ci` dans `server/`
+2. `npx prisma generate`
+3. `npm run test:unit` (hors fichiers `*.e2e-spec.ts`)
+4. `npm run build`
 
-Le workflow est défini dans `.github/workflows/ci.yml`.
+## Job `server-e2e`
 
-### Étapes du pipeline
+1. `npm run pretest:e2e` — `prisma db push` sur `prisma/prisma/test.db`
+2. `npm run test:e2e` — tests `*.e2e-spec.ts` en série (`--runInBand`)
 
-1. **Checkout** : Récupération du code
-2. **Setup Node** : Installation de Node.js 20
-3. **Install dependencies** : Installation des dépendances
-4. **Lint** : Vérification du code
-5. **Build** : Compilation TypeScript
-6. **Tests** : Exécution des tests
-7. **Coverage** : Génération du rapport de couverture
+Inclut notamment `e-invoicing.e2e-spec.ts`.
 
-### Configuration
+## Job `frontend`
 
-```yaml
-name: CI
+1. `npm ci` dans `frontend/`
+2. `npm run lint`
+3. `npm test` — `vitest run` (non interactif)
+4. `npm run build`
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-      - run: npm test
-      - run: npm run test:e2e
-```
-
-## Tests
-
-### Tests unitaires
-
-Exécutés sur chaque commit et PR :
+## Scripts locaux
 
 ```bash
+# Serveur
+cd server
+npm run test:unit
+npm run pretest:e2e && npm run test:e2e
+npm test          # unit + e2e
+
+# Frontend
+cd frontend
 npm test
 ```
 
-### Tests E2E
-
-Tests d'intégration avec base de données dédiée :
-
-```bash
-npm run test:e2e
-```
-
-### Coverage
-
-Rapport de couverture envoyé à Codecov :
-
-- Badge dans le README
-- Seuil minimum : 80%
-- Alertes si couverture baisse
-
-## Docker
-
-### Build de l'image
-
-L'image Docker est construite avec un Dockerfile multi-stage :
-
-```dockerfile
-FROM node:20-bookworm-slim AS base
-# ...
-FROM base AS deps
-# ...
-FROM deps AS build
-# ...
-FROM base AS runner
-# ...
-```
-
-### Docker Compose
-
-Pour le développement local :
-
-```bash
-docker compose up --build
-```
-
-## Déploiement
-
-### Environnements
-
-- **Development** : Local avec SQLite
-- **Staging** : Environnement de test
-- **Production** : Environnement live
-
-### Variables d'environnement
-
-Variables nécessaires pour le déploiement :
+## Variables CI
 
 ```env
-NODE_ENV=production
-PORT=3000
-DATABASE_URL=postgresql://...
+NODE_ENV=test
+DATABASE_URL=file:./prisma/prisma/test.db
 ```
 
-### Déploiement manuel
+## Évolutions prévues
 
-```bash
-# Build
-npm run build
-
-# Start
-npm start
-```
-
-### Déploiement avec Docker
-
-```bash
-docker build -t facturio-server:latest .
-docker run -p 3000:3000 facturio-server:latest
-```
-
-## Badges
-
-Les badges dans le README affichent :
-
-- **CI Status** : État du pipeline
-- **Coverage** : Taux de couverture
-- **Node Version** : Version Node.js utilisée
-
-## Monitoring
-
-### Logs
-
-Les logs sont centralisés pour le monitoring :
-
-- Erreurs
-- Performances
-- Requêtes API
-
-### Alertes
-
-Alertes configurées pour :
-
-- Échecs de build
-- Baisse de couverture
-- Erreurs critiques
-
-## Bonnes pratiques
-
-1. **Tests avant merge** : Tous les tests doivent passer
-2. **Coverage** : Maintenir un taux de couverture élevé
-3. **Lint** : Code conforme aux règles
-4. **Build** : Le build doit toujours réussir
-5. **Documentation** : Mettre à jour la doc avec les changements
-
-## Évolutions futures
-
-- [ ] Déploiement automatique sur staging
-- [ ] Déploiement automatique sur production
-- [ ] Tests de performance
-- [ ] Tests de sécurité
-- [ ] Déploiement blue/green
-- [ ] Rollback automatique
-
-
-
-
+- [ ] Rapport de couverture (Codecov) avec seuil minimal
+- [ ] Cache Prisma entre jobs
+- [ ] Déploiement staging automatique après merge `main`

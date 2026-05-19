@@ -3,10 +3,14 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuthSessionService } from '../auth-session.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-	constructor(private prisma: PrismaService) {
+	constructor(
+		private prisma: PrismaService,
+		private authSessionService: AuthSessionService,
+	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
 				// Extraire depuis le cookie en priorité
@@ -35,7 +39,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 			throw new UnauthorizedException('Veuillez vérifier votre adresse email pour accéder à votre compte');
 		}
 
-		return user;
+		if (payload.sid) {
+			await this.authSessionService.assertSessionActive(payload.sid, user.id);
+		}
+
+		return { ...user, sessionId: payload.sid as number | undefined };
 	}
 }
 

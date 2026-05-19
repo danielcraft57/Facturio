@@ -1,4 +1,13 @@
-import { IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+	IsArray,
+	IsEnum,
+	IsInt,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	Min,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ProductKind } from '@prisma/client';
 
@@ -32,5 +41,60 @@ export class CreateProductDto {
 	@Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : parseInt(value, 10)))
 	@IsInt()
 	defaultTaxRateId?: number | null;
-}
 
+	@IsOptional()
+	@IsString()
+	purpose?: string | null;
+
+	@IsOptional()
+	@IsString()
+	category?: string | null;
+
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	@Transform(({ value }) => {
+		if (value === undefined || value === null || value === '') return undefined;
+		if (Array.isArray(value)) return value;
+		if (typeof value === 'string') {
+			return value.split(',').map((s: string) => s.trim()).filter(Boolean);
+		}
+		return value;
+	})
+	languages?: string[];
+
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	@Transform(({ value }) => {
+		if (value === undefined || value === null || value === '') return undefined;
+		if (Array.isArray(value)) return value;
+		if (typeof value === 'string') {
+			return value.split(/[\r\n,]+/).map((s: string) => s.trim()).filter(Boolean);
+		}
+		return value;
+	})
+	details?: string[];
+
+	@IsOptional()
+	@Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : parseInt(value, 10)))
+	@IsInt()
+	@Min(0)
+	estimatedHours?: number | null;
+
+	@IsOptional()
+	@IsString()
+	description?: string | null;
+
+	@IsOptional()
+	@IsString()
+	visualType?: string | null;
+
+	@IsOptional()
+	@IsString()
+	iconName?: string | null;
+
+	@IsOptional()
+	@IsString()
+	imageData?: string | null;
+}

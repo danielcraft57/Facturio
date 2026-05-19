@@ -6,9 +6,10 @@ import { AccountingModule } from '../accounting/accounting.module';
 import { ConfigModule } from '../config/config.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { StripeModule } from '../stripe/stripe.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-	imports: [CommonModule, AccountingModule, ConfigModule, OrganizationsModule, StripeModule],
+	imports: [CommonModule, AccountingModule, ConfigModule, OrganizationsModule, StripeModule, BillingModule],
 	controllers: [InvoicesController, PublicInvoicesController],
 	providers: [InvoicesService],
 	exports: [InvoicesService]

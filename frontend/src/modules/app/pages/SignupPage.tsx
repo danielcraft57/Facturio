@@ -12,6 +12,8 @@ import {
   Link,
   InputAdornment,
   IconButton,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material'
 import GoogleIcon from '@mui/icons-material/Google'
 import Visibility from '@mui/icons-material/Visibility'
@@ -43,11 +45,13 @@ export function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false)
 
   // Rediriger si déjà authentifié
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true })
+      navigate('/auth/session?from=/dashboard', { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -69,8 +73,13 @@ export function SignupPage() {
       return
     }
 
-    if (formData.password.length < 6) {
-      setLocalError('Le mot de passe doit contenir au moins 6 caractères')
+    if (!acceptTerms || !acceptPrivacy) {
+      setLocalError('Vous devez accepter les CGU et la politique de confidentialité')
+      return
+    }
+
+    if (formData.password.length < 8) {
+      setLocalError('Le mot de passe doit contenir au moins 8 caractères')
       return
     }
 
@@ -86,12 +95,14 @@ export function SignupPage() {
         firstName: formData.firstName || undefined,
         lastName: formData.lastName || undefined,
         organizationName: formData.organizationName,
+        acceptTerms: true,
+        acceptPrivacy: true,
       })
       if (result && (result as any).needVerification) {
         navigate('/login', { replace: true, state: { message: (result as any).message } })
         return
       }
-      navigate('/dashboard', { replace: true })
+      navigate('/auth/session?from=/dashboard', { replace: true })
     } catch (err: any) {
       setLocalError(err.message || 'Erreur lors de l\'inscription')
     }
@@ -187,7 +198,7 @@ export function SignupPage() {
               margin="normal"
               required
               autoComplete="new-password"
-              helperText="Au moins 6 caractères"
+              helperText="Au moins 8 caractères"
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -226,13 +237,56 @@ export function SignupPage() {
                 ),
               }}
             />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  required
+                />
+              }
+              label={
+                <Typography variant="body2">
+                  J&apos;accepte les{' '}
+                  <Link component={RouterLink} to="/terms" target="_blank" underline="hover">
+                    CGU
+                  </Link>
+                </Typography>
+              }
+              sx={{ mt: 1, alignItems: 'flex-start' }}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={acceptPrivacy}
+                  onChange={(e) => setAcceptPrivacy(e.target.checked)}
+                  required
+                />
+              }
+              label={
+                <Typography variant="body2">
+                  J&apos;accepte la{' '}
+                  <Link component={RouterLink} to="/privacy" target="_blank" underline="hover">
+                    politique de confidentialité
+                  </Link>
+                </Typography>
+              }
+              sx={{ alignItems: 'flex-start' }}
+            />
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+              Les{' '}
+              <Link component={RouterLink} to="/cgv" target="_blank" underline="hover">
+                CGV
+              </Link>{' '}
+              s&apos;appliquent aux abonnements payants Facturio.
+            </Typography>
             <Button
               type="submit"
               fullWidth
               variant="contained"
               size="large"
-              sx={{ mt: 3, py: 1.5 }}
-              disabled={isLoading}
+              sx={{ mt: 2, py: 1.5 }}
+              disabled={isLoading || !acceptTerms || !acceptPrivacy}
             >
               {isLoading ? 'Création du compte...' : 'Créer mon compte'}
             </Button>

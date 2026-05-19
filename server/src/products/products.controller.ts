@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query 
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { ListQueryDto } from '../common/dto/list-query.dto';
+import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('products')
@@ -15,7 +15,7 @@ export class ProductsController {
 	}
 
 	@Get()
-	findAll(@Query() query: ListQueryDto, @CurrentUser() user: any) {
+	findAll(@Query() query: ListProductsQueryDto, @CurrentUser() user: any) {
 		return this.products.findAll(query);
 	}
 

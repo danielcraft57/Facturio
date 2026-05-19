@@ -26,12 +26,27 @@ jobs:
         run: npm ci
         working-directory: server
 
+      - name: Generate Prisma client (prod schema)
+        run: npx prisma generate --schema=prisma/schema.postgresql.prisma
+        working-directory: server
+
+      - name: Server tests (unit + e2e)
+        run: npm test
+        working-directory: server
+        env:
+          NODE_ENV: test
+          DATABASE_URL: file:./prisma/prisma/test.db
+
       - name: Build (server)
         run: npm run build:prod
         working-directory: server
 
       - name: Install (frontend)
         run: npm ci
+        working-directory: frontend
+
+      - name: Frontend tests
+        run: npm test
         working-directory: frontend
 
       - name: Build (frontend)

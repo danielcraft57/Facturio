@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, MaxLength, Matches } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /**
@@ -19,5 +19,12 @@ export class LoginDto {
 	@MaxLength(128, { message: 'Mot de passe trop long' })
 	@Matches(/^[\x20-\x7E]*$/, { message: 'Le mot de passe contient des caractères non autorisés' })
 	password!: string;
+
+	/** Empreinte stable du navigateur (anti-usurpation / sessions simultanées). */
+	@IsOptional()
+	@IsString()
+	@MaxLength(128)
+	@Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+	deviceFingerprint?: string;
 }
 

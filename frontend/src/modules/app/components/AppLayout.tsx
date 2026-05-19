@@ -17,7 +17,9 @@ import {
   Avatar,
   Menu,
   MenuItem,
+  MenuList,
   alpha,
+  Divider as MuiDivider,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
@@ -32,6 +34,8 @@ import { useAuthStore } from '../../../stores/authStore'
 import { AppTopNav } from './AppTopNav'
 import { AppMobileNav } from './AppMobileNav'
 import { NotificationCenter } from './NotificationCenter'
+import { BillingUsageBanner } from './BillingUsageBanner'
+import { userMenuLinks } from '../config/userMenuConfig'
 
 type AppLayoutProps = PropsWithChildren<{
   mode: 'light' | 'dark'
@@ -55,9 +59,10 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
   }
 
   const drawer = (
-    <>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar
         sx={{
+          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           gap: 1.5,
@@ -104,7 +109,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
           </ListItem>
         </List>
       </Box>
-    </>
+    </Box>
   )
 
   const isDark = theme.palette.mode === 'dark'
@@ -124,10 +129,10 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
           borderColor: isDark ? alpha('#fff', 0.08) : alpha('#0f172a', 0.08),
         }}
       >
-        <Toolbar sx={{ gap: 1, minHeight: { xs: 56, lg: 68 }, px: { xs: 1.5, lg: 3 } }}>
+        <Toolbar sx={{ gap: 1, minHeight: { xs: 56, md: 64 }, px: { xs: 1.5, md: 2, lg: 3 } }}>
           <IconButton
             edge="start"
-            sx={{ display: { lg: 'none' }, color: 'inherit' }}
+            sx={{ display: { md: 'none' }, color: 'inherit' }}
             onClick={() => setMobileOpen(true)}
             aria-label="menu"
           >
@@ -166,7 +171,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
 
           <AppTopNav />
 
-          <Box sx={{ flexGrow: 1, display: { xs: 'block', lg: 'none' } }} />
+          <Box sx={{ flexGrow: 1, display: { xs: 'block', md: 'none' } }} />
 
           <Tooltip title="Nouvelle facture">
             <IconButton
@@ -175,7 +180,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
               color="inherit"
               aria-label="nouvelle facture"
               sx={{
-                display: { xs: 'inline-flex', lg: 'none' },
+                display: { xs: 'inline-flex', md: 'none' },
                 bgcolor: alpha(isDark ? '#3b82f6' : '#0f172a', isDark ? 0.25 : 0.08),
                 '&:hover': { bgcolor: alpha(isDark ? '#3b82f6' : '#0f172a', isDark ? 0.35 : 0.14) },
               }}
@@ -184,7 +189,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
             </IconButton>
           </Tooltip>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, ml: { lg: 'auto' } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, ml: { md: 'auto' } }}>
             <NotificationCenter />
             <Tooltip title={mode === 'light' ? 'Mode sombre' : 'Mode clair'}>
               <IconButton color="inherit" onClick={onToggleMode} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
@@ -222,24 +227,41 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
             onClose={() => setUserMenuAnchor(null)}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            slotProps={{ paper: { sx: { minWidth: 280, maxWidth: 320 } } }}
           >
-            <MenuItem disabled>
-              <Box>
-                <Typography variant="body2" fontWeight={600}>
-                  {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email}
+            <Box sx={{ px: 2, py: 1.5 }}>
+              <Typography variant="body2" fontWeight={600}>
+                {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email}
+              </Typography>
+              {user?.organization && (
+                <Typography variant="caption" color="text.secondary">
+                  {user.organization.name}
                 </Typography>
-                {user?.organization && (
-                  <Typography variant="caption" color="text.secondary">
-                    {user.organization.name}
-                  </Typography>
-                )}
-              </Box>
-            </MenuItem>
-            <MenuItem component={RouterLink} to="/parametres" onClick={() => setUserMenuAnchor(null)}>
-              Paramètres
-            </MenuItem>
-            <MenuItem onClick={handleLogout}>
-              <ListItemIcon>
+              )}
+            </Box>
+            <MuiDivider />
+            <MenuList dense sx={{ py: 0.5 }}>
+              {userMenuLinks.map((link) => (
+                <MenuItem
+                  key={link.to}
+                  component={RouterLink}
+                  to={link.to}
+                  onClick={() => setUserMenuAnchor(null)}
+                  sx={{ py: 1, alignItems: 'flex-start' }}
+                >
+                  {link.icon && <ListItemIcon sx={{ minWidth: 36, mt: 0.25 }}>{link.icon}</ListItemIcon>}
+                  <ListItemText
+                    primary={link.label}
+                    secondary={link.description}
+                    primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
+                    secondaryTypographyProps={{ fontSize: '0.7rem' }}
+                  />
+                </MenuItem>
+              ))}
+            </MenuList>
+            <MuiDivider />
+            <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+              <ListItemIcon sx={{ color: 'inherit' }}>
                 <LogoutIcon fontSize="small" />
               </ListItemIcon>
               Déconnexion
@@ -254,15 +276,24 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
         onClose={() => setMobileOpen(false)}
         ModalProps={{ keepMounted: true }}
         sx={{
-          display: { lg: 'none' },
-          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', border: 'none', boxShadow: theme.shadows[12] },
+          display: { md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+            border: 'none',
+            boxShadow: theme.shadows[12],
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          },
         }}
       >
         {drawer}
       </Drawer>
 
       <Box component="main" sx={{ flexGrow: 1, width: '100%', p: { xs: 1, sm: 2, md: 3 } }}>
-        <Toolbar sx={{ minHeight: { xs: 56, lg: 68 } }} />
+        <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }} />
+        <BillingUsageBanner />
         {children}
       </Box>
     </Box>

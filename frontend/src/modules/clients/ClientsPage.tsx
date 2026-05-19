@@ -55,14 +55,14 @@ import {
 import type { Client } from '../../services/clients'
 import { PageHeader } from '../../components/finance/PageHeader'
 import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
-
-const emptyClientForm = {
-  name: '',
-  email: '',
-  phone: '',
-  address: '',
-  status: 'prospect' as Client['status'],
-}
+import { ConfirmDialog } from '../../components/ConfirmDialog'
+import {
+  ClientFormDialog,
+  clientToFormValues,
+  emptyClientFormValues,
+  type ClientFormValues,
+} from './components/ClientFormDialog'
+import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
 export function ClientsPage() {
   const navigate = useNavigate()
@@ -77,13 +77,15 @@ export function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
-  const [openDialog, setOpenDialog] = useState(false)
+  const [formDialogMode, setFormDialogMode] = useState<'create' | 'edit' | null>(null)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importProgress, setImportProgress] = useState(0)
-  const [clientForm, setClientForm] = useState(emptyClientForm)
-  const [createError, setCreateError] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  const [clientForm, setClientForm] = useState<ClientFormValues>(emptyClientFormValues)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -163,57 +165,111 @@ export function ClientsPage() {
   }
 
   const resetClientForm = () => {
-    setClientForm(emptyClientForm)
-    setCreateError(null)
+    setClientForm(emptyClientFormValues)
+    setFormError(null)
+  }
+
+  const validateClientForm = (): boolean => {
+    const name = clientForm.name.trim()
+    const email = clientForm.email.trim()
+    if (!name) {
+      setFormError('Le nom du client est obligatoire')
+      return false
+    }
+    if (!email) {
+      setFormError("L'email est obligatoire")
+      return false
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFormError('Email invalide')
+      return false
+    }
+    return true
   }
 
   const handleOpenCreateDialog = () => {
     resetClientForm()
-    setOpenDialog(true)
+    setFormDialogMode('create')
   }
 
-  const handleCreateClient = async () => {
+  const handleOpenEditDialog = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId)
+    if (!client) return
+    setClientForm(clientToFormValues(client))
+    setFormError(null)
+    setSelectedClientId(clientId)
+    setFormDialogMode('edit')
+  }
+
+  const handleSaveClient = async () => {
+    if (!validateClientForm()) return
+
     const name = clientForm.name.trim()
     const email = clientForm.email.trim()
-    if (!name) {
-      setCreateError('Le nom du client est obligatoire')
-      return
-    }
-    if (!email) {
-      setCreateError('L\'email est obligatoire')
-      return
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setCreateError('Email invalide')
-      return
-    }
 
     try {
-      setCreating(true)
-      setCreateError(null)
-      const payload = toCreateClientPayload({
-        name,
-        email,
-        phone: clientForm.phone,
-        address: clientForm.address,
-        isCompany: true,
-        companyName: name,
-      })
-      const response = await clientService.createClient(payload as any)
-      const created = mapApiClientToClient(
-        unwrapApiPayload<Record<string, unknown>>(response),
-        clientForm.status
-      )
-      setClients((prev) => [created, ...prev])
-      setOpenDialog(false)
+      setSaving(true)
+      setFormError(null)
+
+      if (formDialogMode === 'create') {
+        const payload = toCreateClientPayload({
+          name,
+          email,
+          phone: clientForm.phone,
+          address: clientForm.address,
+          siren: clientForm.siren,
+          isCompany: true,
+          companyName: name,
+        })
+        const response = await clientService.createClient(payload as never)
+        const created = mapApiClientToClient(
+          unwrapApiPayload<Record<string, unknown>>(response),
+          clientForm.status
+        )
+        setClients(prev => [created, ...prev])
+      } else if (formDialogMode === 'edit' && selectedClientId) {
+        const response = await clientService.updateClient({
+          id: selectedClientId,
+          name,
+          email,
+          siren: clientForm.siren || undefined,
+          address: clientForm.address ? { street: clientForm.address, city: '', postalCode: '', country: 'FR' } : undefined,
+          status: clientForm.status,
+        })
+        if (response.data) {
+          setClients(prev =>
+            prev.map(c => (c.id === selectedClientId ? { ...response.data!, phone: clientForm.phone || c.phone } : c))
+          )
+        }
+      }
+
+      setFormDialogMode(null)
       resetClientForm()
-    } catch (err: any) {
-      setCreateError(err?.message || 'Impossible de créer le client')
+      setSelectedClientId(null)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Enregistrement impossible'
+      setFormError(message)
     } finally {
-      setCreating(false)
+      setSaving(false)
     }
   }
+
+  const handleDeleteClient = async () => {
+    if (!selectedClientId) return
+    try {
+      setDeleting(true)
+      await clientService.deleteClient(selectedClientId)
+      setClients(prev => prev.filter(c => c.id !== selectedClientId))
+      setDeleteDialogOpen(false)
+      setSelectedClientId(null)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Suppression impossible')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const selectedClient = selectedClientId ? clients.find(c => c.id === selectedClientId) : null
 
   const handleImportClients = async () => {
     if (!importFile) return
@@ -240,14 +296,8 @@ export function ClientsPage() {
 
   if (loading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '50vh',
-        p: { xs: 1, sm: 2, md: 3 }
-      }}>
-        <CircularProgress size={60} />
+      <Box sx={{ p: financePagePadding }}>
+        <TablePageSkeleton />
       </Box>
     )
   }
@@ -466,28 +516,62 @@ export function ClientsPage() {
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
-        <MenuItem onClick={() => {
-          handleMenuClose()
-          if (selectedClientId) {
-            navigate(`/clients/${selectedClientId}`)
-          }
-        }}>
+        <MenuItem
+          onClick={() => {
+            handleMenuClose()
+            if (selectedClientId) navigate(`/clients/${selectedClientId}`)
+          }}
+        >
           <Visibility sx={{ mr: 1 }} />
           Voir détails
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem
+          onClick={() => {
+            handleMenuClose()
+            if (selectedClientId) handleOpenEditDialog(selectedClientId)
+          }}
+        >
           <Edit sx={{ mr: 1 }} />
           Modifier
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem
+          onClick={() => {
+            handleMenuClose()
+            if (selectedClient?.email) {
+              window.location.href = `mailto:${encodeURIComponent(selectedClient.email)}`
+            }
+          }}
+          disabled={!selectedClient?.email}
+        >
           <Email sx={{ mr: 1 }} />
           Envoyer email
         </MenuItem>
-        <MenuItem onClick={handleMenuClose} sx={{ color: 'error.main' }}>
+        <MenuItem
+          onClick={() => {
+            handleMenuClose()
+            setDeleteDialogOpen(true)
+          }}
+          sx={{ color: 'error.main' }}
+        >
           <Delete sx={{ mr: 1 }} />
           Supprimer
         </MenuItem>
       </Menu>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        severity="error"
+        title="Supprimer le client"
+        message={`Supprimer « ${selectedClient?.name ?? 'ce client'} » ?`}
+        onConfirm={handleDeleteClient}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteDialogOpen(false)
+            setSelectedClientId(null)
+          }
+        }}
+        loading={deleting}
+      />
 
       {/* Dialog import CSV */}
       <Dialog 
@@ -551,93 +635,22 @@ export function ClientsPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog nouveau client */}
-      <Dialog 
-        open={openDialog} 
+      <ClientFormDialog
+        open={formDialogMode !== null}
+        mode={formDialogMode === 'edit' ? 'edit' : 'create'}
+        values={clientForm}
+        error={formError}
+        saving={saving}
         onClose={() => {
-          if (creating) return
-          setOpenDialog(false)
+          if (saving) return
+          setFormDialogMode(null)
           resetClientForm()
-        }} 
-        maxWidth="md" 
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Nouveau client</DialogTitle>
-        <DialogContent>
-          {createError && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setCreateError(null)}>
-              {createError}
-            </Alert>
-          )}
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, 
-            gap: 2, 
-            mt: 1 
-          }}>
-            <TextField
-              fullWidth
-              required
-              label="Nom de l'entreprise"
-              value={clientForm.name}
-              onChange={(e) => setClientForm((f) => ({ ...f, name: e.target.value }))}
-            />
-            <TextField
-              fullWidth
-              required
-              label="Email"
-              type="email"
-              value={clientForm.email}
-              onChange={(e) => setClientForm((f) => ({ ...f, email: e.target.value }))}
-            />
-            <TextField
-              fullWidth
-              label="Téléphone"
-              value={clientForm.phone}
-              onChange={(e) => setClientForm((f) => ({ ...f, phone: e.target.value }))}
-              helperText="Optionnel (affichage local uniquement)"
-            />
-            <FormControl fullWidth>
-              <InputLabel>Statut (affichage)</InputLabel>
-              <Select
-                label="Statut (affichage)"
-                value={clientForm.status}
-                onChange={(e) =>
-                  setClientForm((f) => ({ ...f, status: e.target.value as Client['status'] }))
-                }
-              >
-                <MenuItem value="active">Actif</MenuItem>
-                <MenuItem value="inactive">Inactif</MenuItem>
-                <MenuItem value="prospect">Prospect</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField 
-              fullWidth 
-              label="Adresse" 
-              multiline 
-              rows={3}
-              value={clientForm.address}
-              onChange={(e) => setClientForm((f) => ({ ...f, address: e.target.value }))}
-              sx={{ gridColumn: { xs: '1', md: '1 / -1' } }} 
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: { xs: 2, sm: 3 } }}>
-          <Button
-            onClick={() => {
-              setOpenDialog(false)
-              resetClientForm()
-            }}
-            disabled={creating}
-          >
-            Annuler
-          </Button>
-          <Button variant="contained" onClick={handleCreateClient} disabled={creating}>
-            {creating ? <CircularProgress size={22} color="inherit" /> : 'Créer le client'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          setSelectedClientId(null)
+        }}
+        onChange={setClientForm}
+        onSubmit={handleSaveClient}
+        onClearError={() => setFormError(null)}
+      />
     </Box>
   )
 }

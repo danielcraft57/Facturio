@@ -5,6 +5,7 @@ Historique des changements et notes de développement.
 ## 📚 Contenu
 
 - [Changelog - Priorités hautes](./CHANGELOG_PRIORITES_HAUTES.md) - Fonctionnalités prioritaires implémentées
+- [Changelog - E-facture 2026](./CHANGELOG_E_FACTURE_2026.md) - Module conformité et dossier PA
 - [Notes de développement](./NOTES_DEVELOPPEMENT.md) - Notes techniques détaillées
 
 ## 📝 Format

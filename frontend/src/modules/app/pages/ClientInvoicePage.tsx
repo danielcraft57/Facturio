@@ -23,13 +23,13 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 import { loadStripe, type Stripe } from '@stripe/stripe-js'
 import { ApiClient } from '../../../services/apiClient'
 import { formatCurrency, formatDate } from '../../../utils/formatters'
+import { PublicDataProcessingNotice } from '../../legal/PublicDataProcessingNotice'
+import { InvoicePublicSkeleton } from '../../../components/loading/InvoicePublicSkeleton'
 
 const api = ApiClient.getInstance()
 const API_BASE = (import.meta.env.DEV || import.meta.env.MODE === 'development')
   ? '/api'
   : (import.meta.env.VITE_API_URL || '/api')
-
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined
 
 export interface PublicInvoiceSummary {
   number: string
@@ -44,7 +44,10 @@ export interface PublicInvoiceSummary {
   totalPaid: number
   canPayOnline: boolean
   stripeEnabled: boolean
+  stripePublishableKey?: string | null
   issuerName: string
+  privacyPolicyUrl?: string | null
+  dataControllerEmail?: string | null
   client: { name: string }
   lines: { description: string; quantity: number; unitPrice: number; total: number }[]
 }
@@ -125,6 +128,7 @@ export function ClientInvoicePage() {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [loading, setLoading] = useState(true)
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
+  const [orgPublishableKey, setOrgPublishableKey] = useState<string | null>(null)
 
   const loadCheckout = useCallback(async () => {
     if (!token) return
@@ -133,17 +137,22 @@ export function ClientInvoicePage() {
     try {
       const res = await api.get<{
         invoice?: PublicInvoiceSummary
-        payment?: { clientSecret: string }
+        payment?: { clientSecret: string; stripePublishableKey?: string }
         error?: string
       }>(`public/invoices/${token}/checkout`) as any
 
-      const payload = res?.invoice ? res : res?.data
+      const payload = res?.invoice ? res : res?.data?.data ?? res?.data
       if (!payload?.invoice) {
         setError('Facture introuvable ou lien expiré')
         return
       }
       setInvoice(payload.invoice)
       setClientSecret(payload.payment?.clientSecret ?? null)
+      const pk =
+        payload.payment?.stripePublishableKey ||
+        payload.invoice.stripePublishableKey ||
+        null
+      setOrgPublishableKey(pk)
     } catch {
       setError('Facture introuvable ou lien expiré')
     } finally {
@@ -156,10 +165,12 @@ export function ClientInvoicePage() {
   }, [loadCheckout])
 
   useEffect(() => {
-    if (stripePublishableKey) {
-      setStripePromise(loadStripe(stripePublishableKey))
+    if (orgPublishableKey) {
+      setStripePromise(loadStripe(orgPublishableKey))
+    } else {
+      setStripePromise(null)
     }
-  }, [])
+  }, [orgPublishableKey])
 
   const isPaid = useMemo(() => {
     if (!invoice) return false
@@ -176,13 +187,7 @@ export function ClientInvoicePage() {
   }, [isPaid, invoice, clientSecret, stripePromise])
 
   if (loading) {
-    return (
-      <Container maxWidth="lg">
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
-    )
+    return <InvoicePublicSkeleton />
   }
 
   if (error || !invoice) {
@@ -334,6 +339,11 @@ export function ClientInvoicePage() {
           </Grid>
         )}
       </Grid>
+
+      <PublicDataProcessingNotice
+        issuerName={invoice.issuerName}
+        privacyPolicyUrl={invoice.privacyPolicyUrl}
+      />
     </Container>
   )
 }

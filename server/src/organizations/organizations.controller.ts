@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Patch } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { UpdateInvoiceStripeDto } from './dto/update-invoice-stripe.dto';
 
 @Controller('organization')
 export class OrganizationsController {
@@ -14,6 +15,19 @@ export class OrganizationsController {
 	@Patch('profile')
 	updateProfile(@CurrentUser() user: any, @Body() data: any) {
 		return this.organizationsService.updateProfile(user.organizationId, data);
+	}
+
+	/** Clés Stripe du prestataire (paiements factures) — distinct du Stripe plateforme .env */
+	@Patch('invoice-stripe')
+	updateInvoiceStripe(@CurrentUser() user: any, @Body() data: UpdateInvoiceStripeDto) {
+		return this.organizationsService.updateInvoiceStripe(user.organizationId, data);
+	}
+
+	@Get('invoice-stripe/webhook-url')
+	getInvoiceStripeWebhookUrl(@CurrentUser() user: { organizationId: number }) {
+		return {
+			webhookUrl: this.organizationsService.getInvoiceStripeWebhookUrl(user.organizationId),
+		};
 	}
 }
 

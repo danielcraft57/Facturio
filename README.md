@@ -1,7 +1,9 @@
 ## Facturio
 [![Server CI](https://github.com/loupix/Facturio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/loupix/Facturio/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/codecov/c/github/loupix/Facturio?token=&branch=main)](https://app.codecov.io/gh/loupix/Facturio) [![Node](https://img.shields.io/badge/node-20.x-339933?logo=nodedotjs&logoColor=white)](https://github.com/loupix/Facturio/actions/workflows/ci.yml)
 
-API de facturation pensée pour SaaS et apps. On gère clients, produits, abonnements, devis, factures, paiements, TVA (FR/UE) et déclarations.
+API de facturation orientée **prestations de services numériques** : développement web, logiciel sur mesure, automatisation, intégrations API, maintenance et offres IA. Clients, catalogue de prestations, devis, factures, paiements, TVA (FR/UE) et déclarations.
+
+→ [Positionnement](docs/planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md) · [Monétisation](docs/planning/MONETISATION.md) · [Réforme 2026](docs/planning/FACTURATION_ELECTRONIQUE_2026.md) · [Dossier PA](docs/accreditation-pa/README.md)
 
 ### Démarrage rapide
 Pré-requis: Node 20+ et npm.
@@ -51,6 +53,9 @@ Toute la documentation est disponible dans le dossier `docs/` :
 
 **Planning**
 - [Roadmap](docs/planning/ROADMAP.md) - Roadmap globale
+- [Prestations services](docs/planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md) - Vision produit (dev, auto, maintenance)
+- [Monétisation](docs/planning/MONETISATION.md) - Modèle économique bootstrap
+- [Facturation électronique 2026](docs/planning/FACTURATION_ELECTRONIQUE_2026.md) - Réforme B2B FR (PA, Factur-X)
 - [TODO](docs/planning/TODO.md) - Liste des tâches
 - [Avancement](docs/planning/AVANCEMENT.md) - État du projet
 

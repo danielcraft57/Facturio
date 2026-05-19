@@ -40,7 +40,7 @@ export type NavGroup = {
 }
 
 export const navDashboard: NavItem = {
-  to: '/',
+  to: '/dashboard',
   label: 'Tableau de bord',
   description: "Vue d'ensemble & indicateurs",
   icon: <DashboardIcon fontSize="small" />,
@@ -150,7 +150,8 @@ export const allNavItems: NavItem[] = [
 ]
 
 export function isNavActive(pathname: string, to: string): boolean {
-  if (to === '/') return pathname === '/'
+  if (to === '/dashboard') return pathname === '/dashboard' || pathname === '/'
+  if (to === '/parametres') return pathname === '/parametres' || pathname.startsWith('/parametres/')
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 

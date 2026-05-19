@@ -34,6 +34,7 @@ import { InvoiceStatusChart } from './components/InvoiceStatusChart'
 import { PeriodFilter } from './components/PeriodFilter'
 import { PageHeader } from '../../components/finance/PageHeader'
 import { financeCardSx, financeKpiGradients, financePagePadding } from '../../components/finance/financeStyles'
+import { EInvoicingReadinessPanel } from '../e-invoicing/EInvoicingReadinessPanel'
 
 export function DashboardPage() {
   const dashboardStore = useDashboard()
@@ -125,6 +126,8 @@ export function DashboardPage() {
         title="Tableau de bord"
         subtitle="Indicateurs clés, trésorerie et suivi de l'activité"
       />
+
+      <EInvoicingReadinessPanel compact />
 
       <PeriodFilter period={period} onPeriodChange={setPeriod} />
 
