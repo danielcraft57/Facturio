@@ -101,7 +101,10 @@ export function QuotesPage() {
   };
 
   const handleAcceptQuote = async (quote: Quote) => {
-    await quotesStore.acceptQuote(quote.id);
+    const result = await quotesStore.acceptQuote(quote.id);
+    if (result?.invoiceId) {
+      navigate(`/factures/${result.invoiceId}`);
+    }
   };
 
   const handleRejectQuote = async (quote: Quote) => {
@@ -243,7 +246,7 @@ export function QuotesPage() {
           )}
 
           {quote.status === 'ACCEPTED' && (
-            <Tooltip title="Convertir en facture">
+            <Tooltip title="Voir la facture">
               <IconButton 
                 size="small" 
                 color="secondary"

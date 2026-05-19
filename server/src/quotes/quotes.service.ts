@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import * as crypto from 'crypto';
 import { AccountingService } from '../accounting/accounting.service';
 import { buildPublicQuoteUrl } from '../common/public-app-url';
+import { InvoicesService } from '../invoices/invoices.service';
 
 /**
  * Ligne de devis
@@ -70,7 +71,11 @@ export interface UpdateQuoteDto {
  */
 @Injectable()
 export class QuotesService {
-	constructor(private readonly prisma: PrismaService, private readonly accounting: AccountingService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly accounting: AccountingService,
+		private readonly invoices: InvoicesService,
+	) {}
 
 	/**
 	 * Contre-passe l'écriture hors-bilan d'un devis
@@ -373,11 +378,109 @@ export class QuotesService {
 	 * @throws {NotFoundException} Si devis non trouvé
 	 */
 	async publicAccept(token: string, ip?: string) {
-		const quote = await this.prisma.quote.findUnique({ where: { publicToken: token } });
+		const quote = await this.prisma.quote.findUnique({
+			where: { publicToken: token },
+			include: { lines: true },
+		});
 		if (!quote) throw new NotFoundException('Devis introuvable');
-		const updated = await this.prisma.quote.update({ where: { id: quote.id }, data: { status: QuoteStatus.ACCEPTED, acceptedAt: new Date(), acceptedIp: ip || null } });
-		// Hors-bilan: marquer l'écriture comme POSTED (facultatif) ou laisser DRAFT jusqu'à facture
-		return { status: 'accepted', id: updated.id } as any;
+		if (quote.status === QuoteStatus.REJECTED) {
+			throw new BadRequestException('Ce devis a été refusé');
+		}
+		if (quote.status === QuoteStatus.EXPIRED) {
+			throw new BadRequestException('Ce devis a expiré');
+		}
+
+		const accepted = await this.markQuoteAccepted(quote.id, ip);
+		const invoice = await this.convertQuoteToInvoice(quote.id, quote.organizationId ?? undefined);
+
+		return {
+			status: 'accepted',
+			id: accepted.id,
+			invoiceId: invoice.id,
+			invoiceNumber: invoice.number,
+		};
+	}
+
+	/** Accepte un devis (back-office) et crée la facture associée. */
+	async acceptQuote(id: number, organizationId?: number) {
+		const quote = await this.findOne(id, organizationId);
+		if (quote.status === QuoteStatus.REJECTED) {
+			throw new BadRequestException('Ce devis a été refusé');
+		}
+		if (quote.status === QuoteStatus.EXPIRED) {
+			throw new BadRequestException('Ce devis a expiré');
+		}
+		if (quote.status === QuoteStatus.DRAFT) {
+			throw new BadRequestException('Envoyez le devis avant de l’accepter');
+		}
+
+		await this.markQuoteAccepted(id);
+		const invoice = await this.convertQuoteToInvoice(id, organizationId);
+		const updated = await this.findOne(id, organizationId);
+		return { ...updated, invoiceId: invoice.id, invoiceNumber: invoice.number };
+	}
+
+	/** Rejette un devis (back-office). */
+	async rejectQuote(id: number, organizationId?: number) {
+		const quote = await this.findOne(id, organizationId);
+		if (quote.status === QuoteStatus.ACCEPTED) {
+			throw new BadRequestException('Devis déjà accepté — impossible de le refuser');
+		}
+		await this.prisma.quote.update({
+			where: { id },
+			data: { status: QuoteStatus.REJECTED },
+		});
+		try {
+			await this.contraOffBalanceForQuote(quote.number);
+		} catch (_) {}
+		return this.findOne(id, organizationId);
+	}
+
+	/**
+	 * Crée une facture à partir d’un devis accepté (idempotent si déjà converti).
+	 */
+	async convertQuoteToInvoice(quoteId: number, organizationId?: number) {
+		const existing = await this.prisma.invoice.findUnique({
+			where: { sourceQuoteId: quoteId },
+			include: { lines: true, client: true },
+		});
+		if (existing) return existing;
+
+		const quote = await this.prisma.quote.findFirst({
+			where: { id: quoteId, ...(organizationId != null ? { organizationId } : {}) },
+			include: { lines: true, client: true },
+		});
+		if (!quote) throw new NotFoundException('Devis introuvable');
+		if (quote.status !== QuoteStatus.ACCEPTED) {
+			throw new BadRequestException('Le devis doit être accepté avant conversion en facture');
+		}
+
+		const orgId = organizationId ?? quote.organizationId ?? undefined;
+		return this.invoices.create(
+			{
+				clientId: quote.clientId,
+				sourceQuoteId: quote.id,
+				lines: quote.lines.map((l) => ({
+					productId: l.productId ?? undefined,
+					description: l.description,
+					quantity: Number(l.quantity),
+					unitPrice: Number(l.unitPrice),
+					taxRate: Number(l.taxRate),
+				})),
+			},
+			orgId,
+		);
+	}
+
+	private async markQuoteAccepted(quoteId: number, ip?: string) {
+		return this.prisma.quote.update({
+			where: { id: quoteId },
+			data: {
+				status: QuoteStatus.ACCEPTED,
+				acceptedAt: new Date(),
+				acceptedIp: ip ?? null,
+			},
+		});
 	}
 
 	/**

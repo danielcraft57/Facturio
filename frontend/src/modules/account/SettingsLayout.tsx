@@ -1,5 +1,5 @@
 import { Link as RouterLink, useLocation } from 'react-router-dom'
-import { OrganizationProfileProvider } from './OrganizationProfileContext'
+import { OrganizationProfileProvider, useOrganizationProfile } from './OrganizationProfileContext'
 import { AnimatedSettingsOutlet } from './components/AnimatedSettingsOutlet'
 import {
   Box,
@@ -14,21 +14,28 @@ import {
   useTheme,
 } from '@mui/material'
 import { settingsNavItems, isSettingsPathActive } from './settingsNav'
+import { SettingsAutoSaveStatus } from './components/SettingsAutoSaveStatus'
 
-export function SettingsLayout() {
+function SettingsLayoutContent() {
   const location = useLocation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { autoSaveStatus, error, validationMessage } = useOrganizationProfile()
 
   return (
-    <OrganizationProfileProvider>
     <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
       <Typography variant="h5" sx={{ mb: 0.5, fontWeight: 700 }}>
         Paramètres
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Compte, entreprise, facturation électronique et préférences.
       </Typography>
+
+      <SettingsAutoSaveStatus
+        status={autoSaveStatus}
+        error={error}
+        blockedMessage={validationMessage}
+      />
 
       <Box
         sx={{
@@ -81,6 +88,13 @@ export function SettingsLayout() {
         <AnimatedSettingsOutlet />
       </Box>
     </Box>
+  )
+}
+
+export function SettingsLayout() {
+  return (
+    <OrganizationProfileProvider>
+      <SettingsLayoutContent />
     </OrganizationProfileProvider>
   )
 }

@@ -91,6 +91,13 @@ describe('Quotes e2e', () => {
 		// ACCEPT QUOTE (public)
 		const acceptRes = await request(app.getHttpServer()).post(`/api/public/quotes/${token}/accept`).expect(201).then((r: any) => r.body);
 		expect(acceptRes.status).toBe('accepted');
+		expect(acceptRes.invoiceId).toBeDefined();
+
+		const invoice = await prisma.invoice.findUnique({
+			where: { sourceQuoteId: created.id },
+		});
+		expect(invoice).toBeTruthy();
+		expect(invoice?.clientId).toBe(client.id);
 	});
 
 	// ========================================
@@ -248,7 +255,10 @@ describe('Quotes e2e', () => {
 			.expect(201)
 			.then((r: any) => r.body);
 
-		// Convert to invoice
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/quotes/${quote.id}/send`)
+			.expect(201);
+
 		const invoice = await authenticatedRequest(app, testUser.cookies)
 			.post(`/api/quotes/${quote.id}/convert-to-invoice`)
 			.expect(201)

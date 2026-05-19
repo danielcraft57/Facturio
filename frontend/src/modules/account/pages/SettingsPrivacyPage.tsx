@@ -1,12 +1,10 @@
-import { Typography, Box, Button, Alert, CircularProgress } from '@mui/material'
-import SaveIcon from '@mui/icons-material/Save'
+import { Typography, Box } from '@mui/material'
 import { PrivacyClientSettingsSection } from '../PrivacyClientSettingsSection'
 import { useOrganizationProfile } from '../OrganizationProfileContext'
 import { SettingsPageSkeleton } from '../components/SettingsPageSkeleton'
 
 export function SettingsPrivacyPage() {
-  const { form, loading, saving, error, setError, success, setSuccess, setField, save } =
-    useOrganizationProfile()
+  const { form, loading, setField } = useOrganizationProfile()
 
   if (loading) {
     return <SettingsPageSkeleton blocks={1} />
@@ -18,27 +16,10 @@ export function SettingsPrivacyPage() {
         Confidentialité (pages clients)
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Mentions affichées sur les pages publiques de devis et factures envoyées à vos clients.
+        Mentions affichées sur les pages publiques de devis et factures. Enregistrement automatique.
       </Typography>
 
-      {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      {success && (
-        <Alert severity="success" onClose={() => setSuccess(false)} sx={{ mb: 2 }}>
-          Enregistré.
-        </Alert>
-      )}
-
       <PrivacyClientSettingsSection form={form} onFieldChange={setField} />
-
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-        <Button variant="contained" disabled={saving} startIcon={<SaveIcon />} onClick={() => void save()}>
-          Enregistrer
-        </Button>
-      </Box>
     </Box>
   )
 }

@@ -24,7 +24,7 @@ export function BillingUsageBanner() {
       <Alert
         severity={usage.atLimit ? 'warning' : 'info'}
         action={
-          <Button component={RouterLink} to="/tarifs" color="inherit" size="small">
+          <Button component={RouterLink} to="/parametres/abonnement" color="inherit" size="small">
             Passer Pro
           </Button>
         }

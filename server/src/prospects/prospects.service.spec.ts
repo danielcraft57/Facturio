@@ -28,7 +28,7 @@ describe('ProspectsService', () => {
 		prospect: {
 			create: jest.fn(),
 			findMany: jest.fn(),
-			findUnique: jest.fn(),
+			findFirst: jest.fn(),
 			update: jest.fn(),
 			delete: jest.fn(),
 			count: jest.fn()
@@ -148,18 +148,18 @@ describe('ProspectsService', () => {
 		it('devrait retourner un prospect existant', async () => {
 			const prospect = createMockProspect();
 
-			mockPrismaService.prospect.findUnique.mockResolvedValue(prospect);
+			mockPrismaService.prospect.findFirst.mockResolvedValue(prospect);
 
 			const result = await service.findOne(1);
 
 			expect(result).toBeDefined();
-			expect(mockPrismaService.prospect.findUnique).toHaveBeenCalledWith({
+			expect(mockPrismaService.prospect.findFirst).toHaveBeenCalledWith({
 				where: { id: 1 }
 			});
 		});
 
 		it('devrait lancer NotFoundException si le prospect n\'existe pas', async () => {
-			mockPrismaService.prospect.findUnique.mockResolvedValue(null);
+			mockPrismaService.prospect.findFirst.mockResolvedValue(null);
 
 			await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
 		});
@@ -173,7 +173,7 @@ describe('ProspectsService', () => {
 				companyName: 'New Name'
 			};
 
-			mockPrismaService.prospect.findUnique.mockResolvedValue(existing);
+			mockPrismaService.prospect.findFirst.mockResolvedValue(existing);
 			mockPrismaService.prospect.update.mockResolvedValue({
 				...existing,
 				...updateDto
@@ -190,13 +190,13 @@ describe('ProspectsService', () => {
 		it('devrait supprimer un prospect existant', async () => {
 			const prospect = createMockProspect();
 
-			mockPrismaService.prospect.findUnique.mockResolvedValue(prospect);
+			mockPrismaService.prospect.findFirst.mockResolvedValue(prospect);
 			mockPrismaService.prospect.delete.mockResolvedValue(prospect);
 
 			const result = await service.remove(1);
 
 			expect(result).toEqual({ success: true });
-			expect(mockPrismaService.prospect.findUnique).toHaveBeenCalledWith({
+			expect(mockPrismaService.prospect.findFirst).toHaveBeenCalledWith({
 				where: { id: 1 }
 			});
 			expect(mockPrismaService.prospect.delete).toHaveBeenCalledWith({

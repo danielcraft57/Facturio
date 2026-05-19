@@ -22,11 +22,31 @@ export class BillingController {
 		@CurrentUser() user: { organizationId: number; email: string },
 		@Body() body: CreateCheckoutDto,
 	) {
-		return this.platformStripe.createCheckoutSession(user.organizationId, user.email, body.plan);
+		return this.platformStripe.createCheckoutSession(user.organizationId, user.email, body.plan, {
+			billingSchedule: body.billingSchedule ?? 'MONTHLY',
+		});
 	}
 
 	@Get('platform-stripe-publishable-key')
 	getPlatformPublishableKey() {
 		return { publishableKey: this.platformStripe.getPlatformPublishableKey() };
+	}
+
+	/** Portail client Stripe (gérer CB, annuler, factures plateforme). */
+	@Post('portal')
+	createPortal(@CurrentUser() user: { organizationId: number }) {
+		return this.platformStripe.createPortalSession(user.organizationId);
+	}
+
+	/** Synchronise plan + résiliation depuis Stripe (retour checkout, portail, ouverture page). */
+	@Post('sync-subscription')
+	syncSubscription(@CurrentUser() user: { organizationId: number }) {
+		return this.platformStripe.syncOrganizationFromStripe(user.organizationId);
+	}
+
+	/** Alias historique — même comportement que sync-subscription. */
+	@Post('sync-after-checkout')
+	syncAfterCheckout(@CurrentUser() user: { organizationId: number }) {
+		return this.platformStripe.syncOrganizationFromStripe(user.organizationId);
 	}
 }

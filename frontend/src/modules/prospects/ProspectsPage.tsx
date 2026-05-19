@@ -460,7 +460,7 @@ export const ProspectsPage: React.FC = () => {
           severity="warning"
           sx={{ mb: 3 }}
           action={
-            <Button component={RouterLink} to="/parametres" color="inherit" size="small">
+            <Button component={RouterLink} to="/parametres/abonnement" color="inherit" size="small">
               Passer Pro
             </Button>
           }

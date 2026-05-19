@@ -11,17 +11,30 @@ export function encryptOrgStripeFields(
 	data: {
 		invoiceStripeSecretKey?: string | null;
 		invoiceStripeWebhookSecret?: string | null;
+		clearInvoiceStripeSecretKey?: boolean;
+		clearInvoiceStripeWebhookSecret?: boolean;
 	},
 ): Partial<OrgStripeSecretFields> {
 	const out: Partial<OrgStripeSecretFields> = {};
-	if (data.invoiceStripeSecretKey !== undefined) {
-		const plain = data.invoiceStripeSecretKey?.trim() || null;
-		out.invoiceStripeSecretKey = plain ? crypto.encrypt(plain) : null;
+
+	if (data.clearInvoiceStripeSecretKey) {
+		out.invoiceStripeSecretKey = null;
+	} else if (data.invoiceStripeSecretKey !== undefined) {
+		const plain = data.invoiceStripeSecretKey?.trim();
+		if (plain) {
+			out.invoiceStripeSecretKey = crypto.encrypt(plain);
+		}
 	}
-	if (data.invoiceStripeWebhookSecret !== undefined) {
-		const plain = data.invoiceStripeWebhookSecret?.trim() || null;
-		out.invoiceStripeWebhookSecret = plain ? crypto.encrypt(plain) : null;
+
+	if (data.clearInvoiceStripeWebhookSecret) {
+		out.invoiceStripeWebhookSecret = null;
+	} else if (data.invoiceStripeWebhookSecret !== undefined) {
+		const plain = data.invoiceStripeWebhookSecret?.trim();
+		if (plain) {
+			out.invoiceStripeWebhookSecret = crypto.encrypt(plain);
+		}
 	}
+
 	return out;
 }
 

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import { getHeaderWaveImagePath } from './pdf-assets';
 import { buildFrenchLegalFooter, formatPostalAddress } from './pdf-legal-mentions';
+import { tryEmbedSignatureImage } from './pdf-signature.util';
 import {
 	PDF_LAYOUT,
 	PDF_THEME,
@@ -23,6 +24,10 @@ export interface BuildPdfDocumentOptions {
 	organization?: any;
 	document?: any;
 	expiryDate?: Date | string;
+	/** Image (data URL / fichier) ou nom signataire — prioritaire sur organization.signature */
+	signature?: string | null;
+	/** Date affichée dans le cadre signature (défaut : date du document) */
+	signatureDate?: Date | string;
 }
 
 /**
@@ -45,13 +50,19 @@ export class PdfDocumentBuilder {
 		doc.y += PDF_LAYOUT.padLg;
 
 		const blockY = doc.y;
-		const signatureHeight = 72;
+		const signatureHeight = 88;
 		const leftWidth = contentWidth * 0.58;
 		const rightX = marginX + leftWidth + 16;
 		const rightWidth = contentWidth - leftWidth - 16;
 
 		this.drawPaymentBlock(doc, options, marginX, blockY, leftWidth);
-		this.drawSignatureBox(doc, rightX, blockY, rightWidth, signatureHeight);
+		const signatureValue =
+			options.signature ?? options.organization?.signature ?? null;
+		const signatureDate = options.signatureDate ?? options.date ?? new Date();
+		this.drawSignatureBox(doc, rightX, blockY, rightWidth, signatureHeight, {
+			date: signatureDate,
+			signature: signatureValue,
+		});
 
 		const contentEndY = Math.max(doc.y, blockY + signatureHeight + 8);
 		this.drawLegalFooterBand(doc, options, contentEndY);
@@ -401,14 +412,16 @@ export class PdfDocumentBuilder {
 		const iban = process.env.COMPANY_IBAN;
 		const lines: string[] = [];
 
-		if (options.kind === 'facture') {
+		if (options.document?.paymentNote) {
+			lines.push(String(options.document.paymentNote));
+		} else if (options.kind === 'facture') {
 			lines.push('Mode de règlement : virement bancaire.');
 			if (options.document?.dueDate) {
 				lines.push(
 					`À régler avant le ${new Date(options.document.dueDate).toLocaleDateString('fr-FR')}.`
 				);
 			}
-		} else {
+		} else if (options.kind === 'devis') {
 			lines.push('Modalités : selon accord après acceptation du devis.');
 		}
 		if (iban) {
@@ -500,17 +513,51 @@ export class PdfDocumentBuilder {
 		doc.y = Math.min(bandTop + bandHeight, maxY);
 	}
 
-	private drawSignatureBox(doc: PdfDoc, x: number, y: number, width: number, height: number): void {
+	private drawSignatureBox(
+		doc: PdfDoc,
+		x: number,
+		y: number,
+		width: number,
+		height: number,
+		opts: { date: Date | string; signature?: string | null },
+	): void {
 		const radius = 12;
 		doc.roundedRect(x, y, width, height, radius).lineWidth(1.5);
 		doc.strokeColor(PDF_THEME.red).stroke();
 
 		const sigPad = PDF_LAYOUT.padMd;
+		const dateStr = new Date(opts.date).toLocaleDateString('fr-FR');
 		doc.fontSize(9)
 			.fillColor(PDF_THEME.navy)
 			.font('Helvetica-Bold')
-			.text('Date :', x + sigPad, y + sigPad, { continued: false })
-			.text('Signature :', x + sigPad, y + sigPad + 26, { continued: false });
+			.text(`Date : ${dateStr}`, x + sigPad, y + sigPad, { width: width - sigPad * 2 });
+
+		const sigLabelY = y + sigPad + 22;
+		doc.text('Signature :', x + sigPad, sigLabelY, { width: width - sigPad * 2 });
+
+		const sigContentY = sigLabelY + 14;
+		const sigMaxH = y + height - sigContentY - sigPad;
+		const sigMaxW = width - sigPad * 2;
+
+		if (opts.signature?.trim()) {
+			const embedded = tryEmbedSignatureImage(
+				doc,
+				opts.signature.trim(),
+				x + sigPad,
+				sigContentY,
+				sigMaxW,
+				Math.max(sigMaxH, 28),
+			);
+			if (!embedded) {
+				doc.fontSize(9)
+					.fillColor(PDF_THEME.textDark)
+					.font('Helvetica-Oblique')
+					.text(opts.signature.trim(), x + sigPad, sigContentY, {
+						width: sigMaxW,
+						lineGap: 2,
+					});
+			}
+		}
 	}
 
 	private formatCurrency(amount: number): string {

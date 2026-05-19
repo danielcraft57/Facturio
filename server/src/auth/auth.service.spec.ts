@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
+import { AuthSessionService } from './auth-session.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../common/email.service';
 import { JwtService } from '@nestjs/jwt';
@@ -32,6 +33,13 @@ describe('AuthService', () => {
 		sendVerifyEmail: jest.fn().mockResolvedValue(undefined),
 	};
 
+	const mockAuthSessionService = {
+		createLoginSession: jest.fn().mockResolvedValue({ sessionId: 1, needDeviceVerification: false }),
+		verifyDeviceToken: jest.fn(),
+		assertSessionActive: jest.fn(),
+		revokeSession: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -47,6 +55,10 @@ describe('AuthService', () => {
 				{
 					provide: EmailService,
 					useValue: mockEmailService,
+				},
+				{
+					provide: AuthSessionService,
+					useValue: mockAuthSessionService,
 				},
 			],
 		}).compile();
@@ -118,6 +130,7 @@ describe('AuthService', () => {
 				email: 'test@example.com',
 				password: 'hashed-password',
 				status: 'ACTIVE',
+				emailVerified: true,
 				organizationId: 1,
 				organization: { id: 1, name: 'Test Org' },
 			};

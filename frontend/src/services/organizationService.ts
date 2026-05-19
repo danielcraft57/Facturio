@@ -1,4 +1,5 @@
 import { apiClient, type ApiResponse } from './api';
+import { buildInvoiceStripeWebhookUrl } from '../utils/apiPublicBase';
 
 /**
  * Profil organisation (informations affichées sur devis et factures)
@@ -38,6 +39,7 @@ export interface OrganizationProfile {
 	invoiceStripePublishableKeyPreview?: string | null;
 	invoiceStripeSecretKeySet?: boolean;
 	invoiceStripeWebhookSecretSet?: boolean;
+	invoiceStripePaymentMethods?: string[];
 	invoiceStripeConfiguredAt?: string | null;
 	privacyPolicyUrl?: string | null;
 	dataControllerEmail?: string | null;
@@ -47,6 +49,9 @@ export type UpdateInvoiceStripe = {
 	invoiceStripePublishableKey?: string | null;
 	invoiceStripeSecretKey?: string | null;
 	invoiceStripeWebhookSecret?: string | null;
+	clearInvoiceStripeSecretKey?: boolean;
+	clearInvoiceStripeWebhookSecret?: boolean;
+	invoiceStripePaymentMethods?: string[];
 };
 
 /**
@@ -81,5 +86,10 @@ export const organizationService = {
 
 	async getInvoiceStripeWebhookUrl(): Promise<ApiResponse<{ webhookUrl: string }>> {
 		return apiClient.get<{ webhookUrl: string }>('/organization/invoice-stripe/webhook-url');
+	},
+
+	/** URL webhook unifiée (abonnement + factures payées). */
+	buildInvoiceStripeWebhookUrl(_organizationId?: number): string {
+		return buildInvoiceStripeWebhookUrl(_organizationId);
 	},
 };

@@ -18,9 +18,15 @@ export function PublicQuoteAcceptPage() {
       return
     }
     api.post<any>(`public/quotes/${token}/accept`, {}).then((res: any) => {
-      if (res?.status === 'accepted' || res?.id) {
+      const body = res?.data ?? res
+      if (body?.status === 'accepted' || body?.id) {
         setStatus('success')
-        setMessage('Devis accepté. Merci.')
+        const inv = body?.invoiceNumber
+          ? ` Facture ${body.invoiceNumber} créée automatiquement.`
+          : body?.invoiceId
+            ? ' Une facture a été créée automatiquement.'
+            : ''
+        setMessage(`Devis accepté. Merci.${inv}`)
       } else if (res?.error) {
         setStatus('error')
         setMessage(res.error)

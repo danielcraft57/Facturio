@@ -8,6 +8,7 @@ import { ConfigService } from '../config/config.service';
 import { BillingService } from '../billing/billing.service';
 import { assertValidPublicToken } from './public-token.util';
 import { buildPublicInvoiceUrl } from '../common/public-app-url';
+import { InvoicePaymentNotificationService } from './invoice-payment-notification.service';
 
 /**
  * Ligne de facture
@@ -41,6 +42,8 @@ export interface CreateInvoiceInput {
 	lines?: InvoiceLineInput[];
 	/** Devise (défaut: EUR) */
 	currency?: string;
+	/** Devis d’origine (conversion devis → facture) */
+	sourceQuoteId?: number;
 }
 
 /**
@@ -95,7 +98,8 @@ export class InvoicesService {
 		private readonly prisma: PrismaService,
 		private readonly accounting: AccountingService,
 		private readonly config: ConfigService,
-		private readonly billing: BillingService
+		private readonly billing: BillingService,
+		private readonly paidNotifications: InvoicePaymentNotificationService,
 	) {}
 
 	/**
@@ -275,6 +279,7 @@ export class InvoicesService {
 				total: totals.total,
 				balance: totals.total,
 				legalMention: policy.mention,
+				sourceQuoteId: data.sourceQuoteId ?? undefined,
 				lines: {
 					create: linesWithTax.map(l => ({
 						productId: (l as any).productId ?? undefined,
@@ -479,13 +484,17 @@ export class InvoicesService {
 	 */
 	async addPayment(id: number, amount: number, date?: string | Date, method?: string, notes?: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
+		const invoiceTotal = Number(invoice.total);
+		const priorPaid = (invoice.payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+		const remaining = invoiceTotal - priorPaid;
+		const wasFullyPaid = invoice.status === 'PAID' || remaining <= 0;
+
 		const payment = await this.prisma.payment.create({
 			data: { invoiceId: id, amount, date: date ? new Date(date) : undefined, method, notes }
 		});
 		const agg = await this.prisma.payment.aggregate({ where: { invoiceId: id }, _sum: { amount: true } });
 		const paid = agg?._sum?.amount ? (agg._sum.amount as any).toNumber?.() ?? Number(agg._sum.amount) : 0;
-		const subtotalNumber = (invoice.subtotal as any)?.toNumber?.() ?? Number(invoice.subtotal);
-		const newBalance = subtotalNumber - paid;
+		const newBalance = invoiceTotal - paid;
 		const newStatus = newBalance <= 0 ? 'PAID' : (invoice.status as any);
 		await this.prisma.invoice.update({
 			where: { id },
@@ -496,6 +505,14 @@ export class InvoicesService {
 		try {
 			await this.accounting.postInvoicePayment({ invoiceId: id, amount });
 		} catch (_) {}
+
+		if (newStatus === 'PAID' && !wasFullyPaid) {
+			void this.paidNotifications.notifyInvoiceFullyPaid(id, {
+				lastPaymentAmount: amount,
+				paymentMethod: method,
+			});
+		}
+
 		// Retourner le paiement en nombre pour .toBe(250)
 		return { ...payment, amount: (payment.amount as any)?.toNumber?.() ?? Number(payment.amount) } as any;
 	}

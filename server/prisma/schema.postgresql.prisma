@@ -150,14 +150,17 @@ model Organization {
   prospectLabApiUrl String?
   prospectLabApiKey String?
 
-  saasPlan             SaasBillingPlan @default(FREE)
-  saasPlanExpiresAt    DateTime?
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
+  saasPlan                 SaasBillingPlan @default(FREE)
+  saasPlanExpiresAt        DateTime?
+  saasSubscriptionStatus   String?
+  stripeCustomerId         String?
+  stripeSubscriptionId     String?
+  stripePlatformEvents     StripePlatformEvent[]
 
   invoiceStripePublishableKey String?
   invoiceStripeSecretKey      String?
   invoiceStripeWebhookSecret  String?
+  invoiceStripePaymentMethods String?
   invoiceStripeConfiguredAt   DateTime?
 
   privacyPolicyUrl    String?
@@ -254,6 +257,18 @@ model UserSession {
   @@index([lastActivityAt])
 }
 
+model StripePlatformEvent {
+  id             Int           @id @default(autoincrement())
+  eventId        String        @unique
+  type           String
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId])
+  @@index([type])
+}
+
 model OrganizationDocument {
   id              Int            @id @default(autoincrement())
   organizationId  Int
@@ -339,6 +354,8 @@ model Invoice {
   taxDeductions      TaxDeduction[]
   publicToken         String?                 @unique
   sentAt              DateTime?
+  sourceQuoteId       Int?                    @unique
+  sourceQuote         Quote?                  @relation("QuoteToInvoice", fields: [sourceQuoteId], references: [id], onDelete: SetNull)
   eInvoiceStatus      EInvoiceStatus          @default(NOT_READY)
   eInvoiceGeneratedAt DateTime?
   eInvoiceXmlHash     String?
@@ -449,9 +466,10 @@ model Quote {
   acceptedAt     DateTime?
   acceptedIp     String?
   views          QuoteView[]
-  emailEvents    EmailEvent[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  emailEvents      EmailEvent[]
+  convertedInvoice Invoice?      @relation("QuoteToInvoice")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([organizationId])
 }

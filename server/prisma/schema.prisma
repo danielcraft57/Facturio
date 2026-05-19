@@ -151,15 +151,19 @@ model Organization {
   prospectLabApiKey String?
 
   // Abonnement Facturio (SaaS) — clés Stripe plateforme dans .env uniquement
-  saasPlan               SaasBillingPlan @default(FREE)
-  saasPlanExpiresAt      DateTime?
-  stripeCustomerId       String?
-  stripeSubscriptionId   String?
+  saasPlan                 SaasBillingPlan @default(FREE)
+  saasPlanExpiresAt        DateTime?
+  saasSubscriptionStatus   String? // active | trialing | past_due | canceled | unpaid
+  stripeCustomerId         String?
+  stripeSubscriptionId     String?
+  stripePlatformEvents     StripePlatformEvent[]
 
   // Stripe prestataire (paiements des factures par ses clients) — stocké en BDD, RGPD
   invoiceStripePublishableKey String?
   invoiceStripeSecretKey      String?
   invoiceStripeWebhookSecret  String?
+  /// JSON : ["card","paypal",…] — voir invoice-stripe-payment-methods.ts
+  invoiceStripePaymentMethods String?
   invoiceStripeConfiguredAt   DateTime?
 
   // RGPD — contact & politique affichés aux clients (factures / devis)
@@ -260,6 +264,19 @@ model UserSession {
   @@index([lastActivityAt])
 }
 
+/// Journal idempotent des webhooks Stripe plateforme (abonnement Facturio)
+model StripePlatformEvent {
+  id             Int           @id @default(autoincrement())
+  eventId        String        @unique
+  type           String
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId])
+  @@index([type])
+}
+
 model OrganizationDocument {
   id              Int            @id @default(autoincrement())
   organizationId  Int
@@ -345,6 +362,8 @@ model Invoice {
   taxDeductions      TaxDeduction[]
   publicToken         String?                 @unique
   sentAt              DateTime?
+  sourceQuoteId       Int?                    @unique
+  sourceQuote         Quote?                  @relation("QuoteToInvoice", fields: [sourceQuoteId], references: [id], onDelete: SetNull)
   eInvoiceStatus      EInvoiceStatus          @default(NOT_READY)
   eInvoiceGeneratedAt DateTime?
   eInvoiceXmlHash     String?
@@ -455,9 +474,10 @@ model Quote {
   acceptedAt     DateTime?
   acceptedIp     String?
   views          QuoteView[]
-  emailEvents    EmailEvent[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  emailEvents      EmailEvent[]
+  convertedInvoice Invoice?      @relation("QuoteToInvoice")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([organizationId])
 }

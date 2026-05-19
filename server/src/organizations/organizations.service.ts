@@ -3,7 +3,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { encryptOrgStripeFields } from '../crypto/organization-stripe-secrets.util';
 import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
 import { sanitizeOrganizationProfile } from './organization-profile.util';
+import { sanitizeOrganizationProfileUpdate } from './organization-profile.validation';
 import { UpdateInvoiceStripeDto } from './dto/update-invoice-stripe.dto';
+import {
+	normalizeInvoiceStripePaymentMethods,
+	serializeInvoiceStripePaymentMethods,
+} from '../stripe/invoice-stripe-payment-methods';
 
 /**
  * Service de gestion des organisations
@@ -56,11 +61,18 @@ export class OrganizationsService {
 		if (data.invoiceStripePublishableKey !== undefined) {
 			update.invoiceStripePublishableKey = data.invoiceStripePublishableKey || null;
 		}
+		if (data.invoiceStripePaymentMethods !== undefined) {
+			update.invoiceStripePaymentMethods = serializeInvoiceStripePaymentMethods(
+				normalizeInvoiceStripePaymentMethods(data.invoiceStripePaymentMethods),
+			);
+		}
 		Object.assign(
 			update,
 			encryptOrgStripeFields(this.secretsCrypto, {
 				invoiceStripeSecretKey: data.invoiceStripeSecretKey,
 				invoiceStripeWebhookSecret: data.invoiceStripeWebhookSecret,
+				clearInvoiceStripeSecretKey: data.clearInvoiceStripeSecretKey,
+				clearInvoiceStripeWebhookSecret: data.clearInvoiceStripeWebhookSecret,
 			}),
 		);
 		if (
@@ -77,12 +89,13 @@ export class OrganizationsService {
 		return sanitizeOrganizationProfile(organization as Record<string, unknown>);
 	}
 
-	getInvoiceStripeWebhookUrl(organizationId: number): string {
+	/** URL webhook unique (abonnement Facturio + paiements factures clients). */
+	getInvoiceStripeWebhookUrl(_organizationId: number): string {
 		const base =
 			process.env.API_PUBLIC_URL?.trim() ||
 			process.env.BACKEND_URL?.trim() ||
 			'http://localhost:3000';
-		return `${base.replace(/\/$/, '')}/api/webhooks/stripe/invoices/${organizationId}`;
+		return `${base.replace(/\/$/, '')}/api/webhooks/stripe`;
 	}
 
 	/**
@@ -100,48 +113,49 @@ export class OrganizationsService {
 	 * @returns Organisation mise à jour avec documents validés
 	 */
 	async updateProfile(orgId: number, data: any) {
+		const safe = sanitizeOrganizationProfileUpdate(data as Record<string, unknown>);
 		const organization = await this.prisma.organization.update({
 			where: { id: orgId },
 			data: {
-				name: data.name,
-				legalName: data.legalName,
-				siret: data.siret,
-				siren: data.siren,
-				rcs: data.rcs,
-				rcsCity: data.rcsCity,
-				vatNumber: data.vatNumber,
-				companyStatus: data.companyStatus,
-				companyType: data.companyType,
-				address: data.address,
-				address2: data.address2,
-				city: data.city,
-				zipCode: data.zipCode,
-				country: data.country,
-				countryCode: data.countryCode,
-				email: data.email,
-				phone: data.phone,
-				website: data.website,
-				capital: data.capital,
-				legalForm: data.legalForm,
-				apeCode: data.apeCode,
-				apeLabel: data.apeLabel,
-				legalRepresentative: data.legalRepresentative,
-				legalRepresentativeRole: data.legalRepresentativeRole,
-				accountingYearEnd: data.accountingYearEnd,
-				fiscalYear: data.fiscalYear,
-				taxRegime: data.taxRegime,
-				urssafRate: data.urssafRate,
-				urssafActivity: data.urssafActivity,
-				urssafFiscalOption: data.urssafFiscalOption,
-				urssafDeclarationFrequency: data.urssafDeclarationFrequency,
-				urssafThreshold: data.urssafThreshold,
-				logo: data.logo,
-				signature: data.signature,
-				defaultCurrency: data.defaultCurrency,
-				defaultLanguage: data.defaultLanguage,
-				timezone: data.timezone,
-				privacyPolicyUrl: data.privacyPolicyUrl,
-				dataControllerEmail: data.dataControllerEmail,
+				name: safe.name,
+				legalName: safe.legalName,
+				siret: safe.siret,
+				siren: safe.siren,
+				rcs: safe.rcs,
+				rcsCity: safe.rcsCity,
+				vatNumber: safe.vatNumber,
+				companyStatus: safe.companyStatus,
+				companyType: safe.companyType,
+				address: safe.address,
+				address2: safe.address2,
+				city: safe.city,
+				zipCode: safe.zipCode,
+				country: safe.country,
+				countryCode: safe.countryCode,
+				email: safe.email,
+				phone: safe.phone,
+				website: safe.website,
+				capital: safe.capital,
+				legalForm: safe.legalForm,
+				apeCode: safe.apeCode,
+				apeLabel: safe.apeLabel,
+				legalRepresentative: safe.legalRepresentative,
+				legalRepresentativeRole: safe.legalRepresentativeRole,
+				accountingYearEnd: safe.accountingYearEnd,
+				fiscalYear: safe.fiscalYear,
+				taxRegime: safe.taxRegime,
+				urssafRate: safe.urssafRate,
+				urssafActivity: safe.urssafActivity,
+				urssafFiscalOption: safe.urssafFiscalOption,
+				urssafDeclarationFrequency: safe.urssafDeclarationFrequency,
+				urssafThreshold: safe.urssafThreshold,
+				logo: safe.logo,
+				signature: safe.signature,
+				defaultCurrency: safe.defaultCurrency,
+				defaultLanguage: safe.defaultLanguage,
+				timezone: safe.timezone,
+				privacyPolicyUrl: safe.privacyPolicyUrl,
+				dataControllerEmail: safe.dataControllerEmail,
 			},
 			include: {
 				documents: {

@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
+import { InvoicePaymentNotificationService } from '../invoices/invoice-payment-notification.service';
 
 /**
  * Données de création de paiement
@@ -45,9 +46,12 @@ export interface UpdatePaymentDto {
  */
 @Injectable()
 export class PaymentsService {
+	private readonly logger = new Logger(PaymentsService.name);
+
 	constructor(
 		private readonly prisma: PrismaService,
-		private readonly accounting: AccountingService
+		private readonly accounting: AccountingService,
+		private readonly paidNotifications: InvoicePaymentNotificationService,
 	) {}
 
 	async create(data: CreatePaymentDto, organizationId?: number) {
@@ -62,6 +66,7 @@ export class PaymentsService {
 		const totalPaid = invoice.payments.reduce((sum, p) => sum + Number(p.amount), 0);
 		const invoiceTotal = Number(invoice.total);
 		const remaining = invoiceTotal - totalPaid;
+		const wasFullyPaid = invoice.status === 'PAID' || remaining <= 0;
 
 		if (data.amount > remaining) {
 			throw new BadRequestException(`Le montant du paiement (${data.amount}) depasse le solde restant (${remaining})`);
@@ -94,6 +99,19 @@ export class PaymentsService {
 		try {
 			await this.accounting.postInvoicePayment({ invoiceId: data.invoiceId, amount: data.amount });
 		} catch (_) {}
+
+		if (newStatus === 'PAID' && !wasFullyPaid) {
+			this.paidNotifications
+				.notifyInvoiceFullyPaid(data.invoiceId, {
+					lastPaymentAmount: data.amount,
+					paymentMethod: data.method,
+				})
+				.catch((err) =>
+					this.logger.warn(
+						`Notification paiement facture ${data.invoiceId}: ${(err as Error).message}`,
+					),
+				);
+		}
 
 		return {
 			...payment,

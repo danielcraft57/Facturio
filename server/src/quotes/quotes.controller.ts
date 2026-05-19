@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Req, Res } from '@nestjs/common';
 import { CreateQuoteDto, QuotesService, UpdateQuoteDto } from './quotes.service';
-import { InvoicesService } from '../invoices/invoices.service';
+import { QuoteStatus } from '@prisma/client';
 import { Request, Response } from 'express';
 import { PdfService } from '../common/pdf.service';
 import { EmailService } from '../common/email.service';
@@ -11,7 +11,6 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class QuotesController {
 	constructor(
 		private readonly quotes: QuotesService,
-		private readonly invoices: InvoicesService,
 		private readonly pdfService: PdfService,
 		private readonly email: EmailService,
 		private readonly organizations: OrganizationsService
@@ -46,19 +45,23 @@ export class QuotesController {
 		return this.quotes.remove(id, user.organizationId);
 	}
 
+	@Post(':id/accept')
+	async accept(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.quotes.acceptQuote(id, user.organizationId);
+	}
+
+	@Post(':id/reject')
+	async reject(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.quotes.rejectQuote(id, user.organizationId);
+	}
+
 	@Post(':id/convert-to-invoice')
 	async convertToInvoice(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
 		const quote = await this.quotes.findOne(id, user.organizationId);
-		return this.invoices.create({
-			clientId: quote.clientId,
-			lines: quote.lines.map((l: any) => ({
-				productId: l.productId ?? undefined,
-				description: l.description,
-				quantity: l.quantity,
-				unitPrice: Number(l.unitPrice),
-				taxRate: Number(l.taxRate)
-			}))
-		}, user.organizationId);
+		if (quote.status === QuoteStatus.SENT) {
+			await this.quotes.acceptQuote(id, user.organizationId);
+		}
+		return this.quotes.convertQuoteToInvoice(id, user.organizationId);
 	}
 
 	@Post(':id/send')

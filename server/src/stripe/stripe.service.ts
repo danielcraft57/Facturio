@@ -5,6 +5,7 @@ import { assertValidPublicToken } from '../invoices/public-token.util';
 import { decryptOrgStripeSecrets } from '../crypto/organization-stripe-secrets.util';
 import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
 import { createStripeClient, type StripeClient } from './stripe-client';
+import { parseInvoiceStripePaymentMethodsStored } from './invoice-stripe-payment-methods';
 
 export interface PaymentIntentResponse {
 	clientSecret: string;
@@ -74,6 +75,7 @@ export class StripeService {
 						invoiceStripeSecretKey: true,
 						invoiceStripePublishableKey: true,
 						invoiceStripeWebhookSecret: true,
+						invoiceStripePaymentMethods: true,
 					},
 				},
 			},
@@ -109,6 +111,9 @@ export class StripeService {
 
 		const amountCents = Math.round(remaining * 100);
 		const currency = (invoice.currency || 'EUR').toLowerCase();
+		const paymentMethodTypes = parseInvoiceStripePaymentMethodsStored(
+			org.invoiceStripePaymentMethods,
+		);
 
 		const paymentIntent = await stripe.paymentIntents.create({
 			amount: amountCents,
@@ -119,7 +124,7 @@ export class StripeService {
 				publicToken: safeToken,
 				invoiceNumber: invoice.number,
 			},
-			automatic_payment_methods: { enabled: true },
+			payment_method_types: paymentMethodTypes,
 		});
 
 		if (!paymentIntent.client_secret) {

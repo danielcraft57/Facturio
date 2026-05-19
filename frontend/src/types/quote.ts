@@ -27,6 +27,8 @@ export interface Quote {
   sentAt?: string;
   acceptedAt?: string;
   acceptedIp?: string;
+  invoiceId?: number;
+  invoiceNumber?: string;
   createdAt: string;
   updatedAt: string;
 }

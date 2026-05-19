@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrganizationsService } from './organizations.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('OrganizationsService', () => {
@@ -14,6 +15,11 @@ describe('OrganizationsService', () => {
 		},
 	};
 
+	const mockSecretsCryptoService = {
+		encrypt: jest.fn((value: string) => value),
+		decrypt: jest.fn((value: string) => value),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -21,6 +27,10 @@ describe('OrganizationsService', () => {
 				{
 					provide: PrismaService,
 					useValue: mockPrismaService,
+				},
+				{
+					provide: SecretsCryptoService,
+					useValue: mockSecretsCryptoService,
 				},
 			],
 		}).compile();

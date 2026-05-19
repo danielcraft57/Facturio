@@ -70,7 +70,7 @@ export function PricingCards() {
             </Box>
             <Button
               component={RouterLink}
-              to={plan.id === 'agency' ? '/signup' : '/signup'}
+              to={plan.id === 'pro' || plan.id === 'pro-efacture' ? '/parametres/abonnement' : '/signup'}
               variant={plan.highlighted ? 'contained' : 'outlined'}
               fullWidth
               size="large"

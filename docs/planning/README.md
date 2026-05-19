@@ -15,7 +15,7 @@ Documentation sur le planning et la roadmap du projet.
 
 ## 📊 État actuel
 
-**Version** : v0.9.5  
+**Version** : v1.2.0  
 **Progression globale** : ~87%
 
 ## 🎯 Priorités

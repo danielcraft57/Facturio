@@ -4,7 +4,7 @@
 
 ## Vue d'ensemble
 
-**Version actuelle** : v0.9.5  
+**Version actuelle** : v1.2.0  
 **Progression globale** : ~87% des fonctionnalités de base
 
 ### Statut par composant
@@ -243,7 +243,7 @@
 ## Dernière mise à jour
 
 **Date** : Décembre 2024  
-**Version** : v0.9.6  
+**Version** : v1.2.0  
 **Focus** : Priorités hautes implémentées (Exception Filter, PDF, Email, DTOs, Pagination, Tests)
 
 ### Récemment implémenté

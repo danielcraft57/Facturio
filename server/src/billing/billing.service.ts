@@ -38,10 +38,56 @@ export class BillingService {
 	}
 
 	async getUsage(organizationId: number) {
-		const plan = await this.getOrganizationPlan(organizationId);
+		const org = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: {
+				saasPlan: true,
+				saasPlanExpiresAt: true,
+				saasSubscriptionStatus: true,
+				stripeCustomerId: true,
+				stripeSubscriptionId: true,
+			},
+		});
+		if (!org) throw new NotFoundException('Organisation introuvable');
+
+		let plan = org.saasPlan;
+		if (
+			org.saasPlanExpiresAt &&
+			org.saasPlanExpiresAt < new Date() &&
+			org.saasPlan !== SaasBillingPlan.FREE
+		) {
+			plan = SaasBillingPlan.FREE;
+		}
+
 		const limits = SAAS_PLAN_LIMITS[plan];
 		const invoicesThisMonth = await this.countInvoicesThisMonth(organizationId);
 		const max = limits.maxInvoicesPerMonth;
+
+		const isPaidPlan = plan !== SaasBillingPlan.FREE;
+		const cancelAtPeriodEnd = org.saasSubscriptionStatus === 'cancel_at_period_end';
+		const hasRecurringSubscription = !!org.stripeSubscriptionId;
+		const prepaidUntil =
+			isPaidPlan &&
+			!hasRecurringSubscription &&
+			!!org.saasPlanExpiresAt &&
+			org.saasPlanExpiresAt > new Date();
+
+		const subscription =
+			isPaidPlan || org.stripeCustomerId
+				? {
+						status: org.saasSubscriptionStatus,
+						cancelAtPeriodEnd,
+						currentPeriodEnd: org.saasPlanExpiresAt?.toISOString() ?? null,
+						canManagePortal: !!org.stripeCustomerId,
+						hasRecurringSubscription,
+						hasActiveSubscription:
+							hasRecurringSubscription ||
+							prepaidUntil ||
+							(isPaidPlan &&
+								!!org.saasPlanExpiresAt &&
+								org.saasPlanExpiresAt > new Date()),
+					}
+				: null;
 
 		return {
 			plan,
@@ -50,9 +96,9 @@ export class BillingService {
 			usage: {
 				invoicesThisMonth,
 			},
-			remainingInvoices:
-				max == null ? null : Math.max(0, max - invoicesThisMonth),
+			remainingInvoices: max == null ? null : Math.max(0, max - invoicesThisMonth),
 			atLimit: max != null && invoicesThisMonth >= max,
+			subscription,
 		};
 	}
 

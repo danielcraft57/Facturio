@@ -14,7 +14,7 @@ describe('AvoirsService', () => {
 		avoir: {
 			create: jest.fn(),
 			findMany: jest.fn(),
-			findUnique: jest.fn(),
+			findFirst: jest.fn(),
 			update: jest.fn(),
 			delete: jest.fn(),
 			count: jest.fn()
@@ -170,7 +170,7 @@ describe('AvoirsService', () => {
 				applications: []
 			};
 
-			mockPrismaService.avoir.findUnique.mockResolvedValue(mockAvoir);
+			mockPrismaService.avoir.findFirst.mockResolvedValue(mockAvoir);
 
 			const result = await service.findOne(1);
 
@@ -179,7 +179,7 @@ describe('AvoirsService', () => {
 		});
 
 		it('devrait lancer NotFoundException si avoir introuvable', async () => {
-			mockPrismaService.avoir.findUnique.mockResolvedValue(null);
+			mockPrismaService.avoir.findFirst.mockResolvedValue(null);
 
 			await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
 		});
@@ -207,7 +207,7 @@ describe('AvoirsService', () => {
 			};
 
 			// Mock pour findOne (qui inclut client)
-			mockPrismaService.avoir.findUnique.mockImplementation((args: any) => {
+			mockPrismaService.avoir.findFirst.mockImplementation((args: any) => {
 				if (args.where.id === 1) {
 					return Promise.resolve(mockAvoir);
 				}
@@ -241,7 +241,7 @@ describe('AvoirsService', () => {
 				balance: 200
 			};
 
-			mockPrismaService.avoir.findUnique.mockResolvedValue(mockAvoir);
+			mockPrismaService.avoir.findFirst.mockResolvedValue(mockAvoir);
 			mockPrismaService.invoice.findUnique.mockResolvedValue(mockInvoice);
 
 			await expect(service.apply(1, { invoiceId: 1, amount: 50 })).rejects.toThrow(BadRequestException);
@@ -255,7 +255,7 @@ describe('AvoirsService', () => {
 				applications: []
 			};
 
-			mockPrismaService.avoir.findUnique.mockResolvedValue(mockAvoir);
+			mockPrismaService.avoir.findFirst.mockResolvedValue(mockAvoir);
 			mockPrismaService.avoir.delete.mockResolvedValue({});
 
 			const result = await service.remove(1);
@@ -270,7 +270,7 @@ describe('AvoirsService', () => {
 				applications: [{ id: 1 }]
 			};
 
-			mockPrismaService.avoir.findUnique.mockResolvedValue(mockAvoir);
+			mockPrismaService.avoir.findFirst.mockResolvedValue(mockAvoir);
 
 			await expect(service.remove(1)).rejects.toThrow(BadRequestException);
 		});

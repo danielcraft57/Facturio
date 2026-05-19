@@ -59,6 +59,19 @@ export class EmailService {
 		return `${name} <${addr}>`;
 	}
 
+	/** Factures d'abonnement Facturio (Stripe plateforme) — défaut : MAIL_FROM_INVOICE ou abonnement@. */
+	private get subscriptionFrom(): string {
+		const addr =
+			process.env.MAIL_FROM_SUBSCRIPTION ||
+			process.env.MAIL_FROM_INVOICE ||
+			'abonnement@danielcraft.fr';
+		const name =
+			process.env.MAIL_FROM_SUBSCRIPTION_NAME ||
+			process.env.MAIL_FROM_INVOICE_NAME ||
+			'Facturio Abonnements';
+		return `${name} <${addr}>`;
+	}
+
 	/** Adresse d'envoi des emails transactionnels "no-reply". */
 	private get verifyFrom(): string {
 		const addr = this.noReplyEmail || 'no-reply@example.com';
@@ -233,6 +246,67 @@ export class EmailService {
 		});
 	}
 
+	/** Confirmation de paiement intégral — envoyé au client de la facture. */
+	async sendInvoicePaidToClient(options: {
+		to: string;
+		clientName: string;
+		invoiceNumber: string;
+		invoiceDate: Date | string;
+		total: number;
+		lastPaymentAmount: number;
+		paymentMethodLabel: string;
+		issuerName: string;
+		invoiceViewUrl?: string;
+		replyTo?: string;
+	}): Promise<void> {
+		const html = this.getInvoicePaidClientTemplate(options);
+		const viewLine = options.invoiceViewUrl
+			? `\n\nConsulter la facture : ${options.invoiceViewUrl}`
+			: '';
+		const text =
+			`Bonjour ${options.clientName},\n\n` +
+			`Nous confirmons la réception de votre paiement pour la facture ${options.invoiceNumber} ` +
+			`(${this.formatCurrency(options.lastPaymentAmount)} — ${options.paymentMethodLabel}).\n\n` +
+			`Montant total de la facture : ${this.formatCurrency(options.total)}. La facture est réglée.${viewLine}\n\n` +
+			`Cordialement,\n${options.issuerName}`;
+
+		await this.send({
+			from: this.invoiceFrom,
+			to: options.to,
+			replyTo: options.replyTo,
+			subject: `Paiement reçu — Facture ${options.invoiceNumber}`,
+			html,
+			text,
+		});
+	}
+
+	/** Notification de paiement intégral — envoyé au prestataire (organisation). */
+	async sendInvoicePaidToProvider(options: {
+		to: string;
+		issuerName: string;
+		clientName: string;
+		invoiceNumber: string;
+		total: number;
+		lastPaymentAmount: number;
+		paymentMethodLabel: string;
+		appInvoiceUrl: string;
+	}): Promise<void> {
+		const html = this.getInvoicePaidProviderTemplate(options);
+		const text =
+			`La facture ${options.invoiceNumber} a été intégralement payée par ${options.clientName}.\n` +
+			`Montant encaissé : ${this.formatCurrency(options.lastPaymentAmount)} (${options.paymentMethodLabel}).\n` +
+			`Total facture : ${this.formatCurrency(options.total)}.\n\n` +
+			`Voir la facture : ${options.appInvoiceUrl}`;
+
+		await this.send({
+			from: this.invoiceFrom,
+			to: options.to,
+			subject: `Facture ${options.invoiceNumber} payée — ${options.clientName}`,
+			html,
+			text,
+		});
+	}
+
 	/**
 	 * Pied de page avec mentions légales (SIRET, adresse, etc.) - style V6 / LCEN.
 	 */
@@ -313,6 +387,95 @@ export class EmailService {
 			<p>${legal}</p>
 			<p>Cet email a été envoyé automatiquement par Facturio.</p>
 		</div>
+	</div>
+</body>
+</html>`;
+	}
+
+	private getInvoicePaidClientTemplate(data: {
+		clientName: string;
+		invoiceNumber: string;
+		invoiceDate: Date | string;
+		total: number;
+		lastPaymentAmount: number;
+		paymentMethodLabel: string;
+		issuerName: string;
+		invoiceViewUrl?: string;
+	}): string {
+		const legal = this.getLegalFooter();
+		const viewBtn = data.invoiceViewUrl
+			? `<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 20px;"><tr><td><a href="${data.invoiceViewUrl}" style="display: inline-block; padding: 14px 28px; background: #16a34a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Voir la facture</a></td></tr></table>`
+			: '';
+		return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Paiement reçu — ${data.invoiceNumber}</title>
+	<style>
+		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #f0fdf4; }
+		.container { max-width: 600px; margin: 0 auto; padding: 24px; }
+		.header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #2563eb 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; }
+		.header h2 { margin: 0; font-size: 1.35rem; color: #fff; font-weight: 700; }
+		.content p { margin: 0 0 12px; color: #1f2933; font-size: 15px; }
+		.highlight { font-size: 1.05rem; font-weight: 600; color: #15803d; }
+		.footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #bbf7d0; font-size: 11px; color: #6b7280; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="header"><h2>Paiement reçu</h2></div>
+		<div class="content">
+			<p>Bonjour ${data.clientName},</p>
+			<p>Nous confirmons la réception de votre paiement pour la facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')}.</p>
+			<p class="highlight">Montant encaissé : ${this.formatCurrency(data.lastPaymentAmount)} (${data.paymentMethodLabel})</p>
+			<p>Montant total de la facture : ${this.formatCurrency(data.total)} — <strong>facture réglée</strong>.</p>
+			${viewBtn}
+			<p style="margin-top: 20px;">Cordialement,<br><strong>${data.issuerName}</strong></p>
+</div>
+		<div class="footer"><p>${legal}</p></div>
+	</div>
+</body>
+</html>`;
+	}
+
+	private getInvoicePaidProviderTemplate(data: {
+		clientName: string;
+		invoiceNumber: string;
+		total: number;
+		lastPaymentAmount: number;
+		paymentMethodLabel: string;
+		appInvoiceUrl: string;
+	}): string {
+		const legal = this.getLegalFooter();
+		return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Facture payée — ${data.invoiceNumber}</title>
+	<style>
+		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #eff6ff; }
+		.container { max-width: 600px; margin: 0 auto; padding: 24px; }
+		.header { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; }
+		.header h2 { margin: 0; font-size: 1.35rem; color: #fff; font-weight: 700; }
+		.content p { margin: 0 0 12px; font-size: 15px; }
+		.footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #bfdbfe; font-size: 11px; color: #6b7280; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="header"><h2>Facture payée</h2></div>
+		<div class="content">
+			<p>Bonjour,</p>
+			<p>La facture <strong>${data.invoiceNumber}</strong> a été intégralement réglée par <strong>${data.clientName}</strong>.</p>
+			<p>Encaissement : <strong>${this.formatCurrency(data.lastPaymentAmount)}</strong> (${data.paymentMethodLabel})</p>
+			<p>Total facture : ${this.formatCurrency(data.total)}</p>
+			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 20px;"><tr><td><a href="${data.appInvoiceUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600;">Ouvrir la facture dans Facturio</a></td></tr></table>
+</div>
+		<div class="footer"><p>${legal}</p><p>Notification automatique Facturio.</p></div>
 	</div>
 </body>
 </html>`;
@@ -603,6 +766,119 @@ export class EmailService {
 		return this.getBaseLayout({
 			title: 'Réinitialisation de votre mot de passe',
 			content,
+		});
+	}
+
+	/** Abonnement Facturio activé (checkout réussi). */
+	async sendSubscriptionActivated(options: {
+		to: string;
+		firstName?: string | null;
+		planLabel: string;
+		settingsUrl: string;
+	}): Promise<void> {
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+		const content = `
+			<p>${greeting}</p>
+			<p>Votre abonnement <strong>${options.planLabel}</strong> est maintenant actif sur Facturio.</p>
+			<p>Vous pouvez gérer votre facturation et consulter vos quotas depuis les paramètres.</p>
+			<p><a href="${options.settingsUrl}" class="btn">Voir mon abonnement</a></p>
+			<p>Merci pour votre confiance,<br><strong>L'équipe Facturio</strong></p>`;
+		const html = this.getBaseLayout({ title: 'Abonnement activé', content });
+		await this.send({
+			from: this.subscriptionFrom,
+			to: options.to,
+			subject: `Abonnement ${options.planLabel} activé — Facturio`,
+			html,
+			text: `Votre abonnement ${options.planLabel} est actif. Paramètres : ${options.settingsUrl}`,
+		});
+	}
+
+	/** Facture d'abonnement Facturio (même modèle visuel que les factures clients). */
+	async sendSubscriptionInvoice(options: {
+		to: string;
+		firstName?: string | null;
+		clientName: string;
+		invoiceNumber: string;
+		invoiceDate: Date | string;
+		amountEur: number;
+		pdfBuffer: Buffer;
+		hostedInvoiceUrl?: string | null;
+	}): Promise<void> {
+		const company = process.env.COMPANY_NAME || 'Facturio';
+		const subject = `Facture ${options.invoiceNumber} — ${company}`;
+		const html = this.getInvoiceTemplate({
+			invoiceNumber: options.invoiceNumber,
+			invoiceDate: options.invoiceDate,
+			clientName: options.clientName,
+			total: options.amountEur,
+			paymentUrl: options.hostedInvoiceUrl ?? undefined,
+		});
+		const paymentLine = options.hostedInvoiceUrl
+			? `\n\nConsulter en ligne : ${options.hostedInvoiceUrl}\n`
+			: '';
+		await this.send({
+			from: this.subscriptionFrom,
+			to: options.to,
+			subject,
+			html,
+			text:
+				`Bonjour ${options.clientName},\n\n` +
+				`Veuillez trouver ci-joint la facture ${options.invoiceNumber} ` +
+				`du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')} ` +
+				`pour votre abonnement Facturio (${this.formatCurrency(options.amountEur)}).${paymentLine}\n` +
+				`Cordialement,\n${company}`,
+			attachments: [
+				{
+					filename: `facture-${options.invoiceNumber.replace(/\s+/g, '-')}.pdf`,
+					content: options.pdfBuffer,
+					contentType: 'application/pdf',
+				},
+			],
+		});
+	}
+
+	/** Échec de paiement récurrent (carte refusée, etc.). */
+	async sendSubscriptionPaymentFailed(options: {
+		to: string;
+		firstName?: string | null;
+		manageUrl: string;
+	}): Promise<void> {
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+		const content = `
+			<p>${greeting}</p>
+			<p>Le renouvellement de votre abonnement Facturio n'a pas pu être débité.</p>
+			<p>Mettez à jour votre moyen de paiement pour éviter une interruption de service.</p>
+			<p><a href="${options.manageUrl}" class="btn">Mettre à jour le paiement</a></p>
+			<p>Si vous avez des questions, répondez à cet email ou contactez le support.</p>`;
+		const html = this.getBaseLayout({ title: 'Paiement abonnement échoué', content });
+		await this.send({
+			from: this.subscriptionFrom,
+			to: options.to,
+			subject: 'Action requise — paiement abonnement Facturio',
+			html,
+			text: `Échec de paiement. Gérez votre abonnement : ${options.manageUrl}`,
+		});
+	}
+
+	/** Abonnement résilié ou expiré. */
+	async sendSubscriptionCanceled(options: {
+		to: string;
+		firstName?: string | null;
+		planLabel: string;
+	}): Promise<void> {
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+		const content = `
+			<p>${greeting}</p>
+			<p>Votre abonnement <strong>${options.planLabel}</strong> a été résilié. Votre compte est repassé sur le plan gratuit.</p>
+			<p>Vos données restent accessibles ; les quotas du plan Free s'appliquent à nouveau.</p>
+			<p>Vous pouvez vous réabonner à tout moment depuis Facturio.</p>`;
+		const html = this.getBaseLayout({ title: 'Abonnement terminé', content });
+		await this.send({
+			from: this.subscriptionFrom,
+			to: options.to,
+			subject: 'Votre abonnement Facturio a pris fin',
+			html,
+			text: `Abonnement ${options.planLabel} terminé. Compte repassé sur le plan gratuit.`,
 		});
 	}
 

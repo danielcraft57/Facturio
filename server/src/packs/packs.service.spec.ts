@@ -29,7 +29,7 @@ describe('PacksService', () => {
 		pack: {
 			create: jest.fn(),
 			findMany: jest.fn(),
-			findUnique: jest.fn(),
+			findFirst: jest.fn(),
 			update: jest.fn(),
 			delete: jest.fn(),
 			count: jest.fn()
@@ -153,18 +153,18 @@ describe('PacksService', () => {
 		it('devrait retourner un pack existant', async () => {
 			const pack = createMockPack();
 
-			mockPrismaService.pack.findUnique.mockResolvedValue(pack);
+			mockPrismaService.pack.findFirst.mockResolvedValue(pack);
 
 			const result = await service.findOne(1);
 
 			expect(result).toBeDefined();
-			expect(mockPrismaService.pack.findUnique).toHaveBeenCalledWith({
+			expect(mockPrismaService.pack.findFirst).toHaveBeenCalledWith({
 				where: { id: 1 }
 			});
 		});
 
 		it('devrait lancer NotFoundException si le pack n\'existe pas', async () => {
-			mockPrismaService.pack.findUnique.mockResolvedValue(null);
+			mockPrismaService.pack.findFirst.mockResolvedValue(null);
 
 			await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
 		});
@@ -177,7 +177,7 @@ describe('PacksService', () => {
 				name: 'New Name'
 			};
 
-			mockPrismaService.pack.findUnique.mockResolvedValue(existing);
+			mockPrismaService.pack.findFirst.mockResolvedValue(existing);
 			mockPrismaService.pack.update.mockResolvedValue({
 				...existing,
 				...updateDto
@@ -201,7 +201,7 @@ describe('PacksService', () => {
 				{ id: 3, unitPrice: 50 }
 			];
 
-			mockPrismaService.pack.findUnique.mockResolvedValue(existing);
+			mockPrismaService.pack.findFirst.mockResolvedValue(existing);
 			mockPrismaService.product.findMany.mockResolvedValue(mockProducts);
 			mockPrismaService.pack.update.mockResolvedValue(existing);
 
@@ -222,13 +222,13 @@ describe('PacksService', () => {
 		it('devrait supprimer un pack existant', async () => {
 			const pack = createMockPack();
 
-			mockPrismaService.pack.findUnique.mockResolvedValue(pack);
+			mockPrismaService.pack.findFirst.mockResolvedValue(pack);
 			mockPrismaService.pack.delete.mockResolvedValue(pack);
 
 			const result = await service.remove(1);
 
 			expect(result).toEqual({ success: true });
-			expect(mockPrismaService.pack.findUnique).toHaveBeenCalledWith({
+			expect(mockPrismaService.pack.findFirst).toHaveBeenCalledWith({
 				where: { id: 1 }
 			});
 			expect(mockPrismaService.pack.delete).toHaveBeenCalledWith({

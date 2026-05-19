@@ -218,5 +218,64 @@ export class ConfigService {
 	get stripeConfigured(): boolean {
 		return !!this.stripeSecretKey.trim();
 	}
+
+	get billingCheckoutSuccessUrl(): string {
+		const custom = process.env.BILLING_CHECKOUT_SUCCESS_URL?.trim();
+		if (custom) return custom;
+		return `${this.frontendUrl}/parametres/abonnement?billing=success`;
+	}
+
+	get billingCheckoutCancelUrl(): string {
+		const custom = process.env.BILLING_CHECKOUT_CANCEL_URL?.trim();
+		if (custom) return custom;
+		return `${this.frontendUrl}/parametres/abonnement?billing=cancelled`;
+	}
+
+	get billingPortalReturnUrl(): string {
+		return `${this.frontendUrl}/parametres/abonnement`;
+	}
+
+	/** Nom affiché sur Stripe Checkout (personnalisation). */
+	get stripeCheckoutDisplayName(): string {
+		return process.env.STRIPE_CHECKOUT_DISPLAY_NAME?.trim() || 'Facturio';
+	}
+
+	/** Coins Checkout Stripe : paramètre API `border_style` (`pill` | `rounded` | `rectangular`). */
+	get stripeCheckoutBorderStyle(): 'pill' | 'rounded' | 'rectangular' {
+		const v =
+			process.env.STRIPE_CHECKOUT_BORDER_STYLE?.trim()?.toLowerCase() ??
+			process.env.STRIPE_CHECKOUT_BORDER_RADIUS?.trim()?.toLowerCase();
+		if (v === 'pill' || v === 'rectangular') return v;
+		return 'rounded';
+	}
+
+	/** @deprecated alias de `stripeCheckoutBorderStyle` (ancien nom d’env). */
+	get stripeCheckoutBorderRadius(): 'pill' | 'rounded' | 'rectangular' {
+		return this.stripeCheckoutBorderStyle;
+	}
+
+	/** Polices supportées par Stripe Checkout (ex. roboto, geist, inter). */
+	get stripeCheckoutFontFamily(): string {
+		return process.env.STRIPE_CHECKOUT_FONT_FAMILY?.trim() || 'roboto';
+	}
+
+	/** ID fichier Stripe (`file_…`) pour logo Checkout — upload via Dashboard ou API Files. */
+	get stripeCheckoutLogoFileId(): string {
+		return process.env.STRIPE_CHECKOUT_LOGO_FILE_ID?.trim() || '';
+	}
+
+	/**
+	 * Moyens de paiement Checkout (liste explicite — exclut Klarna, etc.).
+	 * PayPal doit être activé dans le Dashboard Stripe (mode test + live).
+	 */
+	get stripeCheckoutPaymentMethodTypes(): string[] {
+		const raw =
+			process.env.STRIPE_CHECKOUT_PAYMENT_METHODS?.trim() || 'card,paypal';
+		const types = raw
+			.split(',')
+			.map((t) => t.trim().toLowerCase())
+			.filter(Boolean);
+		return types.length > 0 ? types : ['card', 'paypal'];
+	}
 }
 

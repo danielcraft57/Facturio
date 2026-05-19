@@ -4,6 +4,7 @@ import { Request } from 'express';
 import { PrismaService } from './prisma/prisma.service';
 import { StripeService } from './stripe/stripe.service';
 import { PlatformStripeService } from './billing/platform-stripe.service';
+import { StripeUnifiedWebhookService } from './stripe/stripe-unified-webhook.service';
 
 @Controller('webhooks')
 export class WebhooksController {
@@ -11,6 +12,7 @@ export class WebhooksController {
 		private readonly prisma: PrismaService,
 		private readonly stripeService: StripeService,
 		private readonly platformStripe: PlatformStripeService,
+		private readonly stripeUnifiedWebhook: StripeUnifiedWebhookService,
 	) {}
 
 	@Post('email')
@@ -31,32 +33,38 @@ export class WebhooksController {
 		return { ok: true };
 	}
 
-	/** Webhook Stripe plateforme — abonnement Facturio (clés .env) */
+	/**
+	 * Webhook Stripe unifié — abonnement Facturio (.env) + factures clients payées (clés org).
+	 * Même URL à enregistrer dans le Dashboard Stripe (compte plateforme et/ou prestataire).
+	 */
+	@Post('stripe')
+	async stripeUnified(
+		@Req() req: RawBodyRequest<Request>,
+		@Headers('stripe-signature') signature: string | undefined,
+	) {
+		const rawBody = req.rawBody;
+		if (!rawBody) {
+			throw new BadRequestException('Corps brut requis pour le webhook Stripe');
+		}
+		return this.stripeUnifiedWebhook.handle(rawBody, signature ?? '');
+	}
+
+	/** Alias — même handler que POST /webhooks/stripe */
 	@Post('stripe/platform')
 	async stripePlatform(
 		@Req() req: RawBodyRequest<Request>,
 		@Headers('stripe-signature') signature: string | undefined,
 	) {
-		if (!signature) {
-			throw new BadRequestException('En-tête stripe-signature manquant');
-		}
-		const rawBody = req.rawBody;
-		if (!rawBody) {
-			throw new BadRequestException('Corps brut requis pour le webhook Stripe');
-		}
-		return this.platformStripe.handlePlatformWebhook(rawBody, signature);
+		return this.stripeUnified(req, signature);
 	}
 
-	/** Webhook Stripe prestataire — paiement facture client (clés BDD par organisation) */
+	/** @deprecated Même URL que /webhooks/stripe — conservé pour compatibilité */
 	@Post('stripe/invoices/:organizationId')
 	async stripeInvoiceOrg(
 		@Param('organizationId') organizationId: string,
 		@Req() req: RawBodyRequest<Request>,
 		@Headers('stripe-signature') signature: string | undefined,
 	) {
-		if (!signature) {
-			throw new BadRequestException('En-tête stripe-signature manquant');
-		}
 		const rawBody = req.rawBody;
 		if (!rawBody) {
 			throw new BadRequestException('Corps brut requis pour le webhook Stripe');
@@ -65,15 +73,8 @@ export class WebhooksController {
 		if (!orgId || Number.isNaN(orgId)) {
 			throw new BadRequestException('organizationId invalide');
 		}
-		return this.stripeService.handleOrgWebhook(orgId, rawBody, signature);
-	}
-
-	/** @deprecated Utiliser /webhooks/stripe/platform ou /webhooks/stripe/invoices/:orgId */
-	@Post('stripe')
-	async stripeLegacy(
-		@Req() req: RawBodyRequest<Request>,
-		@Headers('stripe-signature') signature: string | undefined,
-	) {
-		return this.stripePlatform(req, signature);
+		return this.stripeUnifiedWebhook.handle(rawBody, signature ?? '', {
+			organizationIdHint: orgId,
+		});
 	}
 }

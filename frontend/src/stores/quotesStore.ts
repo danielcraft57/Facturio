@@ -33,7 +33,7 @@ interface QuotesState {
   updateQuote: (id: number, data: UpdateQuoteData) => Promise<Quote | null>;
   deleteQuote: (id: number) => Promise<boolean>;
   sendQuote: (id: number) => Promise<Quote | null>;
-  acceptQuote: (id: number) => Promise<Quote | null>;
+  acceptQuote: (id: number) => Promise<{ quote: Quote; invoiceId: number | null } | null>;
   rejectQuote: (id: number) => Promise<Quote | null>;
   convertToInvoice: (id: number) => Promise<number | null>;
   
@@ -190,7 +190,9 @@ export const useQuotesStore = create<QuotesState>()(
               quotes: state.quotes.map(q => (q.id === id ? quote : q)),
               selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
             }));
-            return quote;
+            const invoiceId =
+              quote.invoiceId != null ? Number(quote.invoiceId) : null;
+            return { quote, invoiceId };
           }
         } catch (error) {
           console.error('Erreur lors de l\'acceptation du devis:', error);

@@ -30,6 +30,31 @@ export class PdfService {
 		});
 	}
 
+	/** Facture d'abonnement Facturio (émetteur = variables .env plateforme). */
+	generateSubscriptionInvoicePdf(payload: {
+		number: string;
+		date: Date | string;
+		client: any;
+		lines: any[];
+		totals: { subtotal: number; tax: number; total: number };
+		organization?: any;
+		document?: any;
+	}): Promise<Buffer> {
+		return this.generatePdf({
+			kind: 'facture',
+			number: payload.number,
+			date: payload.date,
+			signatureDate: payload.date,
+			document: payload.document,
+			client: payload.client,
+			lines: payload.lines,
+			totals: payload.totals,
+			organization: payload.organization,
+			signature: payload.organization?.signature ?? null,
+			pdfTitle: `Facture ${payload.number}`,
+		});
+	}
+
 	generateQuotePdf(quote: any, organization?: any): Promise<Buffer> {
 		return this.generatePdf({
 			kind: 'devis',
@@ -59,6 +84,8 @@ export class PdfService {
 		totals: { subtotal: number; tax: number; total: number };
 		organization?: any;
 		expiryDate?: Date | string;
+		signature?: string | null;
+		signatureDate?: Date | string;
 		pdfTitle: string;
 	}): Promise<Buffer> {
 		return new Promise((resolve, reject) => {
@@ -90,7 +117,9 @@ export class PdfService {
 					totals: params.totals,
 					organization: params.organization,
 					document: params.document,
-					expiryDate: params.expiryDate
+					expiryDate: params.expiryDate,
+					signature: (params as { signature?: string | null }).signature,
+					signatureDate: (params as { signatureDate?: Date | string }).signatureDate,
 				});
 
 				doc.end();

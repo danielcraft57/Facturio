@@ -37,9 +37,10 @@ export class ApiError extends Error {
 }
 
 // Client HTTP avec intercepteurs
+type RetryableAxiosConfig = AxiosRequestConfig & { __retryCount?: number }
+
 class ApiClient {
   public client: AxiosInstance
-  private retryCount = 0
   private maxRetries = 3
 
   constructor() {
@@ -112,26 +113,29 @@ class ApiClient {
       },
       async (error: any) => {
         const { response, config } = error
-        
+        const retryConfig = config as RetryableAxiosConfig | undefined
+        const status = response?.status ?? 0
+        const retryCount = retryConfig?.__retryCount ?? 0
+        const isRetryable = status >= 500 || status === 0
+
+        if (retryConfig && isRetryable && retryCount < this.maxRetries) {
+          retryConfig.__retryCount = retryCount + 1
+          if (retryCount === 0) {
+            console.warn(
+              `⚠️ API indisponible (${status || 'réseau'}) — nouvelle tentative (${retryConfig.url})`,
+            )
+          }
+          await new Promise((resolve) =>
+            setTimeout(resolve, 400 * Math.pow(2, retryCount)),
+          )
+          return this.client.request(retryConfig)
+        }
+
         console.error('❌ API Error:', {
           status: response?.status,
           url: config?.url,
           message: response?.data?.message || error.message,
         })
-
-        // Retry automatique pour les erreurs 5xx
-        if (response?.status >= 500 && this.retryCount < this.maxRetries) {
-          this.retryCount++
-          console.log(`🔄 Retry ${this.retryCount}/${this.maxRetries}`)
-          
-          // Attendre avant de retry (backoff exponentiel)
-          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, this.retryCount - 1)))
-          
-          return this.client.request(config)
-        }
-
-        // Reset retry count
-        this.retryCount = 0
 
         // Gestion des erreurs spécifiques
         if (response?.status === 401) {
