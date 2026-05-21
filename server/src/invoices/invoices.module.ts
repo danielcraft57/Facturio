@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
+import { InvoiceSendService } from './invoice-send.service';
 import { InvoicesController, PublicInvoicesController } from './invoices.controller';
 import { CommonModule } from '../common/common.module';
 import { AccountingModule } from '../accounting/accounting.module';
@@ -20,8 +21,8 @@ import { InvoicePaymentNotificationModule } from './invoice-payment-notification
 		InvoicePaymentNotificationModule,
 	],
 	controllers: [InvoicesController, PublicInvoicesController],
-	providers: [InvoicesService],
-	exports: [InvoicesService]
+	providers: [InvoicesService, InvoiceSendService],
+	exports: [InvoicesService, InvoiceSendService],
 })
 export class InvoicesModule {}
 

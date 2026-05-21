@@ -30,6 +30,7 @@ import { BillingModule } from './billing/billing.module';
 import { SecretsCryptoModule } from './crypto/secrets-crypto.module';
 import { GdprModule } from './gdpr/gdpr.module';
 import { EInvoicingModule } from './e-invoicing/e-invoicing.module';
+import { ApiAccessModule } from './api-access/api-access.module';
 import { SecurityHeadersMiddleware } from './common/security-headers.middleware';
 
 @Module({
@@ -59,7 +60,8 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
 		AuthModule,
 		UsersModule,
 		OrganizationsModule,
-		UrssafModule
+		UrssafModule,
+		ApiAccessModule,
 	],
 	controllers: [WebhooksController],
 	providers: [
@@ -76,6 +78,13 @@ export class AppModule implements NestModule {
 			.forRoutes('auth/login', 'auth/signup', 'auth/forgot-password');
 		consumer
 			.apply(PublicAccessRateLimitMiddleware)
-			.forRoutes('public/invoices', 'public/quotes');
+			.forRoutes(
+				'public/invoices',
+				'public/quotes',
+				'public/clients',
+				'public/produits',
+				'public/factures',
+				'public/devis',
+			);
 	}
 }

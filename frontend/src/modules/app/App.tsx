@@ -84,6 +84,12 @@ const SettingsDataPage = lazy(() =>
 )
 const GlobalStateDemo = lazy(() => import('../../components/GlobalStateDemo').then(m => ({ default: m.GlobalStateDemo })))
 const LoaderDemo = lazy(() => import('../../components/LoaderDemo').then(m => ({ default: m.LoaderDemo })))
+const ApiTokensPage = lazy(() =>
+  import('../api-access').then((m) => ({ default: m.ApiTokensPage })),
+)
+const ApiDocsPage = lazy(() =>
+  import('../api-access').then((m) => ({ default: m.ApiDocsPage })),
+)
 
 // Composant pour gérer les toasts globaux
 function AppWithToasts({ children }: { children: ReactNode }) {
@@ -390,7 +396,11 @@ export function App() {
                 <Route path="paiements" element={<SettingsPaymentsPage />} />
                 <Route path="confidentialite" element={<SettingsPrivacyPage />} />
                 <Route path="donnees" element={<SettingsDataPage />} />
+                <Route path="tokens" element={<ApiTokensPage />} />
+                <Route path="api-docs" element={<ApiDocsPage />} />
               </Route>
+              <Route path="/tokens" element={<Navigate to="/parametres/tokens" replace />} />
+              <Route path="/api-docs" element={<Navigate to="/parametres/api-docs" replace />} />
               <Route
                 path="/demo"
                 element={

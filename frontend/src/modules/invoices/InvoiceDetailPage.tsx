@@ -45,6 +45,7 @@ import { logActivity } from '../../utils/activity'
 import { apiClient } from '../../services/api'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { CreateCreditNoteDialog } from './components/CreateCreditNoteDialog'
+import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInvoiceDialog'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { EInvoicingReadinessPanel } from '../e-invoicing/EInvoicingReadinessPanel'
 
@@ -73,6 +74,8 @@ export function InvoiceDetailPage() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0])
   const [paymentNotes, setPaymentNotes] = useState('')
   const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false)
+  const [sendDialogOpen, setSendDialogOpen] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
   const toast = useToast()
 
   useEffect(() => {
@@ -177,21 +180,28 @@ export function InvoiceDetailPage() {
     }
   }
 
-  const handleSendEmail = async () => {
+  const handleSendEmail = async (payload: SendInvoicePayload) => {
     if (!id || !invoice) return
     try {
-      await invoiceService.sendInvoice(id)
-      toast.success('Facture envoyée par email')
+      setSendingEmail(true)
+      await invoiceService.sendInvoice(id, {
+        to: payload.to,
+        updateClientEmail: payload.updateClientEmail,
+      })
+      toast.success(`Facture envoyée à ${payload.to}`)
       logActivity({
         type: 'success',
         title: 'Facture envoyée',
-        message: invoice.number,
+        message: `${invoice.number} → ${payload.to}`,
         category: 'invoice',
         href: `/factures/${id}`,
       })
+      setSendDialogOpen(false)
       await loadData()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'envoi")
+    } finally {
+      setSendingEmail(false)
     }
   }
 
@@ -327,7 +337,7 @@ export function InvoiceDetailPage() {
               <Button
                 variant="contained"
                 startIcon={<Send />}
-                onClick={handleSendEmail}
+                onClick={() => setSendDialogOpen(true)}
               >
                 Envoyer
               </Button>
@@ -375,7 +385,7 @@ export function InvoiceDetailPage() {
           <Button
             variant="outlined"
             startIcon={<Email />}
-            onClick={handleSendEmail}
+            onClick={() => setSendDialogOpen(true)}
           >
             Email
           </Button>
@@ -639,7 +649,7 @@ export function InvoiceDetailPage() {
                     fullWidth
                     variant="outlined"
                     startIcon={<Email />}
-                    onClick={handleSendEmail}
+                    onClick={() => setSendDialogOpen(true)}
                   >
                     Envoyer par email
                   </Button>
@@ -775,6 +785,14 @@ export function InvoiceDetailPage() {
           }}
         />
       )}
+
+      <SendInvoiceDialog
+        open={sendDialogOpen}
+        invoice={invoice}
+        onClose={() => !sendingEmail && setSendDialogOpen(false)}
+        onSend={handleSendEmail}
+        sending={sendingEmail}
+      />
     </Box>
   )
 }

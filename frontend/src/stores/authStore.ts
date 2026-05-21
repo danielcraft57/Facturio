@@ -146,6 +146,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         error: null,
       })
     } catch (error: any) {
+      authService.clearLocalSession()
       set({
         user: null,
         isAuthenticated: false,

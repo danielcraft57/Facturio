@@ -253,7 +253,13 @@ class AuthService {
    * @returns true si un token est présent
    */
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('auth_token') || !!localStorage.getItem('user')
+    return !!localStorage.getItem('auth_token')
+  }
+
+  /** Efface la session locale (token + profil). */
+  clearLocalSession(): void {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('user')
   }
 
   /**

@@ -9,7 +9,8 @@ import { OrganizationsModule } from '../organizations/organizations.module';
 @Module({
 	imports: [InvoicesModule, CommonModule, AccountingModule, OrganizationsModule],
 	controllers: [QuotesController, PublicQuotesController],
-	providers: [QuotesService]
+	providers: [QuotesService],
+	exports: [QuotesService],
 })
 export class QuotesModule {}
 

@@ -1,4 +1,4 @@
-import { IsArray, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 // On évite de dépendre des enums Prisma côté DTO pour rester stable
 export const INVOICE_STATUS_VALUES = ['DRAFT','SENT','PAID','OVERDUE','CANCELLED'] as const;
@@ -25,8 +25,9 @@ export class CreateInvoiceDto {
 	@IsString()
 	number?: string;
 
+	@IsOptional()
 	@IsInt()
-	clientId!: number;
+	clientId?: number;
 
 	@IsOptional()
 	@IsDateString()
@@ -44,6 +45,29 @@ export class CreateInvoiceDto {
 	@ValidateNested({ each: true })
 	@Type(() => InvoiceLineDto)
 	lines!: InvoiceLineDto[];
+
+	/** Facture déjà réglée sur un autre site / moyen externe (statut PAID, solde 0). */
+	@IsOptional()
+	@IsBoolean()
+	paidExternally?: boolean;
+
+	@IsOptional()
+	@IsDateString()
+	externalPaymentDate?: string;
+
+	@IsOptional()
+	@IsString()
+	externalPaymentMethod?: string;
+
+	/** Email client : crée la fiche si absente, ou met à jour l’email si clientId fourni. */
+	@IsOptional()
+	@IsEmail()
+	clientEmail?: string;
+
+	/** Nom pour une nouvelle fiche client (si clientEmail sans clientId). */
+	@IsOptional()
+	@IsString()
+	clientName?: string;
 }
 
 

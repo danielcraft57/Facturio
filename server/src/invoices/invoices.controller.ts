@@ -1,7 +1,9 @@
 import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
+import { InvoiceSendService } from './invoice-send.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
+import { SendInvoiceDto } from './dto/send-invoice.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { Response } from 'express';
 import { PdfService } from '../common/pdf.service';
@@ -15,9 +17,10 @@ import { assertValidPublicToken } from './public-token.util';
 export class InvoicesController {
 	constructor(
 		private readonly invoices: InvoicesService,
+		private readonly invoiceSend: InvoiceSendService,
 		private readonly pdfService: PdfService,
+		private readonly organizations: OrganizationsService,
 		private readonly email: EmailService,
-		private readonly organizations: OrganizationsService
 	) {}
 
 	@Post()
@@ -74,27 +77,12 @@ export class InvoicesController {
 	}
 
 	@Post(':id/send')
-	async sendInvoice(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		const result = await this.invoices.sendInvoice(id, user.organizationId);
-		const invoice = await this.invoices.findOne(id, user.organizationId);
-		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
-		const pdf = await this.pdfService.generateInvoicePdf(invoice, organization);
-		if (invoice.client?.email && result.publicToken) {
-			const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
-			const trackOpenUrl = `${apiUrl}/api/track/opened/invoice/${result.publicToken}`;
-			const paymentUrl = InvoicesService.buildPublicPaymentUrl(result.publicToken);
-			await this.email.sendInvoice({
-				to: invoice.client.email,
-				invoiceNumber: invoice.number,
-				invoiceDate: invoice.date,
-				clientName: (invoice.client as any).name || (invoice.client as any).companyName || '',
-				total: Number(invoice.total),
-				pdfBuffer: pdf,
-				trackOpenUrl,
-				paymentUrl
-			});
-		}
-		return result;
+	async sendInvoice(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() body: SendInvoiceDto,
+		@CurrentUser() user: any,
+	) {
+		return this.invoiceSend.sendByEmail(id, user.organizationId, body);
 	}
 
 	@Post(':id/remind')

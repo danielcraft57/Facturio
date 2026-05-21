@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { encryptOrgStripeFields } from '../crypto/organization-stripe-secrets.util';
 import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
@@ -113,50 +114,12 @@ export class OrganizationsService {
 	 * @returns Organisation mise à jour avec documents validés
 	 */
 	async updateProfile(orgId: number, data: any) {
-		const safe = sanitizeOrganizationProfileUpdate(data as Record<string, unknown>);
+		const safe = sanitizeOrganizationProfileUpdate(
+			data as Record<string, unknown>,
+		) as Prisma.OrganizationUpdateInput;
 		const organization = await this.prisma.organization.update({
 			where: { id: orgId },
-			data: {
-				name: safe.name,
-				legalName: safe.legalName,
-				siret: safe.siret,
-				siren: safe.siren,
-				rcs: safe.rcs,
-				rcsCity: safe.rcsCity,
-				vatNumber: safe.vatNumber,
-				companyStatus: safe.companyStatus,
-				companyType: safe.companyType,
-				address: safe.address,
-				address2: safe.address2,
-				city: safe.city,
-				zipCode: safe.zipCode,
-				country: safe.country,
-				countryCode: safe.countryCode,
-				email: safe.email,
-				phone: safe.phone,
-				website: safe.website,
-				capital: safe.capital,
-				legalForm: safe.legalForm,
-				apeCode: safe.apeCode,
-				apeLabel: safe.apeLabel,
-				legalRepresentative: safe.legalRepresentative,
-				legalRepresentativeRole: safe.legalRepresentativeRole,
-				accountingYearEnd: safe.accountingYearEnd,
-				fiscalYear: safe.fiscalYear,
-				taxRegime: safe.taxRegime,
-				urssafRate: safe.urssafRate,
-				urssafActivity: safe.urssafActivity,
-				urssafFiscalOption: safe.urssafFiscalOption,
-				urssafDeclarationFrequency: safe.urssafDeclarationFrequency,
-				urssafThreshold: safe.urssafThreshold,
-				logo: safe.logo,
-				signature: safe.signature,
-				defaultCurrency: safe.defaultCurrency,
-				defaultLanguage: safe.defaultLanguage,
-				timezone: safe.timezone,
-				privacyPolicyUrl: safe.privacyPolicyUrl,
-				dataControllerEmail: safe.dataControllerEmail,
-			},
+			data: safe,
 			include: {
 				documents: {
 					where: { status: 'VALIDATED' },

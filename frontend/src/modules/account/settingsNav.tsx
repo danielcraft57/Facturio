@@ -6,6 +6,8 @@ import PaymentIcon from '@mui/icons-material/Payment'
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip'
 import StorageIcon from '@mui/icons-material/Storage'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
+import VpnKeyIcon from '@mui/icons-material/VpnKey'
+import MenuBookIcon from '@mui/icons-material/MenuBook'
 
 export type SettingsNavItem = {
   to: string
@@ -56,6 +58,18 @@ export const settingsNavItems: SettingsNavItem[] = [
     label: 'Mes données',
     description: 'Export RGPD & suppression',
     icon: <StorageIcon fontSize="small" />,
+  },
+  {
+    to: '/parametres/tokens',
+    label: 'API — Jetons',
+    description: 'Accès programmatique Bearer',
+    icon: <VpnKeyIcon fontSize="small" />,
+  },
+  {
+    to: '/parametres/api-docs',
+    label: 'API — Documentation',
+    description: 'Endpoints publics REST',
+    icon: <MenuBookIcon fontSize="small" />,
   },
 ]
 

@@ -37,13 +37,22 @@ export interface Invoice {
 }
 
 export interface CreateInvoiceData {
-  clientId: string
+  clientId?: string
+  newClientName?: string
   issueDate: string
   dueDate: string
   items: Omit<InvoiceItem, 'id' | 'total' | 'totalWithTax'>[]
   notes?: string
   terms?: string
   currency?: string
+  /** Déjà réglée sur un autre site / moyen externe */
+  paidExternally?: boolean
+  externalPaymentDate?: string
+  externalPaymentMethod?: string
+  clientEmail?: string
+  /** Envoyer par email juste après la création */
+  sendByEmailAfterCreate?: boolean
+  sendToEmail?: string
 }
 
 export interface UpdateInvoiceData extends Partial<CreateInvoiceData> {
@@ -131,8 +140,7 @@ export function parseInvoicesListResponse(response: unknown): Invoice[] {
 }
 
 export function toCreateInvoiceApiBody(data: CreateInvoiceData): Record<string, unknown> {
-  return {
-    clientId: Number(data.clientId),
+  const body: Record<string, unknown> = {
     dueDate: data.dueDate,
     currency: data.currency || 'EUR',
     lines: data.items.map((item) => ({
@@ -142,6 +150,16 @@ export function toCreateInvoiceApiBody(data: CreateInvoiceData): Record<string, 
       taxRate: item.taxRate > 1 ? item.taxRate / 100 : item.taxRate,
     })),
   }
+  if (data.paidExternally) {
+    body.paidExternally = true
+    body.status = 'PAID'
+    if (data.externalPaymentDate) body.externalPaymentDate = data.externalPaymentDate
+    if (data.externalPaymentMethod) body.externalPaymentMethod = data.externalPaymentMethod
+  }
+  if (data.clientId) body.clientId = Number(data.clientId)
+  if (data.clientEmail?.trim()) body.clientEmail = data.clientEmail.trim()
+  if (data.newClientName?.trim()) body.clientName = data.newClientName.trim()
+  return body
 }
 
 // Service pour les factures
@@ -209,8 +227,11 @@ export class InvoiceService {
   }
 
   // Envoyer une facture par email
-  async sendInvoice(id: string, emailData?: { to?: string; subject?: string; message?: string }): Promise<ApiResponse<void>> {
-    const response = await apiClient.post<void>(`${this.baseUrl}/${id}/send`, emailData)
+  async sendInvoice(
+    id: string,
+    emailData?: { to?: string; updateClientEmail?: boolean },
+  ): Promise<ApiResponse<unknown>> {
+    const response = await apiClient.post<unknown>(`${this.baseUrl}/${id}/send`, emailData ?? {})
     
     // Mettre à jour le statut en cache
     apiClient.invalidateCache(`/invoices/${id}`)

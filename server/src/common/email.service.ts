@@ -129,20 +129,35 @@ export class EmailService {
 		pdfBuffer: Buffer;
 		trackOpenUrl?: string;
 		paymentUrl?: string;
+		/** Facture déjà réglée : pas de bouton payer, message adapté */
+		alreadyPaid?: boolean;
+		invoiceViewUrl?: string;
 	}): Promise<void> {
 		const company = process.env.COMPANY_NAME || 'Facturio';
-		const subject = `Facture ${options.invoiceNumber} — ${company}`;
+		const subject = options.alreadyPaid
+			? `Facture ${options.invoiceNumber} (réglée) — ${company}`
+			: `Facture ${options.invoiceNumber} — ${company}`;
 		const html = this.getInvoiceTemplate({
 			invoiceNumber: options.invoiceNumber,
 			invoiceDate: options.invoiceDate,
 			clientName: options.clientName,
 			total: options.total,
 			trackOpenUrl: options.trackOpenUrl,
-			paymentUrl: options.paymentUrl
+			paymentUrl: options.paymentUrl,
+			alreadyPaid: options.alreadyPaid,
+			invoiceViewUrl: options.invoiceViewUrl,
 		});
 
-		const paymentLine = options.paymentUrl
-			? `\n\nConsulter et payer en ligne :\n${options.paymentUrl}\n`
+		const paymentLine = options.alreadyPaid
+			? options.invoiceViewUrl
+				? `\n\nConsulter la facture en ligne :\n${options.invoiceViewUrl}\n`
+				: ''
+			: options.paymentUrl
+				? `\n\nConsulter et payer en ligne :\n${options.paymentUrl}\n`
+				: '';
+
+		const paidNote = options.alreadyPaid
+			? '\n\nCette facture a déjà été réglée. Vous trouverez le justificatif en pièce jointe.\n'
 			: '';
 
 		await this.send({
@@ -154,7 +169,7 @@ export class EmailService {
 				`Bonjour ${options.clientName},\n\n` +
 				`Veuillez trouver ci-joint la facture ${options.invoiceNumber} ` +
 				`du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')} ` +
-				`d'un montant de ${this.formatCurrency(options.total)}.${paymentLine}\n` +
+				`d'un montant de ${this.formatCurrency(options.total)}.${paidNote}${paymentLine}\n` +
 				`Cordialement,\n${company}`,
 			attachments: [{
 				filename: `facture-${options.invoiceNumber}.pdf`,
@@ -336,6 +351,8 @@ export class EmailService {
 		total: number;
 		trackOpenUrl?: string;
 		paymentUrl?: string;
+		alreadyPaid?: boolean;
+		invoiceViewUrl?: string;
 	}): string {
 		const pixel = data.trackOpenUrl
 			? `<img src="${data.trackOpenUrl}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
@@ -370,8 +387,23 @@ export class EmailService {
 			<p>Bonjour ${data.clientName},</p>
 			<p>Veuillez trouver ci-joint la facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')}.</p>
 			<p class="total">Montant total : ${this.formatCurrency(data.total)}</p>
-			<p>Merci de régler cette facture dans les délais convenus.</p>
-			${data.paymentUrl ? `
+			${data.alreadyPaid
+				? `<p style="color: #15803d; font-weight: 600;">Cette facture a déjà été réglée.</p>
+			<p>Vous trouverez le justificatif en pièce jointe${data.invoiceViewUrl ? ' ; vous pouvez aussi la consulter en ligne.' : '.'}</p>`
+				: '<p>Merci de régler cette facture dans les délais convenus.</p>'}
+			${data.alreadyPaid && data.invoiceViewUrl
+				? `
+			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 24px;">
+				<tr>
+					<td>
+						<a href="${data.invoiceViewUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+							Voir la facture en ligne
+						</a>
+					</td>
+				</tr>
+			</table>`
+				: data.paymentUrl
+					? `
 			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 24px;">
 				<tr>
 					<td>
@@ -381,7 +413,8 @@ export class EmailService {
 					</td>
 				</tr>
 			</table>
-			<p style="font-size: 12px; color: #6b7280; margin-top: 12px;">Paiement sécurisé par carte bancaire.</p>` : ''}
+			<p style="font-size: 12px; color: #6b7280; margin-top: 12px;">Paiement sécurisé par carte bancaire.</p>`
+					: ''}
 		</div>
 		<div class="footer">
 			<p>${legal}</p>

@@ -139,9 +139,14 @@ class ApiClient {
 
         // Gestion des erreurs spécifiques
         if (response?.status === 401) {
-          // Token expiré - rediriger vers login
+          const path = (config?.url || '').split('?')[0]
+          const isAuthBootstrap = path.includes('/auth/session/bootstrap')
           localStorage.removeItem('auth_token')
-          window.location.href = '/login'
+          localStorage.removeItem('user')
+          // Évite une boucle login → /auth/session → bootstrap 401 → login
+          if (!isAuthBootstrap && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            window.location.href = '/login'
+          }
         }
 
         // Créer une erreur API standardisée

@@ -32,8 +32,8 @@ export interface InvoiceLineInput {
 export interface CreateInvoiceInput {
 	/** Numéro de facture (auto-généré si non fourni) */
 	number?: string;
-	/** ID du client */
-	clientId: number;
+	/** ID du client (ou clientEmail pour création automatique) */
+	clientId?: number;
 	/** Date d'échéance */
 	dueDate?: string | Date | null;
 	/** Statut de la facture */
@@ -44,6 +44,13 @@ export interface CreateInvoiceInput {
 	currency?: string;
 	/** Devis d’origine (conversion devis → facture) */
 	sourceQuoteId?: number;
+	/** Déjà réglée hors Facturio (autre site, virement, etc.) */
+	paidExternally?: boolean;
+	externalPaymentDate?: string | Date;
+	externalPaymentMethod?: string;
+	/** Met à jour l’email du client à la création */
+	clientEmail?: string;
+	clientName?: string;
 }
 
 /**
@@ -214,12 +221,68 @@ export class InvoicesService {
 	 * }, 1);
 	 * ```
 	 */
-	async create(data: CreateInvoiceInput, organizationId?: number) {
-		// Validation
-		if (!data.clientId) {
-			throw new BadRequestException('Client requis');
+	private deriveClientNameFromEmail(email: string): string {
+		const local = email.split('@')[0]?.replace(/[._+-]+/g, ' ').trim();
+		return local ? local.charAt(0).toUpperCase() + local.slice(1) : 'Client';
+	}
+
+	/** Résout clientId : fiche existante, création si email inconnu, ou erreur. */
+	private async resolveClientIdForInvoice(
+		data: CreateInvoiceInput,
+		organizationId: number,
+	): Promise<number> {
+		if (data.clientId) {
+			const existing = await this.prisma.client.findFirst({
+				where: { id: data.clientId, organizationId },
+			});
+			if (!existing) {
+				throw new NotFoundException(`Client avec l'ID ${data.clientId} introuvable`);
+			}
+			if (data.clientEmail?.trim()) {
+				await this.prisma.client.update({
+					where: { id: data.clientId },
+					data: { email: data.clientEmail.trim() },
+				});
+			}
+			return data.clientId;
 		}
-		
+
+		const email = data.clientEmail?.trim();
+		if (!email) {
+			throw new BadRequestException(
+				'Indiquez un client existant (clientId) ou un email pour créer une fiche client.',
+			);
+		}
+
+		const found = await this.prisma.client.findUnique({ where: { email } });
+		if (found) {
+			if (found.organizationId != null && found.organizationId !== organizationId) {
+				throw new BadRequestException(
+					'Cet email est déjà utilisé par un client d\'une autre organisation.',
+				);
+			}
+			if (found.organizationId == null) {
+				await this.prisma.client.update({
+					where: { id: found.id },
+					data: { organizationId },
+				});
+			}
+			return found.id;
+		}
+
+		const name = data.clientName?.trim() || this.deriveClientNameFromEmail(email);
+		const created = await this.prisma.client.create({
+			data: {
+				name,
+				email,
+				organizationId,
+				isCompany: false,
+			},
+		});
+		return created.id;
+	}
+
+	async create(data: CreateInvoiceInput, organizationId?: number) {
 		const lines = data.lines ?? [];
 		if (lines.length === 0) {
 			throw new BadRequestException('Au moins une ligne est requise');
@@ -229,12 +292,25 @@ export class InvoicesService {
 			if (l.unitPrice < 0) throw new BadRequestException('Prix unitaire invalide');
 		}
 
-		// Vérifier que le client existe
-		const client = await this.prisma.client.findUnique({ where: { id: data.clientId } });
-		if (!client) {
-			throw new NotFoundException(`Client avec l'ID ${data.clientId} introuvable`);
+		if (!organizationId) {
+			throw new BadRequestException('OrganizationId requis pour créer une facture.');
 		}
-		
+
+		const organization = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+		});
+		if (!organization) {
+			throw new NotFoundException(`Organisation avec l'ID ${organizationId} introuvable`);
+		}
+
+		const clientId = await this.resolveClientIdForInvoice(data, organizationId);
+		const client = await this.prisma.client.findUnique({ where: { id: clientId } });
+		if (!client) {
+			throw new NotFoundException(`Client avec l'ID ${clientId} introuvable`);
+		}
+
+		const orgId = organizationId;
+
 		// Politique TVA par client
 		const policy = this.computeVatPolicy({
 			countryCode: client.countryCode,
@@ -247,37 +323,25 @@ export class InvoicesService {
 		const linesWithTax = lines.map(l => ({ ...l, taxRate: l.taxRate ?? effectiveRate }));
 		const totals = await this.computeTotals(linesWithTax);
 		const number = data.number ?? (await this.nextInvoiceNumber());
-		
-		// Utiliser organizationId fourni ou celui du client
-		const orgId = organizationId ?? client.organizationId;
-		
-		// S'assurer qu'on a un organizationId valide
-		if (!orgId) {
-			throw new BadRequestException('OrganizationId requis. Le client doit être associé à une organisation.');
-		}
-		
-		// Vérifier que l'organisation existe
-		const organization = await this.prisma.organization.findUnique({
-			where: { id: orgId }
-		});
-		if (!organization) {
-			throw new NotFoundException(`Organisation avec l'ID ${orgId} introuvable`);
-		}
 
 		await this.billing.assertCanCreateInvoice(orgId);
+
+		const markPaid = data.paidExternally === true || data.status === 'PAID';
+		const invoiceStatus = markPaid ? 'PAID' : (data.status ?? 'DRAFT');
+		const balance = markPaid ? 0 : totals.total;
 		
 		const created = await this.prisma.invoice.create({
 			data: {
 				number,
-				clientId: data.clientId,
+				clientId,
 				organizationId: orgId,
 				dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-				status: data.status ?? 'DRAFT',
+				status: invoiceStatus,
 				currency: data.currency ?? 'EUR',
 				subtotal: totals.subtotal,
 				tax: totals.tax,
 				total: totals.total,
-				balance: totals.total,
+				balance,
 				legalMention: policy.mention,
 				sourceQuoteId: data.sourceQuoteId ?? undefined,
 				lines: {
@@ -299,6 +363,27 @@ export class InvoicesService {
 		try {
 			await this.accounting.postInvoiceSale({ invoiceId: created.id });
 		} catch (_) {}
+
+		if (markPaid) {
+			const payDate = data.externalPaymentDate ? new Date(data.externalPaymentDate) : new Date();
+			await this.prisma.payment.create({
+				data: {
+					invoiceId: created.id,
+					amount: totals.total,
+					date: payDate,
+					method: data.externalPaymentMethod?.trim() || 'Autre site',
+					notes: 'Règlement enregistré à la création (paiement externe)',
+				},
+			});
+			try {
+				await this.accounting.postInvoicePayment({
+					invoiceId: created.id,
+					amount: totals.total,
+				});
+			} catch (_) {}
+			return this.findOne(created.id, orgId);
+		}
+
 		return created;
 	}
 
@@ -650,9 +735,12 @@ export class InvoicesService {
 	async sendInvoice(id: number, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
 		const token = invoice.publicToken ?? randomBytes(32).toString('hex');
+		const keepPaid =
+			invoice.status === 'PAID' || Number(invoice.balance) <= 0;
+		const nextStatus = keepPaid ? 'PAID' : 'SENT';
 		const updated = await this.prisma.invoice.update({
 			where: { id },
-			data: { publicToken: token, sentAt: new Date(), status: 'SENT' },
+			data: { publicToken: token, sentAt: new Date(), status: nextStatus },
 			include: { lines: true, client: true }
 		});
 		await this.prisma.emailEvent.create({

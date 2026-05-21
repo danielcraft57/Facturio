@@ -52,6 +52,7 @@ import { PageHeader } from '../../components/finance/PageHeader'
 import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { CreateInvoiceDialog } from './components/CreateInvoiceDialog'
+import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInvoiceDialog'
 
 export function InvoicesPage() {
   const navigate = useNavigate()
@@ -68,6 +69,9 @@ export function InvoicesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [sendDialogOpen, setSendDialogOpen] = useState(false)
+  const [invoiceToSend, setInvoiceToSend] = useState<Invoice | null>(null)
+  const [sendingEmail, setSendingEmail] = useState(false)
 
   const loadInvoices = useCallback(async () => {
     try {
@@ -133,6 +137,22 @@ export function InvoicesPage() {
       setInvoices((prev) => [created, ...prev.filter((i) => i.id !== created.id)])
       setCreateDialogOpen(false)
       toast.success(`Facture ${created.number} créée`)
+
+      if (data.sendByEmailAfterCreate && data.sendToEmail?.trim()) {
+        try {
+          await invoiceService.sendInvoice(created.id, {
+            to: data.sendToEmail.trim(),
+            updateClientEmail: true,
+          })
+          toast.success(`Facture ${created.number} envoyée à ${data.sendToEmail.trim()}`)
+        } catch (sendErr: unknown) {
+          toast.error(
+            sendErr instanceof Error
+              ? sendErr.message
+              : 'Facture créée, mais envoi email échoué',
+          )
+        }
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Impossible de créer la facture'
       toast.error(message)
@@ -142,22 +162,35 @@ export function InvoicesPage() {
     }
   }
 
-  const handleSendInvoice = async (invoice: Invoice) => {
+  const openSendDialog = (invoice: Invoice) => {
+    setInvoiceToSend(invoice)
+    setSendDialogOpen(true)
+  }
+
+  const handleSendInvoice = async (payload: SendInvoicePayload) => {
+    if (!invoiceToSend) return
     try {
-      setActionLoadingId(invoice.id)
-      await invoiceService.sendInvoice(invoice.id)
-      toast.success(`Facture ${invoice.number} envoyée par email`)
+      setSendingEmail(true)
+      setActionLoadingId(invoiceToSend.id)
+      await invoiceService.sendInvoice(invoiceToSend.id, {
+        to: payload.to,
+        updateClientEmail: payload.updateClientEmail,
+      })
+      toast.success(`Facture ${invoiceToSend.number} envoyée à ${payload.to}`)
       logActivity({
         type: 'success',
         title: 'Facture envoyée',
-        message: `${invoice.number} envoyée à ${invoice.client.email || invoice.client.name}`,
+        message: `${invoiceToSend.number} → ${payload.to}`,
         category: 'invoice',
-        href: `/factures/${invoice.id}`,
+        href: `/factures/${invoiceToSend.id}`,
       })
+      setSendDialogOpen(false)
+      setInvoiceToSend(null)
       await loadInvoices()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Erreur lors de l\'envoi')
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi")
     } finally {
+      setSendingEmail(false)
       setActionLoadingId(null)
     }
   }
@@ -369,12 +402,15 @@ export function InvoicesPage() {
                           >
                             <Edit fontSize="small" />
                           </IconButton>
-                          {invoice.status === 'draft' && (
+                          {(invoice.status === 'draft' ||
+                            invoice.status === 'sent' ||
+                            invoice.status === 'overdue' ||
+                            invoice.status === 'paid') && (
                             <IconButton
                               size="small"
-                              title="Envoyer"
+                              title="Envoyer par email"
                               disabled={busy}
-                              onClick={() => handleSendInvoice(invoice)}
+                              onClick={() => openSendDialog(invoice)}
                             >
                               <Send fontSize="small" />
                             </IconButton>
@@ -424,6 +460,14 @@ export function InvoicesPage() {
         onClose={() => !creating && setCreateDialogOpen(false)}
         onSubmit={handleCreateInvoice}
         submitting={creating}
+      />
+
+      <SendInvoiceDialog
+        open={sendDialogOpen}
+        invoice={invoiceToSend}
+        onClose={() => !sendingEmail && setSendDialogOpen(false)}
+        onSend={handleSendInvoice}
+        sending={sendingEmail}
       />
     </Box>
   )

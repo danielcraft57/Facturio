@@ -12,6 +12,9 @@ import {
   MenuItem,
   Box,
   Typography,
+  FormControlLabel,
+  Checkbox,
+  Alert,
   IconButton,
   Table,
   TableBody,
@@ -49,13 +52,20 @@ interface InvoiceItem {
 }
 
 interface CreateInvoiceData {
-  clientId: string
+  clientId?: string
+  newClientName?: string
   issueDate: string
   dueDate: string
   items: Omit<InvoiceItem, 'id' | 'total' | 'totalWithTax'>[]
   notes?: string
   terms?: string
   currency?: string
+  paidExternally?: boolean
+  externalPaymentDate?: string
+  externalPaymentMethod?: string
+  clientEmail?: string
+  sendByEmailAfterCreate?: boolean
+  sendToEmail?: string
 }
 
 interface CreateInvoiceDialogProps {
@@ -84,6 +94,12 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit, submitting = fals
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<CreateInvoiceData>(createEmptyInvoiceForm)
+  const [willCreateClient, setWillCreateClient] = useState(false)
+
+  const emailNorm = (formData.clientEmail ?? '').trim().toLowerCase()
+  const matchedClient = emailNorm
+    ? clients.find((c) => c.email?.trim().toLowerCase() === emailNorm)
+    : undefined
 
   useEffect(() => {
     if (open) {
@@ -91,6 +107,34 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit, submitting = fals
       loadClients()
     }
   }, [open])
+
+  useEffect(() => {
+    if (!emailNorm) {
+      setWillCreateClient(false)
+      return
+    }
+    if (matchedClient) {
+      setWillCreateClient(false)
+      setFormData((prev) =>
+        prev.clientId === matchedClient.id
+          ? prev
+          : { ...prev, clientId: matchedClient.id, newClientName: undefined },
+      )
+      return
+    }
+    setWillCreateClient(true)
+    setFormData((prev) => ({
+      ...prev,
+      clientId: '',
+      newClientName:
+        prev.newClientName ||
+        emailNorm
+          .split('@')[0]
+          ?.replace(/[._+-]+/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase()) ||
+        'Client',
+    }))
+  }, [emailNorm, clients])
 
   const loadClients = async () => {
     try {
@@ -157,10 +201,29 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit, submitting = fals
   }
 
   const handleSubmit = async () => {
-    if (!formData.clientId || formData.items.some(item => !item.description || item.unitPrice <= 0)) {
+    const selected = formData.clientId
+      ? clients.find((c) => c.id === formData.clientId)
+      : undefined
+    const email =
+      formData.clientEmail?.trim() ||
+      matchedClient?.email ||
+      selected?.email?.trim()
+    if (!email || formData.items.some((item) => !item.description || item.unitPrice <= 0)) {
       return
     }
-    await onSubmit(formData)
+    if (willCreateClient && !formData.newClientName?.trim()) {
+      return
+    }
+    if (formData.sendByEmailAfterCreate && !(formData.sendToEmail || email)?.trim()) {
+      return
+    }
+    const payload: CreateInvoiceData = {
+      ...formData,
+      clientEmail: email,
+      clientId: matchedClient?.id || formData.clientId || undefined,
+      sendToEmail: formData.sendToEmail?.trim() || email,
+    }
+    await onSubmit(payload)
   }
 
   const { subtotal, taxTotal, total } = calculateTotals()
@@ -185,37 +248,76 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit, submitting = fals
       <DialogContent>
         <Stack spacing={3} sx={{ mt: 1 }}>
           {/* Informations de base */}
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, 
-            gap: 2 
-          }}>
-            <FormControl fullWidth>
-              <InputLabel>Client</InputLabel>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <TextField
+              fullWidth
+              required
+              type="email"
+              label="Email du client"
+              value={formData.clientEmail ?? ''}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  clientEmail: e.target.value,
+                  sendToEmail: prev.sendByEmailAfterCreate ? e.target.value : prev.sendToEmail,
+                }))
+              }
+              placeholder="client@exemple.com"
+              helperText={
+                willCreateClient
+                  ? 'Nouvelle fiche client sera créée automatiquement'
+                  : matchedClient
+                    ? `Client existant : ${matchedClient.name}`
+                    : 'Saisissez l’email du payeur'
+              }
+            />
+
+            {willCreateClient && (
+              <TextField
+                fullWidth
+                required
+                label="Nom du nouveau client"
+                value={formData.newClientName ?? ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, newClientName: e.target.value }))
+                }
+              />
+            )}
+
+            <FormControl fullWidth sx={{ gridColumn: { sm: '1 / -1' } }}>
+              <InputLabel>Client existant (optionnel)</InputLabel>
               <Select
-                value={formData.clientId}
-                label="Client"
-                onChange={(e) => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
+                value={formData.clientId ?? ''}
+                label="Client existant (optionnel)"
+                onChange={(e) => {
+                  const id = e.target.value
+                  const c = clients.find((cl) => cl.id === id)
+                  setFormData((prev) => ({
+                    ...prev,
+                    clientId: id,
+                    clientEmail: c?.email || prev.clientEmail,
+                    newClientName: undefined,
+                  }))
+                }}
                 disabled={loading}
               >
-                {clients.length === 0 && !loading && (
-                  <MenuItem disabled value="">
-                    Aucun client — créez-en un dans Clients
-                  </MenuItem>
-                )}
+                <MenuItem value="">
+                  <em>Aucun — utiliser l’email ci-dessus</em>
+                </MenuItem>
                 {clients.map((client) => (
                   <MenuItem key={client.id} value={client.id}>
                     {client.name}
+                    {client.email ? ` — ${client.email}` : ''}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-            
+
             <TextField
               fullWidth
               label="Devise"
               value={formData.currency}
-              onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
               select
             >
               <MenuItem value="EUR">EUR (€)</MenuItem>
@@ -359,6 +461,99 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit, submitting = fals
             </Box>
           </Box>
 
+          <Alert severity="info" sx={{ borderRadius: 2 }}>
+            Cochez « Déjà réglée » si le client a payé sur un autre site (boutique, plateforme, virement).
+            Vous pourrez ensuite envoyer la facture par email comme justificatif.
+          </Alert>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!formData.paidExternally}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    paidExternally: e.target.checked,
+                    externalPaymentDate: e.target.checked
+                      ? prev.issueDate
+                      : undefined,
+                    externalPaymentMethod: e.target.checked
+                      ? prev.externalPaymentMethod || 'Autre site'
+                      : undefined,
+                  }))
+                }
+              />
+            }
+            label="Facture déjà réglée (autre site / virement)"
+          />
+
+          {formData.paidExternally && (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 2,
+              }}
+            >
+              <TextField
+                fullWidth
+                label="Date du règlement"
+                type="date"
+                value={formData.externalPaymentDate ?? formData.issueDate}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    externalPaymentDate: e.target.value,
+                  }))
+                }
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                fullWidth
+                label="Mode de règlement"
+                value={formData.externalPaymentMethod ?? 'Autre site'}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    externalPaymentMethod: e.target.value,
+                  }))
+                }
+                placeholder="Ex. Stripe boutique, PayPal, virement"
+              />
+            </Box>
+          )}
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!formData.sendByEmailAfterCreate}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    sendByEmailAfterCreate: e.target.checked,
+                    sendToEmail: e.target.checked
+                      ? prev.sendToEmail || prev.clientEmail || ''
+                      : undefined,
+                  }))
+                }
+              />
+            }
+            label="Envoyer par email au client après création"
+          />
+
+          {formData.sendByEmailAfterCreate && (
+            <TextField
+              fullWidth
+              required
+              type="email"
+              label="Email d’envoi"
+              value={formData.sendToEmail ?? formData.clientEmail ?? ''}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, sendToEmail: e.target.value }))
+              }
+            />
+          )}
+
           {/* Notes et conditions */}
           <Box sx={{ 
             display: 'grid', 
@@ -398,8 +593,11 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit, submitting = fals
           startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <Save />}
           disabled={
             submitting ||
-            !formData.clientId ||
-            formData.items.some(item => !item.description || item.unitPrice <= 0)
+            !(formData.clientEmail?.trim() || formData.clientId) ||
+            (willCreateClient && !formData.newClientName?.trim()) ||
+            formData.items.some((item) => !item.description || item.unitPrice <= 0) ||
+            (formData.sendByEmailAfterCreate &&
+              !(formData.sendToEmail || formData.clientEmail)?.trim())
           }
         >
           {submitting ? 'Création...' : 'Créer la facture'}

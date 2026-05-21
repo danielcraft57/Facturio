@@ -91,7 +91,7 @@ export class StripeUnifiedWebhookService {
 
 			if (event.type === 'payment_intent.succeeded' && peek.invoiceId) {
 				await this.stripeService.fulfillPaymentIntent(
-					event.data.object as Parameters<StripeService['fulfillPaymentIntent']>[0],
+					event.data.object as unknown as Parameters<StripeService['fulfillPaymentIntent']>[0],
 				);
 				this.logger.log(`Facture ${peek.invoiceId} réglée via webhook (compte plateforme)`);
 				return { received: true };
@@ -137,7 +137,7 @@ export class StripeUnifiedWebhookService {
 
 			if (event.type === 'payment_intent.succeeded') {
 				await this.stripeService.fulfillPaymentIntent(
-					event.data.object as Parameters<StripeService['fulfillPaymentIntent']>[0],
+					event.data.object as unknown as Parameters<StripeService['fulfillPaymentIntent']>[0],
 				);
 				this.logger.log(`Paiement facture enregistré (webhook org ${organizationId})`);
 			}

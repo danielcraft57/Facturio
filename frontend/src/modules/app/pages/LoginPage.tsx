@@ -43,12 +43,11 @@ export function LoginPage() {
 
   const successMessage = (location.state as any)?.message
 
-  // Rediriger si déjà authentifié
+  // Rediriger uniquement si un JWT est présent (évite la boucle session/bootstrap avec user orphelin)
   useEffect(() => {
-    if (isAuthenticated) {
-      const from = (location.state as any)?.from?.pathname || '/dashboard'
-      navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
-    }
+    if (!isAuthenticated || !localStorage.getItem('auth_token')) return
+    const from = (location.state as any)?.from?.pathname || '/dashboard'
+    navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
   }, [isAuthenticated, navigate, location])
 
   const handleSubmit = async (e: React.FormEvent) => {
