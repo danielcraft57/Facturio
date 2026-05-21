@@ -1,22 +1,34 @@
-import * as request from 'supertest';
+import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { createTestUser, authenticatedRequest, type TestUser } from '../common/test-helpers/auth.helper';
 
 describe('Dashboard e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
+	let testUser: TestUser;
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({
-			imports: [AppModule]
+			imports: [AppModule],
 		}).compile();
 
 		app = moduleRef.createNestApplication();
+		app.setGlobalPrefix('api');
+		app.use(cookieParser());
+		app.useGlobalPipes(
+			new ValidationPipe({
+				whitelist: true,
+				transform: true,
+				forbidUnknownValues: false,
+			}),
+		);
 		await app.init();
 
 		prisma = app.get(PrismaService);
+		testUser = await createTestUser(app, prisma);
 	});
 
 	afterAll(async () => {
@@ -24,10 +36,10 @@ describe('Dashboard e2e', () => {
 	});
 
 	it('should return dashboard stats', async () => {
-		const response = await request(app.getHttpServer())
-			.get('/dashboard/stats')
+		const response = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/dashboard/stats')
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: { body: Record<string, unknown> }) => r.body);
 
 		expect(response).toBeDefined();
 		expect(response.revenue).toBeDefined();
@@ -50,14 +62,13 @@ describe('Dashboard e2e', () => {
 		const startDate = '2024-01-01';
 		const endDate = '2024-12-31';
 
-		const response = await request(app.getHttpServer())
-			.get(`/dashboard/stats?startDate=${startDate}&endDate=${endDate}`)
+		const response = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/dashboard/stats?startDate=${startDate}&endDate=${endDate}`)
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: { body: Record<string, unknown> }) => r.body);
 
 		expect(response).toBeDefined();
 		expect(response.revenue).toBeDefined();
 		expect(response.invoices).toBeDefined();
 	});
 });
-

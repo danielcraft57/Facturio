@@ -1,45 +1,74 @@
+# ========================================
+# Facturio — racine (complète server/ et frontend/)
+# ========================================
+
 # Dependencies
 **/node_modules/
 
-# Builds / bundles
+# Builds
 **/dist/
+**/dist-ssr/
 **/build/
 **/.parcel-cache/
 **/.cache/
+**/.vite/
 
-# Tests
+# Tests & couverture
 **/coverage/
 **/.nyc_output/
+**/node_modules/.vite/
+**/vitest/results.json
 
 # TypeScript
 *.tsbuildinfo
 
-# Env (ne jamais committer)
+# Variables d'environnement (jamais de secrets)
 **/.env
-**/.env.*
+**/.env.local
+**/.env.*.local
+**/.env.prod
+# Modèles versionnés
+!**/env.example
+!**/env.prod.example
+!**/.env.example
 
-# Logs
+# Logs applicatifs
+**/logs/
+!**/logs/.gitkeep
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# OS / éditeurs
+# Prisma / SQLite (dev local uniquement)
+server/prisma/**/*.db
+server/prisma/**/*.db-journal
+server/prisma/**/*.db-wal
+server/prisma/**/*.db-shm
+server/prisma/prisma/
+
+# Exports & binaires locaux
+*.pdf
+**/tmp/
+
+# Secrets & clés
+*.pem
+*.key
+credentials.json
+**/secrets.json
+
+# Dossier accréditation PA — pièces sensibles (Kbis, ISO…)
+docs/accreditation-pa/annexes/pieces-jointes/*
+!docs/accreditation-pa/annexes/pieces-jointes/.gitkeep
+
+# IDE / OS / outils
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/
+.vscode/*
+!.vscode/extensions.json
+.cursor/
 
-# Prisma SQLite (dev local)
-server/prisma/*.db
-server/prisma/prisma/
-
-# PDF (exports locaux)
-*.pdf
-
-# Temporaires
-**/tmp/
-
-# Notes locales agent (ne pas versionner)
+# Notes agent locales
 AGENT.md

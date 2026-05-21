@@ -5,7 +5,7 @@ import { decryptOrgStripeSecrets } from '../crypto/organization-stripe-secrets.u
 import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { createStripeClient } from './stripe-client';
-import { StripeService } from './stripe.service';
+import { StripeService, type StripePaymentIntentPayload } from './stripe.service';
 import {
 	buildUnifiedStripeWebhookUrl,
 	isPlatformBillingEventType,
@@ -91,7 +91,7 @@ export class StripeUnifiedWebhookService {
 
 			if (event.type === 'payment_intent.succeeded' && peek.invoiceId) {
 				await this.stripeService.fulfillPaymentIntent(
-					event.data.object as unknown as Parameters<StripeService['fulfillPaymentIntent']>[0],
+					event.data.object as unknown as StripePaymentIntentPayload,
 				);
 				this.logger.log(`Facture ${peek.invoiceId} réglée via webhook (compte plateforme)`);
 				return { received: true };
@@ -137,7 +137,7 @@ export class StripeUnifiedWebhookService {
 
 			if (event.type === 'payment_intent.succeeded') {
 				await this.stripeService.fulfillPaymentIntent(
-					event.data.object as unknown as Parameters<StripeService['fulfillPaymentIntent']>[0],
+					event.data.object as unknown as StripePaymentIntentPayload,
 				);
 				this.logger.log(`Paiement facture enregistré (webhook org ${organizationId})`);
 			}

@@ -1,59 +1,57 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { quoteService } from './quoteService'
 import { ApiClient } from './apiClient'
+
+const mockClient = {
+  get: vi.fn(),
+  post: vi.fn(),
+  patch: vi.fn(),
+  delete: vi.fn(),
+}
 
 vi.mock('./apiClient', () => ({
   ApiClient: {
-    getInstance: vi.fn(() => ({
-      get: vi.fn(),
-      post: vi.fn(),
-      patch: vi.fn(),
-      delete: vi.fn(),
-    })),
+    getInstance: () => mockClient,
+    resetInstanceForTests: vi.fn(),
   },
 }))
 
 describe('quoteService', () => {
-  let mockApiClient: any
-
-  beforeEach(() => {
-    mockApiClient = ApiClient.getInstance()
+  beforeEach(async () => {
     vi.clearAllMocks()
+    ApiClient.resetInstanceForTests()
+    vi.resetModules()
   })
 
   it('appelle l\'API pour getQuotes', async () => {
-    const mockResponse = {
+    mockClient.get.mockResolvedValue({
       success: true,
       data: { data: [], total: 0, page: 1, limit: 10 },
-    }
-    ;(mockApiClient.get as any).mockResolvedValue(mockResponse)
+    })
+    const { quoteService } = await import('./quoteService')
 
-    const filters = { status: 'SENT', search: 'DEV-2025' } as any
-    await quoteService.getQuotes(filters, 2, 5)
+    await quoteService.getQuotes({ status: 'SENT', search: 'DEV-2025' } as never, 2, 5)
 
-    expect(mockApiClient.get).toHaveBeenCalledWith(
-      expect.stringContaining('/quotes')
+    expect(mockClient.get).toHaveBeenCalledWith(
+      expect.stringContaining('/quotes'),
     )
   })
 
   it('appelle l\'API pour les actions CRUD', async () => {
-    const mockResponse = { success: true, data: { id: 1 } }
-    ;(mockApiClient.post as any).mockResolvedValue(mockResponse)
-    ;(mockApiClient.patch as any).mockResolvedValue(mockResponse)
-    ;(mockApiClient.delete as any).mockResolvedValue({ success: true, data: true })
+    mockClient.post.mockResolvedValue({ success: true, data: { id: 1 } })
+    mockClient.patch.mockResolvedValue({ success: true, data: { id: 1 } })
+    mockClient.delete.mockResolvedValue({ success: true, data: true })
+    const { quoteService } = await import('./quoteService')
 
-    await quoteService.createQuote({ clientId: 1 } as any)
-    expect(mockApiClient.post).toHaveBeenCalledWith('/quotes', expect.any(Object))
+    await quoteService.createQuote({ clientId: 1 } as never)
+    expect(mockClient.post).toHaveBeenCalledWith('/quotes', expect.any(Object))
 
-    await quoteService.updateQuote(1, {} as any)
-    expect(mockApiClient.patch).toHaveBeenCalledWith('/quotes/1', expect.any(Object))
+    await quoteService.updateQuote(1, {} as never)
+    expect(mockClient.patch).toHaveBeenCalledWith('/quotes/1', expect.any(Object))
 
     await quoteService.deleteQuote(1)
-    expect(mockApiClient.delete).toHaveBeenCalledWith('/quotes/1')
+    expect(mockClient.delete).toHaveBeenCalledWith('/quotes/1')
 
     await quoteService.sendQuote(1)
-    expect(mockApiClient.post).toHaveBeenCalledWith('/quotes/1/send', undefined)
+    expect(mockClient.post).toHaveBeenCalledWith('/quotes/1/send')
   })
 })
-
-

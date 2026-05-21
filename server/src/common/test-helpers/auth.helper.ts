@@ -10,6 +10,20 @@ export interface TestUser {
 	token: string;
 }
 
+/** Active un compte PENDING après inscription (flux vérification email en e2e). */
+export async function activatePendingUser(prisma: PrismaService, email: string): Promise<void> {
+	await prisma.user.update({
+		where: { email },
+		data: {
+			status: 'ACTIVE',
+			emailVerified: true,
+			emailVerifiedAt: new Date(),
+			emailVerificationToken: null,
+			emailVerificationExpires: null,
+		},
+	});
+}
+
 function parseCookies(setCookies: string[] | string | undefined): string[] {
 	if (!setCookies) return [];
 	return Array.isArray(setCookies) ? setCookies : [setCookies];

@@ -32,6 +32,11 @@ class ApiClient {
     return ApiClient.instance;
   }
 
+  /** Réinitialise le singleton (tests uniquement). */
+  static resetInstanceForTests(): void {
+    ApiClient.instance = undefined as unknown as ApiClient;
+  }
+
   private setupInterceptors(): void {
     // Request interceptor
     this.axiosInstance.interceptors.request.use(

@@ -10,47 +10,61 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-// Niveau de log par défaut en fonction de l'environnement
+const isProd =
+  process.env.NODE_ENV === 'prod' || process.env.NODE_ENV === 'production';
+
 const defaultLevel =
-  process.env.LOG_LEVEL ||
-  (process.env.NODE_ENV === 'prod' || process.env.NODE_ENV === 'production'
-    ? 'info'
-    : 'debug');
+  process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
+
+const jsonFormat = winston.format.combine(
+  winston.format.timestamp(),
+  winston.format.errors({ stack: true }),
+  winston.format.splat(),
+  winston.format.json(),
+);
 
 export const winstonConfig: WinstonModuleOptions = {
   level: defaultLevel,
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.splat(),
-    winston.format.json(),
-  ),
-  transports: [
-    // Console avec format lisible pour le dev
-    new winston.transports.Console({
-      level: defaultLevel,
-      format: winston.format.combine(
-        winston.format.colorize(),
-        nestWinstonModuleUtilities.format.nestLike('Facturio', {
-          colors: true,
-          prettyPrint: true,
+  format: jsonFormat,
+  transports: isProd
+    ? [
+        new winston.transports.Console({ level: defaultLevel, format: jsonFormat }),
+        new winston.transports.File({
+          filename: path.join(logsDir, 'app.log'),
+          level: 'info',
+          maxsize: 10 * 1024 * 1024,
+          maxFiles: 5,
         }),
-      ),
-    }),
-    // Fichier général
-    new winston.transports.File({
-      filename: path.join(logsDir, 'app.log'),
-      level: 'info',
-      maxsize: 10 * 1024 * 1024, // 10MB
-      maxFiles: 5,
-    }),
-    // Fichier d'erreurs
-    new winston.transports.File({
-      filename: path.join(logsDir, 'error.log'),
-      level: 'error',
-      maxsize: 10 * 1024 * 1024,
-      maxFiles: 5,
-    }),
-  ],
+        new winston.transports.File({
+          filename: path.join(logsDir, 'error.log'),
+          level: 'error',
+          maxsize: 10 * 1024 * 1024,
+          maxFiles: 5,
+        }),
+      ]
+    : [
+        new winston.transports.Console({
+          level: defaultLevel,
+          format: winston.format.combine(
+            winston.format.colorize(),
+            nestWinstonModuleUtilities.format.nestLike('Facturio', {
+              colors: true,
+              prettyPrint: true,
+            }),
+          ),
+        }),
+        new winston.transports.File({
+          filename: path.join(logsDir, 'app.log'),
+          level: 'info',
+          maxsize: 10 * 1024 * 1024,
+          maxFiles: 5,
+        }),
+        new winston.transports.File({
+          filename: path.join(logsDir, 'error.log'),
+          level: 'error',
+          maxsize: 10 * 1024 * 1024,
+          maxFiles: 5,
+        }),
+      ],
 };
 

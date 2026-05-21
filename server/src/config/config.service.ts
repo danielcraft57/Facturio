@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { normalizeDatabaseUrl } from './database-url.util';
 
 export type Environment = 'dev' | 'test' | 'prod';
 
@@ -38,7 +39,8 @@ export class ConfigService {
 	}
 
 	get databaseUrl(): string {
-		return process.env.DATABASE_URL || 'file:./prisma/prisma/dev.db';
+		const raw = process.env.DATABASE_URL || 'file:./prisma/prisma/dev.db';
+		return normalizeDatabaseUrl(raw, this.isProduction);
 	}
 
 	get corsOrigin(): string | string[] | boolean {

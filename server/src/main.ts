@@ -7,10 +7,16 @@ import * as cookieParser from 'cookie-parser';
 import { WinstonModule } from 'nest-winston';
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
+import { normalizeDatabaseUrl, redactDatabaseUrl } from './config/database-url.util';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { winstonConfig } from './logger/winston.config';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
+const nodeEnv = process.env.NODE_ENV || 'dev';
+if (nodeEnv === 'prod' && process.env.DATABASE_URL) {
+	process.env.DATABASE_URL = normalizeDatabaseUrl(process.env.DATABASE_URL, true);
+}
 
 async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create(AppModule, {
@@ -20,6 +26,12 @@ async function bootstrap(): Promise<void> {
 
 	const config = app.get(ConfigService);
 	const logger = new Logger('Bootstrap');
+
+	if (config.isProd) {
+		const httpAdapter = app.getHttpAdapter();
+		const instance = httpAdapter.getInstance() as { set?: (key: string, value: number) => void };
+		instance.set?.('trust proxy', 1);
+	}
 
 	// Cookie parser pour gérer les cookies de session
 	app.use(cookieParser());
@@ -70,7 +82,7 @@ async function bootstrap(): Promise<void> {
 
 	logger.log(`🚀 API démarrée sur http://localhost:${port}`);
 	logger.log(`📦 Environnement: ${config.environment}`);
-	logger.log(`🗄️  Base de données: ${config.databaseUrl}`);
+	logger.log(`🗄️  Base de données: ${redactDatabaseUrl(config.databaseUrl)}`);
 	const dbUrl = config.databaseUrl;
 	if (dbUrl.startsWith('file:')) {
 		const path = await import('path');

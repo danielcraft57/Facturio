@@ -1,8 +1,9 @@
-import * as request from 'supertest';
+import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { createTestUser, authenticatedRequest, type TestUser } from '../common/test-helpers/auth.helper';
 
 function uniqueEmail(base: string): string {
 	const [local, domain] = base.split('@');
@@ -12,20 +13,30 @@ function uniqueEmail(base: string): string {
 describe('Payments e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
+	let testUser: TestUser;
 	let testClientId: number;
 	let testInvoiceId: number;
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({
-			imports: [AppModule]
+			imports: [AppModule],
 		}).compile();
 
 		app = moduleRef.createNestApplication();
+		app.setGlobalPrefix('api');
+		app.use(cookieParser());
+		app.useGlobalPipes(
+			new ValidationPipe({
+				whitelist: true,
+				transform: true,
+				forbidUnknownValues: false,
+			}),
+		);
 		await app.init();
 
 		prisma = app.get(PrismaService);
+		testUser = await createTestUser(app, prisma);
 
-		// Nettoyage des paiements et factures de test
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirApplication');
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Avoir');
@@ -33,22 +44,22 @@ describe('Payments e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
 
-		// Créer un client de test
 		const client = await prisma.client.create({
 			data: {
 				name: 'Test Client Payment',
 				email: uniqueEmail('payment-test@example.com'),
 				isCompany: true,
-				countryCode: 'FR'
-			}
+				countryCode: 'FR',
+				organizationId: testUser.organizationId,
+			},
 		});
 		testClientId = client.id;
 
-		// Créer une facture de test
 		const invoice = await prisma.invoice.create({
 			data: {
 				number: `TEST-PAY-${Date.now()}`,
 				clientId: testClientId,
+				organizationId: testUser.organizationId,
 				status: 'SENT',
 				subtotal: 1000,
 				tax: 200,
@@ -62,92 +73,84 @@ describe('Payments e2e', () => {
 						unitPrice: 1000,
 						taxRate: 0.2,
 						taxAmount: 200,
-						total: 1200
-					}
-				}
-			}
+						total: 1200,
+					},
+				},
+			},
 		});
 		testInvoiceId = invoice.id;
 	});
 
 	afterAll(async () => {
-		// Nettoyage
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirApplication');
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Avoir');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
-		await prisma.$executeRawUnsafe('DELETE FROM Client WHERE id = ?', testClientId);
+		await prisma.client.deleteMany({ where: { id: testClientId } });
 		await app.close();
 	});
 
 	it('create -> list -> get -> update -> delete', async () => {
-		// CREATE
-		const created = await request(app.getHttpServer())
-			.post('/payments')
+		const created = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payments')
 			.send({
 				invoiceId: testInvoiceId,
 				amount: 500,
 				method: 'Carte bancaire',
-				notes: 'Paiement test'
+				notes: 'Paiement test',
 			})
 			.expect(201)
-			.then((r) => r.body);
+			.then((r: { body: unknown }) => r.body);
 
 		expect(created.id).toBeDefined();
 		expect(created.amount).toBe(500);
 		expect(created.invoiceId).toBe(testInvoiceId);
 
-		// LIST
-		const list = await request(app.getHttpServer())
-			.get(`/payments?invoiceId=${testInvoiceId}`)
+		const list = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/payments?invoiceId=${testInvoiceId}`)
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: { body: unknown }) => r.body);
 
 		expect(Array.isArray(list)).toBe(true);
 		expect(list.length).toBeGreaterThanOrEqual(1);
-		const found = list.find((p: any) => p.id === created.id);
+		const found = list.find((p: { id: number }) => p.id === created.id);
 		expect(found).toBeDefined();
 
-		// GET
-		const retrieved = await request(app.getHttpServer())
-			.get(`/payments/${created.id}`)
+		const retrieved = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/payments/${created.id}`)
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: { body: unknown }) => r.body);
 
 		expect(retrieved.id).toBe(created.id);
 		expect(retrieved.amount).toBe(500);
 
-		// UPDATE
-		const updated = await request(app.getHttpServer())
-			.patch(`/payments/${created.id}`)
+		const updated = await authenticatedRequest(app, testUser.cookies)
+			.patch(`/api/payments/${created.id}`)
 			.send({ amount: 600, notes: 'Paiement modifié' })
 			.expect(200)
-			.then((r) => r.body);
+			.then((r: { body: unknown }) => r.body);
 
 		expect(updated.amount).toBe(600);
 		expect(updated.notes).toBe('Paiement modifié');
 
-		// DELETE
-		await request(app.getHttpServer()).delete(`/payments/${created.id}`).expect(200);
+		await authenticatedRequest(app, testUser.cookies).delete(`/api/payments/${created.id}`).expect(200);
 
-		// Vérifier qu'il n'existe plus
-		await request(app.getHttpServer()).get(`/payments/${created.id}`).expect(404);
+		await authenticatedRequest(app, testUser.cookies).get(`/api/payments/${created.id}`).expect(404);
 	});
 
 	it('should not allow payment exceeding invoice balance', async () => {
-		await request(app.getHttpServer())
-			.post('/payments')
+		await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payments')
 			.send({
 				invoiceId: testInvoiceId,
-				amount: 2000 // Plus que le total de la facture
+				amount: 2000,
 			})
 			.expect(400);
 	});
 
 	it('returns 404 for unknown payment', async () => {
-		await request(app.getHttpServer()).get('/payments/999999').expect(404);
+		await authenticatedRequest(app, testUser.cookies).get('/api/payments/999999').expect(404);
 	});
 });
-

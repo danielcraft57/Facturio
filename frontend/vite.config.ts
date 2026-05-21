@@ -46,7 +46,13 @@ export default defineConfig(({ mode }) => {
               )
               console.warn(`[vite proxy] Détail :`, err.message)
             }
-            if (res && !res.headersSent && 'writeHead' in res) {
+            if (
+              res &&
+              typeof res === 'object' &&
+              'headersSent' in res &&
+              !(res as { headersSent?: boolean }).headersSent &&
+              'writeHead' in res
+            ) {
               res.writeHead(503, { 'Content-Type': 'application/json' })
               res.end(
                 JSON.stringify({

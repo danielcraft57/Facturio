@@ -15,9 +15,13 @@ import {
 import { PageLoader } from './PageLoader';
 import { AdvancedPageLoader, ModernPageLoader } from './AdvancedPageLoader';
 
+type LoaderType = 'basic' | 'modern' | 'shimmer' | 'gradient' | 'pulse' | 'dots'
+type LoaderColor = 'primary' | 'secondary' | 'rainbow'
+type AdvancedVariant = 'shimmer' | 'gradient' | 'pulse' | 'dots'
+
 export const LoaderDemo: React.FC = () => {
-  const [loaderType, setLoaderType] = useState<'basic' | 'modern' | 'shimmer' | 'gradient' | 'pulse' | 'dots'>('modern');
-  const [color, setColor] = useState<'primary' | 'secondary' | 'rainbow'>('primary');
+  const [loaderType, setLoaderType] = useState<LoaderType>('modern');
+  const [color, setColor] = useState<LoaderColor>('primary');
   const [height, setHeight] = useState(3);
   const [duration, setDuration] = useState(800);
   const [isVisible, setIsVisible] = useState(false);
@@ -45,15 +49,17 @@ export const LoaderDemo: React.FC = () => {
             color={color}
           />
         );
-      default:
+      default: {
+        const variant = loaderType as AdvancedVariant
         return (
           <AdvancedPageLoader
-            variant={loaderType as any}
+            variant={variant}
             height={height}
             duration={duration}
             color={color}
           />
-        );
+        )
+      }
     }
   };
 
@@ -77,7 +83,7 @@ export const LoaderDemo: React.FC = () => {
                 <Select
                   value={loaderType}
                   label="Type de loader"
-                  onChange={(e) => setLoaderType(e.target.value as any)}
+                  onChange={(e) => setLoaderType(e.target.value as LoaderType)}
                 >
                   <MenuItem value="basic">Basique</MenuItem>
                   <MenuItem value="modern">Moderne</MenuItem>
@@ -93,7 +99,7 @@ export const LoaderDemo: React.FC = () => {
                 <Select
                   value={color}
                   label="Couleur"
-                  onChange={(e) => setColor(e.target.value as any)}
+                  onChange={(e) => setColor(e.target.value as LoaderColor)}
                 >
                   <MenuItem value="primary">Primaire</MenuItem>
                   <MenuItem value="secondary">Secondaire</MenuItem>

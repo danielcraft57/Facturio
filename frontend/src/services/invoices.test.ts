@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { invoiceService } from './invoices'
+import { invoiceService, toCreateInvoiceApiBody } from './invoices'
 import { apiClient } from './api'
 
 vi.mock('./api', async () => {
@@ -72,7 +72,7 @@ describe('invoiceService', () => {
 
     const res = await invoiceService.createInvoice(payload as any)
 
-    expect(apiClient.post).toHaveBeenCalledWith('/invoices', payload)
+    expect(apiClient.post).toHaveBeenCalledWith('/invoices', toCreateInvoiceApiBody(payload))
     expect(apiClient.invalidateCache).toHaveBeenCalledWith('/invoices')
     expect(res.success).toBe(true)
   })

@@ -27,18 +27,18 @@ import VisibilityIcon from '@mui/icons-material/Visibility'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 
 // Types pour le DataTable
-export interface Column<T = any> {
+export interface Column<T = Record<string, unknown>> {
   id: keyof T | 'actions'
   label: string
   minWidth?: number
   align?: 'left' | 'right' | 'center'
-  format?: (value: any, row: T) => ReactNode
+  format?: (value: unknown, row: T) => ReactNode
   sortable?: boolean
   searchable?: boolean
   render?: (row: T) => ReactNode
 }
 
-export interface DataTableProps<T = any> {
+export interface DataTableProps<T = Record<string, unknown>> {
   columns: Column<T>[]
   data: T[]
   loading?: boolean
@@ -74,7 +74,7 @@ export interface DataTableProps<T = any> {
   renderExpanded?: (row: T) => ReactNode
 }
 
-export function DataTable<T = any>({
+export function DataTable<T = Record<string, unknown>>({
   columns,
   data,
   loading = false,
@@ -105,7 +105,7 @@ export function DataTable<T = any>({
 }: DataTableProps<T>) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const [expandedRowId, setExpandedRowId] = useState<any>(null)
+  const [expandedRowId, setExpandedRowId] = useState<string | number | null>(null)
 
   const safeRowsPerPageOptions = React.useMemo(() => {
     const set = new Set<number>(rowsPerPageOptions)

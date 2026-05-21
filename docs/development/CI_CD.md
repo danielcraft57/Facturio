@@ -8,6 +8,7 @@ Documentation sur l'intégration continue (GitHub Actions).
 |---------|-------------|------|
 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | push/PR sur `main` | Tests + build |
 | [`.github/workflows/cd-artifacts.yml`](../../.github/workflows/cd-artifacts.yml) | tags `v*` / manuel | Artefacts de build |
+| (CI `frontend` job) | push `main` | Artefact `frontend-dist-<sha>` pour déploiement Pi |
 
 ## Job `server-unit`
 
@@ -50,6 +51,24 @@ npm test
 NODE_ENV=test
 DATABASE_URL=file:./prisma/prisma/test.db
 ```
+
+## Déploiement frontend (Raspberry / faible RAM)
+
+Le workflow **CI** publie `frontend-dist-<commit-sha>` après chaque push sur `main` (build Vite avec `env.prod.example` → `.env.production`).
+
+Sur le serveur :
+
+```bash
+# Token lecture seule (repo + Actions), une seule fois :
+echo 'ghp_xxxx' | sudo tee /var/lib/facturio/github-token
+sudo chmod 600 /var/lib/facturio/github-token
+sudo chown pi:pi /var/lib/facturio/github-token
+
+# Test
+/opt/facturio/scripts/deploy/fetch-frontend-dist.sh "$(git -C /opt/facturio rev-parse origin/main)"
+```
+
+`facturio-update.sh` utilise `FRONTEND_MODE=github` par défaut. Build local : `FRONTEND_MODE=local`.
 
 ## Évolutions prévues
 

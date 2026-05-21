@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 const MAX_SIGNATURE_LENGTH = 600_000;
 
@@ -30,7 +31,7 @@ function trimMax(value: unknown, max: number): string | undefined {
 
 export function sanitizeOrganizationProfileUpdate(
 	data: Record<string, unknown>,
-): Record<string, unknown> {
+): Prisma.OrganizationUpdateInput {
 	const out = { ...data };
 
 	if ('siret' in out) {
@@ -77,5 +78,5 @@ export function sanitizeOrganizationProfileUpdate(
 		out.apeLabel = trimMax(out.apeLabel, 200);
 	}
 
-	return out;
+	return out as Prisma.OrganizationUpdateInput;
 }

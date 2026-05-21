@@ -14,7 +14,7 @@ export interface PaymentIntentResponse {
 	stripePublishableKey: string;
 }
 
-interface StripePaymentIntentPayload {
+export interface StripePaymentIntentPayload {
 	id: string;
 	metadata?: { invoiceId?: string };
 	amount_received: number;

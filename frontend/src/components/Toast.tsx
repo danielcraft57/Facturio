@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import {
   Snackbar,
   Alert,
@@ -8,85 +7,27 @@ import {
   IconButton,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import type { ToastMessage } from './useToast'
+import { useToast } from './useToast'
 
-// Types pour les notifications
-export type ToastSeverity = 'success' | 'info' | 'warning' | 'error'
-
-export interface ToastMessage {
-  id: string
-  message: string
-  title?: string
-  severity: ToastSeverity
-  duration?: number
-  action?: ReactNode
-  closable?: boolean
-  autoHide?: boolean
-}
+export type { ToastMessage, ToastSeverity } from './useToast'
 
 export interface ToastProps {
   message: ToastMessage
   onClose: (id: string) => void
 }
 
-// Hook pour gérer les toasts
-export function useToast() {
-  const [toasts, setToasts] = useState<ToastMessage[]>([])
-
-  const addToast = (message: Omit<ToastMessage, 'id'>) => {
-    const id = Math.random().toString(36).substr(2, 9)
-    const newToast: ToastMessage = {
-      id,
-      autoHide: true,
-      closable: true,
-      duration: 6000,
-      ...message,
-    }
-    
-    setToasts(prev => [...prev, newToast])
-    return id
-  }
-
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id))
-  }
-
-  const clearToasts = () => {
-    setToasts([])
-  }
-
-  // Méthodes de convenance
-  const success = (message: string, options?: Partial<ToastMessage>) => {
-    return addToast({ message, severity: 'success', ...options })
-  }
-
-  const info = (message: string, options?: Partial<ToastMessage>) => {
-    return addToast({ message, severity: 'info', ...options })
-  }
-
-  const warning = (message: string, options?: Partial<ToastMessage>) => {
-    return addToast({ message, severity: 'warning', ...options })
-  }
-
-  const error = (message: string, options?: Partial<ToastMessage>) => {
-    return addToast({ message, severity: 'error', ...options })
-  }
-
-  return {
-    toasts,
-    addToast,
-    removeToast,
-    clearToasts,
-    success,
-    info,
-    warning,
-    error,
-  }
-}
-
 // Composant Toast individuel
 export function Toast({ message, onClose }: ToastProps) {
   const [open, setOpen] = useState(true)
+
+  const handleClose = useCallback(() => {
+    setOpen(false)
+    setTimeout(() => {
+      onClose(message.id)
+    }, 300) // Délai pour l'animation
+  }, [message.id, onClose])
 
   useEffect(() => {
     if (message.autoHide && message.duration) {
@@ -96,14 +37,7 @@ export function Toast({ message, onClose }: ToastProps) {
 
       return () => clearTimeout(timer)
     }
-  }, [message.autoHide, message.duration])
-
-  const handleClose = () => {
-    setOpen(false)
-    setTimeout(() => {
-      onClose(message.id)
-    }, 300) // Délai pour l'animation
-  }
+  }, [message.autoHide, message.duration, handleClose])
 
   return (
     <Snackbar

@@ -265,7 +265,7 @@ export function InvoiceStripeSection({ profile, onUpdated }: Props) {
           </Alert>
         )}
 
-        <Box autoComplete="off" data-form-type="other">
+        <Box component="div" data-form-type="other">
           {/* ——— Clés API ——— */}
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
             <VpnKeyIcon color="action" fontSize="small" />

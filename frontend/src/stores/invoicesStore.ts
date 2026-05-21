@@ -85,12 +85,18 @@ export const useInvoicesStore = create<InvoicesState>()(
             page,
             limit,
           });
-          const payload = unwrapApiPayload<{ invoices?: unknown[]; items?: unknown[] }>(response);
+          const payload = unwrapApiPayload<{
+            invoices?: unknown[]
+            items?: unknown[]
+            total?: number
+          }>(response);
           const list = payload?.invoices ?? payload?.items ?? [];
           const total = payload?.total ?? 0;
 
           set({
-            invoices: (list || []).map(normalizeInvoiceFromApi),
+            invoices: (list || []).map((raw) =>
+              normalizeInvoiceFromApi(raw as Record<string, unknown>),
+            ),
             pagination: {
               ...state.pagination,
               page,

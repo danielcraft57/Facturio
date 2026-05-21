@@ -3,7 +3,6 @@ import {
   Box,
   Card,
   CardContent,
-  Typography,
   Button,
   Stack,
   Tabs,
@@ -29,11 +28,27 @@ import {
   Assessment
 } from '@mui/icons-material'
 import { accountingService, type Account, type TrialBalance, type GeneralLedgerEntry } from '../../services/accounting'
+import { unwrapApiPayload } from '../../services/clients'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { PageHeader } from '../../components/finance/PageHeader'
 import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
-import { PageHeader } from '../../components/finance/PageHeader'
-import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback
+}
+
+function unwrapList<T>(
+  response: unknown,
+  keys: Array<'items' | 'accounts' | 'trialBalance' | 'entries'>
+): T[] {
+  const payload = unwrapApiPayload<T[] | Partial<Record<(typeof keys)[number], T[]>>>(response)
+  if (Array.isArray(payload)) return payload
+  for (const key of keys) {
+    const list = payload[key]
+    if (Array.isArray(list)) return list
+  }
+  return []
+}
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -77,11 +92,9 @@ export function AccountingPage() {
     try {
       setLoading(true)
       const response = await accountingService.getAccounts()
-      const payload = (response as any).data?.data ?? (response as any).data
-      const list = Array.isArray(payload) ? payload : (payload?.accounts ?? payload?.items ?? [])
-      setAccounts(list)
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement des comptes')
+      setAccounts(unwrapList<Account>(response, ['accounts', 'items']))
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Erreur lors du chargement des comptes'))
     } finally {
       setLoading(false)
     }
@@ -91,11 +104,9 @@ export function AccountingPage() {
     try {
       setLoading(true)
       const response = await accountingService.getTrialBalance(startDate, endDate)
-      const payload = (response as any).data?.data ?? (response as any).data
-      const list = Array.isArray(payload) ? payload : (payload?.items ?? payload?.trialBalance ?? [])
-      setTrialBalance(list)
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement de la balance')
+      setTrialBalance(unwrapList<TrialBalance>(response, ['items', 'trialBalance']))
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Erreur lors du chargement de la balance'))
     } finally {
       setLoading(false)
     }
@@ -109,11 +120,9 @@ export function AccountingPage() {
         endDate,
         selectedAccount || undefined
       )
-      const payload = (response as any).data?.data ?? (response as any).data
-      const list = Array.isArray(payload) ? payload : (payload?.items ?? payload?.entries ?? [])
-      setGeneralLedger(list)
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement du grand livre')
+      setGeneralLedger(unwrapList<GeneralLedgerEntry>(response, ['items', 'entries']))
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Erreur lors du chargement du grand livre'))
     } finally {
       setLoading(false)
     }
@@ -130,8 +139,8 @@ export function AccountingPage() {
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de l\'export FEC')
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Erreur lors de l\'export FEC'))
     }
   }
 

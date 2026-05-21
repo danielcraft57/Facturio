@@ -32,6 +32,8 @@ describe('Filings e2e', () => {
 		// Nettoyer la base (ordre important : supprimer d'abord les entités dépendantes)
 		await prisma.quoteView.deleteMany({});
 		await prisma.emailEvent.deleteMany({});
+		await prisma.quoteView.deleteMany({});
+		await prisma.emailEvent.deleteMany({});
 		await prisma.quoteLine.deleteMany({});
 		await prisma.quote.deleteMany({});
 		await prisma.invoiceLine.deleteMany({});
