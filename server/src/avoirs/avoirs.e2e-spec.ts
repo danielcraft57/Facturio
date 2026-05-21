@@ -43,6 +43,8 @@ describe('Avoirs e2e', () => {
 		await prisma.payment.deleteMany({});
 		await prisma.invoiceLine.deleteMany({});
 		await prisma.invoice.deleteMany({});
+		await prisma.quoteView.deleteMany({});
+		await prisma.emailEvent.deleteMany({});
 		await prisma.quoteLine.deleteMany({});
 		await prisma.quote.deleteMany({});
 		await prisma.subscription.deleteMany({});

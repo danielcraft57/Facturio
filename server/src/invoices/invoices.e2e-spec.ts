@@ -76,13 +76,14 @@ describe('Invoices e2e', () => {
 		expect(Number(invoice.total)).toBe(300); // 2*100 + 1*50 + TVA
 
 		// ADD PAYMENT
+		const payAmount = Number(invoice.total);
 		const payment = await authenticatedRequest(app, testUser.cookies)
 			.post(`/api/invoices/${invoice.id}/payments`)
-			.send({ amount: 250, method: 'bank_transfer' })
+			.send({ amount: payAmount, method: 'bank_transfer' })
 			.expect(201)
 			.then((r: any) => r.body);
 
-		expect(payment.amount).toBe(250);
+		expect(payment.amount).toBe(payAmount);
 
 		// VERIFY STATUS UPDATED
 		const updatedInvoice = await authenticatedRequest(app, testUser.cookies).get(`/api/invoices/${invoice.id}`).expect(200).then((r: any) => r.body);

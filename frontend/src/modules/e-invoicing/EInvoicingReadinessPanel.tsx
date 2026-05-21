@@ -39,14 +39,16 @@ export function EInvoicingReadinessPanel({ invoiceId, compact }: Props) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    const tasks = [eInvoicingService.getOrganizationReadiness()]
-    if (invoiceId) tasks.push(eInvoicingService.getInvoiceReadiness(invoiceId))
+    const loadOrg = eInvoicingService.getOrganizationReadiness()
+    const loadInv = invoiceId
+      ? eInvoicingService.getInvoiceReadiness(invoiceId)
+      : Promise.resolve(null)
 
-    Promise.all(tasks)
+    Promise.all([loadOrg, loadInv])
       .then(([orgData, invData]) => {
         if (cancelled) return
         setOrg(orgData)
-        if (invData) setInv(invData as InvoiceReadiness)
+        if (invData) setInv(invData)
       })
       .catch((err) => {
         if (!cancelled) setError((err as Error)?.message ?? 'Chargement impossible')

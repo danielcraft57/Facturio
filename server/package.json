@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "main": "index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-pdf-assets.js",
@@ -11,7 +11,7 @@
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "cross-env NODE_ENV=test jest -c jest.config.js --testPathIgnorePatterns=e2e-spec",
     "test:watch": "cross-env NODE_ENV=test jest -c jest.config.js --watch --testPathIgnorePatterns=e2e-spec",
-    "pretest:e2e": "cross-env NODE_ENV=test DATABASE_URL=file:./prisma/prisma/test.db prisma db push",
+    "pretest:e2e": "cross-env NODE_ENV=test DATABASE_URL=file:./prisma/prisma/test.db prisma db push --accept-data-loss",
     "test:e2e": "cross-env NODE_ENV=test DATABASE_URL=file:./prisma/prisma/test.db jest -c jest.config.js --runInBand --testPathPattern=\\.e2e-spec\\.ts$",
     "seed": "ts-node prisma/seed.ts",
     "seed:dev": "cross-env NODE_ENV=dev DATABASE_URL=file:./prisma/prisma/dev.db prisma db push && cross-env NODE_ENV=dev DATABASE_URL=file:./prisma/prisma/dev.db SEED_PURGE=false ts-node prisma/seed.ts",

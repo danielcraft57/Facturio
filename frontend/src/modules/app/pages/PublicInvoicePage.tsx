@@ -138,8 +138,14 @@ export function PublicInvoicePage() {
         stripePublishableKey?: string
         data?: { clientSecret?: string; stripePublishableKey?: string }
         error?: string
-      } = await api.post(`public/invoices/${token}/create-payment-intent`, {}) as any
-      const payload = res?.clientSecret ? res : res?.data?.data ?? res?.data
+      } = await api.post(`public/invoices/${token}/create-payment-intent`, {})
+      const nested = res?.data
+      const payload =
+        res?.clientSecret != null
+          ? res
+          : nested?.clientSecret != null
+            ? nested
+            : undefined
       const secret = payload?.clientSecret
       const pk = payload?.stripePublishableKey
       if (secret) {

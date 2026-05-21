@@ -47,7 +47,7 @@ import {
   unwrapApiPayload,
 } from '../../services/invoices'
 import type { CreateInvoiceData, Invoice } from '../../services/invoices'
-import { useToast } from '../../components/Toast'
+import { useToast } from '../../components/useToast'
 import { PageHeader } from '../../components/finance/PageHeader'
 import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'

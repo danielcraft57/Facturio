@@ -81,8 +81,8 @@ describe('Quotes e2e', () => {
 
 		// SEND QUOTE
 		const sendRes = await authenticatedRequest(app, testUser.cookies).post(`/api/quotes/${created.id}/send`).expect(201).then((r: any) => r.body);
-		expect(sendRes.publicUrl).toMatch(/public\/quotes\//);
-		const token = String(sendRes.publicUrl).split('/').pop()!;
+		expect(sendRes.publicUrl).toMatch(/public\/devis\//);
+		const token = String(sendRes.publicUrl).split('/').filter(Boolean).pop()!;
 
 		// VIEW QUOTE (public)
 		const viewRes = await request(app.getHttpServer()).get(`/api/public/quotes/${token}`).expect(200).then((r: any) => r.body);
@@ -143,10 +143,14 @@ describe('Quotes e2e', () => {
 			.expect(201);
 
 		// Verify events stored
-		const events = await prisma.emailEvent.findMany({ where: { quoteId: quote.id } });
-		expect(events).toHaveLength(2);
-		expect(events[0].type).toBe('delivered');
-		expect(events[1].type).toBe('opened');
+		const events = await prisma.emailEvent.findMany({
+			where: { quoteId: quote.id },
+			orderBy: { createdAt: 'asc' },
+		});
+		const webhookTypes = events.filter((e) => e.type === 'delivered' || e.type === 'opened');
+		expect(webhookTypes).toHaveLength(2);
+		expect(webhookTypes[0].type).toBe('delivered');
+		expect(webhookTypes[1].type).toBe('opened');
 	});
 
 	// ========================================

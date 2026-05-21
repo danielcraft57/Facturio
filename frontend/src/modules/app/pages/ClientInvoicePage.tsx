@@ -135,13 +135,20 @@ export function ClientInvoicePage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.get<{
+      type CheckoutPayload = {
         invoice?: PublicInvoiceSummary
         payment?: { clientSecret: string; stripePublishableKey?: string }
         error?: string
-      }>(`public/invoices/${token}/checkout`) as any
-
-      const payload = res?.invoice ? res : res?.data?.data ?? res?.data
+      }
+      const res = await api.get<CheckoutPayload | { data?: CheckoutPayload }>(
+        `public/invoices/${token}/checkout`,
+      )
+      const payload: CheckoutPayload | undefined =
+        res && typeof res === 'object' && 'invoice' in res
+          ? (res as CheckoutPayload)
+          : res && typeof res === 'object' && 'data' in res
+            ? (res as { data?: CheckoutPayload }).data
+            : undefined
       if (!payload?.invoice) {
         setError('Facture introuvable ou lien expiré')
         return

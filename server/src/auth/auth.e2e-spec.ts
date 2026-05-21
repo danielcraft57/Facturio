@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { activatePendingUser } from '../common/test-helpers/auth.helper';
 
 describe('Auth e2e', () => {
 	let app: INestApplication;
@@ -40,6 +41,8 @@ describe('Auth e2e', () => {
 		await prisma.avoirLine.deleteMany({});
 		await prisma.avoir.deleteMany({});
 		await prisma.invoice.deleteMany({});
+		await prisma.quoteView.deleteMany({});
+		await prisma.emailEvent.deleteMany({});
 		await prisma.quoteLine.deleteMany({});
 		await prisma.quote.deleteMany({});
 		await prisma.subscription.deleteMany({});
@@ -115,6 +118,7 @@ describe('Auth e2e', () => {
 					acceptTerms: true,
 					acceptPrivacy: true,
 				});
+			await activatePendingUser(prisma, 'login@example.com');
 		});
 
 		it('devrait connecter un utilisateur valide', () => {
@@ -151,7 +155,7 @@ describe('Auth e2e', () => {
 		let cookies: string[];
 
 		beforeEach(async () => {
-			const response = await request(app.getHttpServer())
+			await request(app.getHttpServer())
 				.post('/api/auth/signup')
 				.send({
 					email: 'me@example.com',
@@ -159,8 +163,14 @@ describe('Auth e2e', () => {
 					organizationName: 'Me Test Org',
 					acceptTerms: true,
 					acceptPrivacy: true,
-				});
-			const setCookies = response.headers['set-cookie'] as string[] | string | undefined;
+				})
+				.expect(201);
+			await activatePendingUser(prisma, 'me@example.com');
+			const loginRes = await request(app.getHttpServer())
+				.post('/api/auth/login')
+				.send({ email: 'me@example.com', password: 'password123' })
+				.expect(201);
+			const setCookies = loginRes.headers['set-cookie'] as string[] | string | undefined;
 			cookies = Array.isArray(setCookies) ? setCookies : setCookies ? [setCookies] : [];
 		});
 
@@ -199,7 +209,7 @@ describe('Auth e2e', () => {
 		let cookies: string[];
 
 		beforeEach(async () => {
-			const response = await request(app.getHttpServer())
+			await request(app.getHttpServer())
 				.post('/api/auth/signup')
 				.send({
 					email: 'logout@example.com',
@@ -207,8 +217,14 @@ describe('Auth e2e', () => {
 					organizationName: 'Logout Test Org',
 					acceptTerms: true,
 					acceptPrivacy: true,
-				});
-			const setCookies = response.headers['set-cookie'] as string[] | string | undefined;
+				})
+				.expect(201);
+			await activatePendingUser(prisma, 'logout@example.com');
+			const loginRes = await request(app.getHttpServer())
+				.post('/api/auth/login')
+				.send({ email: 'logout@example.com', password: 'password123' })
+				.expect(201);
+			const setCookies = loginRes.headers['set-cookie'] as string[] | string | undefined;
 			cookies = Array.isArray(setCookies) ? setCookies : setCookies ? [setCookies] : [];
 		});
 

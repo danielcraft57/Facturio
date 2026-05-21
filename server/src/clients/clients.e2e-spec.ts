@@ -25,12 +25,17 @@ describe('Clients e2e', () => {
 		prisma = app.get(PrismaService);
 		// On remet à zéro les entités liées aux clients (devis/factures) sans
 		// supprimer les clients globaux pour préserver les FK des autres tests.
+		await prisma.$executeRawUnsafe('DELETE FROM JournalLine');
+		await prisma.$executeRawUnsafe('DELETE FROM JournalEntry');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteView');
 		await prisma.$executeRawUnsafe('DELETE FROM EmailEvent');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Quote');
-		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
+		await prisma.$executeRawUnsafe('DELETE FROM AvoirApplication');
+		await prisma.$executeRawUnsafe('DELETE FROM AvoirLine');
+		await prisma.$executeRawUnsafe('DELETE FROM Avoir');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
+		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
 		
 		// Créer un utilisateur de test

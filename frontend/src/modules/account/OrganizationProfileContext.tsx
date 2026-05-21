@@ -25,7 +25,6 @@ import {
   lookupOrganizationFromSiret,
   type SireneLookupResult,
 } from '../../services/organizationSireneLookup'
-import { isValidSiret } from '../../utils/french-siret'
 
 export type AutoSaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
@@ -326,6 +325,8 @@ export function OrganizationProfileProvider({ children }: { children: ReactNode 
   )
 }
 
+// Hook séparé du provider (react-refresh)
+// eslint-disable-next-line react-refresh/only-export-components
 export function useOrganizationProfile() {
   const ctx = useContext(OrganizationProfileContext)
   if (!ctx) {

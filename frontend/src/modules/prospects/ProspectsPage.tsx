@@ -51,8 +51,6 @@ import { unwrapApiPayload } from '../../services/clients';
 import { Link as RouterLink } from 'react-router-dom';
 import { PageHeader } from '../../components/finance/PageHeader';
 import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles';
-import { PageHeader } from '../../components/finance/PageHeader';
-import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles';
 
 const DEFAULT_PROSPECTLAB_API_URL = 'https://prospectlab.danielcraft.fr';
 

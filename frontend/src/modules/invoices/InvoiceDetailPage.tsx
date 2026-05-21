@@ -40,7 +40,7 @@ import {
   NotificationsActive,
 } from '@mui/icons-material'
 import { invoiceService, type Invoice } from '../../services/invoices'
-import { useToast } from '../../components/Toast'
+import { useToast } from '../../components/useToast'
 import { logActivity } from '../../utils/activity'
 import { apiClient } from '../../services/api'
 import { formatCurrency, formatDate } from '../../utils/formatters'
