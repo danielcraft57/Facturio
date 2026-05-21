@@ -495,7 +495,16 @@ sudo journalctl -u facturio -f
 
 ### 6.2. Mise à jour de l'application
 
-**Cron automatique** : `scripts/deploy/facturio-update.sh` met à jour le dépôt, rebuild **backend + frontend** (`frontend/dist` servi par Nginx), redémarre `facturio` et recharge Nginx. Si le site [facturio.danielcraft.fr](https://facturio.danielcraft.fr/) ne change pas alors que le log affiche « done », c’était souvent parce que seul le backend était déployé — le frontend est maintenant inclus. Sur Pi très limité en RAM : `SKIP_FRONTEND_BUILD=1 ./scripts/deploy/facturio-update.sh` puis `deploy-frontend-build.ps1` depuis votre PC.
+**Cron automatique** : `scripts/deploy/facturio-update.sh` met à jour le dépôt, rebuild le **backend**, télécharge le **frontend** depuis l’artefact GitHub Actions (CI sur `main`) et recharge Nginx. Sur Raspberry (build local OOM), configurer un token :
+
+```bash
+echo 'VOTRE_PAT_GITHUB' | sudo tee /var/lib/facturio/github-token
+sudo chmod 600 /var/lib/facturio/github-token
+sudo chown pi:pi /var/lib/facturio/github-token
+sudo ln -sf /opt/facturio/scripts/deploy/facturio-update.sh /usr/local/bin/facturio-update.sh
+```
+
+Alternative : `FRONTEND_MODE=local` ou `deploy-frontend-build.ps1` depuis votre PC.
 
 ```bash
 cd /opt/facturio

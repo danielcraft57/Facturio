@@ -59,29 +59,42 @@ sudo -u postgres psql -d facturio -v ON_ERROR_STOP=1 -c 'ANALYZE;'
 
 npm run build:prod
 
-# Frontend : Nginx sert /opt/facturio/frontend/dist (sans rebuild = site inchangé)
+# Frontend : Nginx sert /opt/facturio/frontend/dist
+# Par défaut : artefact GitHub Actions (CI sur main) — évite OOM sur Raspberry.
+FRONTEND_MODE="${FRONTEND_MODE:-github}"
 if [ "${SKIP_FRONTEND_BUILD:-0}" = "1" ]; then
-  echo "[facturio-update] SKIP_FRONTEND_BUILD=1 — frontend non reconstruit (utiliser deploy-frontend-build.ps1)"
-else
-  echo "[facturio-update] building frontend..."
-  cd "$APP_DIR/frontend"
-  if [ ! -f .env.production ] && [ -f env.prod.example ]; then
-    cp env.prod.example .env.production
-    echo "[facturio-update] .env.production créé depuis env.prod.example"
-  fi
-  npm install
-  export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=768}"
-  npm run build
-  if [ ! -f dist/index.html ]; then
-    echo "[facturio-update] ERREUR: frontend/dist/index.html manquant après build" >&2
+  FRONTEND_MODE="skip"
+fi
+
+case "$FRONTEND_MODE" in
+  github)
+    echo "[facturio-update] frontend depuis GitHub Actions (artefact $DESIRED_SHA)..."
+    bash "$APP_DIR/scripts/deploy/fetch-frontend-dist.sh" "$DESIRED_SHA"
+    ;;
+  local)
+    echo "[facturio-update] build frontend local..."
+    cd "$APP_DIR/frontend"
+    if [ ! -f .env.production ] && [ -f env.prod.example ]; then
+      cp env.prod.example .env.production
+    fi
+    npm install
+    export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=768}"
+    npm run build
+    test -f dist/index.html
+    sudo chown -R www-data:www-data dist 2>/dev/null || true
+    sudo chmod -R 755 dist
+    ;;
+  skip)
+    echo "[facturio-update] frontend ignoré (SKIP_FRONTEND_BUILD=1)"
+    ;;
+  *)
+    echo "[facturio-update] FRONTEND_MODE invalide: $FRONTEND_MODE" >&2
     exit 1
-  fi
-  sudo chown -R www-data:www-data dist 2>/dev/null || sudo chown -R "$(whoami):$(whoami)" dist
-  sudo chmod -R 755 dist
-  if systemctl is-active nginx >/dev/null 2>&1; then
-    sudo systemctl reload nginx
-  fi
-  echo "[facturio-update] frontend dist OK"
+    ;;
+esac
+
+if [ "$FRONTEND_MODE" != "skip" ] && systemctl is-active nginx >/dev/null 2>&1; then
+  sudo systemctl reload nginx
 fi
 
 sudo systemctl restart "$SERVICE"
