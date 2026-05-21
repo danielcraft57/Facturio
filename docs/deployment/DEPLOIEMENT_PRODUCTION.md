@@ -495,6 +495,8 @@ sudo journalctl -u facturio -f
 
 ### 6.2. Mise à jour de l'application
 
+**Cron automatique** : `scripts/deploy/facturio-update.sh` met à jour le dépôt, rebuild **backend + frontend** (`frontend/dist` servi par Nginx), redémarre `facturio` et recharge Nginx. Si le site [facturio.danielcraft.fr](https://facturio.danielcraft.fr/) ne change pas alors que le log affiche « done », c’était souvent parce que seul le backend était déployé — le frontend est maintenant inclus. Sur Pi très limité en RAM : `SKIP_FRONTEND_BUILD=1 ./scripts/deploy/facturio-update.sh` puis `deploy-frontend-build.ps1` depuis votre PC.
+
 ```bash
 cd /opt/facturio
 
