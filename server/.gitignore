@@ -1,17 +1,10 @@
-# Dependencies
-node_modules/
+# Complété par /.gitignore — rappels spécifiques serveur
 
-# Env (ne jamais committer)
+# Prisma client généré (legacy path)
+/src/generated/prisma
+
+# Env : modèles autorisés
 .env
 .env.*
 !env.example
-
-# Prisma généré
-/src/generated/prisma
-
-# Build / cache
-dist/
-*.tsbuildinfo
-
-# Winston (conserver logs/.gitkeep)
-logs/*.log
+!env.prod.example

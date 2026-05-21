@@ -77,17 +77,20 @@ sudo apt install -y nodejs
 
 ### 2.2. Installation PostgreSQL (recommandé en prod)
 
+Guide détaillé (tuning, pool Prisma, maintenance) : **[POSTGRESQL_PRODUCTION.md](./POSTGRESQL_PRODUCTION.md)**.
+
 ```bash
 sudo apt install -y postgresql postgresql-contrib
 
-# Créer l'utilisateur et la base de données (remplacer YOUR_POSTGRES_PASSWORD par un mot de passe sécurisé)
-sudo -u postgres psql << EOF
-CREATE USER facturio WITH PASSWORD 'YOUR_POSTGRES_PASSWORD';
-CREATE DATABASE facturio OWNER facturio;
-EOF
+# Créer l'utilisateur et la base (éditer le mot de passe dans le script)
+sudo -u postgres psql -f /opt/facturio/scripts/deploy/postgresql/init-facturio.sql
 
-# Configurer l'authentification PostgreSQL
-sudo sed -i '1i host    facturio    facturio    127.0.0.1/32    md5' /etc/postgresql/*/main/pg_hba.conf
+# Tuning VPS 2 Go (adapter le chemin version PostgreSQL)
+sudo cp /opt/facturio/scripts/deploy/postgresql/facturio-tuning.conf \
+  /etc/postgresql/16/main/conf.d/99-facturio.conf
+
+# Authentification locale
+sudo sed -i '1i host    facturio    facturio    127.0.0.1/32    scram-sha-256' /etc/postgresql/*/main/pg_hba.conf
 sudo systemctl restart postgresql
 ```
 

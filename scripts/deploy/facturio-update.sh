@@ -54,6 +54,9 @@ CREATE INDEX IF NOT EXISTS "User_passwordResetToken_idx" ON "User"("passwordRese
 CREATE INDEX IF NOT EXISTS "User_emailVerificationToken_idx" ON "User"("emailVerificationToken");
 SQL
 
+sudo -u postgres psql -d facturio -v ON_ERROR_STOP=1 -f "$APP_DIR/scripts/deploy/postgresql/maintenance.sql" 2>/dev/null || \
+sudo -u postgres psql -d facturio -v ON_ERROR_STOP=1 -c 'ANALYZE;'
+
 npm run build:prod
 
 sudo systemctl restart "$SERVICE"
