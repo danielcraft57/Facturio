@@ -1,5 +1,6 @@
 import { IsArray, IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { normalizeTaxRateDecimal } from '../../common/tax-rate.util';
 // On évite de dépendre des enums Prisma côté DTO pour rester stable
 export const INVOICE_STATUS_VALUES = ['DRAFT','SENT','PAID','OVERDUE','CANCELLED'] as const;
 export type InvoiceStatusLiteral = typeof INVOICE_STATUS_VALUES[number];
@@ -17,6 +18,7 @@ class InvoiceLineDto {
 
 	@IsOptional()
 	@IsNumber()
+	@Transform(({ value }) => normalizeTaxRateDecimal(value))
 	taxRate?: number;
 }
 

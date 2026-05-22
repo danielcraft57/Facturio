@@ -1,9 +1,28 @@
 /** Documentation API publique Facturio (contenu structuré). */
 
+import { resolveApiBaseUrl } from '../../utils/resolveApiBaseUrl'
+
+/** Corrige d’anciennes bases documentées en /v1 au lieu de /api. */
+export function normalizeApiBaseUrl(base: string): string {
+  const trimmed = base.replace(/\/$/, '')
+  if (/\/v1$/i.test(trimmed)) return trimmed.replace(/\/v1$/i, '/api')
+  return trimmed
+}
+
+/** URL de base affichée dans la doc (alignée sur resolveApiBaseUrl + origine du navigateur). */
 export function getApiBaseUrl(): string {
-  const isDev = import.meta.env.DEV
-  if (isDev) return `${window.location.origin}/api`
-  return import.meta.env.VITE_API_URL || `${window.location.origin}/api`
+  const resolved = normalizeApiBaseUrl(resolveApiBaseUrl())
+  if (/^https?:\/\//i.test(resolved)) return resolved
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    const path = resolved.startsWith('/') ? resolved : `/${resolved}`
+    return `${window.location.origin}${path}`
+  }
+  return resolved || '/api'
+}
+
+export function formatDocUrl(base: string, path: string): string {
+  const p = path.startsWith('/') ? path : `/${path}`
+  return `${normalizeApiBaseUrl(base)}${p}`
 }
 
 export type ApiDocEndpoint = {
@@ -22,8 +41,12 @@ export type ApiDocSection = {
   body?: string
   scopes?: readonly string[]
   endpoints?: ApiDocEndpoint[]
-  example?: string
   exampleBody?: string
+  exampleCurl?: {
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+    path: string
+    sendExample?: { path: string; body: string }
+  }
   workflow?: { title: string; steps: string[] }
 }
 
@@ -51,56 +74,110 @@ export const API_ERROR_CODES = [
 export const API_WORKFLOWS = [
   {
     id: 'paid-external',
-    title: 'Facture déjà payée sur un autre site',
+    title: 'Commande déjà payée (autre site) + email justificatif',
     steps: [
-      'Créer un jeton avec factures.read, factures.write et factures.send.',
-      'POST /public/factures avec paidExternally: true, clientEmail et lines[].',
-      'Si l’email n’existe pas, Facturio crée automatiquement la fiche client (clientName optionnel).',
-      'POST /public/factures/:id/send avec { "email": "...", "updateClientEmail": true } pour envoyer le justificatif PDF.',
+      'Jeton avec factures.read, factures.write et factures.send.',
+      'POST /api/public/factures — paidExternally: true, clientEmail, lines[] (taxRate : 0.2 ou 20 pour 20 %).',
+      'Réponse : id, status PAID, balance 0.',
+      'POST /api/public/factures/:id/send — { "email": "…", "updateClientEmail": true }.',
+      'Réponse : emailSent true, alreadyPaid true (PDF sans lien de paiement).',
     ],
   },
   {
     id: 'classic',
-    title: 'Facture classique à encaisser',
+    title: 'Facture à encaisser + email avec lien de paiement',
     steps: [
-      'POST /public/clients ou réutiliser un client existant (GET /public/clients).',
-      'POST /public/factures avec clientId ou clientEmail + lines[].',
-      'POST /public/factures/:id/send — le client reçoit le PDF et le lien de paiement en ligne si Stripe est configuré.',
+      'POST /api/public/factures — clientId ou clientEmail + lines[] (sans paidExternally).',
+      'POST /api/public/factures/:id/send — le client reçoit le PDF ; lien Stripe si configuré.',
     ],
   },
 ] as const
 
+/** Sections affichées dans l’onglet Référence (sommaire + contenu). */
 export const API_DOC_SECTIONS: ApiDocSection[] = [
   {
     id: 'overview',
     title: 'Vue d’ensemble',
-    body: `L’API publique Facturio permet d’intégrer votre facturation (clients, produits, devis, factures) depuis un site e-commerce, un script ou un outil d’automatisation.
+    body: `L’API publique permet d’intégrer clients, produits, devis et factures (e-commerce, scripts, n8n…).
 
-Toutes les routes métier sont sous le préfixe \`/api/public/…\`. L’authentification se fait par jeton Bearer créé dans Paramètres → API — Jetons.
+• Préfixe : /api/public/…
+• Auth : Authorization: Bearer fact_… (jetons dans Paramètres → API — Jetons)
+• Format : JSON UTF-8
 
-Les liens client (consultation facture / devis par le destinataire) utilisent des routes séparées (\`/api/public/invoices/:token\`, \`/api/public/quotes/:token\`) et ne nécessitent pas votre jeton API.`,
+En local : base http://localhost:5173/api (proxy Vite → backend :3000). Copiez frontend/env.development.example vers .env. En production : https://votre-domaine/api.
+
+Les pages client (/public/invoices/:token, etc.) sont distinctes et ne utilisent pas le jeton API.`,
   },
   {
     id: 'auth',
     title: 'Authentification',
-    body: `1. Créez un jeton sur /parametres/tokens en cochant uniquement les permissions nécessaires.
-2. Copiez le jeton complet (préfixe fact_) — il n’est affiché qu’une fois.
-3. Ajoutez l’en-tête sur chaque requête :
+    body: `1. Créez un jeton avec les scopes minimaux nécessaires.
+2. Copiez le jeton fact_… (affiché une seule fois).
+3. En-tête obligatoire : Authorization: Bearer fact_VOTRE_JETON
 
-Authorization: Bearer fact_VOTRE_JETON
+Test : GET /api/public → résumé des ressources.`,
+    exampleCurl: { method: 'GET', path: '/public' },
+  },
+  {
+    id: 'paid-externe',
+    title: 'Paiement externe + envoi email',
+    scopes: ['factures.read', 'factures.write', 'factures.send'],
+    body: `Cas typique : commande réglée sur WooCommerce, Shopify, etc. Facturio enregistre la facture comme payée puis envoie le PDF par email.
 
-Test rapide : GET /api/public renvoie le résumé des ressources disponibles.`,
-    example: `curl -s -H "Authorization: Bearer fact_VOTRE_JETON" "${getApiBaseUrl()}/public"`,
+Étape A — créer la facture (paidExternally: true).
+Étape B — envoyer (remplacer :id par l’id renvoyé à l’étape A).
+
+taxRate : décimal 0.2 = 20 %. Un entier 20 est aussi accepté (converti en 0.2).
+
+Sous Windows, préférez un fichier JSON avec curl.exe -d @fichier.json ou PowerShell Invoke-RestMethod.`,
+    endpoints: [
+      {
+        method: 'POST',
+        path: '/public/factures',
+        scope: 'factures.write',
+        desc: 'Créer facture déjà payée',
+        requestBody: 'paidExternally, clientEmail, lines[], externalPaymentMethod (optionnel)',
+        responseHint: '201 — id, status PAID, balance 0',
+      },
+      {
+        method: 'POST',
+        path: '/public/factures/:id/send',
+        scope: 'factures.send',
+        desc: 'Envoyer le justificatif PDF',
+        requestBody: '{ "email": "client@exemple.com", "updateClientEmail": true }',
+        responseHint: 'emailSent, alreadyPaid: true',
+      },
+    ],
+    exampleBody: `{
+  "clientEmail": "client@boutique.fr",
+  "clientName": "Client Boutique",
+  "paidExternally": true,
+  "externalPaymentMethod": "WooCommerce",
+  "externalPaymentDate": "2026-05-22",
+  "currency": "EUR",
+  "lines": [
+    {
+      "description": "Commande #4521",
+      "quantity": 1,
+      "unitPrice": 149.99,
+      "taxRate": 0.2
+    }
+  ]
+}`,
+    exampleCurl: {
+      method: 'POST',
+      path: '/public/factures',
+      sendExample: {
+        path: '/public/factures/:id/send',
+        body: '{"email":"client@boutique.fr","updateClientEmail":true}',
+      },
+    },
+    workflow: API_WORKFLOWS[0],
   },
   {
     id: 'pagination',
     title: 'Pagination et recherche',
-    body: `Les listes (clients, factures, produits) acceptent les query params :
-
-• page (défaut 1)
-• pageSize ou limit (1–100, défaut 20)
-• search (texte libre selon la ressource)
-• sortBy, order / sortOrder (tri)
+    body: `Query params des listes : page (défaut 1), pageSize ou limit (1–100), search, sortBy, order.
 
 Exemple : GET /public/clients?page=1&pageSize=50&search=acme`,
   },
@@ -113,35 +190,19 @@ Exemple : GET /public/clients?page=1&pageSize=50&search=acme`,
         method: 'GET',
         path: '/public/clients',
         scope: 'clients.read',
-        desc: 'Liste paginée des clients de votre organisation',
+        desc: 'Liste paginée',
         queryParams: '?page=1&pageSize=20&search=…',
-        responseHint: '{ items, total, page, pageSize } ou tableau selon version',
       },
-      {
-        method: 'GET',
-        path: '/public/clients/:id',
-        scope: 'clients.read',
-        desc: 'Détail d’un client',
-      },
+      { method: 'GET', path: '/public/clients/:id', scope: 'clients.read', desc: 'Détail' },
       {
         method: 'POST',
         path: '/public/clients',
         scope: 'clients.write',
-        desc: 'Créer un client',
-        requestBody: '{ "name": "Acme", "email": "contact@acme.fr", "countryCode": "FR" }',
+        desc: 'Créer',
+        requestBody: '{ "name", "email", "countryCode" }',
       },
-      {
-        method: 'PATCH',
-        path: '/public/clients/:id',
-        scope: 'clients.write',
-        desc: 'Mettre à jour un client',
-      },
-      {
-        method: 'DELETE',
-        path: '/public/clients/:id',
-        scope: 'clients.write',
-        desc: 'Supprimer un client (si aucune facture bloquante)',
-      },
+      { method: 'PATCH', path: '/public/clients/:id', scope: 'clients.write', desc: 'Modifier' },
+      { method: 'DELETE', path: '/public/clients/:id', scope: 'clients.write', desc: 'Supprimer' },
     ],
     exampleBody: `{
   "name": "Société Dupont",
@@ -149,6 +210,7 @@ Exemple : GET /public/clients?page=1&pageSize=50&search=acme`,
   "isCompany": true,
   "countryCode": "FR"
 }`,
+    exampleCurl: { method: 'POST', path: '/public/clients' },
   },
   {
     id: 'produits',
@@ -159,150 +221,101 @@ Exemple : GET /public/clients?page=1&pageSize=50&search=acme`,
         method: 'GET',
         path: '/public/produits',
         scope: 'produits.read',
-        desc: 'Catalogue produits / prestations',
+        desc: 'Catalogue',
         queryParams: '?page=1&search=…',
       },
-      {
-        method: 'GET',
-        path: '/public/produits/:id',
-        scope: 'produits.read',
-        desc: 'Détail produit',
-      },
+      { method: 'GET', path: '/public/produits/:id', scope: 'produits.read', desc: 'Détail' },
       {
         method: 'POST',
         path: '/public/produits',
         scope: 'produits.write',
-        desc: 'Créer un produit',
-        requestBody: '{ "name": "Audit SEO", "unitPrice": 800, "kind": "SERVICE" }',
+        desc: 'Créer',
+        requestBody: '{ "name", "unitPrice", "kind": "SERVICE" }',
       },
-      {
-        method: 'PATCH',
-        path: '/public/produits/:id',
-        scope: 'produits.write',
-        desc: 'Modifier un produit',
-      },
-      {
-        method: 'DELETE',
-        path: '/public/produits/:id',
-        scope: 'produits.write',
-        desc: 'Supprimer un produit',
-      },
+      { method: 'PATCH', path: '/public/produits/:id', scope: 'produits.write', desc: 'Modifier' },
+      { method: 'DELETE', path: '/public/produits/:id', scope: 'produits.write', desc: 'Supprimer' },
     ],
   },
   {
     id: 'factures',
     title: 'Factures',
     scopes: ['factures.read', 'factures.write', 'factures.send'],
-    body: `Création : fournissez clientId **ou** clientEmail. Si l’email n’existe pas, une fiche client est créée (clientName recommandé).
+    body: `clientId ou clientEmail (crée la fiche si besoin). paidExternally: true → PAID, solde 0.
 
-paidExternally: true enregistre la facture comme déjà payée (solde 0, paiement externe tracé).
-
-taxRate sur chaque ligne : décimal (0.2 = 20 %).`,
+Voir aussi la section « Paiement externe + envoi email » pour le parcours complet en deux requêtes.`,
     endpoints: [
       {
         method: 'GET',
         path: '/public/factures',
         scope: 'factures.read',
-        desc: 'Liste des factures',
-        queryParams: '?page=1&pageSize=20&search=…&sortBy=date&order=desc',
+        desc: 'Liste',
+        queryParams: '?page=1&pageSize=20',
       },
-      {
-        method: 'GET',
-        path: '/public/factures/:id',
-        scope: 'factures.read',
-        desc: 'Détail (lignes, client, totaux, statut)',
-      },
+      { method: 'GET', path: '/public/factures/:id', scope: 'factures.read', desc: 'Détail' },
       {
         method: 'POST',
         path: '/public/factures',
         scope: 'factures.write',
-        desc: 'Créer une facture',
-        requestBody: 'Voir exemple ci-dessous',
+        desc: 'Créer',
+        requestBody: 'clientEmail ou clientId, lines[], paidExternally (optionnel)',
       },
-      {
-        method: 'PATCH',
-        path: '/public/factures/:id',
-        scope: 'factures.write',
-        desc: 'Modifier une facture (souvent brouillon)',
-      },
+      { method: 'PATCH', path: '/public/factures/:id', scope: 'factures.write', desc: 'Modifier' },
       {
         method: 'POST',
         path: '/public/factures/:id/send',
         scope: 'factures.send',
         desc: 'Envoyer par email',
-        requestBody: '{ "email": "client@exemple.com", "updateClientEmail": true }',
-        responseHint: '{ emailSent, sentTo, publicUrl, alreadyPaid }',
+        requestBody: '{ "email", "updateClientEmail": true }',
+        responseHint: '{ emailSent, sentTo, alreadyPaid }',
       },
     ],
     exampleBody: `{
-  "clientEmail": "client@boutique.fr",
-  "clientName": "Client Boutique",
-  "paidExternally": true,
-  "externalPaymentMethod": "WooCommerce",
-  "externalPaymentDate": "2026-05-20",
-  "dueDate": "2026-06-30",
-  "currency": "EUR",
+  "clientEmail": "client@exemple.com",
+  "clientName": "Client Exemple",
   "lines": [
-    {
-      "description": "Commande #4521",
-      "quantity": 1,
-      "unitPrice": 149.99,
-      "taxRate": 0.2
-    }
+    { "description": "Prestation", "quantity": 1, "unitPrice": 100, "taxRate": 0.2 }
   ]
 }`,
-    workflow: API_WORKFLOWS[0],
+    exampleCurl: {
+      method: 'POST',
+      path: '/public/factures',
+      sendExample: {
+        path: '/public/factures/:id/send',
+        body: '{"email":"client@exemple.com","updateClientEmail":true}',
+      },
+    },
   },
   {
     id: 'devis',
     title: 'Devis',
     scopes: ['devis.read', 'devis.write', 'devis.send'],
     endpoints: [
-      {
-        method: 'GET',
-        path: '/public/devis',
-        scope: 'devis.read',
-        desc: 'Liste des devis',
-      },
-      {
-        method: 'GET',
-        path: '/public/devis/:id',
-        scope: 'devis.read',
-        desc: 'Détail devis + lignes',
-      },
+      { method: 'GET', path: '/public/devis', scope: 'devis.read', desc: 'Liste' },
+      { method: 'GET', path: '/public/devis/:id', scope: 'devis.read', desc: 'Détail' },
       {
         method: 'POST',
         path: '/public/devis',
         scope: 'devis.write',
-        desc: 'Créer un devis',
-        requestBody: '{ "clientId": 1, "lines": […], "expiryDate": "2026-07-01" }',
+        desc: 'Créer',
+        requestBody: '{ "clientId", "lines", "expiryDate" }',
       },
-      {
-        method: 'PATCH',
-        path: '/public/devis/:id',
-        scope: 'devis.write',
-        desc: 'Modifier un devis',
-      },
+      { method: 'PATCH', path: '/public/devis/:id', scope: 'devis.write', desc: 'Modifier' },
       {
         method: 'POST',
         path: '/public/devis/:id/send',
         scope: 'devis.send',
-        desc: 'Envoyer par email (liens accepter / refuser)',
-        requestBody: '{ "email": "client@exemple.com" }',
+        desc: 'Envoyer (accepter / refuser)',
+        requestBody: '{ "email" }',
       },
     ],
     exampleBody: `{
   "clientId": 1,
   "expiryDate": "2026-07-15",
   "lines": [
-    { "description": "Développement site", "quantity": 1, "unitPrice": 2500, "taxRate": 0.2 }
+    { "description": "Développement", "quantity": 1, "unitPrice": 2500, "taxRate": 0.2 }
   ]
 }`,
-  },
-  {
-    id: 'errors',
-    title: 'Codes d’erreur HTTP',
-    body: 'Réponses JSON avec message explicite (NestJS). En cas de 401 sur une route protégée par session, vérifiez que vous appelez bien /api/public/… avec le jeton API.',
+    exampleCurl: { method: 'POST', path: '/public/devis' },
   },
 ]
 
@@ -312,11 +325,14 @@ export function buildCurlExample(
   body?: string,
   base = getApiBaseUrl(),
 ): string {
-  const url = `${base}${path}`
+  const url = formatDocUrl(base, path)
   const headers = `-H "Authorization: Bearer fact_VOTRE_JETON"`
   if (method === 'GET' || method === 'DELETE') {
-    return `curl -X ${method} ${headers} "${url}"`
+    return `curl -s -X ${method} ${headers} "${url}"`
   }
-  const data = body ? ` \\\n  -H "Content-Type: application/json" \\\n  -d '${body.replace(/\n/g, '').replace(/\s+/g, ' ')}'` : ''
-  return `curl -X ${method} ${headers}${data} "${url}"`
+  const compact = body ? body.replace(/\n/g, '').replace(/\s+/g, ' ') : ''
+  const data = compact
+    ? ` -H "Content-Type: application/json" -d '${compact}'`
+    : ''
+  return `curl -s -X ${method} ${headers}${data} "${url}"`
 }
