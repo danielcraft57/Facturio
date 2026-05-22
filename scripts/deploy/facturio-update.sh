@@ -165,8 +165,8 @@ if [ "$RUN_FRONTEND" = true ]; then
 		export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=768}"
 		npm run build
 		test -f dist/index.html
-		sudo chown -R www-data:www-data dist 2>/dev/null || true
-		sudo chmod -R 755 dist
+		sudo chown -R "${DEPLOY_USER}:${DEPLOY_USER}" dist 2>/dev/null || chown -R "${DEPLOY_USER}:${DEPLOY_USER}" dist
+		chmod -R a+rX dist 2>/dev/null || sudo chmod -R a+rX dist
 		NEED_RESTART=true
 		;;
 	skip)
