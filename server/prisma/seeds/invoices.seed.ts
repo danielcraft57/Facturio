@@ -1,5 +1,5 @@
 import { PrismaClient, InvoiceStatus } from '@prisma/client';
-import type { SeedContext } from './base.seed';
+import { daysFromNow, documentFolderFields } from './document-folder.seed';
 
 function getYear(): number {
 	return new Date().getFullYear();
@@ -27,9 +27,15 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 	];
 	const t1 = computeTotals(inv1Lines);
 	const inv1Number = `FAC-${year}-${String(invoiceCounter++).padStart(4, '0')}`;
+	const inv1Mb = documentFolderFields({
+		starred: true,
+		seenAt: new Date(year, 0, 16),
+		sentAt: new Date(year, 0, 15),
+		tags: ['vip', 'comptabilité'],
+	});
 	const inv1 = await prisma.invoice.upsert({
 		where: { number: inv1Number },
-		update: {},
+		update: inv1Mb,
 		create: {
 			number: inv1Number,
 			clientId: clients[0].id, // ACME France
@@ -41,6 +47,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 			total: t1.total,
 			balance: 0,
 			currency: 'EUR',
+			...inv1Mb,
 			lines: {
 				create: inv1Lines.map(l => ({
 					...l,
@@ -62,9 +69,15 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 	const inv2Lines = [{ description: 'Consulting stratégie', quantity: 10, unitPrice: 200, taxRate: 0 }];
 	const t2 = computeTotals(inv2Lines);
 	const inv2Number = `FAC-${year}-${String(invoiceCounter++).padStart(4, '0')}`;
+	const inv2Mb = documentFolderFields({
+		important: true,
+		seenAt: new Date(year, 1, 12),
+		sentAt: new Date(year, 1, 10),
+		tags: ['relance'],
+	});
 	await prisma.invoice.upsert({
 		where: { number: inv2Number },
-		update: {},
+		update: inv2Mb,
 		create: {
 			number: inv2Number,
 			clientId: clients[1].id, // EU GmbH
@@ -77,6 +90,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 			balance: t2.total,
 			currency: 'EUR',
 			legalMention: 'Autoliquidation de la TVA - article 283-2 du CGI',
+			...inv2Mb,
 			lines: {
 				create: inv2Lines.map(l => ({
 					...l,
@@ -91,14 +105,16 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 	const inv3Lines = [{ description: 'Application mobile iOS', quantity: 1, unitPrice: 5000, taxRate: 0 }];
 	const t3 = computeTotals(inv3Lines);
 	const inv3Number = `FAC-${year}-${String(invoiceCounter++).padStart(4, '0')}`;
+	const inv3Mb = documentFolderFields({ seenAt: null, tags: [] });
 	await prisma.invoice.upsert({
 		where: { number: inv3Number },
-		update: {},
+		update: inv3Mb,
 		create: {
 			number: inv3Number,
 			clientId: clients[2].id, // US Corp
 			status: InvoiceStatus.DRAFT,
 			date: new Date(year, 1, 20),
+			...inv3Mb,
 			subtotal: t3.subtotal,
 			tax: t3.tax,
 			total: t3.total,
@@ -122,15 +138,21 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 	];
 	const t4 = computeTotals(inv4Lines);
 	const inv4Number = `FAC-${year}-${String(invoiceCounter++).padStart(4, '0')}`;
+	const inv4Mb = documentFolderFields({
+		seenAt: null,
+		sentAt: new Date(year, 2, 5),
+		tags: ['e-commerce'],
+	});
 	await prisma.invoice.upsert({
 		where: { number: inv4Number },
-		update: {},
+		update: inv4Mb,
 		create: {
 			number: inv4Number,
 			clientId: clients[3].id, // Jean Client
 			status: InvoiceStatus.SENT,
 			date: new Date(year, 2, 5),
 			dueDate: new Date(year, 3, 5),
+			...inv4Mb,
 			subtotal: t4.subtotal,
 			tax: t4.tax,
 			total: t4.total,
@@ -150,14 +172,19 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 	const inv5Lines = [{ description: 'Audit fiscal', quantity: 1, unitPrice: 150, taxRate: 0 }];
 	const t5 = computeTotals(inv5Lines);
 	const inv5Number = `FAC-${year}-${String(invoiceCounter++).padStart(4, '0')}`;
+	const inv5Mb = documentFolderFields({
+		seenAt: new Date(year, 2, 16),
+		sentAt: new Date(year, 2, 15),
+	});
 	await prisma.invoice.upsert({
 		where: { number: inv5Number },
-		update: {},
+		update: inv5Mb,
 		create: {
 			number: inv5Number,
 			clientId: clients[4].id, // Exempt SARL
 			status: InvoiceStatus.PAID,
 			date: new Date(year, 2, 15),
+			...inv5Mb,
 			subtotal: t5.subtotal,
 			tax: t5.tax,
 			total: t5.total,
@@ -178,15 +205,24 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 	const inv6Lines = [{ description: 'Maintenance annuelle', quantity: 1, unitPrice: 1200, taxRate: 0.2 }];
 	const t6 = computeTotals(inv6Lines);
 	const inv6Number = `FAC-${year}-${String(invoiceCounter++).padStart(4, '0')}`;
+	const inv6Mb = documentFolderFields({
+		starred: true,
+		important: true,
+		seenAt: new Date(year, 0, 11),
+		sentAt: new Date(year, 0, 10),
+		snoozedUntil: daysFromNow(3),
+		tags: ['urgent', 'relance'],
+	});
 	await prisma.invoice.upsert({
 		where: { number: inv6Number },
-		update: {},
+		update: inv6Mb,
 		create: {
 			number: inv6Number,
 			clientId: clients[5].id, // TechCorp Belgium
 			status: InvoiceStatus.OVERDUE,
 			date: new Date(year, 0, 10),
 			dueDate: new Date(year, 1, 10),
+			...inv6Mb,
 			subtotal: t6.subtotal,
 			tax: t6.tax,
 			total: t6.total,
@@ -209,15 +245,21 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 	];
 	const t7 = computeTotals(inv7Lines);
 	const inv7Number = `FAC-${year}-${String(invoiceCounter++).padStart(4, '0')}`;
+	const inv7Mb = documentFolderFields({
+		seenAt: new Date(year, 2, 2),
+		sentAt: new Date(year, 2, 1),
+		tags: ['vip'],
+	});
 	const inv7 = await prisma.invoice.upsert({
 		where: { number: inv7Number },
-		update: {},
+		update: inv7Mb,
 		create: {
 			number: inv7Number,
 			clientId: clients[6].id, // Startup Innovante
 			status: InvoiceStatus.SENT,
 			date: new Date(year, 2, 1),
 			dueDate: new Date(year, 3, 1),
+			...inv7Mb,
 			subtotal: t7.subtotal,
 			tax: t7.tax,
 			total: t7.total,
@@ -239,6 +281,41 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 			data: { invoiceId: inv7.id, amount: 500, method: 'card', date: new Date(year, 2, 15) }
 		});
 	}
+
+	// Facture 8 : archivée (hors boîte active)
+	const inv8Lines = [{ description: 'Prestation 2024 — clôture', quantity: 1, unitPrice: 990, taxRate: 0.2 }];
+	const t8 = computeTotals(inv8Lines);
+	const inv8Number = `FAC-${year - 1}-${String(invoiceCounter++).padStart(4, '0')}`;
+	const inv8Mb = documentFolderFields({
+		seenAt: new Date(year - 1, 11, 20),
+		sentAt: new Date(year - 1, 11, 15),
+		archivedAt: new Date(year - 1, 11, 28),
+		tags: ['comptabilité'],
+	});
+	await prisma.invoice.upsert({
+		where: { number: inv8Number },
+		update: inv8Mb,
+		create: {
+			number: inv8Number,
+			clientId: clients[0].id,
+			status: InvoiceStatus.PAID,
+			date: new Date(year - 1, 11, 15),
+			dueDate: new Date(year - 1, 11, 30),
+			...inv8Mb,
+			subtotal: t8.subtotal,
+			tax: t8.tax,
+			total: t8.total,
+			balance: 0,
+			currency: 'EUR',
+			lines: {
+				create: inv8Lines.map((l) => ({
+					...l,
+					taxAmount: l.quantity * l.unitPrice * l.taxRate,
+					total: l.quantity * l.unitPrice * (1 + l.taxRate),
+				})),
+			},
+		},
+	});
 
 	// Mettre à jour le compteur
 	await prisma.counter.upsert({

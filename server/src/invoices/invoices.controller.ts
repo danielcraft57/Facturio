@@ -4,7 +4,7 @@ import { InvoiceSendService } from './invoice-send.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { SendInvoiceDto } from './dto/send-invoice.dto';
-import { ListQueryDto } from '../common/dto/list-query.dto';
+import { InvoiceListQueryDto, UpdateInvoiceDocumentFlagsDto } from './dto/invoice-document-folder.dto';
 import { Response } from 'express';
 import { PdfService } from '../common/pdf.service';
 import { EmailService } from '../common/email.service';
@@ -13,7 +13,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StripeService } from '../stripe/stripe.service';
 import { assertValidPublicToken } from './public-token.util';
 
-@Controller('invoices')
+@Controller(['invoices', 'factures'])
 export class InvoicesController {
 	constructor(
 		private readonly invoices: InvoicesService,
@@ -29,8 +29,18 @@ export class InvoicesController {
 	}
 
 	@Get()
-	findAll(@Query() query: ListQueryDto, @CurrentUser() user: any) {
+	findAll(@Query() query: InvoiceListQueryDto, @CurrentUser() user: any) {
 		return this.invoices.findAll(query, user.organizationId);
+	}
+
+	@Get('folder-counts')
+	getFolderCounts(@CurrentUser() user: any) {
+		return this.invoices.getFolderCounts(user.organizationId);
+	}
+
+	@Get('archives')
+	findArchived(@CurrentUser() user: any) {
+		return this.invoices.findArchivedGrouped(user.organizationId);
 	}
 
 	@Get(':id')
@@ -47,9 +57,28 @@ export class InvoicesController {
 		return this.invoices.update(id, data, user.organizationId);
 	}
 
+	@Patch(':id/document-flags')
+	updateDocumentFlags(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() body: UpdateInvoiceDocumentFlagsDto,
+		@CurrentUser() user: any,
+	) {
+		return this.invoices.updateDocumentFlags(id, body, user.organizationId);
+	}
+
+	@Post(':id/archive')
+	archive(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.invoices.archive(id, user.organizationId);
+	}
+
+	@Post(':id/restore')
+	restore(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.invoices.restore(id, user.organizationId);
+	}
+
 	@Delete(':id')
 	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.invoices.remove(id, user.organizationId);
+		return this.invoices.archive(id, user.organizationId);
 	}
 
 	@Get(':id/pdf')

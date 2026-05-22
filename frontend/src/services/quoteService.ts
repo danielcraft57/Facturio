@@ -7,6 +7,7 @@ import type {
   QuoteListResponse 
 } from '../types/quote';
 import type { ApiResponse } from '../types/api';
+import type { DocumentFolderCounts, DocumentFlags } from '../types/documentFolders';
 
 class QuoteService {
   private apiClient = ApiClient.getInstance();
@@ -14,6 +15,8 @@ class QuoteService {
   async getQuotes(filters?: QuoteFilters, page = 1, limit = 10): Promise<ApiResponse<QuoteListResponse>> {
     const params = new URLSearchParams();
     
+    if (filters?.folder) params.append('folder', filters.folder);
+    if (filters?.tag) params.append('tag', filters.tag);
     if (filters?.status) params.append('status', filters.status);
     if (filters?.clientId) params.append('clientId', filters.clientId.toString());
     if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
@@ -23,7 +26,15 @@ class QuoteService {
     params.append('page', page.toString());
     params.append('limit', limit.toString());
 
-    return this.apiClient.get<QuoteListResponse>(`/quotes?${params.toString()}`);
+    return this.apiClient.get<QuoteListResponse>(`/devis?${params.toString()}`);
+  }
+
+  async getFolderCounts(): Promise<ApiResponse<DocumentFolderCounts>> {
+    return this.apiClient.get<DocumentFolderCounts>('/devis/folder-counts');
+  }
+
+  async updateDocumentFlags(id: number, flags: DocumentFlags): Promise<ApiResponse<Quote>> {
+    return this.apiClient.patch<Quote>(`/devis/${id}/document-flags`, flags);
   }
 
   async getQuote(id: number): Promise<ApiResponse<Quote>> {
@@ -38,8 +49,21 @@ class QuoteService {
     return this.apiClient.patch<Quote>(`/quotes/${id}`, data);
   }
 
-  async deleteQuote(id: number): Promise<ApiResponse<boolean>> {
-    return this.apiClient.delete<boolean>(`/quotes/${id}`);
+  async archiveQuote(id: number): Promise<ApiResponse<{ success: boolean }>> {
+    return this.apiClient.post<{ success: boolean }>(`/devis/${id}/archive`, {});
+  }
+
+  async restoreQuote(id: number): Promise<ApiResponse<{ success: boolean }>> {
+    return this.apiClient.post<{ success: boolean }>(`/devis/${id}/restore`, {});
+  }
+
+  async getArchivedQuotes(): Promise<ApiResponse<unknown>> {
+    return this.apiClient.get('/devis/archives');
+  }
+
+  /** @deprecated Préférer archiveQuote */
+  async deleteQuote(id: number): Promise<ApiResponse<{ success: boolean }>> {
+    return this.archiveQuote(id);
   }
 
   async sendQuote(id: number): Promise<ApiResponse<Quote>> {

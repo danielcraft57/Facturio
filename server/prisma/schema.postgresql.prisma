@@ -379,11 +379,20 @@ model Invoice {
   eInvoiceStatus      EInvoiceStatus          @default(NOT_READY)
   eInvoiceGeneratedAt DateTime?
   eInvoiceXmlHash     String?
+  archivedAt          DateTime?
+  starred             Boolean                 @default(false)
+  important           Boolean                 @default(false)
+  snoozedUntil        DateTime?
+  seenAt              DateTime?
+  tags                String?
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
   @@index([status, date])
   @@index([clientId])
+  @@index([archivedAt])
+  @@index([starred])
+  @@index([important])
   @@index([number])
   @@index([organizationId])
   @@index([publicToken])
@@ -488,10 +497,19 @@ model Quote {
   views          QuoteView[]
   emailEvents      EmailEvent[]
   convertedInvoice Invoice?      @relation("QuoteToInvoice")
+  archivedAt       DateTime?
+  starred          Boolean       @default(false)
+  important        Boolean       @default(false)
+  snoozedUntil     DateTime?
+  seenAt           DateTime?
+  tags             String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
   @@index([organizationId])
+  @@index([archivedAt])
+  @@index([starred])
+  @@index([important])
 }
 
 model QuoteLine {

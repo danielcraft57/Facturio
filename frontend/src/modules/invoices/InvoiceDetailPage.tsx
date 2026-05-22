@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import {
   Box,
   Card,
@@ -39,8 +39,9 @@ import {
   Cancel,
   Receipt,
   NotificationsActive,
+  Unarchive,
 } from '@mui/icons-material'
-import { invoiceService, normalizeInvoiceFromApi, type Invoice } from '../../services/invoices'
+import { invoiceService, normalizeInvoiceFromApi, unwrapApiPayload, type Invoice } from '../../services/invoices'
 import { formatInvoiceSentAt, wasInvoiceEmailed } from './invoiceEmailUi'
 import { useToast } from '../../components/useToast'
 import { logActivity } from '../../utils/activity'
@@ -52,6 +53,7 @@ import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { EInvoicingReadinessPanel } from '../e-invoicing/EInvoicingReadinessPanel'
 import { useRealtimePanelHighlight } from '../../hooks/useRealtimeRowHighlight'
 import { getRealtimePanelSx } from '../../utils/realtimeRowHighlight'
+import { isDocumentFolder } from '../../types/documentFolders'
 
 interface Payment {
   id: number
@@ -102,6 +104,11 @@ export function InvoiceDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData stable enough
   }, [id])
 
+  useEffect(() => {
+    if (!invoice?.id || invoice.seenAt) return
+    void invoiceService.updateDocumentFlags(invoice.id, { markSeen: true })
+  }, [invoice?.id, invoice?.seenAt])
+
   const loadData = async () => {
     await Promise.all([loadInvoice(), loadPayments()])
   }
@@ -114,7 +121,7 @@ export function InvoiceDetailPage() {
       setError(null)
       apiClient.invalidateCache(`/invoices/${id}`)
       const response = await invoiceService.getInvoice(id)
-      const raw = (response as { data?: Record<string, unknown> }).data
+      const raw = unwrapApiPayload<Record<string, unknown>>(response)
       if (raw) {
         setInvoice(normalizeInvoiceFromApi(raw))
       }
@@ -271,6 +278,10 @@ export function InvoiceDetailPage() {
     }
   }
 
+  if (isDocumentFolder(id)) {
+    return <Navigate to={`/factures/${id}`} replace />
+  }
+
   if (loading) {
     return (
       <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
@@ -284,7 +295,7 @@ export function InvoiceDetailPage() {
       <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
         <Button
           startIcon={<ArrowBack />}
-          onClick={() => navigate('/factures')}
+          onClick={() => navigate('/factures/inbox')}
           sx={{ mb: 2 }}
         >
           Retour aux factures
@@ -299,14 +310,40 @@ export function InvoiceDetailPage() {
   // Calculer le montant restant
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0)
   const remainingAmount = invoice.total - totalPaid
+  const isArchived = Boolean(invoice.archivedAt)
+
+  const handleRestore = async () => {
+    if (!id) return
+    try {
+      await invoiceService.restoreInvoice(id)
+      apiClient.invalidateCache('/invoices')
+      toast.success('Facture restaurée')
+      await loadInvoice()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Restauration impossible')
+    }
+  }
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+      {isArchived && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" startIcon={<Unarchive />} onClick={handleRestore}>
+              Restaurer
+            </Button>
+          }
+        >
+          Cette facture est archivée. Elle n&apos;apparaît plus dans la liste active.
+        </Alert>
+      )}
       {/* En-tête avec actions */}
       <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
         <Button
           startIcon={<ArrowBack />}
-          onClick={() => navigate('/factures')}
+          onClick={() => navigate('/factures/inbox')}
         >
           Retour
         </Button>

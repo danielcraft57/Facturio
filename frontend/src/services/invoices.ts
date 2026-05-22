@@ -1,4 +1,5 @@
 import { apiClient, type ApiResponse } from './api'
+import type { DocumentFolder, DocumentFlags, DocumentFolderCounts } from '../types/documentFolders'
 
 // Types pour les factures
 export interface InvoiceItem {
@@ -23,7 +24,7 @@ export interface Invoice {
   }
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
   issueDate: string
-  dueDate: string
+  dueDate?: string
   items: InvoiceItem[]
   subtotal: number
   taxTotal: number
@@ -36,6 +37,12 @@ export interface Invoice {
   paidAt?: string
   /** Date du premier envoi email (ou dernier marquage « envoyée »). */
   sentAt?: string
+  archivedAt?: string
+  starred?: boolean
+  important?: boolean
+  snoozedUntil?: string
+  seenAt?: string
+  tags?: string[]
 }
 
 export interface CreateInvoiceData {
@@ -63,6 +70,8 @@ export interface UpdateInvoiceData extends Partial<CreateInvoiceData> {
 
 export interface InvoiceFilters {
   search?: string
+  folder?: DocumentFolder
+  tag?: string
   status?: Invoice['status']
   clientId?: string
   dateFrom?: string
@@ -87,6 +96,20 @@ export function unwrapApiPayload<T>(response: unknown): T {
   return (raw?.data ?? raw) as T
 }
 
+function parseTagsField(raw: unknown): string[] {
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw.map(String)
+  if (typeof raw === 'string') {
+    try {
+      const p = JSON.parse(raw)
+      return Array.isArray(p) ? p.filter((t) => typeof t === 'string') : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
 /** Normalise une facture renvoyée par l'API NestJS / Prisma. */
 export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
   const client = (raw.client as Record<string, unknown>) ?? {}
@@ -102,7 +125,7 @@ export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
     },
     status,
     issueDate: String(raw.date ?? raw.issueDate ?? new Date().toISOString()),
-    dueDate: String(raw.dueDate ?? ''),
+    dueDate: raw.dueDate ? String(raw.dueDate) : undefined,
     items: ((raw.lines as unknown[]) ?? (raw.items as unknown[]) ?? []).map((ln: unknown) => {
       const line = ln as Record<string, unknown>
       const qty = Number(line.quantity ?? 0)
@@ -129,6 +152,12 @@ export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
     updatedAt: String(raw.updatedAt ?? ''),
     paidAt: raw.paidAt ? String(raw.paidAt) : undefined,
     sentAt: raw.sentAt ? String(raw.sentAt) : undefined,
+    archivedAt: raw.archivedAt ? String(raw.archivedAt) : undefined,
+    starred: Boolean(raw.starred),
+    important: Boolean(raw.important),
+    snoozedUntil: raw.snoozedUntil ? String(raw.snoozedUntil) : undefined,
+    seenAt: raw.seenAt ? String(raw.seenAt) : undefined,
+    tags: parseTagsField(raw.tags),
   }
 }
 
@@ -174,6 +203,8 @@ export class InvoiceService {
     const params = new URLSearchParams()
     
     if (filters.search) params.append('search', filters.search)
+    if (filters.folder) params.append('folder', filters.folder)
+    if (filters.tag) params.append('tag', filters.tag)
     if (filters.status) params.append('status', filters.status)
     if (filters.clientId) params.append('clientId', filters.clientId)
     if (filters.dateFrom) params.append('dateFrom', filters.dateFrom)
@@ -184,9 +215,21 @@ export class InvoiceService {
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder)
 
     const queryString = params.toString()
-    const url = queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl
+    const url = queryString ? `/factures?${queryString}` : '/factures'
 
-    return apiClient.getCached<InvoiceListResponse>(url, 2 * 60 * 1000) // Cache 2 minutes
+    return apiClient.get<InvoiceListResponse>(url)
+  }
+
+  async getFolderCounts(): Promise<ApiResponse<DocumentFolderCounts>> {
+    return apiClient.get<DocumentFolderCounts>('/factures/folder-counts')
+  }
+
+  async updateDocumentFlags(id: string, flags: DocumentFlags): Promise<ApiResponse<Invoice>> {
+    const response = await apiClient.patch<Invoice>(`/factures/${id}/document-flags`, flags)
+    apiClient.invalidateCache('/factures')
+    apiClient.invalidateCache('/invoices')
+    apiClient.invalidateCache(`/factures/${id}`)
+    return response
   }
 
   // Récupérer une facture par ID
@@ -218,15 +261,32 @@ export class InvoiceService {
     return response
   }
 
-  // Supprimer une facture
-  async deleteInvoice(id: string): Promise<ApiResponse<void>> {
-    const response = await apiClient.delete<void>(`${this.baseUrl}/${id}`)
-    
-    // Invalider les caches
+  /** Archive une facture (ne supprime pas en base). */
+  async archiveInvoice(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    const response = await apiClient.post<{ success: boolean }>(`/factures/${id}/archive`, {})
     apiClient.invalidateCache('/invoices')
-    apiClient.invalidateCache(`/invoices/${id}`)
-    
+    apiClient.invalidateCache('/factures')
+    apiClient.invalidateCache(`/factures/${id}`)
+    apiClient.invalidateCache('/factures/archives')
     return response
+  }
+
+  async restoreInvoice(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    const response = await apiClient.post<{ success: boolean }>(`/factures/${id}/restore`, {})
+    apiClient.invalidateCache('/invoices')
+    apiClient.invalidateCache('/factures')
+    apiClient.invalidateCache(`/factures/${id}`)
+    apiClient.invalidateCache('/factures/archives')
+    return response
+  }
+
+  async getArchivedInvoices(): Promise<ApiResponse<unknown>> {
+    return apiClient.get('/factures/archives')
+  }
+
+  /** @deprecated Préférer archiveInvoice */
+  async deleteInvoice(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    return this.archiveInvoice(id)
   }
 
   // Envoyer une facture par email

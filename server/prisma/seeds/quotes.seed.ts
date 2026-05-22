@@ -1,4 +1,5 @@
 import { PrismaClient, QuoteStatus } from '@prisma/client';
+import { daysFromNow, documentFolderFields } from './document-folder.seed';
 
 /**
  * Devis d'exemple alignés sur les forfaits et descriptions du site V6 (danielcraft.fr).
@@ -43,13 +44,15 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 	const q1Number = `DEV-${year}-${String(quoteCounter++).padStart(4, '0')}`;
 	const s1 = V6_SERVICES.siteVitrine;
 	const t1 = { subtotal: s1.unitPrice, tax: s1.unitPrice * taxRate, total: s1.unitPrice * (1 + taxRate) };
+	const q1Mb = documentFolderFields({ seenAt: null, tags: [] });
 	await prisma.quote.upsert({
 		where: { number: q1Number },
-		update: {},
+		update: q1Mb,
 		create: {
 			number: q1Number,
 			clientId: clients[0].id,
 			status: QuoteStatus.DRAFT,
+			...q1Mb,
 			subtotal: t1.subtotal,
 			tax: t1.tax,
 			total: t1.total,
@@ -74,15 +77,21 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 	const q2Number = `DEV-${year}-${String(quoteCounter++).padStart(4, '0')}`;
 	const s2 = V6_SERVICES.automatisation;
 	const t2 = { subtotal: s2.unitPrice, tax: s2.unitPrice * taxRate, total: s2.unitPrice * (1 + taxRate) };
+	const q2Mb = documentFolderFields({
+		starred: true,
+		seenAt: new Date(year, 1, 11),
+		sentAt: new Date(year, 1, 10),
+		tags: ['e-commerce'],
+	});
 	const q2 = await prisma.quote.upsert({
 		where: { number: q2Number },
-		update: {},
+		update: q2Mb,
 		create: {
 			number: q2Number,
 			clientId: clients[3].id,
 			status: QuoteStatus.SENT,
-			sentAt: new Date(year, 1, 10),
 			publicToken,
+			...q2Mb,
 			subtotal: t2.subtotal,
 			tax: t2.tax,
 			total: t2.total,
@@ -120,15 +129,22 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 
 	// Devis 3: ACCEPTED - Audit & Optimisation 800€ (V6), client Exempt SARL
 	const q3Number = `DEV-${year}-${String(quoteCounter++).padStart(4, '0')}`;
+	const q3Mb = documentFolderFields({
+		important: true,
+		seenAt: new Date(year, 1, 21),
+		sentAt: new Date(year, 1, 18),
+		tags: ['vip'],
+	});
 	await prisma.quote.upsert({
 		where: { number: q3Number },
-		update: {},
+		update: q3Mb,
 		create: {
 			number: q3Number,
 			clientId: clients[4].id,
 			status: QuoteStatus.ACCEPTED,
 			acceptedAt: new Date(year, 1, 20),
 			acceptedIp: '192.168.1.100',
+			...q3Mb,
 			subtotal: V6_SERVICES.auditOptim.unitPrice,
 			tax: V6_SERVICES.auditOptim.unitPrice * taxRate,
 			total: V6_SERVICES.auditOptim.unitPrice * (1 + taxRate),
@@ -152,13 +168,15 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 	const q4Number = `DEV-${year}-${String(quoteCounter++).padStart(4, '0')}`;
 	const s4 = V6_SERVICES.siteVitrine;
 	const t4 = { subtotal: s4.unitPrice, tax: s4.unitPrice * taxRate, total: s4.unitPrice * (1 + taxRate) };
+	const q4Mb = documentFolderFields({ seenAt: new Date(year, 1, 5) });
 	await prisma.quote.upsert({
 		where: { number: q4Number },
-		update: {},
+		update: q4Mb,
 		create: {
 			number: q4Number,
 			clientId: clients[5].id,
 			status: QuoteStatus.REJECTED,
+			...q4Mb,
 			subtotal: t4.subtotal,
 			tax: t4.tax,
 			total: t4.total,
@@ -182,15 +200,21 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 	const q5Number = `DEV-${year}-${String(quoteCounter++).padStart(4, '0')}`;
 	const s5 = V6_SERVICES.automatisation;
 	const t5 = { subtotal: s5.unitPrice, tax: s5.unitPrice * taxRate, total: s5.unitPrice * (1 + taxRate) };
+	const q5Mb = documentFolderFields({
+		seenAt: new Date(year, 0, 2),
+		sentAt: new Date(year, 0, 1),
+		snoozedUntil: daysFromNow(5),
+		tags: ['relance'],
+	});
 	await prisma.quote.upsert({
 		where: { number: q5Number },
-		update: {},
+		update: q5Mb,
 		create: {
 			number: q5Number,
 			clientId: clients[6].id,
 			status: QuoteStatus.EXPIRED,
-			sentAt: new Date(year, 0, 1),
 			expiryDate: new Date(year, 0, 31),
+			...q5Mb,
 			subtotal: t5.subtotal,
 			tax: t5.tax,
 			total: t5.total,
@@ -220,13 +244,15 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 		const taxMaint = subMaint * taxRate;
 		const subtotal6 = subSite + subMaint;
 		const tax6 = taxSite + taxMaint;
+		const q6Mb = documentFolderFields({ starred: true, seenAt: null });
 		await prisma.quote.upsert({
 			where: { number: q6Number },
-			update: {},
+			update: q6Mb,
 			create: {
 				number: q6Number,
 				clientId: clients[8].id,
 				status: QuoteStatus.DRAFT,
+				...q6Mb,
 				subtotal: subtotal6,
 				tax: tax6,
 				total: subtotal6 + tax6,
@@ -255,6 +281,42 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 			}
 		});
 	}
+
+	// Devis archivé (démonstration Archives)
+	const qArchNumber = `DEV-${year - 1}-9999`;
+	const qArchMb = documentFolderFields({
+		seenAt: new Date(year - 1, 10, 1),
+		sentAt: new Date(year - 1, 9, 28),
+		archivedAt: new Date(year - 1, 10, 15),
+	});
+	const sArch = V6_SERVICES.siteVitrine;
+	const tArch = { subtotal: sArch.unitPrice, tax: sArch.unitPrice * taxRate, total: sArch.unitPrice * (1 + taxRate) };
+	await prisma.quote.upsert({
+		where: { number: qArchNumber },
+		update: qArchMb,
+		create: {
+			number: qArchNumber,
+			clientId: clients[0].id,
+			status: QuoteStatus.SENT,
+			...qArchMb,
+			subtotal: tArch.subtotal,
+			tax: tArch.tax,
+			total: tArch.total,
+			lines: {
+				create: [
+					{
+						productId: products?.siteVitrine?.id ?? null,
+						description: sArch.description,
+						quantity: 1,
+						unitPrice: sArch.unitPrice,
+						taxRate,
+						taxAmount: tArch.tax,
+						total: tArch.total,
+					},
+				],
+			},
+		},
+	});
 
 	await prisma.counter.upsert({
 		where: { scope: `quote-${year}` },

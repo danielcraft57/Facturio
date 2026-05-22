@@ -9,30 +9,48 @@ Historique **séparé** de `prisma/migrations/` (SQLite, développement local).
 
 ## Commandes
 
-Toujours depuis **`/opt/facturio/server`** (pas la racine du repo). Utiliser le Prisma du projet (`npm run`), pas `npx prisma` à la racine (installerait Prisma 7).
+Toujours depuis **`server/`**. Utiliser les scripts npm (Prisma 6 du projet).
 
 ```bash
-cd /opt/facturio/server
+cd server
 
-# Déployer les migrations sur prod (automatique via facturio-update.sh)
+# Déployer (avec baseline auto si P3005)
+npm run migrate:setup:prod
+
+# Déployer seulement (historique déjà baseline)
 npm run migrate:prod
 
-# Créer une nouvelle migration après modification du schéma
+# Nouvelle migration après modification du schéma
 npm run migrate:prod:dev -- --name description_du_changement
 ```
 
-## Première fois sur une base déjà en prod (manuel SQL déjà fait)
-
-Si `migrate deploy` échoue car la migration initiale est déjà appliquée à la main :
+## Erreur P3005 (base prod déjà remplie sans `_prisma_migrations`)
 
 ```bash
-cd /opt/facturio/server
+cd server
+npm run migrate:baseline:prod
+npm run migrate:prod
+```
+
+Ou une seule commande : `npm run migrate:setup:prod`
+
+Si tout le schéma est déjà appliqué à la main :
+
+```bash
+npm run migrate:baseline:prod:all
+npm run migrate:prod
+```
+
+## Première fois — migration initiale déjà appliquée à la main
+
+```bash
 npx prisma migrate resolve --applied 20260522120000_incremental_prod_sync \
   --schema=prisma/postgresql/schema.prisma
+npm run migrate:prod
 ```
 
 ## Développement local
 
-Reste sur SQLite : `prisma/schema.prisma` + `npx prisma migrate dev` ou `db push`.
+SQLite : voir `prisma/MIGRATIONS.md` — `npm run migrate:setup`, `npm run migrate:dev`.
 
-Après changement du modèle, mettre à jour **les deux** schémas (`schema.prisma` et `postgresql/schema.prisma`) ou les garder synchronisés.
+Après changement du modèle, mettre à jour **les deux** schémas (`schema.prisma` et `postgresql/schema.prisma`) et ajouter une migration dans **chaque** dossier `migrations/`.

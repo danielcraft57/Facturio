@@ -1,5 +1,12 @@
 import { PrismaClient } from '@prisma/client';
-import { purgeAll, seedTaxRates, seedChartOfAccounts, seedDefaultUser, type SeedContext } from './seeds/base.seed';
+import {
+	purgeAll,
+	seedTaxRates,
+	seedChartOfAccounts,
+	seedDefaultUser,
+	seedApiAccessToken,
+	type SeedContext,
+} from './seeds/base.seed';
 import { seedProducts, seedPlans } from './seeds/products.seed';
 import { seedClients } from './seeds/clients.seed';
 import { seedInvoices } from './seeds/invoices.seed';
@@ -40,6 +47,10 @@ async function main(): Promise<void> {
 	// 0. Utilisateur et organisation par défaut (premier compte après seed)
 	console.log('👤 Vérification utilisateur par défaut...');
 	await seedDefaultUser(prisma);
+	const defaultOrg = await prisma.organization.findFirst();
+	if (defaultOrg) {
+		await seedApiAccessToken(prisma, defaultOrg.id);
+	}
 	console.log('✅ Utilisateur par défaut prêt\n');
 
 	// 1. Taux de TVA
@@ -59,7 +70,6 @@ async function main(): Promise<void> {
 	console.log('✅ Produits et plans créés\n');
 
 	// 4. Clients (rattachés à l'organisation par défaut pour que le backend les retourne)
-	const defaultOrg = await prisma.organization.findFirst();
 	console.log('👥 Seeds des clients...');
 	const clients = await seedClients(prisma, { def10Id: taxIds.def10Id, organizationId: defaultOrg?.id });
 	console.log(`✅ ${clients.length} clients créés\n`);
@@ -72,12 +82,12 @@ async function main(): Promise<void> {
 	// 6. Factures et paiements
 	console.log('🧾 Seeds des factures et paiements...');
 	await seedInvoices(prisma, clients, Object.values(products));
-	console.log('✅ Factures et paiements créés\n');
+	console.log('✅ Factures et paiements créés (dossiers Gmail : nouveau, suivi, attente, important, archivé…)\n');
 
 	// 7. Devis (liés aux clients et produits V6)
 	console.log('📄 Seeds des devis...');
 	await seedQuotes(prisma, clients, products);
-	console.log('✅ Devis créés\n');
+	console.log('✅ Devis créés (boîte + 1 devis archivé)\n');
 
 	// 8. Déclarations
 	console.log('📋 Seeds des déclarations...');

@@ -51,11 +51,11 @@ export const navGroups: NavGroup[] = [
     id: 'commercial',
     label: 'Commercial',
     overview: 'Clients, devis, factures et catalogue — le cœur de votre activité.',
-    overviewCta: { label: 'Voir les factures', to: '/factures' },
+    overviewCta: { label: 'Voir les factures', to: '/factures/inbox' },
     featured: {
       title: 'Créer une facture',
       description: 'Émettez et envoyez une facture en quelques clics, avec relance intégrée.',
-      to: '/factures',
+      to: '/factures/inbox',
       cta: 'Nouvelle facture',
       icon: <AddCircleOutlineIcon />,
       accent: 'navy',
@@ -68,13 +68,13 @@ export const navGroups: NavGroup[] = [
         icon: <PeopleIcon fontSize="small" />,
       },
       {
-        to: '/devis',
+        to: '/devis/inbox',
         label: 'Devis',
         description: 'Propositions commerciales',
         icon: <DescriptionIcon fontSize="small" />,
       },
       {
-        to: '/factures',
+        to: '/factures/inbox',
         label: 'Factures',
         description: 'Émission, envoi et relances',
         icon: <ReceiptLongIcon fontSize="small" />,
@@ -152,6 +152,8 @@ export const allNavItems: NavItem[] = [
 export function isNavActive(pathname: string, to: string): boolean {
   if (to === '/dashboard') return pathname === '/dashboard' || pathname === '/'
   if (to === '/parametres') return pathname === '/parametres' || pathname.startsWith('/parametres/')
+  if (to.startsWith('/factures')) return pathname.startsWith('/factures')
+  if (to.startsWith('/devis')) return pathname.startsWith('/devis')
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 

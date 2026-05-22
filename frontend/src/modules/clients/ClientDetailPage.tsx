@@ -255,7 +255,7 @@ export function ClientDetailPage() {
         <Button
           variant="contained"
           startIcon={<Receipt />}
-          onClick={() => navigate(`/factures/new?clientId=${id}`)}
+          onClick={() => navigate(`/factures/inbox?create=1&clientId=${id}`)}
         >
           Nouvelle facture
         </Button>
@@ -447,7 +447,7 @@ export function ClientDetailPage() {
                           <TableCell align="center">
                             <IconButton
                               size="small"
-                              onClick={() => navigate(`/devis/${quote.id}`)}
+                              onClick={() => navigate(`/devis/inbox?quoteId=${quote.id}`)}
                             >
                               <Description />
                             </IconButton>
@@ -526,7 +526,7 @@ export function ClientDetailPage() {
                     fullWidth
                     variant="outlined"
                     startIcon={<Receipt />}
-                    onClick={() => navigate(`/factures/new?clientId=${id}`)}
+                    onClick={() => navigate(`/factures/inbox?create=1&clientId=${id}`)}
                   >
                     Créer une facture
                   </Button>
@@ -534,7 +534,7 @@ export function ClientDetailPage() {
                     fullWidth
                     variant="outlined"
                     startIcon={<Description />}
-                    onClick={() => navigate(`/devis/new?clientId=${id}`)}
+                    onClick={() => navigate(`/devis/inbox?create=1&clientId=${id}`)}
                   >
                     Créer un devis
                   </Button>

@@ -38,6 +38,7 @@ interface CreateQuoteDialogProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: { clientId: number; expiryDate?: string; lines: CreateQuoteLineData[] }) => void;
+  defaultClientId?: number | string;
 }
 
 interface ClientOption {
@@ -45,7 +46,7 @@ interface ClientOption {
   name: string;
 }
 
-export function CreateQuoteDialog({ open, onClose, onSubmit }: CreateQuoteDialogProps) {
+export function CreateQuoteDialog({ open, onClose, onSubmit, defaultClientId }: CreateQuoteDialogProps) {
   const productsStore = useProductsStore();
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,12 +59,21 @@ export function CreateQuoteDialog({ open, onClose, onSubmit }: CreateQuoteDialog
 
   useEffect(() => {
     if (open) {
+      const parsedClientId =
+        defaultClientId !== undefined && defaultClientId !== ''
+          ? Number(defaultClientId)
+          : '';
+      setFormData({
+        clientId: Number.isFinite(parsedClientId) ? parsedClientId : '',
+        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        lines: [{ description: '', quantity: 1, unitPrice: 0, taxRate: 0.2 }],
+      });
       loadClients();
       if (productsStore.isStale || productsStore.products.length === 0) {
         productsStore.fetchProducts();
       }
     }
-  }, [open]);
+  }, [open, defaultClientId]);
 
   const loadClients = async () => {
     try {

@@ -73,6 +73,7 @@ interface CreateInvoiceDialogProps {
   onClose: () => void
   onSubmit: (data: CreateInvoiceData) => void | Promise<void>
   submitting?: boolean
+  defaultClientId?: string
 }
 
 function createEmptyInvoiceForm(): CreateInvoiceData {
@@ -87,7 +88,13 @@ function createEmptyInvoiceForm(): CreateInvoiceData {
   }
 }
 
-export function CreateInvoiceDialog({ open, onClose, onSubmit, submitting = false }: CreateInvoiceDialogProps) {
+export function CreateInvoiceDialog({
+  open,
+  onClose,
+  onSubmit,
+  submitting = false,
+  defaultClientId,
+}: CreateInvoiceDialogProps) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   
@@ -103,10 +110,13 @@ export function CreateInvoiceDialog({ open, onClose, onSubmit, submitting = fals
 
   useEffect(() => {
     if (open) {
-      setFormData(createEmptyInvoiceForm())
+      setFormData({
+        ...createEmptyInvoiceForm(),
+        ...(defaultClientId ? { clientId: defaultClientId } : {}),
+      })
       loadClients()
     }
-  }, [open])
+  }, [open, defaultClientId])
 
   useEffect(() => {
     if (!emailNorm) {

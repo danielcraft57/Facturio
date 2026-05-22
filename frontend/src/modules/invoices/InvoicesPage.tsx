@@ -1,43 +1,30 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Box,
   Card,
   CardContent,
   Typography,
   Button,
-  TextField,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
   Chip,
   Stack,
-  Avatar,
   useTheme,
   useMediaQuery,
   CircularProgress,
   Alert,
 } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 import {
   Add,
-  Search,
-  FilterList,
-  Edit,
-  Visibility,
-  Send,
-  MarkEmailRead,
-  Download,
-  NotificationsActive,
 } from '@mui/icons-material'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { financeOutlinedButtonSx } from '../../components/finance/financeStyles'
 import { logActivity } from '../../utils/activity'
 import { apiClient } from '../../services/api'
 import {
@@ -49,47 +36,104 @@ import {
 } from '../../services/invoices'
 import type { CreateInvoiceData, Invoice } from '../../services/invoices'
 import { useToast } from '../../components/useToast'
-import { PageHeader } from '../../components/finance/PageHeader'
+import { DocumentFolderPageShell } from '../../components/finance/DocumentFolderPageShell'
 import {
   financeCardSx,
-  financePagePadding,
   financePrimaryButtonSx,
   financeTableHeadSx,
   financeTableSx,
 } from '../../components/finance/financeStyles'
-import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
+import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton'
+import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { CreateInvoiceDialog } from './components/CreateInvoiceDialog'
+import { InvoiceFolderMobileList } from './components/InvoiceFolderMobileList'
+import { InvoiceRowActionsMenu } from './components/InvoiceRowActionsMenu'
 import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInvoiceDialog'
 import { useRealtimeRowHighlight } from '../../hooks/useRealtimeRowHighlight'
 import { getRealtimeRowSx } from '../../utils/realtimeRowHighlight'
-import { invoiceEmailSentTitle, wasInvoiceEmailed } from './invoiceEmailUi'
+import { DocumentFolderRowActions } from '../../components/finance/DocumentFolderRowActions'
+import { DocumentTagsEditor } from '../../components/finance/DocumentTagsEditor'
+import {
+  isDocumentFolder,
+  DOCUMENT_FOLDER_LABELS,
+  sortOutgoingNewestFirst,
+  type DocumentFolderCounts,
+  type DocumentFolder,
+} from '../../types/documentFolders'
+import {
+  documentFolderPageSubtitle,
+  documentFolderTableCardSx,
+  documentFolderTableCardWrapSx,
+  documentFolderTableContainerSx,
+  documentFolderTableSx,
+  documentFolderUnreadRowSx,
+  folderColHideBelowLg,
+  folderColHideBelowXl,
+} from '../../components/finance/documentFolderStyles'
+
+const EMPTY_COUNTS: DocumentFolderCounts = {
+  inbox: 0,
+  nouveau: 0,
+  suivi: 0,
+  attente: 0,
+  important: 0,
+  envoyes: 0,
+  brouillons: 0,
+}
 
 export function InvoicesPage() {
+  const { folder: folderParam } = useParams<{ folder?: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeFolder: DocumentFolder = isDocumentFolder(folderParam) ? folderParam : 'inbox'
+  const defaultClientId = searchParams.get('clientId') ?? undefined
   const navigate = useNavigate()
   const toast = useToast()
   const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'))
+  const isNarrow = useMediaQuery(theme.breakpoints.down('md'))
+  const isWideActions = useMediaQuery(theme.breakpoints.up('lg'))
 
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const debouncedSearch = useDebouncedValue(searchTerm, 320)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [invoiceToSend, setInvoiceToSend] = useState<Invoice | null>(null)
   const [sendingEmail, setSendingEmail] = useState(false)
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
+  const [invoiceToArchive, setInvoiceToArchive] = useState<Invoice | null>(null)
+  const [folderCounts, setFolderCounts] = useState<DocumentFolderCounts>(EMPTY_COUNTS)
+  const [countsReady, setCountsReady] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const highlightRows = useRealtimeRowHighlight('invoices')
+
+  const loadCounts = useCallback(async () => {
+    try {
+      const res = await invoiceService.getFolderCounts()
+      const data = unwrapApiPayload<DocumentFolderCounts>(res)
+      if (data) setFolderCounts({ ...EMPTY_COUNTS, ...data })
+    } catch {
+      /* ignore */
+    } finally {
+      setCountsReady(true)
+    }
+  }, [])
 
   const loadInvoices = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      apiClient.invalidateCache('/invoices')
-      const response = await invoiceService.getInvoices({ page: 1, limit: 100 })
+      apiClient.invalidateCache('/factures')
+      const response = await invoiceService.getInvoices({
+        page: 1,
+        limit: 100,
+        folder: activeFolder,
+        search: debouncedSearch.trim() || undefined,
+      })
       setInvoices(parseInvoicesListResponse(response))
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur lors du chargement des factures'
@@ -99,22 +143,54 @@ export function InvoicesPage() {
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- toast stable enough for errors
-  }, [])
+  }, [activeFolder, debouncedSearch])
+
+  const reloadListAndCounts = useCallback(async () => {
+    await Promise.all([loadInvoices(), loadCounts()])
+  }, [loadInvoices, loadCounts])
 
   useEffect(() => {
-    loadInvoices()
+    void loadInvoices()
   }, [loadInvoices])
+
+  useEffect(() => {
+    void loadCounts()
+  }, [activeFolder, loadCounts])
+
+  useEffect(() => {
+    if (searchParams.get('create') !== '1') return
+    setCreateDialogOpen(true)
+    const next = new URLSearchParams(searchParams)
+    next.delete('create')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  const patchDocumentFlags = async (id: string, patch: Parameters<typeof invoiceService.updateDocumentFlags>[1]) => {
+    await invoiceService.updateDocumentFlags(id, patch)
+    await reloadListAndCounts()
+  }
 
   useEffect(() => {
     const onRealtime = () => {
-      void loadInvoices()
+      void reloadListAndCounts()
     }
     window.addEventListener('facturio:invoice-realtime', onRealtime)
     return () => window.removeEventListener('facturio:invoice-realtime', onRealtime)
-  }, [loadInvoices])
+  }, [reloadListAndCounts])
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount)
+
+  const openInvoice = async (invoice: Invoice) => {
+    if (!invoice.seenAt) {
+      try {
+        await patchDocumentFlags(invoice.id, { markSeen: true })
+      } catch {
+        /* ignore */
+      }
+    }
+    navigate(`/factures/${invoice.id}`)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -138,13 +214,23 @@ export function InvoicesPage() {
     }
   }
 
-  const filteredInvoices = invoices.filter((invoice) => {
-    const matchesSearch =
-      invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.client.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  const searchOptions = useMemo(
+    () =>
+      invoices.map((inv) => ({
+        id: inv.id,
+        label: inv.number,
+        sublabel: inv.client.name,
+        href: `/factures/${inv.id}`,
+      })),
+    [invoices],
+  )
+
+  const displayedInvoices = useMemo(
+    () => sortOutgoingNewestFirst(invoices),
+    [invoices],
+  )
+
+  const contentKey = `${activeFolder}-${debouncedSearch}`
 
   const handleCreateInvoice = async (data: CreateInvoiceData) => {
     try {
@@ -217,7 +303,7 @@ export function InvoicesPage() {
       })
       setSendDialogOpen(false)
       setInvoiceToSend(null)
-      await loadInvoices()
+      await reloadListAndCounts()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi")
     } finally {
@@ -255,6 +341,30 @@ export function InvoicesPage() {
     }
   }
 
+  const handleArchiveInvoice = async () => {
+    if (!invoiceToArchive) return
+    try {
+      setActionLoadingId(invoiceToArchive.id)
+      await invoiceService.archiveInvoice(invoiceToArchive.id)
+      apiClient.invalidateCache('/invoices')
+      toast.success(`Facture ${invoiceToArchive.number} archivée`)
+      logActivity({
+        type: 'info',
+        title: 'Facture archivée',
+        message: invoiceToArchive.number,
+        category: 'invoice',
+        href: '/factures/archives',
+      })
+      setArchiveDialogOpen(false)
+      setInvoiceToArchive(null)
+      await reloadListAndCounts()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'archivage")
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
   const handleDownloadPdf = async (invoice: Invoice) => {
     try {
       setActionLoadingId(invoice.id)
@@ -275,228 +385,196 @@ export function InvoicesPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <Box sx={{ p: financePagePadding }}>
-        <TablePageSkeleton />
-      </Box>
-    )
+  const folderFilters = (
+    <FinanceDocumentSearch
+      value={searchTerm}
+      onChange={setSearchTerm}
+      options={searchOptions}
+      loading={loading && !!debouncedSearch.trim()}
+      placeholder="N° facture ou client…"
+      onSelect={(opt) => {
+        if (opt?.href) navigate(opt.href)
+      }}
+    />
+  )
+
+  const initialLoading = loading && invoices.length === 0
+
+  const shellProps = {
+    resource: 'factures' as const,
+    title: DOCUMENT_FOLDER_LABELS[activeFolder],
+    subtitle: documentFolderPageSubtitle('factures'),
+    counts: folderCounts,
+    activeFolder,
+    onNew: () => setCreateDialogOpen(true),
+    newLabel: 'Nouvelle facture',
+    mobileNavOpen,
+    onMobileNavOpen: () => setMobileNavOpen(true),
+    onMobileNavClose: () => setMobileNavOpen(false),
+    filters: folderFilters,
+    contentKey,
+    loading,
+    initialLoading,
+    countsLoading: !countsReady,
   }
 
   return (
-    <Box sx={{ p: financePagePadding }}>
-      <PageHeader
-        title="Factures"
-        subtitle="Émission, envoi par email et relances de paiement"
-        actions={
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => setCreateDialogOpen(true)}
-            sx={{ minWidth: { xs: '100%', sm: 'auto' }, ...financePrimaryButtonSx }}
-          >
-            Nouvelle facture
-          </Button>
-        }
-      />
-
+    <DocumentFolderPageShell {...shellProps}>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      <Card sx={{ mb: 3, ...financeCardSx }}>
-        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '2fr 1fr 1fr' },
-              gap: 2,
-              alignItems: 'center',
-            }}
-          >
-            <TextField
-              fullWidth
-              placeholder="Rechercher une facture..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search />
-                  </InputAdornment>
-                ),
+      {initialLoading ? (
+        <DocumentFolderContentSkeleton
+          rows={8}
+          variant={isNarrow ? 'cards' : 'table'}
+          initial
+          resourceLabel="factures"
+        />
+      ) : (
+      <Card sx={[documentFolderTableCardSx, documentFolderTableCardWrapSx] as SxProps<Theme>}>
+        <CardContent sx={{ p: { xs: 1, sm: 1.5, md: 2 }, '&:last-child': { pb: { xs: 1, md: 2 } } }}>
+          {isNarrow ? (
+            <InvoiceFolderMobileList
+              invoices={displayedInvoices}
+              highlightRows={highlightRows}
+              actionLoadingId={actionLoadingId}
+              formatCurrency={formatCurrency}
+              getStatusLabel={getStatusLabel}
+              getStatusColor={getStatusColor}
+              canRemind={canRemind}
+              onPatchFlags={patchDocumentFlags}
+              onNavigate={(id) => {
+                const inv = displayedInvoices.find((i) => i.id === id)
+                if (inv) void openInvoice(inv)
+                else navigate(`/factures/${id}`)
               }}
+              onSend={openSendDialog}
+              onRemind={handleSendReminder}
+              onArchive={(inv) => {
+                setInvoiceToArchive(inv)
+                setArchiveDialogOpen(true)
+              }}
+              onDownload={handleDownloadPdf}
             />
-            <FormControl fullWidth>
-              <InputLabel>Statut</InputLabel>
-              <Select value={statusFilter} label="Statut" onChange={(e) => setStatusFilter(e.target.value)}>
-                <MenuItem value="all">Tous</MenuItem>
-                <MenuItem value="draft">Brouillons</MenuItem>
-                <MenuItem value="sent">Envoyées</MenuItem>
-                <MenuItem value="paid">Payées</MenuItem>
-                <MenuItem value="overdue">En retard</MenuItem>
-                <MenuItem value="cancelled">Annulées</MenuItem>
-              </Select>
-            </FormControl>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<FilterList />}
-              sx={{ display: { xs: 'none', md: 'flex' } }}
+          ) : (
+          <TableContainer sx={{ ...documentFolderTableContainerSx, maxHeight: 600 }}>
+            <Table
+              size="small"
+              sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}
             >
-              Plus de filtres
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-
-      <Card sx={financeCardSx}>
-        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-          <TableContainer sx={{ maxHeight: 600 }}>
-            <Table size={isMobile ? 'small' : 'medium'} sx={financeTableSx}>
               <TableHead sx={financeTableHeadSx}>
                 <TableRow>
-                  <TableCell>N° Facture</TableCell>
-                  <TableCell>Client</TableCell>
-                  <TableCell>Statut</TableCell>
-                  {!isMobile && <TableCell align="right">Montant</TableCell>}
-                  {!isTablet && <TableCell>Échéance</TableCell>}
-                  <TableCell align="center">Actions</TableCell>
+                  <TableCell padding="checkbox" sx={{ width: 72 }} />
+                  <TableCell sx={folderColHideBelowLg}>Tags</TableCell>
+                  <TableCell sx={{ width: '14%' }}>N° Facture</TableCell>
+                  <TableCell sx={{ width: '22%' }}>Client</TableCell>
+                  <TableCell sx={{ width: '10%' }}>Statut</TableCell>
+                  <TableCell align="right" sx={{ width: '10%' }}>
+                    Montant
+                  </TableCell>
+                  <TableCell sx={{ ...folderColHideBelowXl, width: '9%' }}>Échéance</TableCell>
+                  <TableCell align="center" sx={{ width: isWideActions ? 200 : 56 }}>
+                    Actions
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredInvoices.map((invoice) => {
+                {displayedInvoices.map((invoice) => {
                   const busy = actionLoadingId === invoice.id
                   const rowHighlight = highlightRows[invoice.id]
+                  const canSend =
+                    invoice.status === 'draft' ||
+                    invoice.status === 'sent' ||
+                    invoice.status === 'overdue' ||
+                    invoice.status === 'paid'
                   return (
-                    <TableRow key={invoice.id} hover sx={getRealtimeRowSx(rowHighlight)}>
+                    <TableRow
+                      key={invoice.id}
+                      hover
+                      sx={
+                        [
+                          getRealtimeRowSx(rowHighlight),
+                          !invoice.seenAt ? documentFolderUnreadRowSx : {},
+                        ] as SxProps<Theme>
+                      }
+                    >
+                      <TableCell padding="checkbox">
+                        <DocumentFolderRowActions
+                          starred={!!invoice.starred}
+                          important={!!invoice.important}
+                          compact
+                          onUpdate={(patch) => patchDocumentFlags(invoice.id, patch)}
+                        />
+                      </TableCell>
+                      <TableCell sx={folderColHideBelowLg}>
+                        <DocumentTagsEditor
+                          compact
+                          tags={invoice.tags ?? []}
+                          onChange={(tags) => patchDocumentFlags(invoice.id, { tags })}
+                        />
+                      </TableCell>
                       <TableCell>
-                        <Typography variant="body2" fontWeight={500}>
+                        <Typography variant="body2" fontWeight={invoice.seenAt ? 500 : 700} noWrap>
                           {invoice.number}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" noWrap display="block">
                           {new Date(invoice.issueDate).toLocaleDateString('fr-FR')}
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Avatar
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              mr: 1.5,
-                              bgcolor: '#1e3a5f',
-                              fontSize: '0.85rem',
-                              fontWeight: 700,
-                            }}
-                          >
-                            {(invoice.client.name || '?').charAt(0)}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="body2" fontWeight={500}>
-                              {invoice.client.name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {invoice.client.email}
-                            </Typography>
-                          </Box>
-                        </Box>
+                        <Typography variant="body2" fontWeight={500} noWrap>
+                          {invoice.client.name}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                          display="block"
+                          sx={{ display: { md: 'none', xl: 'block' } }}
+                        >
+                          {invoice.client.email}
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         <Chip
                           label={getStatusLabel(invoice.status)}
                           color={getStatusColor(invoice.status) as 'success' | 'info' | 'error' | 'warning' | 'default'}
                           size="small"
-                          sx={{ fontWeight: 600, borderRadius: 1.5 }}
+                          sx={{ fontWeight: 600, borderRadius: 1.5, maxWidth: '100%' }}
                         />
                       </TableCell>
-                      {!isMobile && (
-                        <TableCell align="right">
-                          <Typography variant="body2" fontWeight="medium">
-                            {formatCurrency(invoice.total)}
-                          </Typography>
-                        </TableCell>
-                      )}
-                      {!isTablet && (
-                        <TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight="medium" noWrap>
+                          {formatCurrency(invoice.total)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={folderColHideBelowXl}>
+                        <Typography variant="body2" noWrap>
                           {invoice.dueDate
                             ? new Date(invoice.dueDate).toLocaleDateString('fr-FR')
                             : '—'}
-                        </TableCell>
-                      )}
+                        </Typography>
+                      </TableCell>
                       <TableCell align="center">
-                        <Stack
-                          direction="row"
-                          spacing={0.25}
-                          justifyContent="center"
-                          sx={{
-                            '& .MuiIconButton-root': {
-                              borderRadius: 1.5,
-                              color: 'text.secondary',
-                              '&:hover': { bgcolor: 'action.hover', color: '#0f172a' },
-                            },
+                        <InvoiceRowActionsMenu
+                          invoice={invoice}
+                          busy={busy}
+                          expanded={isWideActions}
+                          canSend={canSend}
+                          canRemind={canRemind(invoice.status)}
+                          onView={() => void openInvoice(invoice)}
+                          onEdit={() => void openInvoice(invoice)}
+                          onSend={() => openSendDialog(invoice)}
+                          onRemind={() => handleSendReminder(invoice)}
+                          onArchive={() => {
+                            setInvoiceToArchive(invoice)
+                            setArchiveDialogOpen(true)
                           }}
-                        >
-                          <IconButton
-                            size="small"
-                            title="Voir"
-                            disabled={busy}
-                            onClick={() => navigate(`/factures/${invoice.id}`)}
-                          >
-                            <Visibility fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            title="Éditer"
-                            disabled={busy}
-                            onClick={() => navigate(`/factures/${invoice.id}`)}
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
-                          {(invoice.status === 'draft' ||
-                            invoice.status === 'sent' ||
-                            invoice.status === 'overdue' ||
-                            invoice.status === 'paid') && (
-                            <IconButton
-                              size="small"
-                              title={
-                                wasInvoiceEmailed(invoice)
-                                  ? invoiceEmailSentTitle(invoice)
-                                  : 'Envoyer par email'
-                              }
-                              disabled={busy}
-                              color={wasInvoiceEmailed(invoice) ? 'success' : 'default'}
-                              onClick={() => openSendDialog(invoice)}
-                            >
-                              {wasInvoiceEmailed(invoice) ? (
-                                <MarkEmailRead fontSize="small" />
-                              ) : (
-                                <Send fontSize="small" />
-                              )}
-                            </IconButton>
-                          )}
-                          {canRemind(invoice.status) && (
-                            <IconButton
-                              size="small"
-                              title="Relancer (rappel de paiement)"
-                              disabled={busy}
-                              color="warning"
-                              onClick={() => handleSendReminder(invoice)}
-                            >
-                              <NotificationsActive fontSize="small" />
-                            </IconButton>
-                          )}
-                          <IconButton
-                            size="small"
-                            title="Télécharger le PDF"
-                            disabled={busy}
-                            onClick={() => handleDownloadPdf(invoice)}
-                          >
-                            <Download fontSize="small" />
-                          </IconButton>
-                        </Stack>
+                          onDownload={() => handleDownloadPdf(invoice)}
+                        />
                       </TableCell>
                     </TableRow>
                   )
@@ -504,24 +582,27 @@ export function InvoicesPage() {
               </TableBody>
             </Table>
           </TableContainer>
+          )}
 
-          {filteredInvoices.length === 0 && (
+          {displayedInvoices.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
               <Typography variant="body1">
-                {searchTerm || statusFilter !== 'all'
-                  ? 'Aucune facture ne correspond aux critères'
-                  : 'Aucune facture — créez-en une avec « Nouvelle facture »'}
+                {searchTerm.trim()
+                  ? 'Aucune facture ne correspond à la recherche'
+                  : `Aucune facture dans « ${DOCUMENT_FOLDER_LABELS[activeFolder]} » — bouton dans le menu latéral`}
               </Typography>
             </Box>
           )}
         </CardContent>
       </Card>
+      )}
 
       <CreateInvoiceDialog
         open={createDialogOpen}
         onClose={() => !creating && setCreateDialogOpen(false)}
         onSubmit={handleCreateInvoice}
         submitting={creating}
+        defaultClientId={defaultClientId}
       />
 
       <SendInvoiceDialog
@@ -531,6 +612,18 @@ export function InvoicesPage() {
         onSend={handleSendInvoice}
         sending={sendingEmail}
       />
-    </Box>
+
+      <ConfirmDialog
+        open={archiveDialogOpen}
+        title="Archiver la facture"
+        message={`Archiver « ${invoiceToArchive?.number} » ? Elle restera accessible dans Archives (aucune suppression).`}
+        confirmText="Archiver"
+        onConfirm={handleArchiveInvoice}
+        onClose={() => {
+          setArchiveDialogOpen(false)
+          setInvoiceToArchive(null)
+        }}
+      />
+    </DocumentFolderPageShell>
   )
 }

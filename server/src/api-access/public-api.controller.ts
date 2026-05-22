@@ -127,6 +127,12 @@ export class PublicApiController {
 		return this.invoices.findAll(query, orgId);
 	}
 
+	@Get('factures/archives')
+	@RequireApiScopes('factures.read')
+	listArchivedInvoices(@ApiOrganizationId() orgId: number) {
+		return this.invoices.findArchivedGrouped(orgId);
+	}
+
 	@Get('factures/:id')
 	@RequireApiScopes('factures.read')
 	getInvoice(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
@@ -159,11 +165,29 @@ export class PublicApiController {
 		return this.dispatch.sendInvoiceByEmail(id, orgId, body);
 	}
 
+	@Post('factures/:id/archive')
+	@RequireApiScopes('factures.write')
+	archiveInvoice(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+		return this.invoices.archive(id, orgId);
+	}
+
+	@Post('factures/:id/restore')
+	@RequireApiScopes('factures.write')
+	restoreInvoice(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+		return this.invoices.restore(id, orgId);
+	}
+
 	// ——— Devis ———
 	@Get('devis')
 	@RequireApiScopes('devis.read')
 	listQuotes(@ApiOrganizationId() orgId: number) {
 		return this.quotes.findAll(orgId);
+	}
+
+	@Get('devis/archives')
+	@RequireApiScopes('devis.read')
+	listArchivedQuotes(@ApiOrganizationId() orgId: number) {
+		return this.quotes.findArchivedGrouped(orgId);
 	}
 
 	@Get('devis/:id')
@@ -192,5 +216,17 @@ export class PublicApiController {
 	@RequireApiScopes('devis.send')
 	sendQuote(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
 		return this.dispatch.sendQuoteByEmail(id, orgId);
+	}
+
+	@Post('devis/:id/archive')
+	@RequireApiScopes('devis.write')
+	archiveQuote(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+		return this.quotes.archive(id, orgId);
+	}
+
+	@Post('devis/:id/restore')
+	@RequireApiScopes('devis.write')
+	restoreQuote(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+		return this.quotes.restore(id, orgId);
 	}
 }

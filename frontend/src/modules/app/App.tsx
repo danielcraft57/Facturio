@@ -10,6 +10,7 @@ import { ThemeSettingsDrawer } from './components/ThemeSettingsDrawer'
 import { ToastContainer } from '../../components/Toast'
 import { useToast } from '../../components/useToast'
 import { TopRouteProgress } from '../../components/TopRouteProgress'
+import { DocumentFolderRouteFallback } from '../../components/loading/DocumentFolderRouteFallback'
 import { ProtectedRoute } from '../../components/ProtectedRoute'
 import { FinanceRealtimeBridge } from '../../components/FinanceRealtimeBridge'
 const LandingPage = lazy(() =>
@@ -53,9 +54,19 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage'
 const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const ClientsPage = lazy(() => import('../clients/ClientsPage').then(m => ({ default: m.ClientsPage })))
 const ClientDetailPage = lazy(() => import('../clients/ClientDetailPage').then(m => ({ default: m.ClientDetailPage })))
-const QuotesPage = lazy(() => import('../quotes/QuotesPage').then(m => ({ default: m.QuotesPage })))
-const InvoicesPage = lazy(() => import('../invoices/InvoicesPage').then(m => ({ default: m.InvoicesPage })))
-const InvoiceDetailPage = lazy(() => import('../invoices/InvoiceDetailPage').then(m => ({ default: m.InvoiceDetailPage })))
+const FacturesSegmentRouteLazy = lazy(() =>
+  import('./routes/documentFolderRoutes').then((m) => ({ default: m.FacturesSegmentRoute })),
+)
+const DevisSegmentRouteLazy = lazy(() =>
+  import('./routes/documentFolderRoutes').then((m) => ({ default: m.DevisSegmentRoute })),
+)
+const ArchivesPage = lazy(() => import('../archives/ArchivesPage').then(m => ({ default: m.ArchivesPage })))
+const InvoicesArchivePage = lazy(() =>
+  import('../invoices/InvoicesArchivePage').then(m => ({ default: m.InvoicesArchivePage })),
+)
+const QuotesArchivePage = lazy(() =>
+  import('../quotes/QuotesArchivePage').then(m => ({ default: m.QuotesArchivePage })),
+)
 const ProductsPage = lazy(() => import('../products/ProductsPage').then(m => ({ default: m.ProductsPage })))
 const ProspectsPage = lazy(() => import('../prospects/ProspectsPage').then(m => ({ default: m.ProspectsPage })))
 const TaxesPage = lazy(() => import('../taxes/TaxesPage').then(m => ({ default: m.TaxesPage })))
@@ -312,27 +323,57 @@ export function App() {
                   </PrivateRouteWrapper>
                 }
               />
+              <Route path="/devis" element={<Navigate to="/devis/inbox" replace />} />
               <Route
-                path="/devis"
+                path="/devis/archive"
+                element={<Navigate to="/devis/archives" replace />}
+              />
+              <Route
+                path="/devis/archives"
                 element={
                   <PrivateRouteWrapper>
-                    <QuotesPage />
+                    <QuotesArchivePage />
                   </PrivateRouteWrapper>
                 }
               />
               <Route
-                path="/factures"
+                path="/devis/:folder"
                 element={
                   <PrivateRouteWrapper>
-                    <InvoicesPage />
+                    <Suspense fallback={<DocumentFolderRouteFallback resource="devis" />}>
+                      <DevisSegmentRouteLazy />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route path="/factures" element={<Navigate to="/factures/inbox" replace />} />
+              <Route
+                path="/factures/archive"
+                element={<Navigate to="/factures/archives" replace />}
+              />
+              <Route
+                path="/factures/archives"
+                element={
+                  <PrivateRouteWrapper>
+                    <InvoicesArchivePage />
                   </PrivateRouteWrapper>
                 }
               />
               <Route
-                path="/factures/:id"
+                path="/factures/:folder"
                 element={
                   <PrivateRouteWrapper>
-                    <InvoiceDetailPage />
+                    <Suspense fallback={<DocumentFolderRouteFallback resource="factures" />}>
+                      <FacturesSegmentRouteLazy />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/archives"
+                element={
+                  <PrivateRouteWrapper>
+                    <ArchivesPage />
                   </PrivateRouteWrapper>
                 }
               />

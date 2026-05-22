@@ -52,7 +52,7 @@ describe('apiDocsContent', () => {
 
   it('auth utilise GET /public (pas d’URL figée à l’import)', () => {
     const auth = API_DOC_SECTIONS.find((s) => s.id === 'auth')
-    expect(auth?.example).toBeUndefined()
+    expect(auth?.exampleBody).toBeUndefined()
     expect(auth?.exampleCurl?.path).toBe('/public')
   })
 })

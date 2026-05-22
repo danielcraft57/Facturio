@@ -21,6 +21,7 @@ import {
   useMediaQuery,
   Collapse,
 } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import VisibilityIcon from '@mui/icons-material/Visibility'
@@ -246,14 +247,26 @@ export function DataTable<T = Record<string, unknown>>({
   }
 
   return (
-    <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+    <Paper sx={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
       {/* Loading indicator */}
       {loading && (
         <LinearProgress sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1 }} />
       )}
 
-      <TableContainer sx={{ maxHeight }}>
-        <Table stickyHeader={stickyHeader} size={dense ? 'small' : 'medium'}>
+      <TableContainer
+        sx={{
+          maxHeight,
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        <Table
+          stickyHeader={stickyHeader}
+          size={dense ? 'small' : 'medium'}
+          sx={{ width: '100%', tableLayout: 'fixed', minWidth: { xs: 480, md: '100%' } }}
+        >
           <TableHead>
             <TableRow>
               {selectable && (
@@ -322,15 +335,17 @@ export function DataTable<T = Record<string, unknown>>({
                     hover
                     selected={isSelected}
                     onClick={handleRowClick}
-                    sx={[
-                      {
-                        cursor: selectable ? 'pointer' : 'default',
-                        '&:hover': {
-                          backgroundColor: theme.palette.action.hover,
+                    sx={
+                      [
+                        {
+                          cursor: selectable ? 'pointer' : 'default',
+                          '&:hover': {
+                            backgroundColor: theme.palette.action.hover,
+                          },
                         },
-                      },
-                      getRealtimeRowSx(highlightTone),
-                    ]}
+                        getRealtimeRowSx(highlightTone),
+                      ] as SxProps<Theme>
+                    }
                   >
                     {selectable && (
                       <TableCell padding="checkbox">

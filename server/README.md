@@ -61,10 +61,8 @@ API backend pour la gestion de clients, devis, factures, taxes et dépôts (TVA)
 ## Quick start
 ```bash
 npm install
-npx prisma migrate dev
-# Base dev rapide (SQLite)
-npx prisma db push
-# Seed de données (optionnel)
+cd server
+npm run migrate:setup   # SQLite : baseline si P3005 + deploy + generate
 npm run seed:dev
 npm run start:dev
 ```
@@ -123,24 +121,25 @@ L'entrypoint applique `prisma db push` au démarrage si `DATABASE_URL` est défi
 
 - **Dev** : `npm run start:dev` (SQLite), `npm run seed:dev`.
 - **Prod** (serveur de prod) : `env.prod.example` + variables d'environnement (mot de passe PostgreSQL, etc.).  
-  `npm run prisma:prod` → `npm run db:push:prod` → `npm run build:prod` → `npm run seed:prod` → `npm run start:prod`.
+  `npm run migrate:setup:prod` → `npm run build:prod` → `npm run seed:prod` → `npm run start:prod`.  
+  Voir `prisma/MIGRATIONS.md`.
 
 Commandes utiles:
 ```bash
-# Appliquer le schéma (dev) et générer le client
-npx prisma migrate dev
+# Dev SQLite — appliquer l'historique des migrations
+npm run migrate:setup
+npm run migrate:dev -- --name ma_modification
 
-# Synchroniser sans migration (dev rapide)
-npx prisma db push
+# Prod PostgreSQL
+npm run migrate:setup:prod
 
 # Studio (visualisation)
 npx prisma studio
 
-# Seed (si présent)
-npm run seed
-# Seed de dev (pousse le schéma et injecte sans purge)
 npm run seed:dev
 ```
+
+Détails : `prisma/MIGRATIONS.md`.
 
 ### Passer à Postgres (prod)
 1. Créer un `.env` à la racine de `server/`:

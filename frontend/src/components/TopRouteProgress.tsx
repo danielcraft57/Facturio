@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, alpha, useTheme } from '@mui/material'
 import { useLocation } from 'react-router-dom'
 
-const MIN_VISIBLE_MS = 380
+const MIN_VISIBLE_MS = 260
 
 /**
  * Barre de progression fixe en haut de l’écran (style NProgress / GitHub).

@@ -7,6 +7,15 @@ import { AccountingService } from '../accounting/accounting.service';
 import { buildPublicQuoteUrl } from '../common/public-app-url';
 import { InvoicesService } from '../invoices/invoices.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import { groupByYearAndMonth } from '../common/archive-group.util';
+import {
+	buildDocumentFolderWhere,
+	documentFolderOrderBy,
+	parseTagsJson,
+	serializeTagsJson,
+} from '../common/document-folder.util';
+import type { QuoteListQueryDto } from './dto/quote-document-folder.dto';
+import type { UpdateQuoteDocumentFlagsDto } from './dto/quote-document-folder.dto';
 
 /**
  * Ligne de devis
@@ -247,13 +256,73 @@ export class QuotesService {
 	 * @param organizationId - ID de l'organisation (filtre multi-tenant)
 	 * @returns Liste des devis avec lignes et client, triés par date décroissante
 	 */
-	findAll(organizationId?: number) {
-		const where = organizationId != null ? { organizationId } : {};
+	findAll(organizationId?: number, query?: QuoteListQueryDto) {
+		const where: Record<string, unknown> = { archivedAt: null };
+		if (organizationId != null) where.organizationId = organizationId;
+		Object.assign(where, buildDocumentFolderWhere(query?.folder, new Date(), 'quote'));
+		if (query?.tag?.trim()) {
+			where.tags = { contains: `"${query.tag.trim()}"` };
+		}
+		if (query?.search) {
+			where.OR = [
+				{ number: { contains: query.search } },
+				{ client: { name: { contains: query.search } } },
+			];
+		}
 		return this.prisma.quote.findMany({
-			where,
-			orderBy: { createdAt: 'desc' },
-			include: { lines: true, client: true }
+			where: where as any,
+			orderBy: query?.folder
+				? documentFolderOrderBy('quote')
+				: { createdAt: 'desc' },
+			include: { lines: true, client: true },
 		});
+	}
+
+	async getFolderCounts(organizationId?: number) {
+		const base: { organizationId?: number; archivedAt: null } = { archivedAt: null };
+		if (organizationId) base.organizationId = organizationId;
+		const now = new Date();
+		const count = (extra: Record<string, unknown>) =>
+			this.prisma.quote.count({ where: { ...base, ...extra } });
+
+		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons] =
+			await Promise.all([
+				count(buildDocumentFolderWhere('inbox', now, 'quote')),
+				count(buildDocumentFolderWhere('nouveau', now, 'quote')),
+				count(buildDocumentFolderWhere('suivi', now, 'quote')),
+				count(buildDocumentFolderWhere('attente', now, 'quote')),
+				count(buildDocumentFolderWhere('important', now, 'quote')),
+				count(buildDocumentFolderWhere('envoyes', now, 'quote')),
+				count(buildDocumentFolderWhere('brouillons', now, 'quote')),
+			]);
+
+		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons };
+	}
+
+	async updateDocumentFlags(
+		id: number,
+		dto: UpdateQuoteDocumentFlagsDto,
+		organizationId?: number,
+	) {
+		await this.findOne(id, organizationId);
+		const data: Record<string, unknown> = {};
+		if (dto.starred !== undefined) data.starred = dto.starred;
+		if (dto.important !== undefined) data.important = dto.important;
+		if (dto.snoozedUntil !== undefined) {
+			data.snoozedUntil = dto.snoozedUntil ? new Date(dto.snoozedUntil) : null;
+		}
+		if (dto.tags !== undefined) data.tags = serializeTagsJson(dto.tags);
+		if (dto.markSeen) data.seenAt = new Date();
+		const updated = await this.prisma.quote.update({
+			where: { id },
+			data,
+			include: { client: true },
+		});
+		this.notifyQuote(organizationId, 'updated', id, {
+			number: updated.number,
+			status: updated.status,
+		});
+		return { ...updated, tags: parseTagsJson(updated.tags) };
 	}
 
 	/**
@@ -325,11 +394,58 @@ export class QuotesService {
 		return updated;
 	}
 
-	async remove(id: number, organizationId?: number) {
+	async archive(id: number, organizationId?: number) {
 		const quote = await this.findOne(id, organizationId);
-		await this.prisma.quote.delete({ where: { id } });
-		this.notifyQuote(organizationId, 'deleted', id, { number: quote.number });
+		if (quote.archivedAt) {
+			return { success: true, alreadyArchived: true };
+		}
+		const updated = await this.prisma.quote.update({
+			where: { id },
+			data: { archivedAt: new Date() },
+			include: { client: true },
+		});
+		this.notifyQuote(organizationId, 'updated', id, {
+			number: updated.number,
+			status: updated.status,
+		});
+		return { success: true, archivedAt: updated.archivedAt };
+	}
+
+	async restore(id: number, organizationId?: number) {
+		const quote = await this.findOne(id, organizationId);
+		if (!quote.archivedAt) {
+			return { success: true, alreadyActive: true };
+		}
+		const updated = await this.prisma.quote.update({
+			where: { id },
+			data: { archivedAt: null },
+			include: { client: true },
+		});
+		this.notifyQuote(organizationId, 'updated', id, {
+			number: updated.number,
+			status: updated.status,
+		});
 		return { success: true };
+	}
+
+	async findArchivedGrouped(organizationId?: number) {
+		const where: { archivedAt: { not: null }; organizationId?: number } = {
+			archivedAt: { not: null },
+		};
+		if (organizationId) where.organizationId = organizationId;
+		const items = await this.prisma.quote.findMany({
+			where,
+			orderBy: { date: 'desc' },
+			include: { client: true },
+		});
+		return {
+			groups: groupByYearAndMonth(items, (q) => q.date),
+			total: items.length,
+		};
+	}
+
+	async remove(id: number, organizationId?: number) {
+		return this.archive(id, organizationId);
 	}
 
 	private ensureToken(): string {

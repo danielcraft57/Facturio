@@ -10,6 +10,15 @@ import { assertValidPublicToken } from './public-token.util';
 import { buildPublicInvoiceUrl } from '../common/public-app-url';
 import { InvoicePaymentNotificationService } from './invoice-payment-notification.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import { groupByYearAndMonth } from '../common/archive-group.util';
+import {
+	buildDocumentFolderWhere,
+	documentFolderOrderBy,
+	parseTagsJson,
+	serializeTagsJson,
+} from '../common/document-folder.util';
+import type { InvoiceListQueryDto } from './dto/invoice-document-folder.dto';
+import type { UpdateInvoiceDocumentFlagsDto } from './dto/invoice-document-folder.dto';
 
 /**
  * Ligne de facture
@@ -414,27 +423,38 @@ export class InvoicesService {
 	 * @param organizationId - ID de l'organisation (filtre multi-tenant)
 	 * @returns Liste paginée de factures avec lignes, client et paiements
 	 */
-	async findAll(query: ListQueryDto, organizationId?: number) {
+	async findAll(query: InvoiceListQueryDto | ListQueryDto, organizationId?: number) {
+		const q = query as InvoiceListQueryDto;
 		const page = query.page ?? 1;
 		const pageSize = query.pageSize ?? query.limit ?? 20;
 		const skip = (page - 1) * pageSize;
-		const sortBy = query.sortBy ? (SORT_FIELD_MAP[query.sortBy] ?? query.sortBy) : 'createdAt';
+		const useFolderSort = !!q.folder;
+		const sortBy = useFolderSort
+			? 'createdAt'
+			: query.sortBy
+				? (SORT_FIELD_MAP[query.sortBy] ?? query.sortBy)
+				: 'createdAt';
 		const order = (query.order ?? query.sortOrder ?? 'desc') as 'asc' | 'desc';
 
 		this.logger.log(
-			`findAll pagination=${page}/${pageSize} sortBy=${query.sortBy ?? 'default'}→${sortBy} order=${order} orgId=${organizationId ?? 'any'} search=${query.search ? '***' : 'no'}`
+			`findAll pagination=${page}/${pageSize} folder=${q.folder ?? 'inbox'} orgId=${organizationId ?? 'any'}`
 		);
 
-		const where: any = query.search
-			? {
-				OR: [
-					{ number: { contains: query.search } },
-					{ client: { name: { contains: query.search } } as any }
-				]
-			}
-			: {};
+		const where: any = {};
+		if (query.search) {
+			where.OR = [
+				{ number: { contains: query.search } },
+				{ client: { name: { contains: query.search } } as any },
+			];
+		}
 		if (organizationId) {
 			where.organizationId = organizationId;
+		}
+		where.archivedAt = null;
+		const folderFilter = buildDocumentFolderWhere(q.folder, new Date(), 'invoice');
+		Object.assign(where, folderFilter);
+		if (q.tag?.trim()) {
+			where.tags = { contains: `"${q.tag.trim()}"` };
 		}
 
 		try {
@@ -443,7 +463,9 @@ export class InvoicesService {
 					skip,
 					take: pageSize,
 					where,
-					orderBy: { [sortBy]: order },
+					orderBy: useFolderSort
+						? documentFolderOrderBy('invoice')
+						: { [sortBy]: order },
 					include: { lines: true, client: true, payments: true }
 				}),
 				this.prisma.invoice.count({ where })
@@ -557,11 +579,112 @@ export class InvoicesService {
 	 * @returns Confirmation de suppression
 	 * @throws {NotFoundException} Si facture non trouvée
 	 */
-	async remove(id: number, organizationId?: number) {
+	/** Archive une facture (aucune suppression en base). */
+	async archive(id: number, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
-		await this.prisma.invoice.delete({ where: { id } });
-		this.notifyInvoice(organizationId, 'deleted', id, { number: invoice.number });
+		if (invoice.archivedAt) {
+			return { success: true, alreadyArchived: true };
+		}
+		const updated = await this.prisma.invoice.update({
+			where: { id },
+			data: { archivedAt: new Date() },
+			include: { client: true },
+		});
+		this.notifyInvoice(organizationId, 'updated', id, {
+			number: updated.number,
+			status: updated.status,
+		});
+		return { success: true, archivedAt: updated.archivedAt };
+	}
+
+	/** Restaure une facture archivée dans la liste active. */
+	async restore(id: number, organizationId?: number) {
+		const invoice = await this.findOne(id, organizationId);
+		if (!invoice.archivedAt) {
+			return { success: true, alreadyActive: true };
+		}
+		const updated = await this.prisma.invoice.update({
+			where: { id },
+			data: { archivedAt: null },
+			include: { client: true },
+		});
+		this.notifyInvoice(organizationId, 'updated', id, {
+			number: updated.number,
+			status: updated.status,
+		});
 		return { success: true };
+	}
+
+	/** Factures archivées groupées par année et mois (date de facture). */
+	async findArchivedGrouped(organizationId?: number) {
+		const where: { archivedAt: { not: null }; organizationId?: number } = {
+			archivedAt: { not: null },
+		};
+		if (organizationId) where.organizationId = organizationId;
+		const items = await this.prisma.invoice.findMany({
+			where,
+			orderBy: { date: 'desc' },
+			include: { client: true },
+		});
+		return {
+			groups: groupByYearAndMonth(items, (i) => i.date),
+			total: items.length,
+		};
+	}
+
+	/** @deprecated Utiliser archive — conserve DELETE pour compatibilité. */
+	async remove(id: number, organizationId?: number) {
+		return this.archive(id, organizationId);
+	}
+
+	async getFolderCounts(organizationId?: number) {
+		const base: { organizationId?: number; archivedAt: null } = { archivedAt: null };
+		if (organizationId) base.organizationId = organizationId;
+		const now = new Date();
+		const count = (extra: Record<string, unknown>) =>
+			this.prisma.invoice.count({ where: { ...base, ...extra } });
+
+		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons] =
+			await Promise.all([
+				count(buildDocumentFolderWhere('inbox', now, 'invoice')),
+				count(buildDocumentFolderWhere('nouveau', now, 'invoice')),
+				count(buildDocumentFolderWhere('suivi', now, 'invoice')),
+				count(buildDocumentFolderWhere('attente', now, 'invoice')),
+				count(buildDocumentFolderWhere('important', now, 'invoice')),
+				count(buildDocumentFolderWhere('envoyes', now, 'invoice')),
+				count(buildDocumentFolderWhere('brouillons', now, 'invoice')),
+			]);
+
+		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons };
+	}
+
+	async updateDocumentFlags(
+		id: number,
+		dto: UpdateInvoiceDocumentFlagsDto,
+		organizationId?: number,
+	) {
+		await this.findOne(id, organizationId);
+		const data: Record<string, unknown> = {};
+		if (dto.starred !== undefined) data.starred = dto.starred;
+		if (dto.important !== undefined) data.important = dto.important;
+		if (dto.snoozedUntil !== undefined) {
+			data.snoozedUntil = dto.snoozedUntil ? new Date(dto.snoozedUntil) : null;
+		}
+		if (dto.tags !== undefined) data.tags = serializeTagsJson(dto.tags);
+		if (dto.markSeen) data.seenAt = new Date();
+		const updated = await this.prisma.invoice.update({
+			where: { id },
+			data,
+			include: { client: true },
+		});
+		this.notifyInvoice(organizationId, 'updated', id, {
+			number: updated.number,
+			status: updated.status,
+		});
+		return {
+			...updated,
+			tags: parseTagsJson(updated.tags),
+		};
 	}
 
 	/**

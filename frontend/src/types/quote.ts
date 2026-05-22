@@ -1,3 +1,5 @@
+import type { DocumentFolder } from './documentFolders';
+
 export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
 
 export interface QuoteLine {
@@ -31,6 +33,12 @@ export interface Quote {
   invoiceNumber?: string;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string;
+  starred?: boolean;
+  important?: boolean;
+  snoozedUntil?: string;
+  seenAt?: string;
+  tags?: string[];
 }
 
 export interface CreateQuoteData {
@@ -63,6 +71,8 @@ export interface QuoteFilters {
   dateFrom?: string;
   dateTo?: string;
   search?: string;
+  folder?: DocumentFolder;
+  tag?: string;
 }
 
 export interface QuoteListResponse {

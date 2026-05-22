@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Query, Req, Res } from '@nestjs/common';
+import { QuoteListQueryDto, UpdateQuoteDocumentFlagsDto } from './dto/quote-document-folder.dto';
 import { CreateQuoteDto, QuotesService, UpdateQuoteDto } from './quotes.service';
 import { QuoteStatus } from '@prisma/client';
 import { Request, Response } from 'express';
@@ -7,7 +8,7 @@ import { EmailService } from '../common/email.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-@Controller('quotes')
+@Controller(['quotes', 'devis'])
 export class QuotesController {
 	constructor(
 		private readonly quotes: QuotesService,
@@ -22,8 +23,18 @@ export class QuotesController {
 	}
 
 	@Get()
-	findAll(@CurrentUser() user: any) {
-		return this.quotes.findAll(user.organizationId);
+	findAll(@Query() query: QuoteListQueryDto, @CurrentUser() user: any) {
+		return this.quotes.findAll(user.organizationId, query);
+	}
+
+	@Get('folder-counts')
+	getFolderCounts(@CurrentUser() user: any) {
+		return this.quotes.getFolderCounts(user.organizationId);
+	}
+
+	@Get('archives')
+	findArchived(@CurrentUser() user: any) {
+		return this.quotes.findArchivedGrouped(user.organizationId);
 	}
 
 	@Get(':id')
@@ -40,9 +51,28 @@ export class QuotesController {
 		return this.quotes.update(id, data, user.organizationId);
 	}
 
+	@Patch(':id/document-flags')
+	updateDocumentFlags(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() body: UpdateQuoteDocumentFlagsDto,
+		@CurrentUser() user: any,
+	) {
+		return this.quotes.updateDocumentFlags(id, body, user.organizationId);
+	}
+
+	@Post(':id/archive')
+	archive(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.quotes.archive(id, user.organizationId);
+	}
+
+	@Post(':id/restore')
+	restore(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+		return this.quotes.restore(id, user.organizationId);
+	}
+
 	@Delete(':id')
 	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
-		return this.quotes.remove(id, user.organizationId);
+		return this.quotes.archive(id, user.organizationId);
 	}
 
 	@Post(':id/accept')

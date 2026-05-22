@@ -36,6 +36,7 @@ import { AppMobileNav } from './AppMobileNav'
 import { NotificationCenter } from './NotificationCenter'
 import { BillingUsageBanner } from './BillingUsageBanner'
 import { userMenuLinks } from '../config/userMenuConfig'
+import { PageTransition } from '../../../components/PageTransition'
 
 type AppLayoutProps = PropsWithChildren<{
   mode: 'light' | 'dark'
@@ -176,7 +177,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
           <Tooltip title="Nouvelle facture">
             <IconButton
               component={RouterLink}
-              to="/factures"
+              to="/factures/inbox"
               color="inherit"
               aria-label="nouvelle facture"
               sx={{
@@ -294,7 +295,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
       <Box component="main" sx={{ flexGrow: 1, width: '100%', p: { xs: 1, sm: 2, md: 3 } }}>
         <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }} />
         <BillingUsageBanner />
-        {children}
+        <PageTransition>{children}</PageTransition>
       </Box>
     </Box>
   )

@@ -279,7 +279,7 @@ export function NotificationCenter() {
           {tab === 1 && (
             <Button
               component={RouterLink}
-              to="/factures"
+              to="/factures/inbox"
               fullWidth
               size="small"
               variant="text"

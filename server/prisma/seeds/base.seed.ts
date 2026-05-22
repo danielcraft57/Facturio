@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
 
 export interface SeedContext {
 	prisma: PrismaClient;
@@ -103,6 +104,8 @@ export async function seedDefaultUser(prisma: PrismaClient): Promise<void> {
 			siret: process.env.COMPANY_SIRET || null,
 			email: process.env.COMPANY_EMAIL || 'contact@danielcraft.fr',
 			phone: process.env.COMPANY_PHONE || null,
+			prospectLabApiUrl: process.env.PROSPECT_LAB_API_URL || null,
+			prospectLabApiKey: process.env.PROSPECT_LAB_API_KEY || null,
 		},
 	});
 	const hashedPassword = await bcrypt.hash('facturio', 12);
@@ -120,11 +123,41 @@ export async function seedDefaultUser(prisma: PrismaClient): Promise<void> {
 	});
 }
 
+/** Jeton API démo (dev uniquement) — valeur connue pour tester l’API publique. */
+export const SEED_API_TOKEN_PLAIN = 'fact_seed_dev_demo_do_not_use_in_prod';
+
+export async function seedApiAccessToken(prisma: PrismaClient, organizationId: number): Promise<void> {
+	const existing = await prisma.apiAccessToken.findFirst({
+		where: { organizationId, name: 'Seed — démo API' },
+	});
+	if (existing) return;
+
+	const tokenHash = createHash('sha256').update(SEED_API_TOKEN_PLAIN, 'utf8').digest('hex');
+	await prisma.apiAccessToken.create({
+		data: {
+			organizationId,
+			name: 'Seed — démo API',
+			tokenPrefix: SEED_API_TOKEN_PLAIN.slice(0, 16),
+			tokenHash,
+			permissions: JSON.stringify([
+				'clients.read',
+				'factures.read',
+				'factures.write',
+				'factures.send',
+				'devis.read',
+				'devis.write',
+			]),
+		},
+	});
+	console.log(`   Jeton API démo : ${SEED_API_TOKEN_PLAIN}`);
+}
+
 /**
  * Supprime les données des tables pour permettre un seed propre.
  * Ignore les erreurs si une table n'existe pas (ex. Prospect, Pack sans migration dédiée).
  */
 export async function purgeAll(prisma: PrismaClient): Promise<void> {
+	await prisma.apiAccessToken.deleteMany();
 	await prisma.quoteView.deleteMany();
 	await prisma.emailEvent.deleteMany();
 	await prisma.quoteLine.deleteMany();

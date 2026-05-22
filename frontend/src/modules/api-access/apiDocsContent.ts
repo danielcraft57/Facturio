@@ -47,7 +47,7 @@ export type ApiDocSection = {
     path: string
     sendExample?: { path: string; body: string }
   }
-  workflow?: { title: string; steps: string[] }
+  workflow?: { title: string; steps: readonly string[] }
 }
 
 export const API_SCOPES_REFERENCE = [
@@ -263,6 +263,24 @@ Voir aussi la section « Paiement externe + envoi email » pour le parcours comp
       },
       { method: 'PATCH', path: '/public/factures/:id', scope: 'factures.write', desc: 'Modifier' },
       {
+        method: 'GET',
+        path: '/public/factures/archives',
+        scope: 'factures.read',
+        desc: 'Archives groupées par année / mois',
+      },
+      {
+        method: 'POST',
+        path: '/public/factures/:id/archive',
+        scope: 'factures.write',
+        desc: 'Archiver (pas de suppression)',
+      },
+      {
+        method: 'POST',
+        path: '/public/factures/:id/restore',
+        scope: 'factures.write',
+        desc: 'Restaurer depuis les archives',
+      },
+      {
         method: 'POST',
         path: '/public/factures/:id/send',
         scope: 'factures.send',
@@ -302,6 +320,24 @@ Voir aussi la section « Paiement externe + envoi email » pour le parcours comp
         requestBody: '{ "clientId", "lines", "expiryDate" }',
       },
       { method: 'PATCH', path: '/public/devis/:id', scope: 'devis.write', desc: 'Modifier' },
+      {
+        method: 'GET',
+        path: '/public/devis/archives',
+        scope: 'devis.read',
+        desc: 'Archives groupées par année / mois',
+      },
+      {
+        method: 'POST',
+        path: '/public/devis/:id/archive',
+        scope: 'devis.write',
+        desc: 'Archiver (pas de suppression)',
+      },
+      {
+        method: 'POST',
+        path: '/public/devis/:id/restore',
+        scope: 'devis.write',
+        desc: 'Restaurer depuis les archives',
+      },
       {
         method: 'POST',
         path: '/public/devis/:id/send',
