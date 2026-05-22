@@ -1,13 +1,13 @@
-# Déploie la config Nginx reverse proxy (ex. node12.lan → raspberry-10.lan)
+# Déploie la config Nginx reverse proxy (node12.lan → node10.lan)
 # Usage :
-#   $env:DEPLOY_APP_SERVER = "raspberry-10.lan"
+#   $env:DEPLOY_APP_SERVER = "node10.lan"
 #   $env:DEPLOY_NGINX_SERVER = "node12.lan"
 #   $env:DEPLOY_SSH_USER = "pi"
 #   $env:DEPLOY_DOMAIN = "danielcraft.fr"
 #   .\scripts\windows\deploy-nginx-config.ps1
 
 param(
-    [string]$AppServer = $(if ($env:DEPLOY_APP_SERVER) { $env:DEPLOY_APP_SERVER } else { "raspberry-10.lan" }),
+    [string]$AppServer = $(if ($env:DEPLOY_APP_SERVER) { $env:DEPLOY_APP_SERVER } else { "node10.lan" }),
     [string]$NginxServer = $(if ($env:DEPLOY_NGINX_SERVER) { $env:DEPLOY_NGINX_SERVER } else { "node12.lan" }),
     [string]$SshUser = $(if ($env:DEPLOY_SSH_USER) { $env:DEPLOY_SSH_USER } else { "pi" }),
     [string]$Domain = $(if ($env:DEPLOY_DOMAIN) { $env:DEPLOY_DOMAIN } else { "danielcraft.fr" }),

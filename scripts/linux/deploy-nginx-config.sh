@@ -1,13 +1,13 @@
 #!/bin/bash
-# Déploie la config Nginx reverse proxy (ex. node12.lan → raspberry-10.lan)
+# Déploie la config Nginx reverse proxy (node12.lan → node10.lan)
 #
 # Usage :
-#   DEPLOY_APP_SERVER=raspberry-10.lan DEPLOY_NGINX_SERVER=node12.lan \
+#   DEPLOY_APP_SERVER=node10.lan DEPLOY_NGINX_SERVER=node12.lan \
 #   DEPLOY_SSH_USER=pi DEPLOY_DOMAIN=danielcraft.fr \
 #   ./scripts/linux/deploy-nginx-config.sh
 #
 # Ou :
-#   ./scripts/linux/deploy-nginx-config.sh raspberry-10.lan node12.lan pi danielcraft.fr contact@danielcraft.fr
+#   ./scripts/linux/deploy-nginx-config.sh node10.lan node12.lan pi danielcraft.fr contact@danielcraft.fr
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEMPLATE="$REPO_ROOT/scripts/deploy/nginx/facturio-reverse-proxy.conf.template"
 
-APP_SERVER="${1:-${DEPLOY_APP_SERVER:-raspberry-10.lan}}"
+APP_SERVER="${1:-${DEPLOY_APP_SERVER:-node10.lan}}"
 NGINX_SERVER="${2:-${DEPLOY_NGINX_SERVER:-node12.lan}}"
 SSH_USER="${3:-${DEPLOY_SSH_USER:-pi}}"
 DOMAIN="${4:-${DEPLOY_DOMAIN:-danielcraft.fr}}"
