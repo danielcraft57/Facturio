@@ -25,6 +25,8 @@ import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
+import type { RealtimeHighlightTone } from '../types/realtime'
+import { getRealtimeRowSx } from '../utils/realtimeRowHighlight'
 
 // Types pour le DataTable
 export interface Column<T = Record<string, unknown>> {
@@ -72,6 +74,8 @@ export interface DataTableProps<T = Record<string, unknown>> {
   onSelectionChange?: (selectedRows: T[]) => void
   getRowId?: (row: T) => string | number
   renderExpanded?: (row: T) => ReactNode
+  /** Surbrillance SSE (id de ligne → type d’animation). */
+  highlightRows?: Record<string, RealtimeHighlightTone>
 }
 
 export function DataTable<T = Record<string, unknown>>({
@@ -102,6 +106,7 @@ export function DataTable<T = Record<string, unknown>>({
   onSelectionChange,
   getRowId,
   renderExpanded,
+  highlightRows,
 }: DataTableProps<T>) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
@@ -299,6 +304,8 @@ export function DataTable<T = Record<string, unknown>>({
             ) : (
               data.map((row, index) => {
                 const rowId = getRowId ? getRowId(row) : index
+                const rowKey = String(rowId)
+                const highlightTone = highlightRows?.[rowKey]
                 const isSelected = selectable && selectedRows.some(r => getRowId?.(r) === rowId)
 
                 const handleRowClick = () => {
@@ -315,14 +322,15 @@ export function DataTable<T = Record<string, unknown>>({
                     hover
                     selected={isSelected}
                     onClick={handleRowClick}
-                    sx={{
-                      cursor: selectable ? 'pointer' : 'default',
-                      '&:hover': {
-                        backgroundColor: theme.palette.mode === 'light' 
-                          ? theme.palette.action.hover 
-                          : theme.palette.action.hover,
+                    sx={[
+                      {
+                        cursor: selectable ? 'pointer' : 'default',
+                        '&:hover': {
+                          backgroundColor: theme.palette.action.hover,
+                        },
                       },
-                    }}
+                      getRealtimeRowSx(highlightTone),
+                    ]}
                   >
                     {selectable && (
                       <TableCell padding="checkbox">

@@ -3,7 +3,6 @@ import {
   Badge,
   Box,
   Button,
-  Divider,
   IconButton,
   List,
   ListItem,
@@ -21,9 +20,11 @@ import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
 import DoneAllIcon from '@mui/icons-material/DoneAll'
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
 import HistoryIcon from '@mui/icons-material/History'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { useAppNotifications } from '../../../stores/appStore'
 import type { Notification } from '../../../stores/appStore'
+import { financeOutlinedButtonSx, financePrimaryButtonSx } from '../../../components/finance/financeStyles'
 
 function formatRelativeTime(date: Date): string {
   const d = date instanceof Date ? date : new Date(date)
@@ -72,10 +73,11 @@ function NotificationRow({
         onClick={handleClick}
         sx={{
           alignItems: 'flex-start',
-          py: 1.25,
+          py: 1.35,
           borderLeft: 3,
           borderColor: typeColor(item.type),
-          bgcolor: item.read ? 'transparent' : alpha(theme.palette.primary.main, 0.04),
+          bgcolor: item.read ? 'transparent' : alpha(theme.palette.primary.main, 0.05),
+          '&:hover': { bgcolor: alpha('#0f172a', 0.04) },
         }}
       >
         <ListItemText
@@ -95,7 +97,10 @@ function NotificationRow({
                 {item.message}
               </Typography>
               {item.category && (
-                <Typography variant="caption" color="primary.main" sx={{ textTransform: 'capitalize' }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: '#1e3a5f', fontWeight: 600, textTransform: 'capitalize' }}
+                >
                   {item.category}
                 </Typography>
               )}
@@ -123,6 +128,7 @@ export function NotificationCenter() {
   const open = Boolean(anchor)
   const unread = notifications.filter((n) => !n.read)
   const history = notifications
+  const listItems = tab === 0 ? unread : history
 
   return (
     <>
@@ -144,11 +150,14 @@ export function NotificationCenter() {
           paper: {
             sx: {
               width: { xs: 'min(100vw - 24px, 380px)', sm: 400 },
-              maxHeight: 480,
+              maxHeight: 520,
               mt: 1,
-              borderRadius: 2,
+              borderRadius: 2.5,
               overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
               boxShadow: theme.shadows[12],
+              border: `1px solid ${alpha('#0f172a', 0.08)}`,
             },
           },
         }}
@@ -157,6 +166,7 @@ export function NotificationCenter() {
           sx={{
             px: 2,
             py: 1.5,
+            flexShrink: 0,
             background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
             color: 'white',
           }}
@@ -173,58 +183,49 @@ export function NotificationCenter() {
           value={tab}
           onChange={(_, v) => setTab(v)}
           variant="fullWidth"
-          sx={{ minHeight: 40, borderBottom: 1, borderColor: 'divider' }}
+          sx={{
+            flexShrink: 0,
+            minHeight: 40,
+            borderBottom: 1,
+            borderColor: 'divider',
+            '& .MuiTab-root': { minHeight: 44, fontSize: '0.75rem', fontWeight: 600 },
+          }}
         >
           <Tab
             icon={<NotificationsNoneIcon sx={{ fontSize: 18 }} />}
             iconPosition="start"
             label={`Non lues (${unread.length})`}
-            sx={{ minHeight: 44, fontSize: '0.75rem' }}
           />
           <Tab
             icon={<HistoryIcon sx={{ fontSize: 18 }} />}
             iconPosition="start"
             label="Historique"
-            sx={{ minHeight: 44, fontSize: '0.75rem' }}
           />
         </Tabs>
 
-        <Box sx={{ display: 'flex', gap: 0.5, px: 1, py: 0.5, justifyContent: 'flex-end' }}>
-          <Button
-            size="small"
-            startIcon={<DoneAllIcon />}
-            onClick={markAllNotificationsRead}
-            disabled={unreadCount === 0}
-          >
-            Tout lire
-          </Button>
-          <Button
-            size="small"
-            color="inherit"
-            startIcon={<DeleteSweepIcon />}
-            onClick={clearNotifications}
-            disabled={notifications.length === 0}
-          >
-            Effacer
-          </Button>
-        </Box>
-
-        <Divider />
-
-        <List dense sx={{ maxHeight: 320, overflow: 'auto', py: 0 }}>
-          {(tab === 0 ? unread : history).length === 0 ? (
+        <List
+          dense
+          sx={{
+            flex: 1,
+            minHeight: 120,
+            maxHeight: 340,
+            overflow: 'auto',
+            py: 0,
+          }}
+        >
+          {listItems.length === 0 ? (
             <Box sx={{ py: 4, px: 2, textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
                 {tab === 0 ? 'Aucune notification non lue' : 'Aucune activité enregistrée'}
               </Typography>
               {tab === 0 && history.length > 0 && (
-                <Button size="small" sx={{ mt: 1 }} onClick={() => setTab(1)}>
+                <Button size="small" sx={{ mt: 1, textTransform: 'none' }} onClick={() => setTab(1)}>
                   Voir l&apos;historique
                 </Button>
               )}
             </Box>
           ) : (
-            (tab === 0 ? unread : history).map((item) => (
+            listItems.map((item) => (
               <NotificationRow
                 key={item.id}
                 item={item}
@@ -238,13 +239,58 @@ export function NotificationCenter() {
           )}
         </List>
 
-        {tab === 1 && (
-          <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider' }}>
-            <Button component={RouterLink} to="/factures" fullWidth size="small" onClick={() => setAnchor(null)}>
-              Voir les factures
+        <Box
+          sx={{
+            flexShrink: 0,
+            px: 1.5,
+            py: 1.25,
+            borderTop: 1,
+            borderColor: alpha('#0f172a', 0.1),
+            bgcolor: alpha('#0f172a', 0.02),
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+          }}
+        >
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              fullWidth
+              size="small"
+              variant="contained"
+              startIcon={<DoneAllIcon fontSize="small" />}
+              onClick={markAllNotificationsRead}
+              disabled={unreadCount === 0}
+              sx={financePrimaryButtonSx}
+            >
+              Tout lire
+            </Button>
+            <Button
+              fullWidth
+              size="small"
+              variant="outlined"
+              startIcon={<DeleteSweepIcon fontSize="small" />}
+              onClick={clearNotifications}
+              disabled={notifications.length === 0}
+              sx={financeOutlinedButtonSx}
+            >
+              Effacer
             </Button>
           </Box>
-        )}
+          {tab === 1 && (
+            <Button
+              component={RouterLink}
+              to="/factures"
+              fullWidth
+              size="small"
+              variant="text"
+              startIcon={<ReceiptLongIcon fontSize="small" />}
+              onClick={() => setAnchor(null)}
+              sx={{ textTransform: 'none', fontWeight: 600, color: '#1e3a5f' }}
+            >
+              Voir les factures
+            </Button>
+          )}
+        </Box>
       </Popover>
     </>
   )

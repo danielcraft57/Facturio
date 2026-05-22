@@ -34,6 +34,8 @@ export interface Invoice {
   createdAt: string
   updatedAt: string
   paidAt?: string
+  /** Date du premier envoi email (ou dernier marquage « envoyée »). */
+  sentAt?: string
 }
 
 export interface CreateInvoiceData {
@@ -126,6 +128,7 @@ export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
     createdAt: String(raw.createdAt ?? ''),
     updatedAt: String(raw.updatedAt ?? ''),
     paidAt: raw.paidAt ? String(raw.paidAt) : undefined,
+    sentAt: raw.sentAt ? String(raw.sentAt) : undefined,
   }
 }
 
@@ -233,9 +236,9 @@ export class InvoiceService {
   ): Promise<ApiResponse<unknown>> {
     const response = await apiClient.post<unknown>(`${this.baseUrl}/${id}/send`, emailData ?? {})
     
-    // Mettre à jour le statut en cache
+    apiClient.invalidateCache('/invoices')
     apiClient.invalidateCache(`/invoices/${id}`)
-    
+
     return response
   }
 

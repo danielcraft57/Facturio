@@ -31,6 +31,7 @@ import { SecretsCryptoModule } from './crypto/secrets-crypto.module';
 import { GdprModule } from './gdpr/gdpr.module';
 import { EInvoicingModule } from './e-invoicing/e-invoicing.module';
 import { ApiAccessModule } from './api-access/api-access.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { SecurityHeadersMiddleware } from './common/security-headers.middleware';
 
 @Module({
@@ -62,6 +63,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
 		OrganizationsModule,
 		UrssafModule,
 		ApiAccessModule,
+		RealtimeModule,
 	],
 	controllers: [WebhooksController],
 	providers: [

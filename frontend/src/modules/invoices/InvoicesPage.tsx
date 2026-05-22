@@ -34,6 +34,7 @@ import {
   Edit,
   Visibility,
   Send,
+  MarkEmailRead,
   Download,
   NotificationsActive,
 } from '@mui/icons-material'
@@ -49,10 +50,19 @@ import {
 import type { CreateInvoiceData, Invoice } from '../../services/invoices'
 import { useToast } from '../../components/useToast'
 import { PageHeader } from '../../components/finance/PageHeader'
-import { financeCardSx, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
+import {
+  financeCardSx,
+  financePagePadding,
+  financePrimaryButtonSx,
+  financeTableHeadSx,
+  financeTableSx,
+} from '../../components/finance/financeStyles'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { CreateInvoiceDialog } from './components/CreateInvoiceDialog'
 import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInvoiceDialog'
+import { useRealtimeRowHighlight } from '../../hooks/useRealtimeRowHighlight'
+import { getRealtimeRowSx } from '../../utils/realtimeRowHighlight'
+import { invoiceEmailSentTitle, wasInvoiceEmailed } from './invoiceEmailUi'
 
 export function InvoicesPage() {
   const navigate = useNavigate()
@@ -72,6 +82,7 @@ export function InvoicesPage() {
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [invoiceToSend, setInvoiceToSend] = useState<Invoice | null>(null)
   const [sendingEmail, setSendingEmail] = useState(false)
+  const highlightRows = useRealtimeRowHighlight('invoices')
 
   const loadInvoices = useCallback(async () => {
     try {
@@ -92,6 +103,14 @@ export function InvoicesPage() {
 
   useEffect(() => {
     loadInvoices()
+  }, [loadInvoices])
+
+  useEffect(() => {
+    const onRealtime = () => {
+      void loadInvoices()
+    }
+    window.addEventListener('facturio:invoice-realtime', onRealtime)
+    return () => window.removeEventListener('facturio:invoice-realtime', onRealtime)
   }, [loadInvoices])
 
   const formatCurrency = (amount: number) =>
@@ -176,6 +195,18 @@ export function InvoicesPage() {
         to: payload.to,
         updateClientEmail: payload.updateClientEmail,
       })
+      const sentNow = new Date().toISOString()
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoiceToSend.id
+            ? {
+                ...inv,
+                sentAt: sentNow,
+                status: inv.status === 'paid' ? 'paid' : 'sent',
+              }
+            : inv,
+        ),
+      )
       toast.success(`Facture ${invoiceToSend.number} envoyée à ${payload.to}`)
       logActivity({
         type: 'success',
@@ -324,8 +355,8 @@ export function InvoicesPage() {
       <Card sx={financeCardSx}>
         <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
           <TableContainer sx={{ maxHeight: 600 }}>
-            <Table size={isMobile ? 'small' : 'medium'}>
-              <TableHead>
+            <Table size={isMobile ? 'small' : 'medium'} sx={financeTableSx}>
+              <TableHead sx={financeTableHeadSx}>
                 <TableRow>
                   <TableCell>N° Facture</TableCell>
                   <TableCell>Client</TableCell>
@@ -338,8 +369,9 @@ export function InvoicesPage() {
               <TableBody>
                 {filteredInvoices.map((invoice) => {
                   const busy = actionLoadingId === invoice.id
+                  const rowHighlight = highlightRows[invoice.id]
                   return (
-                    <TableRow key={invoice.id} hover>
+                    <TableRow key={invoice.id} hover sx={getRealtimeRowSx(rowHighlight)}>
                       <TableCell>
                         <Typography variant="body2" fontWeight={500}>
                           {invoice.number}
@@ -350,7 +382,16 @@ export function InvoicesPage() {
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Avatar sx={{ width: 32, height: 32, mr: 1.5, bgcolor: 'primary.main' }}>
+                          <Avatar
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              mr: 1.5,
+                              bgcolor: '#1e3a5f',
+                              fontSize: '0.85rem',
+                              fontWeight: 700,
+                            }}
+                          >
                             {(invoice.client.name || '?').charAt(0)}
                           </Avatar>
                           <Box>
@@ -368,6 +409,7 @@ export function InvoicesPage() {
                           label={getStatusLabel(invoice.status)}
                           color={getStatusColor(invoice.status) as 'success' | 'info' | 'error' | 'warning' | 'default'}
                           size="small"
+                          sx={{ fontWeight: 600, borderRadius: 1.5 }}
                         />
                       </TableCell>
                       {!isMobile && (
@@ -385,7 +427,18 @@ export function InvoicesPage() {
                         </TableCell>
                       )}
                       <TableCell align="center">
-                        <Stack direction="row" spacing={0.5} justifyContent="center">
+                        <Stack
+                          direction="row"
+                          spacing={0.25}
+                          justifyContent="center"
+                          sx={{
+                            '& .MuiIconButton-root': {
+                              borderRadius: 1.5,
+                              color: 'text.secondary',
+                              '&:hover': { bgcolor: 'action.hover', color: '#0f172a' },
+                            },
+                          }}
+                        >
                           <IconButton
                             size="small"
                             title="Voir"
@@ -408,11 +461,20 @@ export function InvoicesPage() {
                             invoice.status === 'paid') && (
                             <IconButton
                               size="small"
-                              title="Envoyer par email"
+                              title={
+                                wasInvoiceEmailed(invoice)
+                                  ? invoiceEmailSentTitle(invoice)
+                                  : 'Envoyer par email'
+                              }
                               disabled={busy}
+                              color={wasInvoiceEmailed(invoice) ? 'success' : 'default'}
                               onClick={() => openSendDialog(invoice)}
                             >
-                              <Send fontSize="small" />
+                              {wasInvoiceEmailed(invoice) ? (
+                                <MarkEmailRead fontSize="small" />
+                              ) : (
+                                <Send fontSize="small" />
+                              )}
                             </IconButton>
                           )}
                           {canRemind(invoice.status) && (

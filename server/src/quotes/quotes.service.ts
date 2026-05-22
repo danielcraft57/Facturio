@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import { AccountingService } from '../accounting/accounting.service';
 import { buildPublicQuoteUrl } from '../common/public-app-url';
 import { InvoicesService } from '../invoices/invoices.service';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 
 /**
  * Ligne de devis
@@ -75,7 +76,17 @@ export class QuotesService {
 		private readonly prisma: PrismaService,
 		private readonly accounting: AccountingService,
 		private readonly invoices: InvoicesService,
+		private readonly realtime: RealtimeEventsService,
 	) {}
+
+	private notifyQuote(
+		organizationId: number | undefined,
+		action: 'created' | 'updated' | 'deleted' | 'sent' | 'paid',
+		id: number,
+		meta?: { number?: string; status?: string },
+	): void {
+		if (organizationId) this.realtime.emit(organizationId, 'quotes', action, id, meta);
+	}
 
 	/**
 	 * Contre-passe l'écriture hors-bilan d'un devis
@@ -199,7 +210,7 @@ export class QuotesService {
 		
 		const totals = this.computeTotals(lines);
 		const number = data.number ?? (await this.nextQuoteNumber());
-		return this.prisma.quote.create({
+		const created = await this.prisma.quote.create({
 			data: {
 				number,
 				clientId: data.clientId,
@@ -223,6 +234,11 @@ export class QuotesService {
 			},
 			include: { lines: true, client: true }
 		});
+		this.notifyQuote(orgId, 'created', created.id, {
+			number: created.number,
+			status: created.status,
+		});
+		return created;
 	}
 
 	/**
@@ -302,12 +318,17 @@ export class QuotesService {
 		if (data.status === QuoteStatus.REJECTED || data.status === QuoteStatus.EXPIRED) {
 			try { await this.contraOffBalanceForQuote(updated.number); } catch (_) {}
 		}
+		this.notifyQuote(organizationId ?? updated.organizationId ?? undefined, 'updated', id, {
+			number: updated.number,
+			status: updated.status,
+		});
 		return updated;
 	}
 
 	async remove(id: number, organizationId?: number) {
-		await this.findOne(id, organizationId);
+		const quote = await this.findOne(id, organizationId);
 		await this.prisma.quote.delete({ where: { id } });
+		this.notifyQuote(organizationId, 'deleted', id, { number: quote.number });
 		return { success: true };
 	}
 
@@ -345,6 +366,10 @@ export class QuotesService {
 				]
 			});
 		} catch (_) {}
+		this.notifyQuote(organizationId ?? updated.organizationId ?? undefined, 'sent', id, {
+			number: updated.number,
+			status: 'SENT',
+		});
 		return { ok: true, publicUrl: `/public/quotes/${token}` };
 	}
 
@@ -392,6 +417,10 @@ export class QuotesService {
 
 		const accepted = await this.markQuoteAccepted(quote.id, ip);
 		const invoice = await this.convertQuoteToInvoice(quote.id, quote.organizationId ?? undefined);
+		this.notifyQuote(quote.organizationId ?? undefined, 'updated', quote.id, {
+			number: quote.number,
+			status: 'ACCEPTED',
+		});
 
 		return {
 			status: 'accepted',
@@ -417,6 +446,10 @@ export class QuotesService {
 		await this.markQuoteAccepted(id);
 		const invoice = await this.convertQuoteToInvoice(id, organizationId);
 		const updated = await this.findOne(id, organizationId);
+		this.notifyQuote(organizationId ?? updated.organizationId ?? undefined, 'updated', id, {
+			number: updated.number,
+			status: 'ACCEPTED',
+		});
 		return { ...updated, invoiceId: invoice.id, invoiceNumber: invoice.number };
 	}
 
@@ -433,6 +466,10 @@ export class QuotesService {
 		try {
 			await this.contraOffBalanceForQuote(quote.number);
 		} catch (_) {}
+		this.notifyQuote(organizationId ?? quote.organizationId ?? undefined, 'updated', id, {
+			number: quote.number,
+			status: 'REJECTED',
+		});
 		return this.findOne(id, organizationId);
 	}
 
@@ -497,6 +534,10 @@ export class QuotesService {
 		if (!quote) throw new NotFoundException('Devis introuvable');
 		await this.prisma.quote.update({ where: { id: quote.id }, data: { status: QuoteStatus.REJECTED } });
 		try { await this.contraOffBalanceForQuote(quote.number); } catch (_) {}
+		this.notifyQuote(quote.organizationId ?? undefined, 'updated', quote.id, {
+			number: quote.number,
+			status: 'REJECTED',
+		});
 		return { ok: true };
 	}
 
@@ -533,6 +574,10 @@ export class QuotesService {
 			});
 		} catch (_) {}
 
+		this.notifyQuote(organizationId ?? updated.organizationId ?? undefined, 'sent', id, {
+			number: updated.number,
+			status: 'SENT',
+		});
 		return { ...updated, publicUrl };
 	}
 }

@@ -40,6 +40,7 @@ import { useQuotes } from '../../hooks/useStores';
 import type { Quote, QuoteStatus } from '../../types/quote';
 import type { CreateQuoteData } from '../../types/quote';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { useRealtimeRowHighlight } from '../../hooks/useRealtimeRowHighlight';
 
 const QUOTE_STATUS_COLORS = {
   DRAFT: 'default',
@@ -66,6 +67,7 @@ export function QuotesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const highlightRows = useRealtimeRowHighlight('quotes');
 
   // Charger les devis au montage
   useEffect(() => {
@@ -395,6 +397,8 @@ export function QuotesPage() {
           data={quotesStore.quotes}
           columns={columns}
           loading={quotesStore.isLoading}
+          getRowId={(row) => row.id}
+          highlightRows={highlightRows}
         />
       )}
 

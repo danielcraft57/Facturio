@@ -35,11 +35,13 @@ import {
   Payment,
   Print,
   Email,
+  MarkEmailRead,
   Cancel,
   Receipt,
   NotificationsActive,
 } from '@mui/icons-material'
-import { invoiceService, type Invoice } from '../../services/invoices'
+import { invoiceService, normalizeInvoiceFromApi, type Invoice } from '../../services/invoices'
+import { formatInvoiceSentAt, wasInvoiceEmailed } from './invoiceEmailUi'
 import { useToast } from '../../components/useToast'
 import { logActivity } from '../../utils/activity'
 import { apiClient } from '../../services/api'
@@ -48,6 +50,8 @@ import { CreateCreditNoteDialog } from './components/CreateCreditNoteDialog'
 import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInvoiceDialog'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { EInvoicingReadinessPanel } from '../e-invoicing/EInvoicingReadinessPanel'
+import { useRealtimePanelHighlight } from '../../hooks/useRealtimeRowHighlight'
+import { getRealtimePanelSx } from '../../utils/realtimeRowHighlight'
 
 interface Payment {
   id: number
@@ -77,11 +81,25 @@ export function InvoiceDetailPage() {
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const toast = useToast()
+  const panelHighlight = useRealtimePanelHighlight('invoices', id)
 
   useEffect(() => {
     if (id) {
       loadData()
     }
+  }, [id])
+
+  useEffect(() => {
+    if (!id) return
+    const onRealtime = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ id?: number }>).detail
+      if (detail?.id != null && String(detail.id) === id) {
+        void loadData()
+      }
+    }
+    window.addEventListener('facturio:invoice-realtime', onRealtime)
+    return () => window.removeEventListener('facturio:invoice-realtime', onRealtime)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData stable enough
   }, [id])
 
   const loadData = async () => {
@@ -94,40 +112,11 @@ export function InvoiceDetailPage() {
     try {
       setLoading(true)
       setError(null)
+      apiClient.invalidateCache(`/invoices/${id}`)
       const response = await invoiceService.getInvoice(id)
-      if (response.data) {
-        // Adapter les données du backend au format frontend
-        const invoiceData = response.data as any
-        const adaptedInvoice: Invoice = {
-          ...invoiceData,
-          id: String(invoiceData.id),
-          clientId: String(invoiceData.clientId),
-          client: {
-            id: String(invoiceData.client?.id || invoiceData.clientId),
-            name: invoiceData.client?.name || 'Client inconnu',
-            email: invoiceData.client?.email || ''
-          },
-          items: (invoiceData.lines || []).map((line: any, index: number) => ({
-            id: String(line.id || index),
-            description: line.description,
-            quantity: Number(line.quantity),
-            unitPrice: Number(line.unitPrice),
-            taxRate: Number(line.taxRate || 0),
-            total: Number(line.total || (line.quantity * line.unitPrice)),
-            totalWithTax: Number(line.total || (line.quantity * line.unitPrice * (1 + (line.taxRate || 0))))
-          })),
-          subtotal: Number(invoiceData.subtotal || 0),
-          taxTotal: Number(invoiceData.tax || 0),
-          total: Number(invoiceData.total || 0),
-          status: invoiceData.status?.toLowerCase() || 'draft',
-          issueDate: invoiceData.date || invoiceData.createdAt || new Date().toISOString(),
-          dueDate: invoiceData.dueDate || invoiceData.date || new Date().toISOString(),
-          currency: invoiceData.currency || 'EUR',
-          notes: invoiceData.notes,
-          terms: invoiceData.terms,
-          paidAt: invoiceData.paidAt
-        }
-        setInvoice(adaptedInvoice)
+      const raw = (response as { data?: Record<string, unknown> }).data
+      if (raw) {
+        setInvoice(normalizeInvoiceFromApi(raw))
       }
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement de la facture')
@@ -384,10 +373,11 @@ export function InvoiceDetailPage() {
           
           <Button
             variant="outlined"
-            startIcon={<Email />}
+            color={wasInvoiceEmailed(invoice) ? 'success' : 'inherit'}
+            startIcon={wasInvoiceEmailed(invoice) ? <MarkEmailRead /> : <Email />}
             onClick={() => setSendDialogOpen(true)}
           >
-            Email
+            {wasInvoiceEmailed(invoice) ? 'Renvoyer' : 'Email'}
           </Button>
         </Stack>
       </Stack>
@@ -397,7 +387,7 @@ export function InvoiceDetailPage() {
       {/* Informations principales */}
       <GridLegacy container spacing={3} sx={{ mb: 3 }}>
         <GridLegacy item xs={12} md={8}>
-          <Card>
+          <Card sx={getRealtimePanelSx(panelHighlight)}>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3 }}>
                 <Box>
@@ -411,11 +401,27 @@ export function InvoiceDetailPage() {
                     Échéance: {formatDate(invoice.dueDate)}
                   </Typography>
                 </Box>
-                <Chip
-                  label={getStatusLabel(invoice.status)}
-                  color={getStatusColor(invoice.status) as any}
-                  size="medium"
-                />
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Chip
+                    label={getStatusLabel(invoice.status)}
+                    color={getStatusColor(invoice.status) as any}
+                    size="medium"
+                  />
+                  {wasInvoiceEmailed(invoice) && (
+                    <Chip
+                      icon={<MarkEmailRead sx={{ fontSize: 18 }} />}
+                      label={
+                        formatInvoiceSentAt(invoice.sentAt)
+                          ? `Email — ${formatInvoiceSentAt(invoice.sentAt)}`
+                          : 'Email envoyé'
+                      }
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      sx={{ fontWeight: 600 }}
+                    />
+                  )}
+                </Stack>
               </Stack>
 
               <Divider sx={{ my: 3 }} />

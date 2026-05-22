@@ -11,6 +11,7 @@ import { ToastContainer } from '../../components/Toast'
 import { useToast } from '../../components/useToast'
 import { TopRouteProgress } from '../../components/TopRouteProgress'
 import { ProtectedRoute } from '../../components/ProtectedRoute'
+import { FinanceRealtimeBridge } from '../../components/FinanceRealtimeBridge'
 const LandingPage = lazy(() =>
   import('../marketing/pages/LandingPage').then((m) => ({ default: m.LandingPage })),
 )
@@ -160,6 +161,7 @@ export function App() {
   // Wrapper pour les routes privées avec layout
   const PrivateRouteWrapper = ({ children }: { children: ReactNode }) => (
     <ProtectedRoute>
+      <FinanceRealtimeBridge />
       <AppLayout
         mode={settings.mode}
         onToggleMode={handleToggleMode}

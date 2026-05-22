@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { InvoicePaymentNotificationService } from '../invoices/invoice-payment-notification.service';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 
 /**
  * Données de création de paiement
@@ -52,6 +53,7 @@ export class PaymentsService {
 		private readonly prisma: PrismaService,
 		private readonly accounting: AccountingService,
 		private readonly paidNotifications: InvoicePaymentNotificationService,
+		private readonly realtime: RealtimeEventsService,
 	) {}
 
 	async create(data: CreatePaymentDto, organizationId?: number) {
@@ -111,6 +113,16 @@ export class PaymentsService {
 						`Notification paiement facture ${data.invoiceId}: ${(err as Error).message}`,
 					),
 				);
+		}
+
+		if (organizationId) {
+			this.realtime.emit(
+				organizationId,
+				'invoices',
+				newStatus === 'PAID' && !wasFullyPaid ? 'paid' : 'updated',
+				data.invoiceId,
+				{ number: invoice.number, status: newStatus },
+			);
 		}
 
 		return {

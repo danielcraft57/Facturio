@@ -19,6 +19,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 				},
 				// Fallback sur le header Authorization
 				ExtractJwt.fromAuthHeaderAsBearerToken(),
+				// EventSource (SSE) : token en query (?access_token=)
+				(request: Request) => {
+					const q = request?.query?.['access_token'];
+					return typeof q === 'string' ? q : null;
+				},
 			]),
 			ignoreExpiration: false,
 			secretOrKey: process.env.JWT_SECRET || 'your-secret-key-change-in-production',

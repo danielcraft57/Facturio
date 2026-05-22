@@ -106,7 +106,9 @@ export const API_DOC_SECTIONS: ApiDocSection[] = [
 
 En local : base http://localhost:5173/api (proxy Vite → backend :3000). Copiez frontend/env.development.example vers .env. En production : https://votre-domaine/api.
 
-Les pages client (/public/invoices/:token, etc.) sont distinctes et ne utilisent pas le jeton API.`,
+Les pages client (/public/invoices/:token, etc.) sont distinctes et ne utilisent pas le jeton API.
+
+L’application web (tableaux de bord Factures / Devis) se met à jour en temps réel via SSE : GET /api/realtime/stream (session JWT, hors jeton API).`,
   },
   {
     id: 'auth',

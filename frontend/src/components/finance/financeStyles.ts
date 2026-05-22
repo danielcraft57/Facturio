@@ -32,3 +32,36 @@ export const financeKpiGradients = {
 } as const
 
 export const financePagePadding = { xs: 1, sm: 2, md: 3 } as const
+
+/** En-tête de tableau style finance. */
+export const financeTableHeadSx: SxProps<Theme> = (theme) => ({
+  '& .MuiTableCell-head': {
+    fontWeight: 700,
+    fontSize: '0.72rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    color: theme.palette.text.secondary,
+    bgcolor: theme.palette.mode === 'dark' ? alpha('#fff', 0.04) : alpha('#0f172a', 0.03),
+    borderBottom: `1px solid ${alpha('#0f172a', 0.1)}`,
+    py: 1.25,
+  },
+})
+
+export const financeTableSx: SxProps<Theme> = {
+  '& .MuiTableRow-root:hover': {
+    bgcolor: alpha('#0f172a', 0.03),
+  },
+}
+
+/** Bouton secondaire finance (outline navy). */
+export const financeOutlinedButtonSx: SxProps<Theme> = {
+  textTransform: 'none',
+  fontWeight: 600,
+  borderRadius: 2,
+  borderColor: alpha('#0f172a', 0.25),
+  color: '#0f172a',
+  '&:hover': {
+    borderColor: '#1e3a5f',
+    bgcolor: alpha('#0f172a', 0.04),
+  },
+}

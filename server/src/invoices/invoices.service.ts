@@ -9,6 +9,7 @@ import { BillingService } from '../billing/billing.service';
 import { assertValidPublicToken } from './public-token.util';
 import { buildPublicInvoiceUrl } from '../common/public-app-url';
 import { InvoicePaymentNotificationService } from './invoice-payment-notification.service';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 
 /**
  * Ligne de facture
@@ -107,7 +108,17 @@ export class InvoicesService {
 		private readonly config: ConfigService,
 		private readonly billing: BillingService,
 		private readonly paidNotifications: InvoicePaymentNotificationService,
+		private readonly realtime: RealtimeEventsService,
 	) {}
+
+	private notifyInvoice(
+		organizationId: number | undefined,
+		action: 'created' | 'updated' | 'deleted' | 'sent' | 'paid',
+		id: number,
+		meta?: { number?: string; status?: string },
+	): void {
+		if (organizationId) this.realtime.emit(organizationId, 'invoices', action, id, meta);
+	}
 
 	/**
 	 * Récupère le taux de TVA par défaut
@@ -381,9 +392,18 @@ export class InvoicesService {
 					amount: totals.total,
 				});
 			} catch (_) {}
-			return this.findOne(created.id, orgId);
+			const full = await this.findOne(created.id, orgId);
+			this.notifyInvoice(orgId, 'paid', created.id, {
+				number: created.number,
+				status: 'PAID',
+			});
+			return full;
 		}
 
+		this.notifyInvoice(orgId, 'created', created.id, {
+			number: created.number,
+			status: created.status,
+		});
 		return created;
 	}
 
@@ -495,7 +515,7 @@ export class InvoicesService {
 		const paid = agg?._sum?.amount ? (agg._sum.amount as any).toNumber?.() ?? Number(agg._sum.amount) : 0;
 		const newBalance = totals.total - paid;
 
-		return this.prisma.invoice.update({
+		const updated = await this.prisma.invoice.update({
 			where: { id },
 			data: {
 				number: data.number,
@@ -522,6 +542,11 @@ export class InvoicesService {
 			},
 			include: { lines: true, client: true, payments: true }
 		});
+		this.notifyInvoice(organizationId, 'updated', id, {
+			number: updated.number,
+			status: updated.status,
+		});
+		return updated;
 	}
 
 	/**
@@ -533,8 +558,9 @@ export class InvoicesService {
 	 * @throws {NotFoundException} Si facture non trouvée
 	 */
 	async remove(id: number, organizationId?: number) {
-		await this.findOne(id, organizationId);
+		const invoice = await this.findOne(id, organizationId);
 		await this.prisma.invoice.delete({ where: { id } });
+		this.notifyInvoice(organizationId, 'deleted', id, { number: invoice.number });
 		return { success: true };
 	}
 
@@ -597,6 +623,13 @@ export class InvoicesService {
 				paymentMethod: method,
 			});
 		}
+
+		this.notifyInvoice(
+			organizationId,
+			newStatus === 'PAID' && !wasFullyPaid ? 'paid' : 'updated',
+			id,
+			{ number: invoice.number, status: newStatus },
+		);
 
 		// Retourner le paiement en nombre pour .toBe(250)
 		return { ...payment, amount: (payment.amount as any)?.toNumber?.() ?? Number(payment.amount) } as any;
@@ -747,6 +780,10 @@ export class InvoicesService {
 			data: { invoiceId: id, type: 'sent' }
 		});
 		const publicUrl = InvoicesService.buildPublicPaymentUrl(token);
+		this.notifyInvoice(organizationId, 'sent', id, {
+			number: updated.number,
+			status: nextStatus,
+		});
 		return { ...updated, publicUrl };
 	}
 

@@ -80,6 +80,10 @@ export const useInvoicesStore = create<InvoicesState>()(
         set({ isLoading: true, filters: newFilters });
 
         try {
+          if (get().isStale) {
+            const { apiClient } = await import('../services/api')
+            apiClient.invalidateCache('/invoices')
+          }
           const response = await invoiceService.getInvoices({
             ...newFilters,
             page,
@@ -187,15 +191,27 @@ export const useInvoicesStore = create<InvoicesState>()(
           const response = await invoiceService.sendInvoice(id);
           const success = response.success;
           if (success) {
-            // Mettre à jour le statut localement
+            const sentNow = new Date().toISOString()
             set((state) => ({
-              invoices: state.invoices.map(invoice => 
-                invoice.id === id ? { ...invoice, status: 'sent' } : invoice
+              invoices: state.invoices.map((invoice) =>
+                invoice.id === id
+                  ? {
+                      ...invoice,
+                      sentAt: sentNow,
+                      status: invoice.status === 'paid' ? 'paid' : 'sent',
+                    }
+                  : invoice,
               ),
-              selectedInvoice: state.selectedInvoice?.id === id 
-                ? { ...state.selectedInvoice, status: 'sent' } 
-                : state.selectedInvoice,
-            }));
+              selectedInvoice:
+                state.selectedInvoice?.id === id
+                  ? {
+                      ...state.selectedInvoice,
+                      sentAt: sentNow,
+                      status:
+                        state.selectedInvoice.status === 'paid' ? 'paid' : 'sent',
+                    }
+                  : state.selectedInvoice,
+            }))
           }
           return success;
         } catch (error) {

@@ -23,7 +23,7 @@ export function useToast() {
       id,
       autoHide: true,
       closable: true,
-      duration: 6000,
+      duration: 9500,
       ...message,
     }
 
