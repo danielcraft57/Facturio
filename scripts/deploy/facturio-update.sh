@@ -49,7 +49,12 @@ ALTER TABLE "User"
   ADD COLUMN IF NOT EXISTS "passwordResetToken" TEXT,
   ADD COLUMN IF NOT EXISTS "passwordResetExpires" TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS "emailVerificationToken" TEXT,
-  ADD COLUMN IF NOT EXISTS "emailVerificationExpires" TIMESTAMP(3);
+  ADD COLUMN IF NOT EXISTS "emailVerificationExpires" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "privacyConsentAt" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "termsAcceptedAt" TIMESTAMP(3);
+ALTER TABLE "Organization"
+  ADD COLUMN IF NOT EXISTS "privacyPolicyUrl" TEXT,
+  ADD COLUMN IF NOT EXISTS "dataControllerEmail" TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS "User_passwordResetToken_key" ON "User"("passwordResetToken");
 CREATE UNIQUE INDEX IF NOT EXISTS "User_emailVerificationToken_key" ON "User"("emailVerificationToken");
 CREATE INDEX IF NOT EXISTS "User_passwordResetToken_idx" ON "User"("passwordResetToken");
