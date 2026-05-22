@@ -78,9 +78,12 @@ async function bootstrap(): Promise<void> {
 	}
 
 	const port = config.port;
-	await app.listen(port);
+	const host = config.isProd ? '0.0.0.0' : undefined;
+	await app.listen(port, host);
 
-	logger.log(`🚀 API démarrée sur http://localhost:${port}`);
+	logger.log(
+		`🚀 API démarrée sur http://${host ?? 'localhost'}:${port}`,
+	);
 	logger.log(`📦 Environnement: ${config.environment}`);
 	logger.log(`🗄️  Base de données: ${redactDatabaseUrl(config.databaseUrl)}`);
 	const dbUrl = config.databaseUrl;
