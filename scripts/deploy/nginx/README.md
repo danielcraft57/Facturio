@@ -40,8 +40,12 @@ curl -sS -o /dev/null -w "%{http_code}\n" http://node10.lan:3000/api/auth/login 
 
 Sur **node10** : service `facturio` actif, Nginx local sur 5173 (`systemctl status nginx`).
 
-## 502 sur `/api`
+## HTTPS
 
-1. Mauvais hôte dans `proxy_pass` → doit être `node10.lan`, pas `localhost`.
-2. Backend n’écoute que sur `127.0.0.1` → redémarrer après mise à jour (écoute `0.0.0.0`).
-3. Pare-feu sur node10 : autoriser node12 vers TCP 3000 et 5173.
+Référence complète : `facturio-reverse-proxy.ssl.conf` (port 443 + certificats Let’s Encrypt).
+
+## Dépannage `/api`
+
+1. **502** : `proxy_pass` → `node10.lan:3000`, backend `active`, écoute `0.0.0.0`.
+2. **500** Prisma : `cd /opt/facturio/server && npm run migrate:prod`.
+3. **500** `permission denied for table UserSession` : `grant-facturio-role.sql` (voir `scripts/deploy/README.md`).

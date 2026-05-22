@@ -495,7 +495,9 @@ sudo journalctl -u facturio -f
 
 ### 6.2. Mise à jour de l'application
 
-**Cron automatique** : `scripts/deploy/facturio-update.sh` met à jour le dépôt, rebuild le **backend**, télécharge le **frontend** depuis l’artefact GitHub Actions (CI sur `main`) et recharge Nginx. Sur Raspberry (build local OOM), configurer un token :
+**Architecture DanielCraft** : Nginx HTTPS sur **node12.lan**, application sur **node10.lan** (`/opt/facturio`). Voir `scripts/deploy/README.md`.
+
+**Cron automatique** : `facturio-update.sh` fait `git pull`, **`npm run migrate:prod`**, droits PostgreSQL, build backend, artefact frontend CI, restart. Sur node10 (peu de RAM), ne pas builder le frontend localement — configurer un token :
 
 ```bash
 echo 'VOTRE_PAT_GITHUB' | sudo tee /var/lib/facturio/github-token
