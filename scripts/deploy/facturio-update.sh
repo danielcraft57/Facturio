@@ -54,6 +54,14 @@ run_prisma_migrate_prod() {
 	fi
 	echo "[facturio-update] prisma migrate deploy (prisma/postgresql/migrations)..."
 	npm run migrate:prod
+	run_pg_grant_facturio_role
+}
+
+run_pg_grant_facturio_role() {
+	local grants="$APP_DIR/scripts/deploy/postgresql/grant-facturio-role.sql"
+	[ -f "$grants" ] || return 0
+	echo "[facturio-update] droits PostgreSQL (role facturio)..."
+	sudo -u postgres psql -d facturio -v ON_ERROR_STOP=1 -q -f "$grants"
 }
 
 run_pg_maintenance() {
