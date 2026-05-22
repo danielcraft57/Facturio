@@ -13,9 +13,10 @@ Ne pas utiliser `raspberry-10` — le hostname applicatif est **node10.lan**.
 
 ### Déploiement
 
-- Mises à jour auto sur node10 : `facturio-update.sh` (cron), frontend via artefact GitHub Actions.
-- Config Nginx public : `scripts/deploy/nginx/facturio-reverse-proxy.conf.template` → déployer avec `scripts/linux/deploy-nginx-config.sh` ou `scripts/windows/deploy-nginx-config.ps1` (défauts : `DEPLOY_APP_SERVER=node10.lan`, `DEPLOY_NGINX_SERVER=node12.lan`).
-- Frontend prod : `VITE_API_URL=/api` (pas de domaine en dur dans le bundle).
+- Mises à jour auto sur node10 : `facturio-update.sh` (cron) exécute **`npm run migrate:prod`** (`prisma/postgresql/migrations/`) puis build + artefact frontend CI.
+- Schéma prod : `server/prisma/postgresql/schema.prisma` (≠ `prisma/migrations/` SQLite dev).
+- Config Nginx public : `node12.lan` → `node10.lan` (`scripts/deploy/nginx/facturio-reverse-proxy.ssl.conf`).
+- Frontend prod : `VITE_API_URL=/api`.
 
 ### Diagnostic login / API
 

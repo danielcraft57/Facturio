@@ -119,7 +119,7 @@ L'entrypoint applique `prisma db push` au démarrage si `DATABASE_URL` est défi
 | Environnement | Provider   | Schéma                      | Fichier / URL                          |
 |---------------|------------|-----------------------------|----------------------------------------|
 | **Dev**       | SQLite     | `prisma/schema.prisma`      | `DATABASE_URL=file:./prisma/dev.db`    |
-| **Prod**      | PostgreSQL | `prisma/schema.postgresql.prisma` | `DATABASE_URL=postgresql://...` (voir `env.prod.example`) |
+| **Prod**      | PostgreSQL | `prisma/postgresql/schema.prisma` + `prisma/postgresql/migrations/` | `DATABASE_URL=postgresql://...` (voir `env.prod.example`) |
 
 - **Dev** : `npm run start:dev` (SQLite), `npm run seed:dev`.
 - **Prod** (serveur de prod) : `env.prod.example` + variables d'environnement (mot de passe PostgreSQL, etc.).  

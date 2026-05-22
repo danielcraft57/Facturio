@@ -1,4 +1,3 @@
-// Source canonique : prisma/postgresql/schema.prisma (garder les deux fichiers synchronisés)
 generator client {
   provider = "prisma-client-js"
 }

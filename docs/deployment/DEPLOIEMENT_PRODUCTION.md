@@ -157,7 +157,7 @@ ALLOW_PUBLIC_ACCESS=true
 
 ### 2.6. Build de l'application (PostgreSQL)
 
-En production on utilise PostgreSQL : le schéma Prisma dédié est `prisma/schema.postgresql.prisma`.
+En production on utilise PostgreSQL : schéma `prisma/postgresql/schema.prisma`, migrations `prisma/postgresql/migrations/`.
 
 ```bash
 cd /opt/facturio/server
@@ -166,7 +166,7 @@ cd /opt/facturio/server
 npm run prisma:prod
 
 # Appliquer les migrations (recommandé en production)
-npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+npm run migrate:prod
 
 # OU créer les tables en base (si migrations déjà appliquées)
 # npm run db:push:prod
@@ -517,7 +517,7 @@ cd server
 npm install
 
 # Appliquer migrations Prisma (si nouvelles migrations)
-npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+npm run migrate:prod
 
 # Rebuild backend
 npm run build:prod

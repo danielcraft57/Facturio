@@ -6,7 +6,6 @@ STATE_DIR="/var/lib/facturio"
 LAST_OK_FILE="$STATE_DIR/last_success_sha"
 LOCK_HASH_FILE="$STATE_DIR/server-package-lock.sha256"
 FRONT_LOCK_HASH_FILE="$STATE_DIR/frontend-package-lock.sha256"
-SCHEMA_BOOTSTRAP_MARKER="$STATE_DIR/pg-schema-bootstrap-v2.done"
 PG_MAINTENANCE_FILE="$STATE_DIR/last-pg-maintenance.date"
 SERVICE="facturio"
 DEPLOY_USER="${DEPLOY_USER:-pi}"
@@ -38,28 +37,23 @@ needs_npm_install() {
 	[ "$current" != "$prev" ]
 }
 
-run_pg_schema_bootstrap() {
-	if [ -f "$SCHEMA_BOOTSTRAP_MARKER" ]; then
-		return 0
-	fi
-	echo "[facturio-update] bootstrap schéma Postgres (indexes email/reset, une fois)..."
-	sudo -u postgres psql -d facturio -v ON_ERROR_STOP=1 -q <<'SQL'
-CREATE UNIQUE INDEX IF NOT EXISTS "User_passwordResetToken_key" ON "User"("passwordResetToken");
-CREATE UNIQUE INDEX IF NOT EXISTS "User_emailVerificationToken_key" ON "User"("emailVerificationToken");
-CREATE INDEX IF NOT EXISTS "User_passwordResetToken_idx" ON "User"("passwordResetToken");
-CREATE INDEX IF NOT EXISTS "User_emailVerificationToken_idx" ON "User"("emailVerificationToken");
-SQL
-	touch "$SCHEMA_BOOTSTRAP_MARKER"
+uses_postgres_db() {
+	[ -f "$APP_DIR/server/.env" ] && grep -qE '^DATABASE_URL=.*postgresql' "$APP_DIR/server/.env"
 }
 
-run_pg_sync_schema() {
-	local sql="$APP_DIR/scripts/deploy/postgresql/sync-prod-schema.sql"
-	if [ ! -f "$sql" ]; then
-		echo "[facturio-update] sync schéma Postgres ignoré (fichier absent)"
+run_prisma_migrate_prod() {
+	if ! uses_postgres_db; then
+		echo "[facturio-update] prisma migrate ignoré (DATABASE_URL non Postgres)"
 		return 0
 	fi
-	echo "[facturio-update] sync schéma Postgres (incrémental)..."
-	sudo -u postgres psql -d facturio -v ON_ERROR_STOP=1 -q -f "$sql"
+	cd "$APP_DIR/server"
+	if [ ! -d node_modules/@prisma/client ]; then
+		echo "[facturio-update] npm ci (requis pour prisma migrate)..."
+		npm ci --omit=dev --no-audit --prefer-offline
+		sha256_file package-lock.json > "$LOCK_HASH_FILE" 2>/dev/null || true
+	fi
+	echo "[facturio-update] prisma migrate deploy (prisma/postgresql/migrations)..."
+	npm run migrate:prod
 }
 
 run_pg_maintenance() {
@@ -123,6 +117,20 @@ fi
 
 NEED_RESTART=false
 
+RUN_MIGRATE=true
+if [ -n "$LAST_OK_SHA" ] && git cat-file -e "${LAST_OK_SHA}^{commit}" 2>/dev/null; then
+	if git diff --quiet "$LAST_OK_SHA" "$DESIRED_SHA" -- server/prisma/postgresql server/package.json; then
+		RUN_MIGRATE=false
+		echo "[facturio-update] pas de changement migrations Postgres depuis $LAST_OK_SHA"
+	fi
+fi
+
+if [ "$RUN_MIGRATE" = true ] && uses_postgres_db; then
+	run_prisma_migrate_prod
+	run_pg_maintenance
+	NEED_RESTART=true
+fi
+
 if [ "$RUN_BACKEND" = true ]; then
 	cd "$APP_DIR/server"
 
@@ -134,9 +142,9 @@ if [ "$RUN_BACKEND" = true ]; then
 		echo "[facturio-update] npm install ignoré (lock inchangé)"
 	fi
 
-	run_pg_schema_bootstrap
-	run_pg_sync_schema
-	run_pg_maintenance
+	if [ "$RUN_MIGRATE" != true ] && uses_postgres_db; then
+		run_pg_maintenance
+	fi
 
 	echo "[facturio-update] build backend..."
 	npm run build:prod

@@ -27,7 +27,7 @@ jobs:
         working-directory: server
 
       - name: Generate Prisma client (prod schema)
-        run: npx prisma generate --schema=prisma/schema.postgresql.prisma
+        run: npx prisma generate --schema=prisma/postgresql/schema.prisma
         working-directory: server
 
       - name: Server tests (unit + e2e)

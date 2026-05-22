@@ -27,9 +27,9 @@ npm run build:prod
 npm run seed:prod
 npm run start:prod
 ```
-- Base de données : PostgreSQL (voir `env.prod.example` et `prisma/schema.postgresql.prisma`)
+- Base de données : PostgreSQL (voir `env.prod.example` et `prisma/postgresql/schema.prisma`)
 - Dev : SQLite (`schema.prisma` + `DATABASE_URL=file:./prisma/dev.db`)
-- Prod : PostgreSQL (`schema.postgresql.prisma` + `DATABASE_URL=postgresql://...`)
+- Prod : PostgreSQL (`prisma/postgresql/` + `npm run migrate:prod`)
 - Logs : Info
 - CORS : Restreint
 - Compression : Activée

@@ -36,14 +36,25 @@ SECRETS_ENCRYPTION_KEY=<64 caractères hex>
 
 L’API ajoute automatiquement `connection_limit`, `pool_timeout`, `connect_timeout` et `application_name` au démarrage si absents.
 
-## Schéma Prisma
+## Schéma Prisma (migrations PostgreSQL)
+
+Historique dédié : `server/prisma/postgresql/migrations/` (≠ `prisma/migrations/` SQLite en dev).
 
 ```bash
 cd /opt/facturio/server
-npm run prisma:prod
-npx prisma db push --schema=prisma/schema.postgresql.prisma --accept-data-loss
-# ou migrate deploy si l’historique migrations Postgres est aligné
+npm run migrate:prod    # prisma migrate deploy
+npm run build:prod
 ```
+
+`facturio-update.sh` lance **`migrate:prod` automatiquement** à chaque pull si `server/prisma/postgresql/` ou `server/package.json` a changé.
+
+Nouvelle migration en dev :
+
+```bash
+npm run migrate:prod:dev -- --name description_du_changement
+```
+
+Voir `server/prisma/postgresql/README.md`.
 
 ## Maintenance après déploiement
 

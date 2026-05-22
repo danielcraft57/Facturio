@@ -1,0 +1,2 @@
+# Migrations PostgreSQL (production) — distinct de prisma/migrations (SQLite, dev)
+provider = "postgresql"
