@@ -9,8 +9,10 @@ Historique **séparé** de `prisma/migrations/` (SQLite, développement local).
 
 ## Commandes
 
+Toujours depuis **`/opt/facturio/server`** (pas la racine du repo). Utiliser le Prisma du projet (`npm run`), pas `npx prisma` à la racine (installerait Prisma 7).
+
 ```bash
-cd server
+cd /opt/facturio/server
 
 # Déployer les migrations sur prod (automatique via facturio-update.sh)
 npm run migrate:prod
@@ -24,6 +26,7 @@ npm run migrate:prod:dev -- --name description_du_changement
 Si `migrate deploy` échoue car la migration initiale est déjà appliquée à la main :
 
 ```bash
+cd /opt/facturio/server
 npx prisma migrate resolve --applied 20260522120000_incremental_prod_sync \
   --schema=prisma/postgresql/schema.prisma
 ```
