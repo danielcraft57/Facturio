@@ -1,12 +1,10 @@
 import { apiClient } from './api'
 import { unwrapApiPayload } from './clients'
+import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl'
 
 export const gdprService = {
   async downloadExport(): Promise<void> {
-    const base =
-      import.meta.env.DEV || import.meta.env.MODE === 'development'
-        ? '/api'
-        : import.meta.env.VITE_API_URL || '/api'
+    const base = resolveApiBaseUrl()
     const res = await fetch(`${base}/gdpr/export`, { credentials: 'include' })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))

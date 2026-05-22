@@ -16,16 +16,17 @@ import {
   Typography,
 } from '@mui/material'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
-import { loadStripe, type Stripe } from '@stripe/stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
+
+type StripeJsPromise = ReturnType<typeof loadStripe>
 import { ApiClient } from '../../../services/apiClient'
 import { formatCurrency, formatDate } from '../../../utils/formatters'
 import { PublicDataProcessingNotice } from '../../legal/PublicDataProcessingNotice'
 import { InvoicePublicSkeleton } from '../../../components/loading/InvoicePublicSkeleton'
+import { resolveApiBaseUrl } from '../../../utils/resolveApiBaseUrl'
 
 const api = ApiClient.getInstance()
-const API_BASE = (import.meta.env.DEV || import.meta.env.MODE === 'development')
-  ? '/api'
-  : (import.meta.env.VITE_API_URL || '/api')
+const API_BASE = resolveApiBaseUrl()
 
 function InvoicePaymentForm({
   amount,
@@ -94,7 +95,7 @@ export function PublicInvoicePage() {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [paymentLoading, setPaymentLoading] = useState(false)
-  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
+  const [stripePromise, setStripePromise] = useState<StripeJsPromise | null>(null)
   const [orgPublishableKey, setOrgPublishableKey] = useState<string | null>(null)
 
   const reloadInvoice = useCallback(() => {

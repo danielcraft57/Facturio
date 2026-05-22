@@ -1,10 +1,10 @@
 {
   "name": "server",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "main": "index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-pdf-assets.js",
-    "build:prod": "prisma generate --schema=prisma/schema.postgresql.prisma && tsc -p tsconfig.json && node scripts/copy-pdf-assets.js",
+    "build:prod": "prisma generate --schema=prisma/postgresql/schema.prisma && tsc -p tsconfig.json && node scripts/copy-pdf-assets.js",
     "start": "node dist/main.js",
     "start:dev": "cross-env NODE_ENV=dev DATABASE_URL=file:./prisma/prisma/dev.db PORT=3000 LOG_LEVEL=debug ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/main.ts",
     "start:prod": "cross-env NODE_ENV=prod node dist/main.js",
@@ -16,9 +16,10 @@
     "seed": "ts-node prisma/seed.ts",
     "seed:dev": "cross-env NODE_ENV=dev DATABASE_URL=file:./prisma/prisma/dev.db prisma db push && cross-env NODE_ENV=dev DATABASE_URL=file:./prisma/prisma/dev.db SEED_PURGE=false ts-node prisma/seed.ts",
     "seed:prod": "cross-env NODE_ENV=prod ts-node prisma/seed.ts",
-    "prisma:prod": "prisma generate --schema=prisma/schema.postgresql.prisma",
-    "db:push:prod": "prisma db push --schema=prisma/schema.postgresql.prisma",
-    "migrate:prod": "prisma migrate deploy --schema=prisma/schema.postgresql.prisma",
+    "prisma:prod": "prisma generate --schema=prisma/postgresql/schema.prisma",
+    "db:push:prod": "prisma db push --schema=prisma/postgresql/schema.prisma",
+    "migrate:prod": "prisma migrate deploy --schema=prisma/postgresql/schema.prisma",
+    "migrate:prod:dev": "prisma migrate dev --schema=prisma/postgresql/schema.prisma",
     "user:add": "node scripts/manage-user.js add",
     "user:remove": "node scripts/manage-user.js remove",
     "user:list": "node scripts/manage-user.js list"

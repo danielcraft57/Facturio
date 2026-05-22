@@ -1,101 +1,75 @@
 #!/bin/bash
-# Script pour déployer la configuration Nginx (reverse proxy)
-# Usage : DEPLOY_APP_SERVER=app.lan DEPLOY_NGINX_SERVER=nginx.lan DEPLOY_SSH_USER=user DEPLOY_DOMAIN=example.fr DEPLOY_EMAIL=admin@example.fr ./scripts/linux/deploy-nginx-config.sh
-# Ou : ./scripts/linux/deploy-nginx-config.sh app.lan nginx.lan user example.fr admin@example.fr
+# Déploie la config Nginx reverse proxy (node12.lan → node10.lan)
+#
+# Usage :
+#   DEPLOY_APP_SERVER=node10.lan DEPLOY_NGINX_SERVER=node12.lan \
+#   DEPLOY_SSH_USER=pi DEPLOY_DOMAIN=danielcraft.fr \
+#   ./scripts/linux/deploy-nginx-config.sh
+#
+# Ou :
+#   ./scripts/linux/deploy-nginx-config.sh node10.lan node12.lan pi danielcraft.fr contact@danielcraft.fr
 
-set -e
+set -euo pipefail
 
-APP_SERVER="${1:-$DEPLOY_APP_SERVER}"
-NGINX_SERVER="${2:-$DEPLOY_NGINX_SERVER}"
-SSH_USER="${3:-$DEPLOY_SSH_USER}"
-DOMAIN="${4:-$DEPLOY_DOMAIN}"
-EMAIL="${5:-$DEPLOY_EMAIL}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+TEMPLATE="$REPO_ROOT/scripts/deploy/nginx/facturio-reverse-proxy.conf.template"
 
-if [ -z "$APP_SERVER" ]; then
-    echo "ERREUR: Serveur applicatif non configuré."
-    echo "  Usage: ./scripts/linux/deploy-nginx-config.sh app.lan nginx.lan votre_user votre-domaine.fr admin@votre-domaine.fr"
-    exit 1
+APP_SERVER="${1:-${DEPLOY_APP_SERVER:-node10.lan}}"
+NGINX_SERVER="${2:-${DEPLOY_NGINX_SERVER:-node12.lan}}"
+SSH_USER="${3:-${DEPLOY_SSH_USER:-pi}}"
+DOMAIN="${4:-${DEPLOY_DOMAIN:-danielcraft.fr}}"
+EMAIL="${5:-${DEPLOY_EMAIL:-contact@${DOMAIN}}}"
+
+if [ ! -f "$TEMPLATE" ]; then
+	echo "ERREUR: template introuvable: $TEMPLATE" >&2
+	exit 1
 fi
-
-if [ -z "$NGINX_SERVER" ]; then
-    echo "ERREUR: Serveur Nginx non configuré."
-    exit 1
-fi
-
-if [ -z "$SSH_USER" ]; then
-    echo "ERREUR: Utilisateur SSH non configuré."
-    exit 1
-fi
-
-DOMAIN="${DOMAIN:-votre-domaine.fr}"
-EMAIL="${EMAIL:-admin@$DOMAIN}"
 
 SERVER_NAMES="facturio.${DOMAIN} devis.${DOMAIN} facture.${DOMAIN}"
 SITE_CONFIG_NAME="facturio.${DOMAIN}"
 
-echo "=== Déploiement de la configuration Nginx ==="
-echo "Serveur applicatif: $APP_SERVER"
-echo "Serveur Nginx: $NGINX_SERVER"
-echo "Domaines: $SERVER_NAMES"
+echo "=== Déploiement Nginx Facturio ==="
+echo "  App (Pi)    : $APP_SERVER"
+echo "  Nginx       : $NGINX_SERVER"
+echo "  Domaines    : $SERVER_NAMES"
 echo ""
 
-TMP_CONFIG=$(mktemp)
-cat > "$TMP_CONFIG" << EOF
-# Configuration : $SERVER_NAMES
-server {
-    listen 80;
-    server_name $SERVER_NAMES;
+TMP_CONFIG="$(mktemp)"
+sed -e "s/__APP_SERVER__/${APP_SERVER}/g" \
+	-e "s/__NGINX_SERVER__/${NGINX_SERVER}/g" \
+	-e "s/__DOMAIN__/${DOMAIN}/g" \
+	-e "s/__SERVER_NAMES__/${SERVER_NAMES}/g" \
+	"$TEMPLATE" > "$TMP_CONFIG"
 
-    location / {
-        proxy_pass http://${APP_SERVER}:5173;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-
-    location /api {
-        proxy_pass http://${APP_SERVER}:3000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-
-    access_log /var/log/nginx/facturio_access.log;
-    error_log /var/log/nginx/facturio_error.log;
-}
-EOF
-
-echo "Copie de la configuration vers $NGINX_SERVER..."
+echo "Copie vers ${SSH_USER}@${NGINX_SERVER}..."
 scp "$TMP_CONFIG" "${SSH_USER}@${NGINX_SERVER}:/tmp/facturio_nginx_config.conf"
 
-echo "Installation de la configuration..."
+echo "Installation..."
 ssh "${SSH_USER}@${NGINX_SERVER}" << ENDSSH
-    sudo mv /tmp/facturio_nginx_config.conf /etc/nginx/sites-available/${SITE_CONFIG_NAME}
-    if ! grep -q "server_names_hash_bucket_size 128" /etc/nginx/nginx.conf; then
-        sudo sed -i '/^http {/a\    server_names_hash_bucket_size 128;' /etc/nginx/nginx.conf
-    fi
-    sudo ln -sf /etc/nginx/sites-available/${SITE_CONFIG_NAME} /etc/nginx/sites-enabled/
-    sudo nginx -t
-    if [ \$? -eq 0 ]; then
-        echo "Configuration Nginx valide. Rechargement..."
-        sudo systemctl reload nginx
-        echo "Configuration déployée avec succès !"
-    else
-        echo "ERREUR: Configuration Nginx invalide. Vérifiez les logs."
-        exit 1
-    fi
+	set -e
+	sudo sed -i '1s/^\xEF\xBB\xBF//' /tmp/facturio_nginx_config.conf 2>/dev/null || true
+	if [ -f "/etc/nginx/sites-available/${SITE_CONFIG_NAME}" ]; then
+		sudo cp "/etc/nginx/sites-available/${SITE_CONFIG_NAME}" \
+			"/etc/nginx/sites-available/${SITE_CONFIG_NAME}.bak.\$(date +%Y%m%d%H%M%S)"
+	fi
+	sudo mv /tmp/facturio_nginx_config.conf "/etc/nginx/sites-available/${SITE_CONFIG_NAME}"
+	if ! grep -q 'server_names_hash_bucket_size 128' /etc/nginx/nginx.conf; then
+		sudo sed -i '/^http {/a\    server_names_hash_bucket_size 128;' /etc/nginx/nginx.conf
+	fi
+	sudo ln -sf "/etc/nginx/sites-available/${SITE_CONFIG_NAME}" /etc/nginx/sites-enabled/
+	sudo nginx -t
+	sudo systemctl reload nginx
+	echo "OK — Nginx rechargé"
 ENDSSH
 
-rm "$TMP_CONFIG"
+rm -f "$TMP_CONFIG"
 
 echo ""
-echo "=== Configuration Nginx déployée ==="
-echo "Prochaine étape : Configurer SSL avec Certbot"
+echo "=== Terminé ==="
+echo "Tests depuis node12 :"
+echo "  curl -sS -o /dev/null -w '%{http_code}\n' http://${APP_SERVER}:3000/api/auth/login -X POST -H 'Content-Type: application/json' -d '{\"email\":\"a@b.c\",\"password\":\"x\"}'"
+echo ""
+echo "Si HTTPS manquant ou cassé après remplacement du fichier :"
 echo "  ssh ${SSH_USER}@${NGINX_SERVER}"
 echo "  sudo certbot --nginx -d facturio.${DOMAIN} -d devis.${DOMAIN} -d facture.${DOMAIN} --non-interactive --agree-tos --email ${EMAIL} --redirect"
-

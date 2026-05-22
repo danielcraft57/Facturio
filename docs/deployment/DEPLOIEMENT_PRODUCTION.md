@@ -157,7 +157,7 @@ ALLOW_PUBLIC_ACCESS=true
 
 ### 2.6. Build de l'application (PostgreSQL)
 
-En production on utilise PostgreSQL : le schéma Prisma dédié est `prisma/schema.postgresql.prisma`.
+En production on utilise PostgreSQL : schéma `prisma/postgresql/schema.prisma`, migrations `prisma/postgresql/migrations/`.
 
 ```bash
 cd /opt/facturio/server
@@ -166,7 +166,7 @@ cd /opt/facturio/server
 npm run prisma:prod
 
 # Appliquer les migrations (recommandé en production)
-npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+npm run migrate:prod
 
 # OU créer les tables en base (si migrations déjà appliquées)
 # npm run db:push:prod
@@ -495,7 +495,9 @@ sudo journalctl -u facturio -f
 
 ### 6.2. Mise à jour de l'application
 
-**Cron automatique** : `scripts/deploy/facturio-update.sh` met à jour le dépôt, rebuild le **backend**, télécharge le **frontend** depuis l’artefact GitHub Actions (CI sur `main`) et recharge Nginx. Sur Raspberry (build local OOM), configurer un token :
+**Architecture DanielCraft** : Nginx HTTPS sur **node12.lan**, application sur **node10.lan** (`/opt/facturio`). Voir `scripts/deploy/README.md`.
+
+**Cron automatique** : `facturio-update.sh` fait `git pull`, **`npm run migrate:prod`**, droits PostgreSQL, build backend, artefact frontend CI, restart. Sur node10 (peu de RAM), ne pas builder le frontend localement — configurer un token :
 
 ```bash
 echo 'VOTRE_PAT_GITHUB' | sudo tee /var/lib/facturio/github-token
@@ -517,7 +519,7 @@ cd server
 npm install
 
 # Appliquer migrations Prisma (si nouvelles migrations)
-npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+npm run migrate:prod
 
 # Rebuild backend
 npm run build:prod

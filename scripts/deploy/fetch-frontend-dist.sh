@@ -9,9 +9,19 @@ set -euo pipefail
 SHA="${1:?SHA du commit (ex. sortie de git rev-parse origin/main)}"
 REPO="${GITHUB_REPO:-danielcraft57/Facturio}"
 APP_DIR="${APP_DIR:-/opt/facturio}"
+DEPLOY_USER="${DEPLOY_USER:-pi}"
 TOKEN_FILE="${GITHUB_TOKEN_FILE:-/var/lib/facturio/github-token}"
 ARTIFACT_NAME="frontend-dist-${SHA}"
 DEST="${APP_DIR}/frontend/dist"
+
+# dist peut avoir été chown www-data par un ancien script : sudo si rm échoue
+safe_rm_rf() {
+	for target in "$@"; do
+		[ -e "$target" ] || continue
+		rm -rf "$target" 2>/dev/null && continue
+		sudo rm -rf "$target"
+	done
+}
 
 if [ -z "${GITHUB_TOKEN:-}" ] && [ -f "$TOKEN_FILE" ]; then
   GITHUB_TOKEN="$(tr -d '\r\n' < "$TOKEN_FILE")"
@@ -84,16 +94,20 @@ if [ ! -f "$TMP/extract/index.html" ]; then
   exit 1
 fi
 
-rm -rf "${DEST}.old" "${DEST}.new"
+safe_rm_rf "${DEST}.old" "${DEST}.new"
 mkdir -p "$(dirname "$DEST")"
 mv "$TMP/extract" "${DEST}.new"
 if [ -d "$DEST" ]; then
-  mv "$DEST" "${DEST}.old"
+	if ! mv "$DEST" "${DEST}.old" 2>/dev/null; then
+		sudo chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "$DEST"
+		mv "$DEST" "${DEST}.old"
+	fi
 fi
 mv "${DEST}.new" "$DEST"
-rm -rf "${DEST}.old"
+safe_rm_rf "${DEST}.old"
 
-sudo chown -R www-data:www-data "$DEST" 2>/dev/null || true
-sudo chmod -R 755 "$DEST" 2>/dev/null || true
+# pi peut remplacer dist au prochain deploy ; nginx lit en 755
+sudo chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "$DEST" 2>/dev/null || chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "$DEST"
+chmod -R a+rX "$DEST" 2>/dev/null || sudo chmod -R a+rX "$DEST"
 
 echo "[fetch-frontend-dist] OK → $DEST"

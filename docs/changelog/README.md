@@ -4,6 +4,7 @@ Historique des changements et notes de développement.
 
 ## 📚 Contenu
 
+- [Changelog v1.2.2](./CHANGELOG_v1.2.2.md) — Production DanielCraft (node10/node12, Prisma Postgres, login)
 - [Changelog - Priorités hautes](./CHANGELOG_PRIORITES_HAUTES.md) - Fonctionnalités prioritaires implémentées
 - [Changelog - E-facture 2026](./CHANGELOG_E_FACTURE_2026.md) - Module conformité et dossier PA
 - [Notes de développement](./NOTES_DEVELOPPEMENT.md) - Notes techniques détaillées
@@ -16,7 +17,7 @@ Les changelogs suivent le format :
 - 🧪 Tests ajoutés
 - 🐛 Bugs corrigés
 
-## 🔄 Dernière mise à jour
+## 🔄 Dernière version
 
-Voir [Changelog - Priorités hautes](./CHANGELOG_PRIORITES_HAUTES.md) pour les dernières fonctionnalités.
+**v1.2.2** — voir [CHANGELOG_v1.2.2](./CHANGELOG_v1.2.2.md).
 

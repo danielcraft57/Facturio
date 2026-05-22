@@ -1,5 +1,6 @@
 import { apiClient, type ApiResponse } from './api'
 import { unwrapApiPayload } from './clients'
+import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl'
 
 export type ComplianceCheck = {
   id: string
@@ -43,10 +44,7 @@ export const eInvoicingService = {
   },
 
   async downloadFacturX(invoiceId: number): Promise<void> {
-    const base =
-      import.meta.env.DEV || import.meta.env.MODE === 'development'
-        ? '/api'
-        : import.meta.env.VITE_API_URL || '/api'
+    const base = resolveApiBaseUrl()
     const res = await fetch(`${base}/e-invoicing/invoices/${invoiceId}/factur-x`, { credentials: 'include' })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))

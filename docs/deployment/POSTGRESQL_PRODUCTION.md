@@ -36,13 +36,34 @@ SECRETS_ENCRYPTION_KEY=<64 caractères hex>
 
 L’API ajoute automatiquement `connection_limit`, `pool_timeout`, `connect_timeout` et `application_name` au démarrage si absents.
 
-## Schéma Prisma
+## Schéma Prisma (migrations PostgreSQL)
+
+Historique dédié : `server/prisma/postgresql/migrations/` (≠ `prisma/migrations/` SQLite en dev).
 
 ```bash
 cd /opt/facturio/server
-npm run prisma:prod
-npx prisma db push --schema=prisma/schema.postgresql.prisma --accept-data-loss
-# ou migrate deploy si l’historique migrations Postgres est aligné
+npm run migrate:prod
+npm run build:prod
+```
+
+`facturio-update.sh` exécute automatiquement **`migrate:prod`** puis **`grant-facturio-role.sql`** (droits sur tables créées par `postgres`).
+
+Nouvelle migration en dev :
+
+```bash
+cd server
+npm run migrate:prod:dev -- --name description_du_changement
+```
+
+Voir `server/prisma/postgresql/README.md`.
+
+### Droits applicatif (`facturio`)
+
+Si les logs indiquent `permission denied for table UserSession` (ou autre table récente) :
+
+```bash
+sudo -u postgres psql -d facturio -f /opt/facturio/scripts/deploy/postgresql/grant-facturio-role.sql
+sudo systemctl restart facturio
 ```
 
 ## Maintenance après déploiement
@@ -51,13 +72,15 @@ npx prisma db push --schema=prisma/schema.postgresql.prisma --accept-data-loss
 sudo -u postgres psql -d facturio -f /opt/facturio/scripts/deploy/postgresql/maintenance.sql
 ```
 
-Le script `scripts/deploy/facturio-update.sh` exécute `ANALYZE` après chaque mise à jour.
+Le script `facturio-update.sh` exécute `ANALYZE` après chaque mise à jour.
 
 ## Vérifications
 
 ```bash
 sudo -u postgres psql -d facturio -c "SELECT count(*) FROM pg_stat_activity WHERE datname='facturio';"
 sudo -u postgres psql -d facturio -c "SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 10;"
+curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3000/api/auth/login -X POST \
+  -H "Content-Type: application/json" -d '{"email":"vous@example.com","password":"…"}'
 ```
 
 ## Checklist sécurité

@@ -1,4 +1,3 @@
-// Source canonique : prisma/postgresql/schema.prisma (garder les deux fichiers synchronisés)
 generator client {
   provider = "prisma-client-js"
 }
@@ -180,7 +179,6 @@ model Organization {
   amortizations  Amortization[]
   taxCredits     TaxCredit[]
   taxSimulations TaxSimulation[]
-  apiAccessTokens ApiAccessToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -189,24 +187,6 @@ model Organization {
   @@index([siret])
   @@index([siren])
   @@index([vatNumber])
-}
-
-/// Jeton d'accès API publique (intégrations tierces, Bearer).
-model ApiAccessToken {
-  id             Int          @id @default(autoincrement())
-  organizationId Int
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  name           String
-  tokenPrefix    String
-  tokenHash      String       @unique
-  /// JSON : liste de scopes (ex. clients.read, factures.send)
-  permissions    String
-  lastUsedAt     DateTime?
-  revokedAt      DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  @@index([organizationId])
 }
 
 model User {
