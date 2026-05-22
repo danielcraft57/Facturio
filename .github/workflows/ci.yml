@@ -103,6 +103,9 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # Secret repo optionnel ; vide = pas d’URL en dur dans le bundle (origine navigateur à l’exécution)
+          VITE_PUBLIC_APP_URL: ${{ secrets.FACTURIO_PUBLIC_APP_URL }}
 
       - name: Upload frontend dist (déploiement Pi sans build local)
         uses: actions/upload-artifact@v4

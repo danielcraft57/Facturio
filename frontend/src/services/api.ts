@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
+import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl'
 
 // Types pour les réponses API
 export interface ApiResponse<T = any> {
@@ -13,13 +14,8 @@ export interface ApiError {
   details?: any
 }
 
-// Configuration par défaut
-// En dev, utiliser le proxy Vite (/api) pour éviter les problèmes CORS
-// En prod, utiliser VITE_API_URL ou l'URL complète
-const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development'
-const API_BASE_URL = isDev 
-  ? '/api'  // Proxy Vite vers le backend local
-  : (import.meta.env.VITE_API_URL || 'http://localhost:3000/api')
+// En prod : `/api` (même domaine + Nginx) sauf VITE_API_URL explicite et valide
+const API_BASE_URL = resolveApiBaseUrl()
 
 // Classe pour gérer les erreurs API
 export class ApiError extends Error {

@@ -16,11 +16,10 @@ import {
 } from '@mui/material'
 import { ApiClient } from '../../../services/apiClient'
 import { formatCurrency, formatDate } from '../../../utils/formatters'
+import { resolveApiBaseUrl } from '../../../utils/resolveApiBaseUrl'
 
 const api = ApiClient.getInstance()
-const API_BASE = (import.meta.env.DEV || import.meta.env.MODE === 'development')
-  ? '/api'
-  : (import.meta.env.VITE_API_URL || '/api')
+const API_BASE = resolveApiBaseUrl()
 
 /** Page publique d'affichage d'un devis par token. */
 export function PublicQuotePage() {

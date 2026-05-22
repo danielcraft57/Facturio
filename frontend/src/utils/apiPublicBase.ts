@@ -8,7 +8,7 @@ export function getApiPublicBase(): string {
 		return explicit.replace(/\/$/, '')
 	}
 	const fromApi = import.meta.env.VITE_API_URL?.trim()
-	if (fromApi) {
+	if (fromApi && !/your_domain/i.test(fromApi)) {
 		return fromApi.replace(/\/api\/?$/i, '').replace(/\/$/, '')
 	}
 	if (import.meta.env.DEV) {

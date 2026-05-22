@@ -1,4 +1,5 @@
 import { apiClient } from './api'
+import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl'
 
 /**
  * Types pour l'authentification
@@ -278,7 +279,7 @@ class AuthService {
    * Redirige vers l'endpoint Google du backend
    */
   loginWithGoogle(): void {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+    const apiUrl = resolveApiBaseUrl()
     window.location.href = `${apiUrl}/auth/google`
   }
 }
