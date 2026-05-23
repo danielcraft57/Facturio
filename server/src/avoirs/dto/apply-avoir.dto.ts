@@ -3,7 +3,7 @@ import { IsInt, IsNotEmpty, IsNumber, Min } from 'class-validator';
 export class ApplyAvoirDto {
 	@IsInt()
 	@IsNotEmpty()
-	invoiceId!: number;
+	invoiceId!: string;
 
 	@IsNumber()
 	@Min(0.01)

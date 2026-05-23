@@ -2,6 +2,7 @@
  * migrate deploy ; en cas de base existante sans historique (P3005), baseline auto puis redeploy.
  */
 import { execSync } from 'child_process'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -54,10 +55,50 @@ function tryDeploy(schema) {
   throw new Error('migrate deploy : trop de tentatives (migrations en conflit)')
 }
 
+function sqliteDbPathFromEnv() {
+  const url = process.env.DATABASE_URL ?? ''
+  const m = url.match(/^file:(.+)$/i)
+  return m ? path.resolve(serverRoot, m[1].replace(/^\.\//, '')) : null
+}
+
+function resetSqliteTestDbIfNeeded() {
+  const dbPath = sqliteDbPathFromEnv()
+  if (!dbPath || !dbPath.replace(/\\/g, '/').includes('test.db')) return false
+  for (const p of [dbPath, `${dbPath}-journal`, `${dbPath}-wal`, `${dbPath}-shm`]) {
+    try {
+      fs.unlinkSync(p)
+    } catch {
+      /* absent */
+    }
+  }
+  console.log(`\nBase test SQLite recréée : ${dbPath}`)
+  return true
+}
+
 function main() {
   const { schema } = parseArgs(process.argv)
+  if (process.env.NODE_ENV === 'test') {
+    resetSqliteTestDbIfNeeded()
+    try {
+      execSync(
+        `npx prisma migrate reset --force --skip-seed --skip-generate --schema ${schema}`,
+        { cwd: serverRoot, stdio: 'inherit', env: process.env },
+      )
+      console.log('\nBase test SQLite réinitialisée (migrate reset).')
+      run(`npx prisma generate --schema ${schema}`)
+      return
+    } catch (e) {
+      console.warn('\nmigrate reset test.db a échoué, repli sur migrate deploy…', e.message ?? e)
+    }
+  }
   if (tryDeploy(schema)) {
     console.log('\nMigrations à jour.')
+    run(`npx prisma generate --schema ${schema}`)
+    return
+  }
+
+  if (resetSqliteTestDbIfNeeded() && tryDeploy(schema)) {
+    console.log('\nMigrations à jour (test.db régénérée).')
     run(`npx prisma generate --schema ${schema}`)
     return
   }

@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react'
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   TextField,
   FormControl,
@@ -25,7 +21,8 @@ import {
   Paper,
   Stack,
 
-  Divider,
+  InputAdornment,
+  alpha,
   useTheme,
   useMediaQuery,
   CircularProgress,
@@ -33,10 +30,18 @@ import {
 import {
   Add,
   Delete,
-  Close,
-  Save,
-  Cancel
+  ReceiptLong,
+  Email,
+  CalendarMonth,
+  Payments,
 } from '@mui/icons-material'
+import { financePrimaryButtonSx, financeOutlinedButtonSx } from '../../../components/finance/financeStyles'
+import {
+  FinanceFormDialogShell,
+  FinanceFormSectionTitle,
+  FinanceFormTotalsBox,
+  financeFieldSx,
+} from '../../../components/finance/FinanceFormDialog'
 import { apiClient } from '../../../services/api'
 import { clientService, parseClientsListResponse } from '../../../services/clients'
 import type { Client } from '../../../services/clients'
@@ -238,27 +243,47 @@ export function CreateInvoiceDialog({
 
   const { subtotal, taxTotal, total } = calculateTotals()
 
+  const currencySymbol = formData.currency === 'USD' ? '$' : formData.currency === 'GBP' ? '£' : '€'
+
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
-      fullWidth
+    <FinanceFormDialogShell
+      open={open}
+      onClose={onClose}
+      closeDisabled={submitting}
       fullScreen={isMobile}
+      title="Nouvelle facture"
+      subtitle="Client, lignes, échéances et options d’envoi ou de règlement externe."
+      icon={<ReceiptLong />}
+      actions={
+        <>
+          <Button onClick={onClose} disabled={submitting} sx={financeOutlinedButtonSx}>
+            Annuler
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={
+              submitting ||
+              !(formData.clientEmail?.trim() || formData.clientId) ||
+              (willCreateClient && !formData.newClientName?.trim()) ||
+              formData.items.some((item) => !item.description || item.unitPrice <= 0) ||
+              (formData.sendByEmailAfterCreate &&
+                !(formData.sendToEmail || formData.clientEmail)?.trim())
+            }
+            sx={financePrimaryButtonSx}
+            startIcon={
+              submitting ? <CircularProgress size={18} color="inherit" /> : undefined
+            }
+          >
+            {submitting ? 'Création…' : 'Créer la facture'}
+          </Button>
+        </>
+      }
     >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h6">Créer une nouvelle facture</Typography>
-          <IconButton onClick={onClose} size="small">
-            <Close />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-      
-      <DialogContent>
-        <Stack spacing={3} sx={{ mt: 1 }}>
-          {/* Informations de base */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+        <Stack spacing={2.5}>
+          <Box>
+            <FinanceFormSectionTitle>Client &amp; devise</FinanceFormSectionTitle>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
             <TextField
               fullWidth
               required
@@ -273,6 +298,7 @@ export function CreateInvoiceDialog({
                 }))
               }
               placeholder="client@exemple.com"
+              sx={financeFieldSx}
               helperText={
                 willCreateClient
                   ? 'Nouvelle fiche client sera créée automatiquement'
@@ -280,6 +306,15 @@ export function CreateInvoiceDialog({
                     ? `Client existant : ${matchedClient.name}`
                     : 'Saisissez l’email du payeur'
               }
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Email fontSize="small" color="action" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
 
             {willCreateClient && (
@@ -291,10 +326,11 @@ export function CreateInvoiceDialog({
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, newClientName: e.target.value }))
                 }
+                sx={financeFieldSx}
               />
             )}
 
-            <FormControl fullWidth sx={{ gridColumn: { sm: '1 / -1' } }}>
+            <FormControl fullWidth sx={{ gridColumn: { sm: '1 / -1' }, ...financeFieldSx }}>
               <InputLabel>Client existant (optionnel)</InputLabel>
               <Select
                 value={formData.clientId ?? ''}
@@ -329,13 +365,17 @@ export function CreateInvoiceDialog({
               value={formData.currency}
               onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
               select
+              sx={financeFieldSx}
             >
               <MenuItem value="EUR">EUR (€)</MenuItem>
               <MenuItem value="USD">USD ($)</MenuItem>
               <MenuItem value="GBP">GBP (£)</MenuItem>
             </TextField>
+            </Box>
           </Box>
 
+          <Box>
+            <FinanceFormSectionTitle>Échéances</FinanceFormSectionTitle>
           <Box sx={{ 
             display: 'grid', 
             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, 
@@ -348,6 +388,16 @@ export function CreateInvoiceDialog({
               value={formData.issueDate}
               onChange={(e) => setFormData(prev => ({ ...prev, issueDate: e.target.value }))}
               InputLabelProps={{ shrink: true }}
+              sx={financeFieldSx}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CalendarMonth fontSize="small" color="action" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
             
             <TextField
@@ -357,24 +407,39 @@ export function CreateInvoiceDialog({
               value={formData.dueDate}
               onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
               InputLabelProps={{ shrink: true }}
+              sx={financeFieldSx}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CalendarMonth fontSize="small" color="action" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
           </Box>
+          </Box>
 
-          {/* Articles */}
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Typography variant="h6">Articles</Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+              <FinanceFormSectionTitle>Lignes de facturation</FinanceFormSectionTitle>
               <Button
                 startIcon={<Add />}
                 onClick={handleAddItem}
                 variant="outlined"
                 size="small"
+                sx={financeOutlinedButtonSx}
               >
-                Ajouter un article
+                Ajouter une ligne
               </Button>
-            </Box>
+            </Stack>
             
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              sx={{ borderRadius: 2, borderColor: (t) => alpha('#0f172a', t.palette.mode === 'dark' ? 0.2 : 0.1) }}
+            >
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -444,34 +509,18 @@ export function CreateInvoiceDialog({
             </TableContainer>
           </Box>
 
-          {/* Totaux */}
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'flex-end',
-            gap: 1,
-            p: 2,
-            bgcolor: 'grey.50',
-            borderRadius: 1
-          }}>
-            <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-              <Typography>Sous-total :</Typography>
-              <Typography variant="h6">{subtotal.toFixed(2)} €</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-              <Typography>TVA :</Typography>
-              <Typography variant="h6">{taxTotal.toFixed(2)} €</Typography>
-            </Box>
-            <Divider sx={{ width: '100%', my: 1 }} />
-            <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Total :</Typography>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                {total.toFixed(2)} €
-              </Typography>
-            </Box>
-          </Box>
+          <FinanceFormTotalsBox
+            rows={[
+              { label: 'Sous-total HT', value: `${subtotal.toFixed(2)} ${currencySymbol}` },
+              { label: 'TVA', value: `${taxTotal.toFixed(2)} ${currencySymbol}` },
+            ]}
+            totalLabel="Total TTC"
+            totalValue={`${total.toFixed(2)} ${currencySymbol}`}
+          />
 
-          <Alert severity="info" sx={{ borderRadius: 2 }}>
+          <Box>
+            <FinanceFormSectionTitle>Options</FinanceFormSectionTitle>
+          <Alert severity="info" sx={{ borderRadius: 2, mb: 2 }}>
             Cochez « Déjà réglée » si le client a payé sur un autre site (boutique, plateforme, virement).
             Vous pourrez ensuite envoyer la facture par email comme justificatif.
           </Alert>
@@ -517,6 +566,7 @@ export function CreateInvoiceDialog({
                   }))
                 }
                 InputLabelProps={{ shrink: true }}
+                sx={financeFieldSx}
               />
               <TextField
                 fullWidth
@@ -529,6 +579,16 @@ export function CreateInvoiceDialog({
                   }))
                 }
                 placeholder="Ex. Stripe boutique, PayPal, virement"
+                sx={financeFieldSx}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Payments fontSize="small" color="action" />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
             </Box>
           )}
@@ -561,10 +621,13 @@ export function CreateInvoiceDialog({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, sendToEmail: e.target.value }))
               }
+              sx={financeFieldSx}
             />
           )}
+          </Box>
 
-          {/* Notes et conditions */}
+          <Box>
+            <FinanceFormSectionTitle>Compléments</FinanceFormSectionTitle>
           <Box sx={{ 
             display: 'grid', 
             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, 
@@ -578,6 +641,7 @@ export function CreateInvoiceDialog({
               value={formData.notes}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
               placeholder="Notes additionnelles pour la facture..."
+              sx={financeFieldSx}
             />
             
             <TextField
@@ -588,31 +652,11 @@ export function CreateInvoiceDialog({
               value={formData.terms}
               onChange={(e) => setFormData(prev => ({ ...prev, terms: e.target.value }))}
               placeholder="Conditions de paiement..."
+              sx={financeFieldSx}
             />
           </Box>
+          </Box>
         </Stack>
-      </DialogContent>
-      
-      <DialogActions sx={{ p: 3, gap: 2 }}>
-        <Button onClick={onClose} variant="outlined" startIcon={<Cancel />}>
-          Annuler
-        </Button>
-        <Button 
-          onClick={handleSubmit} 
-          variant="contained" 
-          startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <Save />}
-          disabled={
-            submitting ||
-            !(formData.clientEmail?.trim() || formData.clientId) ||
-            (willCreateClient && !formData.newClientName?.trim()) ||
-            formData.items.some((item) => !item.description || item.unitPrice <= 0) ||
-            (formData.sendByEmailAfterCreate &&
-              !(formData.sendToEmail || formData.clientEmail)?.trim())
-          }
-        >
-          {submitting ? 'Création...' : 'Créer la facture'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    </FinanceFormDialogShell>
   )
 }

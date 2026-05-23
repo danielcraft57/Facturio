@@ -54,7 +54,7 @@ export class CreateTaxDeductionDto {
 	@IsOptional()
 	@IsInt()
 	@Transform(({ value }) => parseInt(value))
-	invoiceId?: number;
+	invoiceId?: string;
 
 	/** ID du document justificatif (optionnel) */
 	@IsOptional()

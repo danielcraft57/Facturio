@@ -10,12 +10,12 @@ export class CreateAvoirDto {
 	@IsString()
 	number?: string;
 
-	@IsInt()
-	clientId!: number;
+	@IsString()
+	clientId!: string;
 
-	@IsInt()
 	@IsOptional()
-	invoiceId?: number;
+	@IsString()
+	invoiceId?: string;
 
 	@IsOptional()
 	@IsDateString()

@@ -13,7 +13,7 @@ export class PaymentsController {
 
 	@Get()
 	findAll(@Query('invoiceId') invoiceId: string | undefined, @CurrentUser() user: any) {
-		return this.payments.findAll(invoiceId ? Number(invoiceId) : undefined, user.organizationId);
+		return this.payments.findAll(invoiceId || undefined, user.organizationId);
 	}
 
 	@Get(':id')

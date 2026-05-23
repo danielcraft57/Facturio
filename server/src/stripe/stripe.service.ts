@@ -202,8 +202,8 @@ export class StripeService {
 	}
 
 	async fulfillPaymentIntent(paymentIntent: StripePaymentIntentPayload): Promise<void> {
-		const invoiceId = Number(paymentIntent.metadata?.invoiceId);
-		if (!invoiceId || Number.isNaN(invoiceId)) {
+		const invoiceId = paymentIntent.metadata?.invoiceId?.trim();
+		if (!invoiceId) {
 			this.logger.warn(`PaymentIntent ${paymentIntent.id} sans invoiceId dans metadata`);
 			return;
 		}

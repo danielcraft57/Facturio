@@ -1,12 +1,10 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
+import { PrismaClient } from '@prisma/client'
+import { entityIdExtension } from './entity-id.extension'
 
-const isProd = (process.env.NODE_ENV || 'dev') === 'prod';
+const isProd = (process.env.NODE_ENV || 'dev') === 'prod'
 
-@Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-	private readonly logger = new Logger(PrismaService.name);
-
+const ExtendedPrismaClient = class extends PrismaClient {
 	constructor() {
 		super({
 			log: isProd
@@ -15,25 +13,18 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 						{ emit: 'event', level: 'error' },
 					]
 				: ['warn', 'error'],
-		});
-
-		if (isProd) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(this as any).$on('warn', (e: { message: string }) => {
-				this.logger.warn(e.message);
-			});
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(this as any).$on('error', (e: { message: string }) => {
-				this.logger.error(e.message);
-			});
-		}
+		})
+		return this.$extends(entityIdExtension) as unknown as this
 	}
+} as new () => PrismaClient & ReturnType<PrismaClient['$extends']>
 
+@Injectable()
+export class PrismaService extends ExtendedPrismaClient implements OnModuleInit, OnModuleDestroy {
 	async onModuleInit(): Promise<void> {
-		await this.$connect();
+		await this.$connect()
 	}
 
 	async onModuleDestroy(): Promise<void> {
-		await this.$disconnect();
+		await this.$disconnect()
 	}
 }

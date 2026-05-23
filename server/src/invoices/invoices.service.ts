@@ -43,7 +43,7 @@ export interface CreateInvoiceInput {
 	/** Numéro de facture (auto-généré si non fourni) */
 	number?: string;
 	/** ID du client (ou clientEmail pour création automatique) */
-	clientId?: number;
+	clientId?: string;
 	/** Date d'échéance */
 	dueDate?: string | Date | null;
 	/** Statut de la facture */
@@ -53,7 +53,7 @@ export interface CreateInvoiceInput {
 	/** Devise (défaut: EUR) */
 	currency?: string;
 	/** Devis d’origine (conversion devis → facture) */
-	sourceQuoteId?: number;
+	sourceQuoteId?: string;
 	/** Déjà réglée hors Facturio (autre site, virement, etc.) */
 	paidExternally?: boolean;
 	externalPaymentDate?: string | Date;
@@ -70,7 +70,7 @@ export interface UpdateInvoiceInput {
 	/** Numéro de facture */
 	number?: string;
 	/** ID du client */
-	clientId?: number;
+	clientId?: string;
 	/** Date d'échéance */
 	dueDate?: string | Date | null;
 	/** Statut de la facture */
@@ -123,7 +123,7 @@ export class InvoicesService {
 	private notifyInvoice(
 		organizationId: number | undefined,
 		action: 'created' | 'updated' | 'deleted' | 'sent' | 'paid',
-		id: number,
+		id: string,
 		meta?: { number?: string; status?: string },
 	): void {
 		if (organizationId) this.realtime.emit(organizationId, 'invoices', action, id, meta);
@@ -250,7 +250,7 @@ export class InvoicesService {
 	private async resolveClientIdForInvoice(
 		data: CreateInvoiceInput,
 		organizationId: number,
-	): Promise<number> {
+	): Promise<string> {
 		if (data.clientId) {
 			const existing = await this.prisma.client.findFirst({
 				where: { id: data.clientId, organizationId },
@@ -470,6 +470,10 @@ export class InvoicesService {
 				}),
 				this.prisma.invoice.count({ where })
 			]);
+			const folderCounts =
+				q.includeFolderCounts && page === 1
+					? await this.loadFolderCounts(organizationId)
+					: undefined;
 			this.logger.log(`findAll returned ${items.length} items, total=${total}`);
 			const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 0;
 			return {
@@ -478,6 +482,7 @@ export class InvoicesService {
 				page,
 				limit: pageSize,
 				totalPages,
+				...(folderCounts ? { folderCounts } : {}),
 			};
 		} catch (err) {
 			this.logger.error(`findAll failed: ${err instanceof Error ? err.message : String(err)}`, err instanceof Error ? err.stack : undefined);
@@ -493,8 +498,8 @@ export class InvoicesService {
 	 * @returns Facture avec lignes, client et paiements
 	 * @throws {NotFoundException} Si facture non trouvée
 	 */
-	async findOne(id: number, organizationId?: number) {
-		const where: { id: number; organizationId?: number } = { id };
+	async findOne(id: string, organizationId?: number) {
+		const where: { id: string; organizationId?: number } = { id };
 		if (organizationId != null) where.organizationId = organizationId;
 		const invoice = await this.prisma.invoice.findFirst({
 			where,
@@ -515,7 +520,7 @@ export class InvoicesService {
 	 * @returns Facture mise à jour
 	 * @throws {NotFoundException} Si facture non trouvée
 	 */
-	async update(id: number, data: UpdateInvoiceInput, organizationId?: number) {
+	async update(id: string, data: UpdateInvoiceInput, organizationId?: number) {
 		await this.findOne(id, organizationId);
 
 		const lines = data.lines ?? [];
@@ -580,7 +585,7 @@ export class InvoicesService {
 	 * @throws {NotFoundException} Si facture non trouvée
 	 */
 	/** Archive une facture (aucune suppression en base). */
-	async archive(id: number, organizationId?: number) {
+	async archive(id: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
 		if (invoice.archivedAt) {
 			return { success: true, alreadyArchived: true };
@@ -598,7 +603,7 @@ export class InvoicesService {
 	}
 
 	/** Restaure une facture archivée dans la liste active. */
-	async restore(id: number, organizationId?: number) {
+	async restore(id: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
 		if (!invoice.archivedAt) {
 			return { success: true, alreadyActive: true };
@@ -633,11 +638,11 @@ export class InvoicesService {
 	}
 
 	/** @deprecated Utiliser archive — conserve DELETE pour compatibilité. */
-	async remove(id: number, organizationId?: number) {
+	async remove(id: string, organizationId?: number) {
 		return this.archive(id, organizationId);
 	}
 
-	async getFolderCounts(organizationId?: number) {
+	private async loadFolderCounts(organizationId?: number) {
 		const base: { organizationId?: number; archivedAt: null } = { archivedAt: null };
 		if (organizationId) base.organizationId = organizationId;
 		const now = new Date();
@@ -658,8 +663,12 @@ export class InvoicesService {
 		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons };
 	}
 
+	async getFolderCounts(organizationId?: number) {
+		return this.loadFolderCounts(organizationId);
+	}
+
 	async updateDocumentFlags(
-		id: number,
+		id: string,
 		dto: UpdateInvoiceDocumentFlagsDto,
 		organizationId?: number,
 	) {
@@ -694,7 +703,7 @@ export class InvoicesService {
 	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
 	 * @returns Liste des paiements triés par date décroissante
 	 */
-	async listPayments(id: number, organizationId?: number) {
+	async listPayments(id: string, organizationId?: number) {
 		await this.findOne(id, organizationId);
 		return this.prisma.payment.findMany({ where: { invoiceId: id }, orderBy: { date: 'desc' } });
 	}
@@ -716,7 +725,7 @@ export class InvoicesService {
 	 * @returns Paiement créé
 	 * @throws {NotFoundException} Si facture non trouvée
 	 */
-	async addPayment(id: number, amount: number, date?: string | Date, method?: string, notes?: string, organizationId?: number) {
+	async addPayment(id: string, amount: number, date?: string | Date, method?: string, notes?: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
 		const invoiceTotal = Number(invoice.total);
 		const priorPaid = (invoice.payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
@@ -888,7 +897,7 @@ export class InvoicesService {
 	 * @returns Facture mise à jour avec publicToken et publicUrl
 	 * @throws {NotFoundException} Si facture non trouvée
 	 */
-	async sendInvoice(id: number, organizationId?: number) {
+	async sendInvoice(id: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
 		const token = invoice.publicToken ?? randomBytes(32).toString('hex');
 		const keepPaid =
@@ -913,7 +922,7 @@ export class InvoicesService {
 	/**
 	 * Prépare une relance : vérifie que la facture a été envoyée et n'est pas soldée.
 	 */
-	async prepareReminder(id: number, organizationId?: number) {
+	async prepareReminder(id: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
 		if (!invoice.sentAt) {
 			throw new BadRequestException('Envoyez la facture au client avant d\'envoyer une relance');

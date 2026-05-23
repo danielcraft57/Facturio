@@ -320,7 +320,7 @@ model OrganizationDocument {
 // ============================================
 
 model Client {
-  id                Int            @id @default(autoincrement())
+  id                String         @id
   name              String
   email             String         @unique
   address           String?
@@ -348,12 +348,12 @@ model Client {
 }
 
 model Invoice {
-  id                 Int                     @id @default(autoincrement())
+  id                 String                  @id
   number             String                  @unique
   date               DateTime                @default(now())
   dueDate            DateTime?
   status             InvoiceStatus           @default(DRAFT)
-  clientId           Int
+  clientId           String
   client             Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   subscriptionId     Int?
   subscription       Subscription?           @relation(fields: [subscriptionId], references: [id])
@@ -373,7 +373,7 @@ model Invoice {
   taxDeductions      TaxDeduction[]
   publicToken         String?                 @unique
   sentAt              DateTime?
-  sourceQuoteId       Int?                    @unique
+  sourceQuoteId       String?                 @unique
   sourceQuote         Quote?                  @relation("QuoteToInvoice", fields: [sourceQuoteId], references: [id], onDelete: SetNull)
   eInvoiceStatus      EInvoiceStatus          @default(NOT_READY)
   eInvoiceGeneratedAt DateTime?
@@ -391,7 +391,7 @@ model Invoice {
 
 model InvoiceLine {
   id          Int      @id @default(autoincrement())
-  invoiceId   Int
+  invoiceId   String
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   productId   Int?
   product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -415,9 +415,9 @@ model Avoir {
   number            String               @unique
   date              DateTime             @default(now())
   status            AvoirStatus          @default(DRAFT)
-  invoiceId         Int? // Facture d'origine
+  invoiceId         String? // Facture d'origine
   invoice           Invoice?             @relation("InvoiceAvoirs", fields: [invoiceId], references: [id])
-  clientId          Int
+  clientId          String
   client            Client               @relation(fields: [clientId], references: [id])
   lines             AvoirLine[]
   subtotal          Decimal              @default(0)
@@ -456,7 +456,7 @@ model AvoirApplication {
   id        Int     @id @default(autoincrement())
   avoirId   Int
   avoir     Avoir   @relation(fields: [avoirId], references: [id], onDelete: Cascade)
-  invoiceId    Int
+  invoiceId    String
   invoice      Invoice    @relation("AppliedAvoirs", fields: [invoiceId], references: [id])
   amount       Decimal    @default(0) // Montant imputé sur cette facture
   appliedAt    DateTime   @default(now())
@@ -467,12 +467,12 @@ model AvoirApplication {
 }
 
 model Quote {
-  id             Int           @id @default(autoincrement())
+  id             String        @id
   number         String        @unique
   date           DateTime      @default(now())
   expiryDate     DateTime?
   status         QuoteStatus   @default(DRAFT)
-  clientId       Int
+  clientId       String
   client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   organizationId Int?
   organization   Organization? @relation(fields: [organizationId], references: [id])
@@ -495,7 +495,7 @@ model Quote {
 
 model QuoteLine {
   id          Int      @id @default(autoincrement())
-  quoteId     Int
+  quoteId     String
   quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   productId   Int?
   product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -588,7 +588,7 @@ enum SubscriptionStatus {
 
 model Subscription {
   id                 Int                @id @default(autoincrement())
-  clientId           Int
+  clientId           String
   client             Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   planId             Int
   plan               Plan               @relation(fields: [planId], references: [id])
@@ -671,7 +671,7 @@ model AuthorityPayment {
 
 model Payment {
   id        Int      @id @default(autoincrement())
-  invoiceId Int
+  invoiceId String
   invoice   Invoice  @relation(fields: [invoiceId], references: [id])
   amount    Decimal  @default(0)
   date      DateTime @default(now())
@@ -688,8 +688,8 @@ model Counter {
 
 model EmailEvent {
   id         Int      @id @default(autoincrement())
-  quoteId    Int?
-  invoiceId  Int?
+  quoteId    String?
+  invoiceId  String?
   type       String // delivered | opened | clicked | bounced | sent
   providerId String?
   meta       Json?
@@ -700,7 +700,7 @@ model EmailEvent {
 
 model QuoteView {
   id        Int      @id @default(autoincrement())
-  quoteId   Int
+  quoteId   String
   quote     Quote    @relation(fields: [quoteId], references: [id])
   ip        String?
   userAgent String?
@@ -920,7 +920,7 @@ model TaxDeduction {
   deductibleRate Decimal              @default(1.0) // 100% par défaut
 
   // Justificatifs
-  invoiceId  Int?
+  invoiceId  String?
   invoice    Invoice?              @relation(fields: [invoiceId], references: [id])
   documentId Int?
   document   OrganizationDocument? @relation(fields: [documentId], references: [id])

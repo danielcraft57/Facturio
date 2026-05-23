@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { InvoicesService } from './invoices.service';
 import { InvoiceSendService } from './invoice-send.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -44,13 +45,13 @@ export class InvoicesController {
 	}
 
 	@Get(':id')
-	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	findOne(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.invoices.findOne(id, user.organizationId);
 	}
 
 	@Patch(':id')
 	update(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() data: UpdateInvoiceDto,
 		@CurrentUser() user: any
 	) {
@@ -59,7 +60,7 @@ export class InvoicesController {
 
 	@Patch(':id/document-flags')
 	updateDocumentFlags(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() body: UpdateInvoiceDocumentFlagsDto,
 		@CurrentUser() user: any,
 	) {
@@ -67,23 +68,23 @@ export class InvoicesController {
 	}
 
 	@Post(':id/archive')
-	archive(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	archive(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.invoices.archive(id, user.organizationId);
 	}
 
 	@Post(':id/restore')
-	restore(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	restore(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.invoices.restore(id, user.organizationId);
 	}
 
 	@Delete(':id')
-	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	remove(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.invoices.archive(id, user.organizationId);
 	}
 
 	@Get(':id/pdf')
 	@Header('Content-Type', 'application/pdf')
-	async downloadPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response, @CurrentUser() user: any) {
+	async downloadPdf(@Param('id', ParseEntityIdPipe) id: string, @Res() res: Response, @CurrentUser() user: any) {
 		const invoice = await this.invoices.findOne(id, user.organizationId);
 		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
 		const buf = await this.pdfService.generateInvoicePdf(invoice, organization);
@@ -92,13 +93,13 @@ export class InvoicesController {
 	}
 
 	@Get(':id/payments')
-	payments(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	payments(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.invoices.listPayments(id, user.organizationId);
 	}
 
 	@Post(':id/payments')
 	addPayment(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() body: { amount: number; date?: string | Date; method?: string; notes?: string },
 		@CurrentUser() user: any
 	) {
@@ -107,7 +108,7 @@ export class InvoicesController {
 
 	@Post(':id/send')
 	async sendInvoice(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() body: SendInvoiceDto,
 		@CurrentUser() user: any,
 	) {
@@ -115,7 +116,7 @@ export class InvoicesController {
 	}
 
 	@Post(':id/remind')
-	async sendReminder(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	async sendReminder(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		const { invoice, daysOverdue, publicUrl } = await this.invoices.prepareReminder(id, user.organizationId);
 		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
 		const pdf = await this.pdfService.generateInvoicePdf(invoice, organization);

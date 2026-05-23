@@ -52,8 +52,9 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage'
 
 // Lazy loading des pages pour optimiser les performances
 const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
-const ClientsPage = lazy(() => import('../clients/ClientsPage').then(m => ({ default: m.ClientsPage })))
-const ClientDetailPage = lazy(() => import('../clients/ClientDetailPage').then(m => ({ default: m.ClientDetailPage })))
+const ClientsSegmentRouteLazy = lazy(() =>
+  import('./routes/clientFolderRoutes').then((m) => ({ default: m.ClientsSegmentRoute })),
+)
 const FacturesSegmentRouteLazy = lazy(() =>
   import('./routes/documentFolderRoutes').then((m) => ({ default: m.FacturesSegmentRoute })),
 )
@@ -66,6 +67,12 @@ const InvoicesArchivePage = lazy(() =>
 )
 const QuotesArchivePage = lazy(() =>
   import('../quotes/QuotesArchivePage').then(m => ({ default: m.QuotesArchivePage })),
+)
+const InvoiceEditPage = lazy(() =>
+  import('../invoices/InvoiceEditPage').then((m) => ({ default: m.InvoiceEditPage })),
+)
+const QuoteEditPage = lazy(() =>
+  import('../quotes/QuoteEditPage').then((m) => ({ default: m.QuoteEditPage })),
 )
 const ProductsPage = lazy(() => import('../products/ProductsPage').then(m => ({ default: m.ProductsPage })))
 const ProspectsPage = lazy(() => import('../prospects/ProspectsPage').then(m => ({ default: m.ProspectsPage })))
@@ -307,19 +314,14 @@ export function App() {
                   </PrivateRouteWrapper>
                 }
               />
+              <Route path="/clients" element={<Navigate to="/clients/inbox" replace />} />
               <Route
-                path="/clients"
+                path="/clients/:folder"
                 element={
                   <PrivateRouteWrapper>
-                    <ClientsPage />
-                  </PrivateRouteWrapper>
-                }
-              />
-              <Route
-                path="/clients/:id"
-                element={
-                  <PrivateRouteWrapper>
-                    <ClientDetailPage />
+                    <Suspense fallback={<DocumentFolderRouteFallback resource="clients" />}>
+                      <ClientsSegmentRouteLazy />
+                    </Suspense>
                   </PrivateRouteWrapper>
                 }
               />
@@ -356,6 +358,26 @@ export function App() {
                 element={
                   <PrivateRouteWrapper>
                     <InvoicesArchivePage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/factures/:id/edit"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={<DocumentFolderRouteFallback resource="factures" />}>
+                      <InvoiceEditPage />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/devis/:id/edit"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={<DocumentFolderRouteFallback resource="devis" />}>
+                      <QuoteEditPage />
+                    </Suspense>
                   </PrivateRouteWrapper>
                 }
               />

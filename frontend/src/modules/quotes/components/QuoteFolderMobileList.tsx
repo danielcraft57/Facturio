@@ -35,7 +35,8 @@ type QuoteFolderMobileListProps = {
   highlightRows: Record<string, RealtimeHighlightTone>
   formatCurrency: (n: number) => string
   formatDate: (d: string) => string
-  onPatchFlags: (id: number, patch: DocumentFlags) => void
+  onPatchFlags: (id: string, patch: DocumentFlags) => void
+  onEdit: (q: Quote) => void
   onSend: (q: Quote) => void
   onAccept: (q: Quote) => void
   onReject: (q: Quote) => void
@@ -49,6 +50,7 @@ export function QuoteFolderMobileList({
   formatCurrency,
   formatDate,
   onPatchFlags,
+  onEdit,
   onSend,
   onAccept,
   onReject,
@@ -125,6 +127,7 @@ export function QuoteFolderMobileList({
             >
               <QuoteRowActionsMenu
                 quote={quote}
+                onEdit={() => onEdit(quote)}
                 onSend={() => onSend(quote)}
                 onAccept={() => onAccept(quote)}
                 onReject={() => onReject(quote)}

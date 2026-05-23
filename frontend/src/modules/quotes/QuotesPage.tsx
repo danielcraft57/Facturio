@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -40,7 +40,6 @@ import {
   isDocumentFolder,
   DOCUMENT_FOLDER_LABELS,
   sortOutgoingNewestFirst,
-  type DocumentFolderCounts,
   type DocumentFolder,
 } from '../../types/documentFolders';
 import {
@@ -56,18 +55,13 @@ import {
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch';
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import {
+  buildQuoteSearchEntry,
+  filterItemsByDocumentSearch,
+} from '../../utils/financeDocumentSearch';
 import { quoteService } from '../../services/quoteService';
-import { unwrapApiPayload } from '../../services/invoices';
-
-const EMPTY_COUNTS: DocumentFolderCounts = {
-  inbox: 0,
-  nouveau: 0,
-  suivi: 0,
-  attente: 0,
-  important: 0,
-  envoyes: 0,
-  brouillons: 0,
-};
+import { useQuotesFolderList } from '../../hooks/useQuotesFolderList';
+import { DocumentFolderLoadMore } from '../../components/finance/DocumentFolderLoadMore';
 
 const QUOTE_STATUS_COLORS = {
   DRAFT: 'default',
@@ -97,59 +91,40 @@ export function QuotesPage() {
   const quotesStore = useQuotes();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebouncedValue(searchTerm, 320);
+  const {
+    quotes,
+    total,
+    loading,
+    loadingMore,
+    folderCounts,
+    countsReady,
+    hasMore,
+    loadMore,
+    refresh,
+  } = useQuotesFolderList(activeFolder, debouncedSearch);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [quoteToArchive, setQuoteToArchive] = useState<Quote | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [folderCounts, setFolderCounts] = useState<DocumentFolderCounts>(EMPTY_COUNTS);
-  const [countsReady, setCountsReady] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const highlightRows = useRealtimeRowHighlight('quotes');
 
-  const loadCounts = useCallback(async () => {
-    try {
-      const res = await quoteService.getFolderCounts();
-      const data = unwrapApiPayload<DocumentFolderCounts>(res);
-      if (data) setFolderCounts({ ...EMPTY_COUNTS, ...data });
-    } catch {
-      /* ignore */
-    } finally {
-      setCountsReady(true);
-    }
-  }, []);
-
-  const loadQuotes = useCallback(async () => {
-    const filters: Record<string, string> = { folder: activeFolder };
-    if (debouncedSearch.trim()) filters.search = debouncedSearch.trim();
-    quotesStore.setFilters(filters);
-    await quotesStore.fetchQuotes(filters, 1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- quotesStore stable
-  }, [activeFolder, debouncedSearch]);
-
-  const reloadListAndCounts = useCallback(async () => {
-    await Promise.all([loadQuotes(), loadCounts()]);
-  }, [loadQuotes, loadCounts]);
-
   const searchOptions = useMemo(
     () =>
-      quotesStore.quotes.map((q) => ({
-        id: String(q.id),
-        label: q.number,
-        sublabel: q.client?.name ?? `Client #${q.clientId}`,
-      })),
-    [quotesStore.quotes],
+      quotes.map((q) =>
+        buildQuoteSearchEntry(q, QUOTE_STATUS_LABELS[q.status]).option,
+      ),
+    [quotes],
   );
 
+  const displayedQuotes = useMemo(() => {
+    const sorted = sortOutgoingNewestFirst(quotes);
+    return filterItemsByDocumentSearch(sorted, debouncedSearch, (q) =>
+      buildQuoteSearchEntry(q, QUOTE_STATUS_LABELS[q.status]).searchable,
+    );
+  }, [quotes, debouncedSearch]);
+
   const contentKey = `${activeFolder}-${debouncedSearch}`;
-  const loading = quotesStore.isLoading;
-  const initialLoading = loading && quotesStore.quotes.length === 0;
-
-  useEffect(() => {
-    void loadQuotes();
-  }, [loadQuotes]);
-
-  useEffect(() => {
-    void loadCounts();
-  }, [activeFolder, loadCounts]);
+  const initialLoading = loading && quotes.length === 0;
 
   useEffect(() => {
     const quoteId = searchParams.get('quoteId');
@@ -169,9 +144,9 @@ export function QuotesPage() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const patchDocumentFlags = async (id: number, patch: Parameters<typeof quoteService.updateDocumentFlags>[1]) => {
+  const patchDocumentFlags = async (id: string, patch: Parameters<typeof quoteService.updateDocumentFlags>[1]) => {
     await quoteService.updateDocumentFlags(id, patch);
-    await reloadListAndCounts();
+    await refresh();
   };
 
   const handleArchiveQuote = async () => {
@@ -180,16 +155,19 @@ export function QuotesPage() {
       if (success) {
         setArchiveDialogOpen(false);
         setQuoteToArchive(null);
+        await refresh();
       }
     }
   };
 
   const handleSendQuote = async (quote: Quote) => {
     await quotesStore.sendQuote(quote.id);
+    await refresh();
   };
 
   const handleAcceptQuote = async (quote: Quote) => {
     const result = await quotesStore.acceptQuote(quote.id);
+    await refresh();
     if (result?.invoiceId) {
       navigate(`/factures/${result.invoiceId}`);
     }
@@ -197,10 +175,12 @@ export function QuotesPage() {
 
   const handleRejectQuote = async (quote: Quote) => {
     await quotesStore.rejectQuote(quote.id);
+    await refresh();
   };
 
   const handleConvertToInvoice = async (quote: Quote) => {
     const invoiceId = await quotesStore.convertToInvoice(quote.id);
+    await refresh();
     if (invoiceId) {
       navigate(`/factures/${invoiceId}`);
     }
@@ -210,13 +190,9 @@ export function QuotesPage() {
     const quote = await quotesStore.createQuote(data);
     if (quote) {
       setCreateDialogOpen(false);
+      await refresh();
     }
   };
-
-  const displayedQuotes = useMemo(
-    () => sortOutgoingNewestFirst(quotesStore.quotes),
-    [quotesStore.quotes],
-  );
 
   const folderFilters = (
     <Stack direction="row" spacing={1} alignItems="center">
@@ -225,8 +201,9 @@ export function QuotesPage() {
           value={searchTerm}
           onChange={setSearchTerm}
           options={searchOptions}
-          loading={loading && !!debouncedSearch.trim()}
-          placeholder="N° devis ou client…"
+          loading={false}
+          resourceLabel="Devis"
+          placeholder="N°, client, statut, montant… (ex. dev 250 payé)"
           onSelect={(opt) => {
             if (opt?.label) setSearchTerm(opt.label);
           }}
@@ -236,7 +213,7 @@ export function QuotesPage() {
         <span>
           <IconButton
             size="small"
-            onClick={() => void loadQuotes()}
+            onClick={() => void refresh()}
             disabled={loading}
             sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}
           >
@@ -282,6 +259,7 @@ export function QuotesPage() {
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
                 onPatchFlags={patchDocumentFlags}
+                onEdit={(q) => navigate(`/devis/${q.id}/edit`)}
                 onSend={handleSendQuote}
                 onAccept={handleAcceptQuote}
                 onReject={handleRejectQuote}
@@ -377,6 +355,7 @@ export function QuotesPage() {
                             <QuoteRowActionsMenu
                               quote={quote}
                               expanded={isWideActions}
+                              onEdit={() => navigate(`/devis/${quote.id}/edit`)}
                               onSend={() => handleSendQuote(quote)}
                               onAccept={() => handleAcceptQuote(quote)}
                               onReject={() => handleRejectQuote(quote)}
@@ -395,7 +374,7 @@ export function QuotesPage() {
               </TableContainer>
             )}
 
-            {displayedQuotes.length === 0 && (
+            {displayedQuotes.length === 0 && !loading && (
               <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
                 <Typography variant="body1">
                   {searchTerm.trim()
@@ -404,6 +383,13 @@ export function QuotesPage() {
                 </Typography>
               </Box>
             )}
+
+            <DocumentFolderLoadMore
+              loaded={quotes.length}
+              total={total}
+              loading={loadingMore}
+              onLoadMore={loadMore}
+            />
           </CardContent>
         </Card>
       )}

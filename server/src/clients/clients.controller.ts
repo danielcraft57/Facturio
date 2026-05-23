@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
-import { ListQueryDto } from '../common/dto/list-query.dto';
+import { ClientListQueryDto } from './dto/client-list-query.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('clients')
@@ -15,18 +16,23 @@ export class ClientsController {
 	}
 
 	@Get()
-	findAll(@Query() query: ListQueryDto, @CurrentUser() user: any) {
+	findAll(@Query() query: ClientListQueryDto, @CurrentUser() user: any) {
 		return this.clients.findAll(query, user.organizationId);
 	}
 
+	@Get('folder-counts')
+	getFolderCounts(@CurrentUser() user: any) {
+		return this.clients.getFolderCounts(user.organizationId);
+	}
+
 	@Get(':id')
-	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	findOne(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.clients.findOne(id, user.organizationId);
 	}
 
 	@Patch(':id')
 	update(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() data: UpdateClientDto,
 		@CurrentUser() user: any
 	) {
@@ -34,7 +40,7 @@ export class ClientsController {
 	}
 
 	@Delete(':id')
-	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	remove(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.clients.remove(id, user.organizationId);
 	}
 }

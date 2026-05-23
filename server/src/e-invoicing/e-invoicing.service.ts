@@ -37,7 +37,7 @@ export class EInvoicingService {
 		};
 	}
 
-	async getInvoiceReadiness(invoiceId: number, organizationId: number) {
+	async getInvoiceReadiness(invoiceId: string, organizationId: number) {
 		const invoice = await this.loadInvoice(invoiceId, organizationId);
 		const orgEval = this.compliance.evaluateOrganization(invoice.organization);
 		const clientEval = this.compliance.evaluateClient(invoice.client);
@@ -54,7 +54,7 @@ export class EInvoicingService {
 		};
 	}
 
-	async generateFacturX(invoiceId: number, organizationId: number) {
+	async generateFacturX(invoiceId: string, organizationId: number) {
 		await this.billing.assertCanUseEInvoicing(organizationId);
 
 		const invoice = await this.loadInvoice(invoiceId, organizationId);
@@ -88,7 +88,7 @@ export class EInvoicingService {
 		};
 	}
 
-	private async loadInvoice(invoiceId: number, organizationId: number) {
+	private async loadInvoice(invoiceId: string, organizationId: number) {
 		const invoice = await this.prisma.invoice.findFirst({
 			where: { id: invoiceId, organizationId },
 			include: {

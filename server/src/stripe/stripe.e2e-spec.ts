@@ -10,7 +10,7 @@ describe('Stripe e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
 	const publicToken = randomBytes(32).toString('hex');
-	let invoiceId: number;
+	let invoiceId: string;
 
 	const mockStripeService = {
 		isConfigured: () => true,

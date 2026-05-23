@@ -1,4 +1,5 @@
-import { BadRequestException, Controller, Get, Header, Param, ParseIntPipe, Res } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Header, Param, Res } from '@nestjs/common';
+import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { EInvoicingService } from './e-invoicing.service';
@@ -19,14 +20,14 @@ export class EInvoicingController {
 	}
 
 	@Get('invoices/:id/readiness')
-	getInvoiceReadiness(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	getInvoiceReadiness(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.eInvoicing.getInvoiceReadiness(id, orgIdFromUser(user));
 	}
 
 	@Get('invoices/:id/factur-x')
 	@Header('Content-Type', 'application/xml; charset=utf-8')
 	async downloadFacturX(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@CurrentUser() user: any,
 		@Res() res: Response,
 	) {

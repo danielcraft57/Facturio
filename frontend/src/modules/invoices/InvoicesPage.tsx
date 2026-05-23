@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Box,
@@ -30,10 +30,11 @@ import { apiClient } from '../../services/api'
 import {
   invoiceService,
   normalizeInvoiceFromApi,
-  parseInvoicesListResponse,
   toCreateInvoiceApiBody,
   unwrapApiPayload,
 } from '../../services/invoices'
+import { useInvoicesFolderList } from '../../hooks/useInvoicesFolderList'
+import { DocumentFolderLoadMore } from '../../components/finance/DocumentFolderLoadMore'
 import type { CreateInvoiceData, Invoice } from '../../services/invoices'
 import { useToast } from '../../components/useToast'
 import { DocumentFolderPageShell } from '../../components/finance/DocumentFolderPageShell'
@@ -46,6 +47,10 @@ import {
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton'
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import {
+  buildInvoiceSearchEntry,
+  filterItemsByDocumentSearch,
+} from '../../utils/financeDocumentSearch'
 import { CreateInvoiceDialog } from './components/CreateInvoiceDialog'
 import { InvoiceFolderMobileList } from './components/InvoiceFolderMobileList'
 import { InvoiceRowActionsMenu } from './components/InvoiceRowActionsMenu'
@@ -58,7 +63,6 @@ import {
   isDocumentFolder,
   DOCUMENT_FOLDER_LABELS,
   sortOutgoingNewestFirst,
-  type DocumentFolderCounts,
   type DocumentFolder,
 } from '../../types/documentFolders'
 import {
@@ -72,16 +76,6 @@ import {
   folderColHideBelowXl,
 } from '../../components/finance/documentFolderStyles'
 
-const EMPTY_COUNTS: DocumentFolderCounts = {
-  inbox: 0,
-  nouveau: 0,
-  suivi: 0,
-  attente: 0,
-  important: 0,
-  envoyes: 0,
-  brouillons: 0,
-}
-
 export function InvoicesPage() {
   const { folder: folderParam } = useParams<{ folder?: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -93,11 +87,21 @@ export function InvoicesPage() {
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'))
   const isWideActions = useMediaQuery(theme.breakpoints.up('lg'))
 
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const debouncedSearch = useDebouncedValue(searchTerm, 320)
+  const {
+    invoices,
+    total,
+    loading,
+    loadingMore,
+    error,
+    setError,
+    folderCounts,
+    countsReady,
+    hasMore,
+    loadMore,
+    refresh,
+  } = useInvoicesFolderList(activeFolder, debouncedSearch)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
@@ -106,56 +110,18 @@ export function InvoicesPage() {
   const [sendingEmail, setSendingEmail] = useState(false)
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
   const [invoiceToArchive, setInvoiceToArchive] = useState<Invoice | null>(null)
-  const [folderCounts, setFolderCounts] = useState<DocumentFolderCounts>(EMPTY_COUNTS)
-  const [countsReady, setCountsReady] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const highlightRows = useRealtimeRowHighlight('invoices')
 
-  const loadCounts = useCallback(async () => {
-    try {
-      const res = await invoiceService.getFolderCounts()
-      const data = unwrapApiPayload<DocumentFolderCounts>(res)
-      if (data) setFolderCounts({ ...EMPTY_COUNTS, ...data })
-    } catch {
-      /* ignore */
-    } finally {
-      setCountsReady(true)
-    }
-  }, [])
-
-  const loadInvoices = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      apiClient.invalidateCache('/factures')
-      const response = await invoiceService.getInvoices({
-        page: 1,
-        limit: 100,
-        folder: activeFolder,
-        search: debouncedSearch.trim() || undefined,
-      })
-      setInvoices(parseInvoicesListResponse(response))
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erreur lors du chargement des factures'
-      setError(message)
-      toast.error(message)
-    } finally {
-      setLoading(false)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- toast stable enough for errors
-  }, [activeFolder, debouncedSearch])
-
-  const reloadListAndCounts = useCallback(async () => {
-    await Promise.all([loadInvoices(), loadCounts()])
-  }, [loadInvoices, loadCounts])
-
+  const lastToastError = useRef<string | null>(null)
   useEffect(() => {
-    void loadInvoices()
-  }, [loadInvoices])
+    if (!error || error === lastToastError.current) return
+    lastToastError.current = error
+    toast.error(error)
+  }, [error, toast])
 
-  useEffect(() => {
-    void loadCounts()
-  }, [activeFolder, loadCounts])
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
 
   useEffect(() => {
     if (searchParams.get('create') !== '1') return
@@ -167,16 +133,16 @@ export function InvoicesPage() {
 
   const patchDocumentFlags = async (id: string, patch: Parameters<typeof invoiceService.updateDocumentFlags>[1]) => {
     await invoiceService.updateDocumentFlags(id, patch)
-    await reloadListAndCounts()
+    await refresh()
   }
 
   useEffect(() => {
     const onRealtime = () => {
-      void reloadListAndCounts()
+      void refreshRef.current()
     }
     window.addEventListener('facturio:invoice-realtime', onRealtime)
     return () => window.removeEventListener('facturio:invoice-realtime', onRealtime)
-  }, [reloadListAndCounts])
+  }, [])
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -216,19 +182,18 @@ export function InvoicesPage() {
 
   const searchOptions = useMemo(
     () =>
-      invoices.map((inv) => ({
-        id: inv.id,
-        label: inv.number,
-        sublabel: inv.client.name,
-        href: `/factures/${inv.id}`,
-      })),
+      invoices.map((inv) =>
+        buildInvoiceSearchEntry(inv, getStatusLabel(inv.status)).option,
+      ),
     [invoices],
   )
 
-  const displayedInvoices = useMemo(
-    () => sortOutgoingNewestFirst(invoices),
-    [invoices],
-  )
+  const displayedInvoices = useMemo(() => {
+    const sorted = sortOutgoingNewestFirst(invoices)
+    return filterItemsByDocumentSearch(sorted, debouncedSearch, (inv) =>
+      buildInvoiceSearchEntry(inv, getStatusLabel(inv.status)).searchable,
+    )
+  }, [invoices, debouncedSearch])
 
   const contentKey = `${activeFolder}-${debouncedSearch}`
 
@@ -239,8 +204,8 @@ export function InvoicesPage() {
       const created = normalizeInvoiceFromApi(
         unwrapApiPayload<Record<string, unknown>>(response)
       )
-      setInvoices((prev) => [created, ...prev.filter((i) => i.id !== created.id)])
       setCreateDialogOpen(false)
+      await refresh()
       toast.success(`Facture ${created.number} créée`)
 
       if (data.sendByEmailAfterCreate && data.sendToEmail?.trim()) {
@@ -281,18 +246,6 @@ export function InvoicesPage() {
         to: payload.to,
         updateClientEmail: payload.updateClientEmail,
       })
-      const sentNow = new Date().toISOString()
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === invoiceToSend.id
-            ? {
-                ...inv,
-                sentAt: sentNow,
-                status: inv.status === 'paid' ? 'paid' : 'sent',
-              }
-            : inv,
-        ),
-      )
       toast.success(`Facture ${invoiceToSend.number} envoyée à ${payload.to}`)
       logActivity({
         type: 'success',
@@ -303,7 +256,7 @@ export function InvoicesPage() {
       })
       setSendDialogOpen(false)
       setInvoiceToSend(null)
-      await reloadListAndCounts()
+      await refresh()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi")
     } finally {
@@ -357,7 +310,7 @@ export function InvoicesPage() {
       })
       setArchiveDialogOpen(false)
       setInvoiceToArchive(null)
-      await reloadListAndCounts()
+      await refresh()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de l'archivage")
     } finally {
@@ -390,8 +343,9 @@ export function InvoicesPage() {
       value={searchTerm}
       onChange={setSearchTerm}
       options={searchOptions}
-      loading={loading && !!debouncedSearch.trim()}
-      placeholder="N° facture ou client…"
+      loading={false}
+      resourceLabel="Factures"
+      placeholder="N°, client, statut, montant… (ex. fac 20€ payé)"
       onSelect={(opt) => {
         if (opt?.href) navigate(opt.href)
       }}
@@ -584,7 +538,7 @@ export function InvoicesPage() {
           </TableContainer>
           )}
 
-          {displayedInvoices.length === 0 && (
+          {displayedInvoices.length === 0 && !loading && (
             <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
               <Typography variant="body1">
                 {searchTerm.trim()
@@ -593,6 +547,13 @@ export function InvoicesPage() {
               </Typography>
             </Box>
           )}
+
+          <DocumentFolderLoadMore
+            loaded={invoices.length}
+            total={total}
+            loading={loadingMore}
+            onLoadMore={loadMore}
+          />
         </CardContent>
       </Card>
       )}

@@ -11,13 +11,15 @@ import {
 } from './documentFolderStyles'
 
 export type DocumentFolderPageShellProps = {
-  resource: 'factures' | 'devis'
+  resource?: 'factures' | 'devis'
   title: string
   subtitle: string
-  counts: DocumentFolderCounts
-  activeFolder: DocumentFolder
-  onNew: () => void
-  newLabel: string
+  /** Sidebar personnalisée (ex. clients). Sinon sidebar factures/devis. */
+  sidebar?: ReactNode
+  counts?: DocumentFolderCounts
+  activeFolder?: DocumentFolder
+  onNew?: () => void
+  newLabel?: string
   mobileNavOpen: boolean
   onMobileNavOpen: () => void
   onMobileNavClose: () => void
@@ -35,13 +37,14 @@ export type DocumentFolderPageShellProps = {
 }
 
 export function DocumentFolderPageShell({
-  resource,
+  resource = 'factures',
   title,
   subtitle,
+  sidebar,
   counts,
-  activeFolder,
+  activeFolder = 'inbox',
   onNew,
-  newLabel,
+  newLabel = 'Nouveau',
   mobileNavOpen,
   onMobileNavOpen,
   onMobileNavClose,
@@ -55,6 +58,22 @@ export function DocumentFolderPageShell({
 }: DocumentFolderPageShellProps) {
   const showProgress = loading && !initialLoading
   const sidebarCountsLoading = countsLoading || initialLoading
+  const folderKey = contentKey ?? activeFolder
+
+  const sidebarNode =
+    sidebar ??
+    (counts && onNew ? (
+      <DocumentFolderSidebar
+        resource={resource}
+        counts={counts}
+        activeFolder={activeFolder}
+        onNew={onNew}
+        newLabel={newLabel}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={onMobileNavClose}
+        countsLoading={sidebarCountsLoading}
+      />
+    ) : null)
 
   return (
     <Box
@@ -95,23 +114,16 @@ export function DocumentFolderPageShell({
       </Box>
 
       <Box sx={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
-        <Box
-          sx={{
-            display: initialLoading ? { xs: 'block', md: 'none' } : 'contents',
-          }}
-        >
-          <DocumentFolderSidebar
-            resource={resource}
-            counts={counts}
-            activeFolder={activeFolder}
-            onNew={onNew}
-            newLabel={newLabel}
-            mobileOpen={mobileNavOpen}
-            onMobileClose={onMobileNavClose}
-            countsLoading={sidebarCountsLoading}
-          />
-        </Box>
-        {initialLoading && (
+        {sidebarNode && (
+          <Box
+            sx={{
+              display: initialLoading ? { xs: 'block', md: 'none' } : 'contents',
+            }}
+          >
+            {sidebarNode}
+          </Box>
+        )}
+        {initialLoading && !sidebar && (
           <Box sx={{ ...documentFolderSidebarSx, display: { xs: 'none', md: 'flex' } }}>
             <DocumentFolderSidebarSkeleton />
           </Box>
@@ -132,7 +144,7 @@ export function DocumentFolderPageShell({
           )}
 
           <Fade
-            key={contentKey ?? activeFolder}
+            key={folderKey}
             in
             timeout={{ enter: initialLoading ? 0 : 280, exit: 160 }}
           >

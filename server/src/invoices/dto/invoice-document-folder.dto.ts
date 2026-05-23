@@ -1,4 +1,5 @@
 import { IsArray, IsBoolean, IsIn, IsOptional, IsString, IsISO8601 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ListQueryDto } from '../../common/dto/list-query.dto';
 import type { DocumentFolder } from '../../common/document-folder.util';
 
@@ -10,6 +11,11 @@ export class InvoiceListQueryDto extends ListQueryDto {
 	@IsOptional()
 	@IsString()
 	tag?: string;
+
+	@IsOptional()
+	@Transform(({ value }) => value === true || value === 'true' || value === '1')
+	@IsBoolean()
+	includeFolderCounts?: boolean;
 }
 
 export class UpdateInvoiceDocumentFlagsDto {

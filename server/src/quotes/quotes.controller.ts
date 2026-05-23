@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Header, Param, ParseIntPipe, Patch, Post, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
+import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { QuoteListQueryDto, UpdateQuoteDocumentFlagsDto } from './dto/quote-document-folder.dto';
 import { CreateQuoteDto, QuotesService, UpdateQuoteDto } from './quotes.service';
 import { QuoteStatus } from '@prisma/client';
@@ -38,13 +39,13 @@ export class QuotesController {
 	}
 
 	@Get(':id')
-	findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	findOne(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.quotes.findOne(id, user.organizationId);
 	}
 
 	@Patch(':id')
 	update(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() data: UpdateQuoteDto,
 		@CurrentUser() user: any
 	) {
@@ -53,7 +54,7 @@ export class QuotesController {
 
 	@Patch(':id/document-flags')
 	updateDocumentFlags(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() body: UpdateQuoteDocumentFlagsDto,
 		@CurrentUser() user: any,
 	) {
@@ -61,32 +62,32 @@ export class QuotesController {
 	}
 
 	@Post(':id/archive')
-	archive(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	archive(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.quotes.archive(id, user.organizationId);
 	}
 
 	@Post(':id/restore')
-	restore(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	restore(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.quotes.restore(id, user.organizationId);
 	}
 
 	@Delete(':id')
-	remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	remove(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.quotes.archive(id, user.organizationId);
 	}
 
 	@Post(':id/accept')
-	async accept(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	async accept(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.quotes.acceptQuote(id, user.organizationId);
 	}
 
 	@Post(':id/reject')
-	async reject(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	async reject(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.quotes.rejectQuote(id, user.organizationId);
 	}
 
 	@Post(':id/convert-to-invoice')
-	async convertToInvoice(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+	async convertToInvoice(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		const quote = await this.quotes.findOne(id, user.organizationId);
 		if (quote.status === QuoteStatus.SENT) {
 			await this.quotes.acceptQuote(id, user.organizationId);
@@ -96,7 +97,7 @@ export class QuotesController {
 
 	@Post(':id/send')
 	async sendQuote(@Param('id') id: string, @CurrentUser() user: any) {
-		const result = await this.quotes.sendQuote(Number(id), user.organizationId);
+		const result = await this.quotes.sendQuote(id, user.organizationId);
 		const token = result.publicToken;
 		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
 		const pdf = await this.pdfService.generateQuotePdf(result, organization);
@@ -124,7 +125,7 @@ export class QuotesController {
 
 	@Get(':id/pdf')
 	@Header('Content-Type', 'application/pdf')
-	async downloadPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response, @CurrentUser() user: any) {
+	async downloadPdf(@Param('id', ParseEntityIdPipe) id: string, @Res() res: Response, @CurrentUser() user: any) {
 		const quote = await this.quotes.findOne(id, user.organizationId);
 		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
 		const buf = await this.pdfService.generateQuotePdf(quote, organization);

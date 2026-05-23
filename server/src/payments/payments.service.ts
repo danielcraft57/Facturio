@@ -9,7 +9,7 @@ import { RealtimeEventsService } from '../realtime/realtime-events.service';
  */
 export interface CreatePaymentDto {
 	/** ID de la facture */
-	invoiceId: number;
+	invoiceId: string;
 	/** Montant du paiement */
 	amount: number;
 	/** Date du paiement (optionnel) */
@@ -131,7 +131,7 @@ export class PaymentsService {
 		};
 	}
 
-	async findAll(invoiceId?: number, organizationId?: number) {
+	async findAll(invoiceId?: string, organizationId?: number) {
 		const where: any = {};
 		if (invoiceId) where.invoiceId = invoiceId;
 		if (organizationId != null) where.invoice = { organizationId };

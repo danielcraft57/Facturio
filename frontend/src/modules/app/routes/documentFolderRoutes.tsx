@@ -1,5 +1,6 @@
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { isDocumentFolder } from '../../../types/documentFolders'
+import { isEntityCuid } from '../../../utils/entityId'
 import { InvoicesPage } from '../../invoices/InvoicesPage'
 import { InvoiceDetailPage } from '../../invoices/InvoiceDetailPage'
 import { QuotesPage } from '../../quotes/QuotesPage'
@@ -33,7 +34,7 @@ export function DevisSegmentRoute() {
   if (isDocumentFolder(folder)) return <QuotesPage />
 
   // ID devis (lien client) : pas de fiche dédiée → liste avec focus recherche
-  if (/^\d+$/.test(folder)) {
+  if (isEntityCuid(folder)) {
     return <Navigate to={`/devis/inbox?quoteId=${folder}`} replace />
   }
 

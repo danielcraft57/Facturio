@@ -346,7 +346,7 @@ export class AccountingService {
 	 * @throws {BadRequestException} Si facture introuvable
 	 */
 	// Vente: 411/706/44571
-	async postInvoiceSale(params: { invoiceId: number; customerAccountCode?: string; revenueAccountCode?: string; vatCollectedAccountCode?: string }) {
+	async postInvoiceSale(params: { invoiceId: string; customerAccountCode?: string; revenueAccountCode?: string; vatCollectedAccountCode?: string }) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
 		if (!invoice) throw new BadRequestException('Facture introuvable');
 		const subtotal = Number((invoice.subtotal as any)?.toNumber?.() ?? invoice.subtotal);
@@ -372,7 +372,7 @@ export class AccountingService {
 	 * @throws {BadRequestException} Si facture introuvable
 	 */
 	// Encaissement: 512/411
-	async postInvoicePayment(params: { invoiceId: number; amount: number; bankAccountCode?: string; customerAccountCode?: string }) {
+	async postInvoicePayment(params: { invoiceId: string; amount: number; bankAccountCode?: string; customerAccountCode?: string }) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
 		if (!invoice) throw new BadRequestException('Facture introuvable');
 		const lines = [

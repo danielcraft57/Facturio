@@ -294,7 +294,7 @@ describe('Quotes e2e', () => {
 		await authenticatedRequest(app, testUser.cookies)
 			.post('/api/quotes')
 			.send({
-				clientId: 99999,
+				clientId: '0000000000',
 				lines: [{ description: 'Service', quantity: 1, unitPrice: 100, taxRate: 0.2 }]
 			})
 			.expect(404); // Client introuvable

@@ -67,7 +67,8 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export function ClientDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { folder } = useParams<{ folder: string }>()
+  const id = folder && /^\d+$/.test(folder) ? folder : undefined
   const navigate = useNavigate()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -207,7 +208,7 @@ export function ClientDetailPage() {
       <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
         <Button
           startIcon={<ArrowBack />}
-          onClick={() => navigate('/clients')}
+          onClick={() => navigate('/clients/inbox')}
           sx={{ mb: 2 }}
         >
           Retour aux clients
@@ -225,7 +226,7 @@ export function ClientDetailPage() {
       <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
         <Button
           startIcon={<ArrowBack />}
-          onClick={() => navigate('/clients')}
+          onClick={() => navigate('/clients/inbox')}
         >
           Retour
         </Button>

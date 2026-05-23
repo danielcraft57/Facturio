@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { quoteService } from '../services/quoteService';
+import { quoteService, parseQuotesListPage } from '../services/quoteService';
 import type { Quote, QuoteFilters, CreateQuoteData, UpdateQuoteData } from '../types/quote';
+import { isEntityCuid } from '../utils/entityId';
 
 interface QuotesState {
   // Data
@@ -28,14 +29,14 @@ interface QuotesState {
   
   // Actions
   fetchQuotes: (filters?: QuoteFilters, page?: number) => Promise<void>;
-  fetchQuote: (id: number) => Promise<void>;
+  fetchQuote: (id: string) => Promise<void>;
   createQuote: (data: CreateQuoteData) => Promise<Quote | null>;
-  updateQuote: (id: number, data: UpdateQuoteData) => Promise<Quote | null>;
-  deleteQuote: (id: number) => Promise<boolean>;
-  sendQuote: (id: number) => Promise<Quote | null>;
-  acceptQuote: (id: number) => Promise<{ quote: Quote; invoiceId: number | null } | null>;
-  rejectQuote: (id: number) => Promise<Quote | null>;
-  convertToInvoice: (id: number) => Promise<number | null>;
+  updateQuote: (id: string, data: UpdateQuoteData) => Promise<Quote | null>;
+  deleteQuote: (id: string) => Promise<boolean>;
+  sendQuote: (id: string) => Promise<Quote | null>;
+  acceptQuote: (id: string) => Promise<{ quote: Quote; invoiceId: string | null } | null>;
+  rejectQuote: (id: string) => Promise<Quote | null>;
+  convertToInvoice: (id: string) => Promise<string | null>;
   
   // State management
   setSelectedQuote: (quote: Quote | null) => void;
@@ -71,16 +72,16 @@ export const useQuotesStore = create<QuotesState>()(
         set({ isLoading: true });
         try {
           const res = await quoteService.getQuotes(filters, page, get().pagination.limit);
-          const raw: any = (res as any)?.data ?? res;
-          const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
-          const total = raw?.total ?? list.length;
-          const pageNum = raw?.page ?? page;
-          const limit = raw?.limit ?? get().pagination.limit;
+          const parsed = parseQuotesListPage(res);
           set({
-            quotes: list,
-            pagination: { page: pageNum, limit, total },
+            quotes: parsed.quotes,
+            pagination: {
+              page: parsed.page,
+              limit: parsed.pageSize,
+              total: parsed.total,
+            },
             lastFetch: Date.now(),
-            isStale: false
+            isStale: false,
           });
         } catch (error) {
           console.error('Erreur lors de la récupération des devis:', error);
@@ -89,12 +90,11 @@ export const useQuotesStore = create<QuotesState>()(
         }
       },
 
-      fetchQuote: async (id: number) => {
+      fetchQuote: async (id: string) => {
         set({ isLoading: true });
         try {
-          const res = await quoteService.getQuote(id);
-          const quote = (res as any)?.data ?? res;
-          if (quote && typeof quote.id === 'number') {
+          const quote = await quoteService.getQuote(id);
+          if (quote && isEntityCuid(quote.id)) {
             set({ selectedQuote: quote });
           }
         } catch (error) {
@@ -109,7 +109,7 @@ export const useQuotesStore = create<QuotesState>()(
         try {
           const res = await quoteService.createQuote(data);
           const quote = (res as any)?.data ?? res;
-          if (quote && typeof quote.id === 'number') {
+          if (quote && isEntityCuid(quote.id)) {
             set(state => ({
               quotes: [quote, ...state.quotes],
               selectedQuote: quote
@@ -125,12 +125,12 @@ export const useQuotesStore = create<QuotesState>()(
         return null;
       },
 
-      updateQuote: async (id: number, data: UpdateQuoteData) => {
+      updateQuote: async (id: string, data: UpdateQuoteData) => {
         set({ isUpdating: true });
         try {
           const res = await quoteService.updateQuote(id, data);
           const quote = (res as any)?.data ?? res;
-          if (quote && typeof quote.id === 'number') {
+          if (quote && isEntityCuid(quote.id)) {
             set(state => ({
               quotes: state.quotes.map(q => (q.id === id ? quote : q)),
               selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
@@ -146,7 +146,7 @@ export const useQuotesStore = create<QuotesState>()(
         return null;
       },
 
-      deleteQuote: async (id: number) => {
+      deleteQuote: async (id: string) => {
         set({ isDeleting: true });
         try {
           await quoteService.deleteQuote(id);
@@ -164,11 +164,11 @@ export const useQuotesStore = create<QuotesState>()(
         }
       },
 
-      sendQuote: async (id: number) => {
+      sendQuote: async (id: string) => {
         try {
           const res = await quoteService.sendQuote(id);
           const quote = (res as any)?.data ?? res;
-          if (quote && typeof quote.id === 'number') {
+          if (quote && isEntityCuid(quote.id)) {
             set(state => ({
               quotes: state.quotes.map(q => (q.id === id ? quote : q)),
               selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
@@ -181,17 +181,17 @@ export const useQuotesStore = create<QuotesState>()(
         return null;
       },
 
-      acceptQuote: async (id: number) => {
+      acceptQuote: async (id: string) => {
         try {
           const res = await quoteService.acceptQuote(id);
           const quote = (res as any)?.data ?? res;
-          if (quote && typeof quote.id === 'number') {
+          if (quote && isEntityCuid(quote.id)) {
             set(state => ({
               quotes: state.quotes.map(q => (q.id === id ? quote : q)),
               selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
             }));
             const invoiceId =
-              quote.invoiceId != null ? Number(quote.invoiceId) : null;
+              quote.invoiceId != null ? String(quote.invoiceId) : null;
             return { quote, invoiceId };
           }
         } catch (error) {
@@ -200,11 +200,11 @@ export const useQuotesStore = create<QuotesState>()(
         return null;
       },
 
-      rejectQuote: async (id: number) => {
+      rejectQuote: async (id: string) => {
         try {
           const res = await quoteService.rejectQuote(id);
           const quote = (res as any)?.data ?? res;
-          if (quote && typeof quote.id === 'number') {
+          if (quote && isEntityCuid(quote.id)) {
             set(state => ({
               quotes: state.quotes.map(q => (q.id === id ? quote : q)),
               selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
@@ -217,13 +217,13 @@ export const useQuotesStore = create<QuotesState>()(
         return null;
       },
 
-      convertToInvoice: async (id: number) => {
+      convertToInvoice: async (id: string) => {
         try {
           const res = await quoteService.convertToInvoice(id);
           const raw: any = (res as any)?.data ?? res;
           const invoiceId = raw?.invoiceId ?? raw?.id;
           if (invoiceId != null) {
-            return Number(invoiceId);
+            return String(invoiceId);
           }
         } catch (error) {
           console.error('Erreur lors de la conversion en facture:', error);

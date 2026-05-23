@@ -8,6 +8,7 @@ vi.mock('./api', async () => {
     ...actual,
     apiClient: {
       ...actual.apiClient,
+      get: vi.fn(),
       getCached: vi.fn(),
       post: vi.fn(),
       patch: vi.fn(),
@@ -23,7 +24,7 @@ describe('clientService', () => {
   })
 
   it('appelle l API pour lister les clients avec les bons paramètres', async () => {
-    ;(apiClient.getCached as any).mockResolvedValue({
+    ;(apiClient.get as any).mockResolvedValue({
       success: true,
       data: {
         clients: [],
@@ -43,9 +44,8 @@ describe('clientService', () => {
       sortOrder: 'asc',
     })
 
-    expect(apiClient.getCached).toHaveBeenCalledWith(
+    expect(apiClient.get).toHaveBeenCalledWith(
       '/clients?search=acme&status=active&page=2&limit=20&sortBy=name&sortOrder=asc',
-      expect.any(Number),
     )
     expect(res.success).toBe(true)
   })

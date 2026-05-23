@@ -53,7 +53,7 @@ describe('Invoices create client from email (e2e)', () => {
 				lines: [{ description: 'Presta', quantity: 1, unitPrice: 100, taxRate: 0.2 }],
 			})
 			.expect(201)
-			.then((r: { body: { clientId: number; status: string } }) => r.body);
+			.then((r: { body: { clientId: string; status: string } }) => r.body);
 
 		expect(invoice.status).toBe('PAID');
 

@@ -19,7 +19,7 @@ export class RealtimeEventsService {
 		organizationId: number,
 		resource: RealtimeResource,
 		action: RealtimeAction,
-		id?: number,
+		id?: string,
 		meta?: RealtimeEventMeta,
 	): void {
 		if (!organizationId) return;

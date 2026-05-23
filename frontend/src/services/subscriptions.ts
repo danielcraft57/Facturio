@@ -15,7 +15,7 @@ export interface Plan {
 
 export interface Subscription {
   id: number
-  clientId: number
+  clientId: string
   planId: number
   quantity: number
   status: 'ACTIVE' | 'CANCELLED' | 'PAST_DUE' | 'TRIALING'
@@ -44,7 +44,7 @@ export interface CreatePlanData {
 }
 
 export interface CreateSubscriptionData {
-  clientId: number
+  clientId: string
   planId: number
   quantity?: number
   startDate?: string

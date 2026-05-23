@@ -4,7 +4,7 @@ export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
 
 export interface QuoteLine {
   id: number;
-  quoteId: number;
+  quoteId: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -14,12 +14,12 @@ export interface QuoteLine {
 }
 
 export interface Quote {
-  id: number;
+  id: string;
   number: string;
   date: string;
   expiryDate?: string;
   status: QuoteStatus;
-  clientId: number;
+  clientId: string;
   client?: Client;
   lines: QuoteLine[];
   subtotal: number;
@@ -29,7 +29,7 @@ export interface Quote {
   sentAt?: string;
   acceptedAt?: string;
   acceptedIp?: string;
-  invoiceId?: number;
+  invoiceId?: string;
   invoiceNumber?: string;
   createdAt: string;
   updatedAt: string;
@@ -43,7 +43,7 @@ export interface Quote {
 
 export interface CreateQuoteData {
   number?: string;
-  clientId: number;
+  clientId: string;
   expiryDate?: string;
   status?: QuoteStatus;
   lines: CreateQuoteLineData[];
@@ -59,7 +59,7 @@ export interface CreateQuoteLineData {
 
 export interface UpdateQuoteData {
   number?: string;
-  clientId?: number;
+  clientId?: string;
   expiryDate?: string;
   status?: QuoteStatus;
   lines?: CreateQuoteLineData[];
@@ -67,19 +67,24 @@ export interface UpdateQuoteData {
 
 export interface QuoteFilters {
   status?: QuoteStatus;
-  clientId?: number;
+  clientId?: string;
   dateFrom?: string;
   dateTo?: string;
   search?: string;
   folder?: DocumentFolder;
   tag?: string;
+  includeFolderCounts?: boolean;
 }
 
 export interface QuoteListResponse {
-  data: Quote[];
+  data?: Quote[];
+  quotes?: Quote[];
+  items?: Quote[];
   total: number;
   page: number;
   limit: number;
+  totalPages?: number;
+  folderCounts?: import('./documentFolders').DocumentFolderCounts;
 }
 
 // Import Client type

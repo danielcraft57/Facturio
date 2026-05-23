@@ -62,7 +62,7 @@ export const navGroups: NavGroup[] = [
     },
     items: [
       {
-        to: '/clients',
+        to: '/clients/inbox',
         label: 'Clients',
         description: 'Carnet, contacts et historique',
         icon: <PeopleIcon fontSize="small" />,

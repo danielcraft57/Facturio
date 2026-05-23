@@ -11,7 +11,7 @@ export interface RealtimeEventPayload {
 	type?: 'connected' | 'heartbeat';
 	resource?: RealtimeResource;
 	action?: RealtimeAction;
-	id?: number;
+	id?: string;
 	number?: string;
 	status?: string;
 	at?: string;

@@ -14,10 +14,12 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import ReceiptIcon from '@mui/icons-material/Receipt'
 import ArchiveIcon from '@mui/icons-material/Archive'
+import EditIcon from '@mui/icons-material/Edit'
 import type { Quote } from '../../../types/quote'
 
 export type QuoteRowActionsHandlers = {
   busy?: boolean
+  onEdit?: () => void
   onSend: () => void
   onAccept: () => void
   onReject: () => void
@@ -35,6 +37,7 @@ export function QuoteRowActionsMenu({
   quote,
   busy = false,
   expanded = false,
+  onEdit,
   onSend,
   onAccept,
   onReject,
@@ -45,6 +48,16 @@ export function QuoteRowActionsMenu({
   const close = () => setAnchor(null)
 
   const menuItems = [
+    ...(quote.status === 'DRAFT' || quote.status === 'SENT'
+      ? [
+          <MenuItem key="edit" onClick={() => { close(); onEdit?.() }} disabled={busy || !onEdit}>
+            <ListItemIcon>
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Modifier</ListItemText>
+          </MenuItem>,
+        ]
+      : []),
     ...(quote.status === 'DRAFT'
       ? [
           <MenuItem key="send" onClick={() => { close(); onSend() }} disabled={busy}>
@@ -93,6 +106,11 @@ export function QuoteRowActionsMenu({
   if (expanded) {
     return (
       <Stack direction="row" spacing={0.25} justifyContent="center" flexWrap="nowrap">
+        {(quote.status === 'DRAFT' || quote.status === 'SENT') && onEdit && (
+          <IconButton size="small" title="Modifier" disabled={busy} onClick={onEdit}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        )}
         {quote.status === 'DRAFT' && (
           <IconButton size="small" title="Envoyer" disabled={busy} onClick={onSend}>
             <SendIcon fontSize="small" />

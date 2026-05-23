@@ -31,7 +31,7 @@ export class InvoicePaymentNotificationService {
 	 * Envoie les emails client + prestataire lorsque la facture vient d’être intégralement soldée.
 	 */
 	async notifyInvoiceFullyPaid(
-		invoiceId: number,
+		invoiceId: string,
 		options: { lastPaymentAmount: number; paymentMethod?: string | null },
 	): Promise<void> {
 		const existing = await this.prisma.emailEvent.findFirst({

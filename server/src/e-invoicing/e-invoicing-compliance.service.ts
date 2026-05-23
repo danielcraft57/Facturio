@@ -18,7 +18,7 @@ export type OrganizationReadiness = {
 };
 
 export type InvoiceReadiness = {
-	invoiceId: number;
+	invoiceId: string;
 	invoiceNumber: string;
 	status: EInvoiceStatus;
 	ready: boolean;
@@ -95,7 +95,7 @@ export class EInvoicingComplianceService {
 	}
 
 	evaluateInvoice(
-		invoice: { id: number; number: string; status: string; sentAt: Date | null; lines: { description: string }[] },
+		invoice: { id: string; number: string; status: string; sentAt: Date | null; lines: { description: string }[] },
 		orgReady: boolean,
 		clientReady: boolean,
 	): InvoiceReadiness {

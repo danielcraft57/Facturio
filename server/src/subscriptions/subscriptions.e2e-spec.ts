@@ -15,7 +15,7 @@ describe('Subscriptions e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
 	let testUser: TestUser;
-	let clientId: number;
+	let clientId: string;
 	let productId: number;
 	let planId: number;
 

@@ -9,7 +9,7 @@ import { createTestUser, authenticatedRequest } from '../common/test-helpers/aut
 describe('Avoirs e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
-	let clientId: number;
+	let clientId: string;
 	let testUser: { cookies: string[]; organizationId: number };
 
 	beforeAll(async () => {
@@ -114,7 +114,7 @@ describe('Avoirs e2e', () => {
 			return authenticatedRequest(app, testUser.cookies)
 				.post('/api/avoirs')
 				.send({
-					clientId: 99999,
+					clientId: '0000000000',
 					lines: [
 						{
 							description: 'Test',

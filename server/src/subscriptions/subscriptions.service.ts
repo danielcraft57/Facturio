@@ -45,7 +45,7 @@ export interface UpdatePlanDto {
  */
 export interface CreateSubscriptionDto {
 	/** ID du client */
-	clientId: number;
+	clientId: string;
 	/** ID du plan */
 	planId: number;
 	/** Quantité (optionnel, défaut: 1) */
@@ -86,7 +86,7 @@ export interface UpdatePlanDto {
 }
 
 export interface CreateSubscriptionDto {
-	clientId: number;
+	clientId: string;
 	planId: number;
 	quantity?: number;
 	startDate?: string | Date;

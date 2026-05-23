@@ -16,7 +16,7 @@ export class InvoiceSendService {
 		private readonly prisma: PrismaService,
 	) {}
 
-	async sendByEmail(id: number, organizationId: number, dto?: SendInvoiceDto) {
+	async sendByEmail(id: string, organizationId: number, dto?: SendInvoiceDto) {
 		const result = await this.invoices.sendInvoice(id, organizationId);
 		let invoice = await this.invoices.findOne(id, organizationId);
 

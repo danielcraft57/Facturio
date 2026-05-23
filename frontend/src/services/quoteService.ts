@@ -1,13 +1,102 @@
 import { ApiClient } from './apiClient';
-import type { 
-  Quote, 
-  CreateQuoteData, 
-  UpdateQuoteData, 
-  QuoteFilters, 
-  QuoteListResponse 
+import type {
+  Quote,
+  QuoteLine,
+  QuoteStatus,
+  CreateQuoteData,
+  UpdateQuoteData,
+  QuoteFilters,
+  QuoteListResponse,
 } from '../types/quote';
 import type { ApiResponse } from '../types/api';
 import type { DocumentFolderCounts, DocumentFlags } from '../types/documentFolders';
+import { unwrapApiPayload } from './invoices';
+
+export type QuotesListPageResult = {
+  quotes: Quote[];
+  total: number;
+  page: number;
+  pageSize: number;
+  folderCounts?: DocumentFolderCounts;
+};
+
+export function normalizeQuoteFromApi(raw: Record<string, unknown>): Quote {
+  const client = raw.client as Record<string, unknown> | undefined
+  const lines = ((raw.lines as unknown[]) ?? []).map((ln) => {
+    const line = ln as Record<string, unknown>
+    const qty = Number(line.quantity ?? 0)
+    const unit = Number(line.unitPrice ?? 0)
+    const rate = Number(line.taxRate ?? 0)
+    return {
+      id: Number(line.id ?? 0),
+      quoteId: String(line.quoteId ?? raw.id ?? ''),
+      description: String(line.description ?? ''),
+      quantity: qty,
+      unitPrice: unit,
+      taxRate: rate,
+      taxAmount: Number(line.taxAmount ?? qty * unit * rate),
+      total: Number(line.total ?? qty * unit * (1 + rate)),
+      productId: line.productId != null ? Number(line.productId) : undefined,
+    } as QuoteLine & { productId?: number }
+  })
+  return {
+    id: String(raw.id ?? ''),
+    number: String(raw.number ?? ''),
+    date: String(raw.date ?? raw.createdAt ?? ''),
+    expiryDate: raw.expiryDate ? String(raw.expiryDate) : undefined,
+    status: String(raw.status ?? 'DRAFT') as QuoteStatus,
+    clientId: String(raw.clientId ?? client?.id ?? ''),
+    client: client
+      ? {
+          id: String(client.id),
+          name: String(client.name ?? ''),
+          email: String(client.email ?? ''),
+          isCompany: Boolean(client.isCompany),
+          isVatExempt: Boolean(client.isVatExempt),
+          createdAt: String(client.createdAt ?? ''),
+          updatedAt: String(client.updatedAt ?? ''),
+        }
+      : undefined,
+    lines,
+    subtotal: Number(raw.subtotal ?? 0),
+    tax: Number(raw.tax ?? 0),
+    total: Number(raw.total ?? 0),
+    publicToken: raw.publicToken ? String(raw.publicToken) : undefined,
+    sentAt: raw.sentAt ? String(raw.sentAt) : undefined,
+    acceptedAt: raw.acceptedAt ? String(raw.acceptedAt) : undefined,
+    invoiceId: raw.invoiceId != null ? String(raw.invoiceId) : undefined,
+    createdAt: String(raw.createdAt ?? ''),
+    updatedAt: String(raw.updatedAt ?? ''),
+    archivedAt: raw.archivedAt ? String(raw.archivedAt) : undefined,
+    starred: Boolean(raw.starred),
+    important: Boolean(raw.important),
+    tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
+  }
+}
+
+export function parseQuotesListPage(response: unknown): QuotesListPageResult {
+  const payload = unwrapApiPayload<QuoteListResponse & { items?: Quote[] }>(response);
+  const list = Array.isArray(payload?.quotes)
+    ? payload.quotes
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload?.items)
+        ? payload.items
+        : Array.isArray(payload)
+          ? (payload as Quote[])
+          : [];
+  return {
+    quotes: list.map((row) =>
+      typeof row === 'object' && row !== null
+        ? normalizeQuoteFromApi(row as unknown as Record<string, unknown>)
+        : (row as Quote),
+    ),
+    total: Number(payload?.total ?? list.length),
+    page: Number(payload?.page ?? 1),
+    pageSize: Number(payload?.limit ?? list.length),
+    folderCounts: payload?.folderCounts,
+  };
+}
 
 class QuoteService {
   private apiClient = ApiClient.getInstance();
@@ -22,7 +111,8 @@ class QuoteService {
     if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
     if (filters?.dateTo) params.append('dateTo', filters.dateTo);
     if (filters?.search) params.append('search', filters.search);
-    
+    if (filters?.includeFolderCounts) params.append('includeFolderCounts', '1');
+
     params.append('page', page.toString());
     params.append('limit', limit.toString());
 
@@ -33,27 +123,29 @@ class QuoteService {
     return this.apiClient.get<DocumentFolderCounts>('/devis/folder-counts');
   }
 
-  async updateDocumentFlags(id: number, flags: DocumentFlags): Promise<ApiResponse<Quote>> {
+  async updateDocumentFlags(id: string, flags: DocumentFlags): Promise<ApiResponse<Quote>> {
     return this.apiClient.patch<Quote>(`/devis/${id}/document-flags`, flags);
   }
 
-  async getQuote(id: number): Promise<ApiResponse<Quote>> {
-    return this.apiClient.get<Quote>(`/quotes/${id}`);
+  async getQuote(id: string): Promise<Quote> {
+    const response = await this.apiClient.get<Quote>(`/devis/${id}`)
+    return normalizeQuoteFromApi(unwrapApiPayload<Record<string, unknown>>(response))
   }
 
   async createQuote(data: CreateQuoteData): Promise<ApiResponse<Quote>> {
     return this.apiClient.post<Quote>('/quotes', data);
   }
 
-  async updateQuote(id: number, data: UpdateQuoteData): Promise<ApiResponse<Quote>> {
-    return this.apiClient.patch<Quote>(`/quotes/${id}`, data);
+  async updateQuote(id: string, data: UpdateQuoteData): Promise<Quote> {
+    const response = await this.apiClient.patch<Quote>(`/devis/${id}`, data)
+    return normalizeQuoteFromApi(unwrapApiPayload<Record<string, unknown>>(response))
   }
 
-  async archiveQuote(id: number): Promise<ApiResponse<{ success: boolean }>> {
+  async archiveQuote(id: string): Promise<ApiResponse<{ success: boolean }>> {
     return this.apiClient.post<{ success: boolean }>(`/devis/${id}/archive`, {});
   }
 
-  async restoreQuote(id: number): Promise<ApiResponse<{ success: boolean }>> {
+  async restoreQuote(id: string): Promise<ApiResponse<{ success: boolean }>> {
     return this.apiClient.post<{ success: boolean }>(`/devis/${id}/restore`, {});
   }
 
@@ -62,24 +154,24 @@ class QuoteService {
   }
 
   /** @deprecated Préférer archiveQuote */
-  async deleteQuote(id: number): Promise<ApiResponse<{ success: boolean }>> {
+  async deleteQuote(id: string): Promise<ApiResponse<{ success: boolean }>> {
     return this.archiveQuote(id);
   }
 
-  async sendQuote(id: number): Promise<ApiResponse<Quote>> {
+  async sendQuote(id: string): Promise<ApiResponse<Quote>> {
     return this.apiClient.post<Quote>(`/quotes/${id}/send`);
   }
 
-  async acceptQuote(id: number): Promise<ApiResponse<Quote>> {
+  async acceptQuote(id: string): Promise<ApiResponse<Quote>> {
     return this.apiClient.post<Quote>(`/quotes/${id}/accept`);
   }
 
-  async rejectQuote(id: number): Promise<ApiResponse<Quote>> {
+  async rejectQuote(id: string): Promise<ApiResponse<Quote>> {
     return this.apiClient.post<Quote>(`/quotes/${id}/reject`);
   }
 
-  async convertToInvoice(id: number): Promise<ApiResponse<{ invoiceId: number }>> {
-    return this.apiClient.post<{ invoiceId: number }>(`/quotes/${id}/convert-to-invoice`);
+  async convertToInvoice(id: string): Promise<ApiResponse<{ invoiceId: string }>> {
+    return this.apiClient.post<{ invoiceId: string }>(`/quotes/${id}/convert-to-invoice`);
   }
 }
 

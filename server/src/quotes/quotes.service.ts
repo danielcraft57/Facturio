@@ -40,7 +40,7 @@ export interface CreateQuoteDto {
 	/** Numéro de devis (auto-généré si non fourni) */
 	number?: string;
 	/** ID du client */
-	clientId: number;
+	clientId: string;
 	/** Date d'expiration */
 	expiryDate?: string | Date | null;
 	/** Statut du devis */
@@ -56,7 +56,7 @@ export interface UpdateQuoteDto {
 	/** Numéro de devis */
 	number?: string;
 	/** ID du client */
-	clientId?: number;
+	clientId?: string;
 	/** Date d'expiration */
 	expiryDate?: string | Date | null;
 	/** Statut du devis */
@@ -91,7 +91,7 @@ export class QuotesService {
 	private notifyQuote(
 		organizationId: number | undefined,
 		action: 'created' | 'updated' | 'deleted' | 'sent' | 'paid',
-		id: number,
+		id: string,
 		meta?: { number?: string; status?: string },
 	): void {
 		if (organizationId) this.realtime.emit(organizationId, 'quotes', action, id, meta);
@@ -256,29 +256,53 @@ export class QuotesService {
 	 * @param organizationId - ID de l'organisation (filtre multi-tenant)
 	 * @returns Liste des devis avec lignes et client, triés par date décroissante
 	 */
-	findAll(organizationId?: number, query?: QuoteListQueryDto) {
+	async findAll(organizationId?: number, query?: QuoteListQueryDto) {
+		const q = query ?? {};
+		const page = q.page ?? 1;
+		const pageSize = q.pageSize ?? q.limit ?? 20;
+		const skip = (page - 1) * pageSize;
 		const where: Record<string, unknown> = { archivedAt: null };
 		if (organizationId != null) where.organizationId = organizationId;
-		Object.assign(where, buildDocumentFolderWhere(query?.folder, new Date(), 'quote'));
-		if (query?.tag?.trim()) {
-			where.tags = { contains: `"${query.tag.trim()}"` };
+		Object.assign(where, buildDocumentFolderWhere(q.folder, new Date(), 'quote'));
+		if (q.tag?.trim()) {
+			where.tags = { contains: `"${q.tag.trim()}"` };
 		}
-		if (query?.search) {
+		if (q.search) {
 			where.OR = [
-				{ number: { contains: query.search } },
-				{ client: { name: { contains: query.search } } },
+				{ number: { contains: q.search } },
+				{ client: { name: { contains: q.search } } },
 			];
 		}
-		return this.prisma.quote.findMany({
-			where: where as any,
-			orderBy: query?.folder
-				? documentFolderOrderBy('quote')
-				: { createdAt: 'desc' },
-			include: { lines: true, client: true },
-		});
+
+		const [items, total] = await this.prisma.$transaction([
+			this.prisma.quote.findMany({
+				skip,
+				take: pageSize,
+				where: where as any,
+				orderBy: q.folder
+					? documentFolderOrderBy('quote')
+					: { createdAt: 'desc' },
+				include: { lines: true, client: true },
+			}),
+			this.prisma.quote.count({ where: where as any }),
+		]);
+
+		const folderCounts =
+			q.includeFolderCounts && page === 1
+				? await this.loadFolderCounts(organizationId)
+				: undefined;
+
+		return {
+			quotes: items,
+			total,
+			page,
+			limit: pageSize,
+			totalPages: pageSize > 0 ? Math.ceil(total / pageSize) : 0,
+			...(folderCounts ? { folderCounts } : {}),
+		};
 	}
 
-	async getFolderCounts(organizationId?: number) {
+	private async loadFolderCounts(organizationId?: number) {
 		const base: { organizationId?: number; archivedAt: null } = { archivedAt: null };
 		if (organizationId) base.organizationId = organizationId;
 		const now = new Date();
@@ -299,8 +323,12 @@ export class QuotesService {
 		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons };
 	}
 
+	async getFolderCounts(organizationId?: number) {
+		return this.loadFolderCounts(organizationId);
+	}
+
 	async updateDocumentFlags(
-		id: number,
+		id: string,
 		dto: UpdateQuoteDocumentFlagsDto,
 		organizationId?: number,
 	) {
@@ -333,8 +361,8 @@ export class QuotesService {
 	 * @returns Devis avec lignes et client
 	 * @throws {NotFoundException} Si devis non trouvé
 	 */
-	async findOne(id: number, organizationId?: number) {
-		const where: { id: number; organizationId?: number } = { id };
+	async findOne(id: string, organizationId?: number) {
+		const where: { id: string; organizationId?: number } = { id };
 		if (organizationId != null) where.organizationId = organizationId;
 		const quote = await this.prisma.quote.findFirst({
 			where,
@@ -355,7 +383,7 @@ export class QuotesService {
 	 * @returns Devis mis à jour
 	 * @throws {NotFoundException} Si devis non trouvé
 	 */
-	async update(id: number, data: UpdateQuoteDto, organizationId?: number) {
+	async update(id: string, data: UpdateQuoteDto, organizationId?: number) {
 		await this.findOne(id, organizationId);
 		const lines = data.lines ?? [];
 		const totals = this.computeTotals(lines);
@@ -394,7 +422,7 @@ export class QuotesService {
 		return updated;
 	}
 
-	async archive(id: number, organizationId?: number) {
+	async archive(id: string, organizationId?: number) {
 		const quote = await this.findOne(id, organizationId);
 		if (quote.archivedAt) {
 			return { success: true, alreadyArchived: true };
@@ -411,7 +439,7 @@ export class QuotesService {
 		return { success: true, archivedAt: updated.archivedAt };
 	}
 
-	async restore(id: number, organizationId?: number) {
+	async restore(id: string, organizationId?: number) {
 		const quote = await this.findOne(id, organizationId);
 		if (!quote.archivedAt) {
 			return { success: true, alreadyActive: true };
@@ -444,7 +472,7 @@ export class QuotesService {
 		};
 	}
 
-	async remove(id: number, organizationId?: number) {
+	async remove(id: string, organizationId?: number) {
 		return this.archive(id, organizationId);
 	}
 
@@ -461,7 +489,7 @@ export class QuotesService {
 	 * @returns URL publique et confirmation
 	 * @throws {NotFoundException} Si devis non trouvé
 	 */
-	async send(id: number, organizationId?: number) {
+	async send(id: string, organizationId?: number) {
 		const quote = await this.findOne(id, organizationId);
 		const token = quote.publicToken ?? this.ensureToken();
 		const updated = await this.prisma.quote.update({
@@ -547,7 +575,7 @@ export class QuotesService {
 	}
 
 	/** Accepte un devis (back-office) et crée la facture associée. */
-	async acceptQuote(id: number, organizationId?: number) {
+	async acceptQuote(id: string, organizationId?: number) {
 		const quote = await this.findOne(id, organizationId);
 		if (quote.status === QuoteStatus.REJECTED) {
 			throw new BadRequestException('Ce devis a été refusé');
@@ -570,7 +598,7 @@ export class QuotesService {
 	}
 
 	/** Rejette un devis (back-office). */
-	async rejectQuote(id: number, organizationId?: number) {
+	async rejectQuote(id: string, organizationId?: number) {
 		const quote = await this.findOne(id, organizationId);
 		if (quote.status === QuoteStatus.ACCEPTED) {
 			throw new BadRequestException('Devis déjà accepté — impossible de le refuser');
@@ -592,7 +620,7 @@ export class QuotesService {
 	/**
 	 * Crée une facture à partir d’un devis accepté (idempotent si déjà converti).
 	 */
-	async convertQuoteToInvoice(quoteId: number, organizationId?: number) {
+	async convertQuoteToInvoice(quoteId: string, organizationId?: number) {
 		const existing = await this.prisma.invoice.findUnique({
 			where: { sourceQuoteId: quoteId },
 			include: { lines: true, client: true },
@@ -625,7 +653,7 @@ export class QuotesService {
 		);
 	}
 
-	private async markQuoteAccepted(quoteId: number, ip?: string) {
+	private async markQuoteAccepted(quoteId: string, ip?: string) {
 		return this.prisma.quote.update({
 			where: { id: quoteId },
 			data: {
@@ -657,7 +685,7 @@ export class QuotesService {
 		return { ok: true };
 	}
 
-	async sendQuote(id: number, organizationId?: number) {
+	async sendQuote(id: string, organizationId?: number) {
 		const quote = await this.findOne(id, organizationId);
 		if (!quote) throw new NotFoundException('Quote not found');
 

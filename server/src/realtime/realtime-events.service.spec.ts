@@ -10,6 +10,6 @@ describe('RealtimeEventsService', () => {
 				done();
 			}
 		});
-		service.emit(1, 'invoices', 'created', 42);
+		service.emit(1, 'invoices', 'created', 'clh9test00000000000000001');
 	});
 });

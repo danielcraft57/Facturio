@@ -19,12 +19,12 @@ export class WebhooksController {
 	async email(@Body() event: any) {
 		const type = String(event?.RecordType || event?.type || 'unknown').toLowerCase();
 		const providerId = event?.MessageID || event?.id || null;
-		const quoteId = event?.quoteId ?? (event?.Metadata?.quoteId ? Number(event.Metadata.quoteId) : null);
-		const invoiceId = event?.invoiceId ?? (event?.Metadata?.invoiceId ? Number(event.Metadata.invoiceId) : null);
+		const quoteId = event?.quoteId ?? event?.Metadata?.quoteId ?? null;
+		const invoiceId = event?.invoiceId ?? event?.Metadata?.invoiceId ?? null;
 		await this.prisma.emailEvent.create({
 			data: {
-				quoteId: quoteId ? Number(quoteId) : undefined,
-				invoiceId: invoiceId ? Number(invoiceId) : undefined,
+				quoteId: quoteId ? String(quoteId) : undefined,
+				invoiceId: invoiceId ? String(invoiceId) : undefined,
 				type,
 				providerId,
 				meta: event,

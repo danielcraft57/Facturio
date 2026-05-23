@@ -5,6 +5,7 @@ import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { createTestUser, authenticatedRequest, TestUser } from '../common/test-helpers/auth.helper';
+import { expectEntityId } from '../common/test-helpers/entity-id.helper';
 
 function uniqueEmail(base: string): string {
 	const [local, domain] = base.split('@');
@@ -58,7 +59,7 @@ describe('Clients e2e', () => {
 			.expect(201)
 			.then((r: any) => r.body);
 
-		expect(created.id).toBeDefined();
+		expectEntityId(created.id);
 		expect(created.name).toBe('Test Client');
 
 		// LIST - la base peut contenir d'autres clients, on vérifie que celui qu'on

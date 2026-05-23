@@ -4,7 +4,6 @@ import {
 	Delete,
 	Get,
 	Param,
-	ParseIntPipe,
 	Patch,
 	Post,
 	Query,
@@ -26,6 +25,8 @@ import { CreateQuoteDto } from '../quotes/quotes.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { ListProductsQueryDto } from '../products/dto/list-products-query.dto';
 import { PublicApiDispatchService } from './public-api-dispatch.service';
+import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
+import { ParseIntPipe } from '@nestjs/common';
 import { SendPublicInvoiceDto } from './dto/send-public-invoice.dto';
 
 /**
@@ -63,7 +64,7 @@ export class PublicApiController {
 
 	@Get('clients/:id')
 	@RequireApiScopes('clients.read')
-	getClient(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+	getClient(@Param('id', ParseEntityIdPipe) id: string, @ApiOrganizationId() orgId: number) {
 		return this.clients.findOne(id, orgId);
 	}
 
@@ -76,7 +77,7 @@ export class PublicApiController {
 	@Patch('clients/:id')
 	@RequireApiScopes('clients.write')
 	updateClient(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() data: UpdateClientDto,
 		@ApiOrganizationId() orgId: number,
 	) {
@@ -85,7 +86,7 @@ export class PublicApiController {
 
 	@Delete('clients/:id')
 	@RequireApiScopes('clients.write')
-	removeClient(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+	removeClient(@Param('id', ParseEntityIdPipe) id: string, @ApiOrganizationId() orgId: number) {
 		return this.clients.remove(id, orgId);
 	}
 
@@ -135,7 +136,7 @@ export class PublicApiController {
 
 	@Get('factures/:id')
 	@RequireApiScopes('factures.read')
-	getInvoice(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+	getInvoice(@Param('id', ParseEntityIdPipe) id: string, @ApiOrganizationId() orgId: number) {
 		return this.invoices.findOne(id, orgId);
 	}
 
@@ -148,7 +149,7 @@ export class PublicApiController {
 	@Patch('factures/:id')
 	@RequireApiScopes('factures.write')
 	updateInvoice(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() data: UpdateInvoiceDto,
 		@ApiOrganizationId() orgId: number,
 	) {
@@ -158,7 +159,7 @@ export class PublicApiController {
 	@Post('factures/:id/send')
 	@RequireApiScopes('factures.send')
 	sendInvoice(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() body: SendPublicInvoiceDto,
 		@ApiOrganizationId() orgId: number,
 	) {
@@ -167,13 +168,13 @@ export class PublicApiController {
 
 	@Post('factures/:id/archive')
 	@RequireApiScopes('factures.write')
-	archiveInvoice(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+	archiveInvoice(@Param('id', ParseEntityIdPipe) id: string, @ApiOrganizationId() orgId: number) {
 		return this.invoices.archive(id, orgId);
 	}
 
 	@Post('factures/:id/restore')
 	@RequireApiScopes('factures.write')
-	restoreInvoice(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+	restoreInvoice(@Param('id', ParseEntityIdPipe) id: string, @ApiOrganizationId() orgId: number) {
 		return this.invoices.restore(id, orgId);
 	}
 
@@ -192,7 +193,7 @@ export class PublicApiController {
 
 	@Get('devis/:id')
 	@RequireApiScopes('devis.read')
-	getQuote(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+	getQuote(@Param('id', ParseEntityIdPipe) id: string, @ApiOrganizationId() orgId: number) {
 		return this.quotes.findOne(id, orgId);
 	}
 
@@ -205,7 +206,7 @@ export class PublicApiController {
 	@Patch('devis/:id')
 	@RequireApiScopes('devis.write')
 	updateQuote(
-		@Param('id', ParseIntPipe) id: number,
+		@Param('id', ParseEntityIdPipe) id: string,
 		@Body() data: UpdateQuoteDto,
 		@ApiOrganizationId() orgId: number,
 	) {
@@ -214,19 +215,19 @@ export class PublicApiController {
 
 	@Post('devis/:id/send')
 	@RequireApiScopes('devis.send')
-	sendQuote(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+	sendQuote(@Param('id', ParseEntityIdPipe) id: string, @ApiOrganizationId() orgId: number) {
 		return this.dispatch.sendQuoteByEmail(id, orgId);
 	}
 
 	@Post('devis/:id/archive')
 	@RequireApiScopes('devis.write')
-	archiveQuote(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+	archiveQuote(@Param('id', ParseEntityIdPipe) id: string, @ApiOrganizationId() orgId: number) {
 		return this.quotes.archive(id, orgId);
 	}
 
 	@Post('devis/:id/restore')
 	@RequireApiScopes('devis.write')
-	restoreQuote(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+	restoreQuote(@Param('id', ParseEntityIdPipe) id: string, @ApiOrganizationId() orgId: number) {
 		return this.quotes.restore(id, orgId);
 	}
 }

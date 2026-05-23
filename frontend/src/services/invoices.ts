@@ -66,6 +66,7 @@ export interface CreateInvoiceData {
 
 export interface UpdateInvoiceData extends Partial<CreateInvoiceData> {
   id: string
+  status?: Invoice['status']
 }
 
 export interface InvoiceFilters {
@@ -78,8 +79,17 @@ export interface InvoiceFilters {
   dateTo?: string
   page?: number
   limit?: number
+  includeFolderCounts?: boolean
   sortBy?: 'number' | 'issueDate' | 'dueDate' | 'total' | 'createdAt'
   sortOrder?: 'asc' | 'desc'
+}
+
+export type InvoicesListPageResult = {
+  invoices: Invoice[]
+  total: number
+  page: number
+  pageSize: number
+  folderCounts?: DocumentFolderCounts
 }
 
 export interface InvoiceListResponse {
@@ -162,25 +172,48 @@ export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
 }
 
 export function parseInvoicesListResponse(response: unknown): Invoice[] {
-  const payload = unwrapApiPayload<{ invoices?: unknown[]; items?: unknown[] }>(response)
+  return parseInvoicesListPage(response).invoices
+}
+
+export function parseInvoicesListPage(response: unknown): InvoicesListPageResult {
+  const payload = unwrapApiPayload<{
+    invoices?: unknown[]
+    items?: unknown[]
+    total?: number
+    page?: number
+    limit?: number
+    pageSize?: number
+    folderCounts?: DocumentFolderCounts
+  }>(response)
   const list = Array.isArray(payload?.invoices)
     ? payload.invoices
     : Array.isArray(payload?.items)
       ? payload.items
       : []
-  return list.map((row) => normalizeInvoiceFromApi(row as Record<string, unknown>))
+  return {
+    invoices: list.map((row) => normalizeInvoiceFromApi(row as Record<string, unknown>)),
+    total: Number(payload?.total ?? list.length),
+    page: Number(payload?.page ?? 1),
+    pageSize: Number(payload?.pageSize ?? payload?.limit ?? list.length),
+    folderCounts: payload?.folderCounts,
+  }
 }
+
+const mapInvoiceLinesToApi = (
+  items: { description: string; quantity: number; unitPrice: number; taxRate: number }[],
+) =>
+  items.map((item) => ({
+    description: item.description,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    taxRate: item.taxRate > 1 ? item.taxRate / 100 : item.taxRate,
+  }))
 
 export function toCreateInvoiceApiBody(data: CreateInvoiceData): Record<string, unknown> {
   const body: Record<string, unknown> = {
     dueDate: data.dueDate,
     currency: data.currency || 'EUR',
-    lines: data.items.map((item) => ({
-      description: item.description,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      taxRate: item.taxRate > 1 ? item.taxRate / 100 : item.taxRate,
-    })),
+    lines: mapInvoiceLinesToApi(data.items),
   }
   if (data.paidExternally) {
     body.paidExternally = true
@@ -191,6 +224,22 @@ export function toCreateInvoiceApiBody(data: CreateInvoiceData): Record<string, 
   if (data.clientId) body.clientId = Number(data.clientId)
   if (data.clientEmail?.trim()) body.clientEmail = data.clientEmail.trim()
   if (data.newClientName?.trim()) body.clientName = data.newClientName.trim()
+  return body
+}
+
+export function toUpdateInvoiceApiBody(
+  data: Omit<UpdateInvoiceData, 'id'>,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {}
+  if (data.clientId) body.clientId = Number(data.clientId)
+  if (data.dueDate) body.dueDate = data.dueDate
+  if (data.currency) body.currency = data.currency
+  if (data.status) {
+    body.status = String(data.status).toUpperCase()
+  }
+  if (data.items?.length) {
+    body.lines = mapInvoiceLinesToApi(data.items)
+  }
   return body
 }
 
@@ -211,6 +260,7 @@ export class InvoiceService {
     if (filters.dateTo) params.append('dateTo', filters.dateTo)
     if (filters.page) params.append('page', filters.page.toString())
     if (filters.limit) params.append('limit', filters.limit.toString())
+    if (filters.includeFolderCounts) params.append('includeFolderCounts', '1')
     if (filters.sortBy) params.append('sortBy', filters.sortBy)
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder)
 
@@ -252,12 +302,14 @@ export class InvoiceService {
   // Mettre à jour une facture
   async updateInvoice(data: UpdateInvoiceData): Promise<ApiResponse<Invoice>> {
     const { id, ...updateData } = data
-    const response = await apiClient.put<Invoice>(`${this.baseUrl}/${id}`, updateData)
-    
-    // Invalider les caches
+    const response = await apiClient.patch<Invoice>(
+      `${this.baseUrl}/${id}`,
+      toUpdateInvoiceApiBody(updateData),
+    )
     apiClient.invalidateCache('/invoices')
+    apiClient.invalidateCache('/factures')
     apiClient.invalidateCache(`/invoices/${id}`)
-    
+    apiClient.invalidateCache(`/factures/${id}`)
     return response
   }
 

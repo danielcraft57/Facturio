@@ -178,7 +178,7 @@ describe('Invoices e2e', () => {
 		await authenticatedRequest(app, testUser.cookies)
 			.post('/api/invoices')
 			.send({
-				clientId: 99999,
+				clientId: '0000000000',
 				organizationId: testUser.organizationId,
 				lines: [{ description: 'Service', quantity: 1, unitPrice: 100 }]
 			})

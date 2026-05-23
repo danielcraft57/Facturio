@@ -17,11 +17,11 @@ export class PublicApiDispatchService {
 		private readonly organizations: OrganizationsService,
 	) {}
 
-	async sendInvoiceByEmail(id: number, organizationId: number, dto?: SendInvoiceDto) {
+	async sendInvoiceByEmail(id: string, organizationId: number, dto?: SendInvoiceDto) {
 		return this.invoiceSend.sendByEmail(id, organizationId, dto);
 	}
 
-	async sendQuoteByEmail(id: number, organizationId: number) {
+	async sendQuoteByEmail(id: string, organizationId: number) {
 		const result = await this.quotes.sendQuote(id, organizationId);
 		const token = result.publicToken;
 		const organization = await this.organizations.getProfile(organizationId).catch(() => undefined);

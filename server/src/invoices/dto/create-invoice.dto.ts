@@ -28,8 +28,8 @@ export class CreateInvoiceDto {
 	number?: string;
 
 	@IsOptional()
-	@IsInt()
-	clientId?: number;
+	@IsString()
+	clientId?: string;
 
 	@IsOptional()
 	@IsDateString()
