@@ -64,6 +64,10 @@ docs/rapports/RAPPORT-RECHERCHE-DOMAINES-*.pdf
 credentials.json
 **/secrets.json
 
+# Plaquette commerciale (génération locale, PDF)
+docs/plaquette-commerciale/
+docs/plaquette-commercial/
+
 # Dossier accréditation PA — pièces sensibles (Kbis, ISO…)
 docs/accreditation-pa/annexes/pieces-jointes/*
 !docs/accreditation-pa/annexes/pieces-jointes/.gitkeep
