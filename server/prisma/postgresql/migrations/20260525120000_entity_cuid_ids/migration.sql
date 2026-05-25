@@ -8,22 +8,22 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'Client' AND column_name = 'id'
       AND data_type IN ('integer', 'bigint')
   ) THEN
-    TRUNCATE TABLE
-      "JournalLine",
-      "JournalEntry",
-      "QuoteView",
-      "EmailEvent",
-      "QuoteLine",
-      "Quote",
-      "AvoirApplication",
-      "AvoirLine",
-      "Avoir",
-      "Payment",
-      "InvoiceLine",
-      "Invoice",
-      "Subscription",
-      "Client"
-    RESTART IDENTITY CASCADE;
+    -- DELETE (ordre FK) plus fiable que TRUNCATE sur prod (droits / tables liées hors liste).
+    DELETE FROM "TaxDeduction" WHERE "invoiceId" IS NOT NULL;
+    DELETE FROM "JournalLine";
+    DELETE FROM "JournalEntry";
+    DELETE FROM "QuoteView";
+    DELETE FROM "EmailEvent";
+    DELETE FROM "QuoteLine";
+    DELETE FROM "Quote";
+    DELETE FROM "AvoirApplication";
+    DELETE FROM "AvoirLine";
+    DELETE FROM "Avoir";
+    DELETE FROM "Payment";
+    DELETE FROM "InvoiceLine";
+    DELETE FROM "Invoice";
+    DELETE FROM "Subscription";
+    DELETE FROM "Client";
 
     ALTER TABLE "Client" ALTER COLUMN "id" DROP DEFAULT;
     DROP SEQUENCE IF EXISTS "Client_id_seq";

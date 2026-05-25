@@ -23,6 +23,12 @@ enum QuoteStatus {
   EXPIRED
 }
 
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+}
+
 // ============================================
 // AUTHENTIFICATION & ORGANISATIONS
 // ============================================
@@ -328,6 +334,7 @@ model Client {
   id                String         @id
   name              String
   email             String         @unique
+  phone             String?
   address           String?
   // B2B/B2C
   isCompany         Boolean        @default(false)
@@ -338,6 +345,7 @@ model Client {
   taxRateOverrideId Int?
   taxRateOverride   TaxRate?       @relation("ClientTaxOverride", fields: [taxRateOverrideId], references: [id])
   countryCode       String? // ISO 3166-1 alpha-2
+  status            ClientStatus   @default(ACTIVE)
   organizationId    Int?
   organization      Organization?  @relation(fields: [organizationId], references: [id])
   preferredTechnologies Json?
@@ -352,6 +360,11 @@ model Client {
   @@index([email])
   @@index([name])
   @@index([organizationId])
+  @@index([status])
+  @@index([isCompany])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, isCompany, createdAt])
 }
 
 model Invoice {
@@ -385,15 +398,31 @@ model Invoice {
   eInvoiceStatus      EInvoiceStatus          @default(NOT_READY)
   eInvoiceGeneratedAt DateTime?
   eInvoiceXmlHash     String?
+  archivedAt          DateTime?
+  starred             Boolean                 @default(false)
+  important           Boolean                 @default(false)
+  snoozedUntil        DateTime?
+  seenAt              DateTime?
+  tags                String?
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
   @@index([status, date])
   @@index([clientId])
+  @@index([archivedAt])
+  @@index([starred])
+  @@index([important])
   @@index([number])
   @@index([organizationId])
   @@index([publicToken])
   @@index([eInvoiceStatus])
+  @@index([organizationId, archivedAt, createdAt])
+  @@index([organizationId, archivedAt, status])
+  @@index([organizationId, archivedAt, seenAt])
+  @@index([organizationId, archivedAt, snoozedUntil])
+  @@index([organizationId, archivedAt, starred])
+  @@index([organizationId, archivedAt, important])
+  @@index([organizationId, clientId, status])
 }
 
 model InvoiceLine {
@@ -494,10 +523,31 @@ model Quote {
   views          QuoteView[]
   emailEvents      EmailEvent[]
   convertedInvoice Invoice?      @relation("QuoteToInvoice")
+  archivedAt       DateTime?
+  starred          Boolean       @default(false)
+  important        Boolean       @default(false)
+  snoozedUntil     DateTime?
+  seenAt           DateTime?
+  tags             String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
+  @@index([clientId])
+  @@index([status])
+  @@index([number])
+  @@index([snoozedUntil])
+  @@index([seenAt])
+  @@index([sentAt])
   @@index([organizationId])
+  @@index([archivedAt])
+  @@index([starred])
+  @@index([important])
+  @@index([organizationId, archivedAt, createdAt])
+  @@index([organizationId, archivedAt, status])
+  @@index([organizationId, archivedAt, seenAt])
+  @@index([organizationId, archivedAt, snoozedUntil])
+  @@index([organizationId, archivedAt, starred])
+  @@index([organizationId, archivedAt, important])
 }
 
 model QuoteLine {

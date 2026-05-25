@@ -74,6 +74,29 @@ sudo -u postgres psql -d facturio -f /opt/facturio/scripts/deploy/postgresql/mai
 
 Le script `facturio-update.sh` exécute `ANALYZE` après chaque mise à jour.
 
+## Migration en échec (P3009)
+
+Si `migrate deploy` s’arrête avec **P3009** et une migration `failed` (ex. `20260525120000_entity_cuid_ids`) :
+
+```bash
+cd /opt/facturio/server
+
+# État des migrations
+sudo -u postgres psql -d facturio -c \
+  "SELECT migration_name, finished_at, rolled_back_at, logs FROM \"_prisma_migrations\" ORDER BY started_at DESC LIMIT 5;"
+
+# Marquer l’échec comme annulé (après pull du correctif SQL)
+npx prisma migrate resolve --rolled-back 20260525120000_entity_cuid_ids \
+  --schema=prisma/postgresql/schema.prisma
+
+# Réappliquer (idempotent si colonnes déjà en TEXT)
+npm run migrate:prod
+sudo -u postgres psql -d facturio -f /opt/facturio/scripts/deploy/postgresql/grant-facturio-role.sql
+sudo systemctl restart facturio
+```
+
+La migration CUID supprime clients / factures / devis liés avant conversion des IDs en `TEXT` (réimport seed si besoin).
+
 ## Vérifications
 
 ```bash
