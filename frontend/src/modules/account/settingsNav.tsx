@@ -14,6 +14,8 @@ export type SettingsNavItem = {
   label: string
   description: string
   icon: ReactNode
+  /** Réservé aux plans Pro (API publique) */
+  requiresPro?: boolean
 }
 
 export const settingsNavItems: SettingsNavItem[] = [
@@ -62,14 +64,16 @@ export const settingsNavItems: SettingsNavItem[] = [
   {
     to: '/parametres/tokens',
     label: 'API — Jetons',
-    description: 'Accès programmatique Bearer',
+    description: 'Accès programmatique Bearer (Pro)',
     icon: <VpnKeyIcon fontSize="small" />,
+    requiresPro: true,
   },
   {
     to: '/parametres/api-docs',
     label: 'API — Documentation',
-    description: 'Endpoints publics REST',
+    description: 'Endpoints publics REST (Pro)',
     icon: <MenuBookIcon fontSize="small" />,
+    requiresPro: true,
   },
 ]
 

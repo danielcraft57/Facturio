@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { billingService, type BillingUsage } from '../../services/billing'
 import { OrganizationProfileProvider, useOrganizationProfile } from './OrganizationProfileContext'
 import { AnimatedSettingsOutlet } from './components/AnimatedSettingsOutlet'
 import {
@@ -21,6 +23,28 @@ function SettingsLayoutContent() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { autoSaveStatus, error, validationMessage } = useOrganizationProfile()
+  const [usage, setUsage] = useState<BillingUsage | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    billingService
+      .getUsage()
+      .then((res) => {
+        if (!cancelled) {
+          setUsage((res.data as { data?: BillingUsage })?.data ?? (res.data as BillingUsage) ?? null)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setUsage(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const visibleNavItems = settingsNavItems.filter(
+    (item) => !item.requiresPro || usage?.limits.publicApi === true,
+  )
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
@@ -55,7 +79,7 @@ function SettingsLayoutContent() {
           }}
         >
           <List dense disablePadding sx={{ py: 0.5 }}>
-            {settingsNavItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = isSettingsPathActive(location.pathname, item.to)
               return (
                 <ListItemButton

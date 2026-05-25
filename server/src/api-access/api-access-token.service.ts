@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { BillingService } from '../billing/billing.service';
 import {
 	API_ACCESS_SCOPES,
 	ApiAccessScope,
@@ -19,7 +20,10 @@ export interface ApiAccessContext {
 
 @Injectable()
 export class ApiAccessTokenService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly billing: BillingService,
+	) {}
 
 	static hashToken(plain: string): string {
 		return createHash('sha256').update(plain, 'utf8').digest('hex');
@@ -97,6 +101,7 @@ export class ApiAccessTokenService {
 		if (!row) {
 			throw new UnauthorizedException('Jeton API invalide ou révoqué');
 		}
+		await this.billing.assertCanUsePublicApi(row.organizationId);
 		void this.prisma.apiAccessToken
 			.update({
 				where: { id: row.id },

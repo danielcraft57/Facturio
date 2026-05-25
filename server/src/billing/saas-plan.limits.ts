@@ -8,6 +8,8 @@ export type SaasPlanLimits = {
 	stripePayments: boolean;
 	prospection: boolean;
 	multiUser: boolean;
+	/** API REST publique + jetons Bearer */
+	publicApi: boolean;
 };
 
 export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
@@ -19,6 +21,7 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 		stripePayments: true,
 		prospection: false,
 		multiUser: false,
+		publicApi: false,
 	},
 	PRO: {
 		plan: 'PRO',
@@ -28,6 +31,7 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 		stripePayments: true,
 		prospection: true,
 		multiUser: false,
+		publicApi: true,
 	},
 	PRO_EFACTURE: {
 		plan: 'PRO_EFACTURE',
@@ -37,6 +41,7 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 		stripePayments: true,
 		prospection: true,
 		multiUser: false,
+		publicApi: true,
 	},
 	AGENCY: {
 		plan: 'AGENCY',
@@ -46,5 +51,6 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 		stripePayments: true,
 		prospection: true,
 		multiUser: true,
+		publicApi: true,
 	},
 };

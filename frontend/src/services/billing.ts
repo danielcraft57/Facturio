@@ -26,6 +26,7 @@ export interface BillingUsage {
     stripePayments: boolean
     prospection: boolean
     multiUser: boolean
+    publicApi: boolean
   }
   usage: { invoicesThisMonth: number }
   remainingInvoices: number | null

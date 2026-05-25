@@ -93,13 +93,13 @@ describe('EInvoicingService', () => {
 			prisma.invoice.findFirst.mockResolvedValue(readyInvoice);
 			prisma.invoice.update.mockResolvedValue({});
 
-			const result = await service.generateFacturX(10, 1);
+			const result = await service.generateFacturX('10', 1);
 
 			expect(result.xml).toContain('FacturioCrossIndustryInvoice');
 			expect(result.filename).toContain('FAC-001');
 			expect(prisma.invoice.update).toHaveBeenCalledWith(
 				expect.objectContaining({
-					where: { id: 10 },
+					where: { id: '10' },
 					data: expect.objectContaining({
 						eInvoiceStatus: EInvoiceStatus.XML_GENERATED,
 						eInvoiceXmlHash: expect.any(String),
@@ -116,7 +116,7 @@ describe('EInvoicingService', () => {
 				sentAt: null,
 			});
 
-			await expect(service.generateFacturX(10, 1)).rejects.toBeInstanceOf(ForbiddenException);
+			await expect(service.generateFacturX('10', 1)).rejects.toBeInstanceOf(ForbiddenException);
 		});
 
 		it('propage le refus de plan Free', async () => {
@@ -124,7 +124,7 @@ describe('EInvoicingService', () => {
 				new ForbiddenException('La facturation électronique (Factur-X) est réservée au plan Pro + e-facture.'),
 			);
 
-			await expect(service.generateFacturX(10, 1)).rejects.toBeInstanceOf(ForbiddenException);
+			await expect(service.generateFacturX('10', 1)).rejects.toBeInstanceOf(ForbiddenException);
 		});
 	});
 });

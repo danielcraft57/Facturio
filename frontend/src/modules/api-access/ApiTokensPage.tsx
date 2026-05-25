@@ -34,6 +34,7 @@ import {
   type ApiAccessTokenRow,
 } from '../../services/apiAccessService'
 import { getApiBaseUrl } from './apiDocsContent'
+import { ProPlanGate } from '../../components/billing/ProPlanGate'
 
 export function ApiTokensPage() {
   const [catalog, setCatalog] = useState<ApiScopeCatalogItem[]>([])
@@ -116,6 +117,7 @@ export function ApiTokensPage() {
   const apiBase = getApiBaseUrl()
 
   return (
+    <ProPlanGate featureLabel="Les jetons API">
     <Box>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
@@ -288,5 +290,6 @@ export function ApiTokensPage() {
         </DialogActions>
       </Dialog>
     </Box>
+    </ProPlanGate>
   )
 }

@@ -31,6 +31,10 @@ describe('API publique (api-access)', () => {
 		await app.init();
 		prisma = app.get(PrismaService);
 		testUser = await createTestUser(app, prisma);
+		await prisma.organization.update({
+			where: { id: testUser.organizationId },
+			data: { saasPlan: 'PRO' },
+		});
 
 		const created = await authenticatedRequest(app, testUser.cookies)
 			.post('/api/api-access/tokens')

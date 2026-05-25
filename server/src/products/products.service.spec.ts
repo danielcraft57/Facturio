@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
 import { NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
@@ -13,12 +14,20 @@ describe('ProductsService', () => {
 		product: {
 			create: jest.fn(),
 			findMany: jest.fn(),
-			findUnique: jest.fn(),
+			findFirst: jest.fn(),
 			update: jest.fn(),
 			delete: jest.fn(),
-			count: jest.fn()
+			count: jest.fn(),
 		},
-		$transaction: jest.fn()
+		client: {
+			findFirst: jest.fn(),
+		},
+		$transaction: jest.fn(),
+	};
+
+	const mockCatalogPersonalization = {
+		getOrganizationCatalogProductIds: jest.fn().mockResolvedValue([]),
+		getClientCatalogProductIds: jest.fn().mockResolvedValue([]),
 	};
 
 	beforeEach(async () => {
@@ -27,9 +36,13 @@ describe('ProductsService', () => {
 				ProductsService,
 				{
 					provide: PrismaService,
-					useValue: mockPrismaService
-				}
-			]
+					useValue: mockPrismaService,
+				},
+				{
+					provide: CatalogPersonalizationService,
+					useValue: mockCatalogPersonalization,
+				},
+			],
 		}).compile();
 
 		service = module.get<ProductsService>(ProductsService);
@@ -60,8 +73,8 @@ describe('ProductsService', () => {
 
 			expect(result).toEqual(expected);
 			expect(mockPrismaService.product.create).toHaveBeenCalledWith({
-				data: dto,
-				include: { defaultTaxRate: true }
+				data: { ...dto, organizationId: null },
+				include: { defaultTaxRate: true },
 			});
 		});
 	});
@@ -136,14 +149,15 @@ describe('ProductsService', () => {
 			expect(result.items).toHaveLength(1);
 			expect(mockPrismaService.product.findMany).toHaveBeenCalledWith(
 				expect.objectContaining({
-					where: {
+					where: expect.objectContaining({
+						organizationId: null,
 						OR: [
 							{ name: { contains: 'test' } },
 							{ sku: { contains: 'test' } },
-							{ description: { contains: 'test' } }
-						]
-					}
-				})
+							{ description: { contains: 'test' } },
+						],
+					}),
+				}),
 			);
 		});
 
@@ -173,19 +187,19 @@ describe('ProductsService', () => {
 				defaultTaxRate: null
 			};
 
-			mockPrismaService.product.findUnique.mockResolvedValue(product);
+			mockPrismaService.product.findFirst.mockResolvedValue(product);
 
 			const result = await service.findOne(1);
 
 			expect(result).toEqual(product);
-			expect(mockPrismaService.product.findUnique).toHaveBeenCalledWith({
-				where: { id: 1 },
-				include: { defaultTaxRate: true }
+			expect(mockPrismaService.product.findFirst).toHaveBeenCalledWith({
+				where: { id: 1, organizationId: null },
+				include: { defaultTaxRate: true },
 			});
 		});
 
 		it('devrait lancer NotFoundException si le produit n\'existe pas', async () => {
-			mockPrismaService.product.findUnique.mockResolvedValue(null);
+			mockPrismaService.product.findFirst.mockResolvedValue(null);
 
 			await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
 		});
@@ -209,7 +223,7 @@ describe('ProductsService', () => {
 				defaultTaxRate: null
 			};
 
-			mockPrismaService.product.findUnique.mockResolvedValue(existing);
+			mockPrismaService.product.findFirst.mockResolvedValue(existing);
 			mockPrismaService.product.update.mockResolvedValue(updated);
 
 			const result = await service.update(1, updateDto);
@@ -231,7 +245,7 @@ describe('ProductsService', () => {
 				defaultTaxRate: null
 			};
 
-			mockPrismaService.product.findUnique.mockResolvedValue(product);
+			mockPrismaService.product.findFirst.mockResolvedValue(product);
 			mockPrismaService.product.delete.mockResolvedValue(product);
 
 			const result = await service.remove(1);

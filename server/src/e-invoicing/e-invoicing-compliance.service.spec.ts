@@ -82,7 +82,7 @@ describe('EInvoicingComplianceService', () => {
 
 	describe('evaluateInvoice', () => {
 		const baseInvoice = {
-			id: 1,
+			id: '1',
 			number: 'FAC-2026-001',
 			status: 'SENT',
 			sentAt: new Date('2026-05-01'),

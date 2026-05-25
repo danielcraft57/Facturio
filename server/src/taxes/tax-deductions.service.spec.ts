@@ -112,7 +112,7 @@ describe('TaxDeductionsService', () => {
 				name: 'Test',
 				amount: 500,
 				year: 2024,
-				invoiceId: 1,
+				invoiceId: '1',
 			};
 
 			mockPrismaService.invoice.findUnique.mockResolvedValue(null);

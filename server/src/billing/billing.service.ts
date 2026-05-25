@@ -130,7 +130,19 @@ export class BillingService {
 		}
 	}
 
-	hasFeature(plan: SaasBillingPlan, feature: keyof Pick<typeof SAAS_PLAN_LIMITS.FREE, 'eInvoicing' | 'prospection' | 'multiUser'>): boolean {
+	async assertCanUsePublicApi(organizationId: number): Promise<void> {
+		const plan = await this.getOrganizationPlan(organizationId);
+		if (!this.hasFeature(plan, 'publicApi')) {
+			throw new ForbiddenException(
+				'L’API publique, les jetons d’accès et la documentation API sont réservés aux plans Pro.',
+			);
+		}
+	}
+
+	hasFeature(
+		plan: SaasBillingPlan,
+		feature: keyof Pick<typeof SAAS_PLAN_LIMITS.FREE, 'eInvoicing' | 'prospection' | 'multiUser' | 'publicApi'>,
+	): boolean {
 		return SAAS_PLAN_LIMITS[plan][feature];
 	}
 }

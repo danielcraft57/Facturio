@@ -6,7 +6,7 @@ import { CreateAvoirLineDto } from './create-avoir-line.dto';
 describe('CreateAvoirDto', () => {
 	it('devrait valider un avoir valide', async () => {
 		const dto = plainToInstance(CreateAvoirDto, {
-			clientId: 1,
+			clientId: '1',
 			lines: [
 			{
 				description: 'Remboursement',
@@ -39,7 +39,7 @@ describe('CreateAvoirDto', () => {
 
 	it('devrait rejeter un avoir sans lignes', async () => {
 		const dto = plainToInstance(CreateAvoirDto, {
-			clientId: 1,
+			clientId: '1',
 			lines: []
 		});
 
@@ -51,7 +51,7 @@ describe('CreateAvoirDto', () => {
 
 	it('devrait accepter un statut valide', async () => {
 		const dto = plainToInstance(CreateAvoirDto, {
-			clientId: 1,
+			clientId: '1',
 			status: 'DRAFT',
 			lines: [
 			{

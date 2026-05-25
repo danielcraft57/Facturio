@@ -66,4 +66,23 @@ describe('BillingService', () => {
 		expect(service.hasFeature(SaasBillingPlan.PRO_EFACTURE, 'eInvoicing')).toBe(true);
 		expect(service.hasFeature(SaasBillingPlan.AGENCY, 'eInvoicing')).toBe(true);
 	});
+
+	it('bloque l’API publique sur plan Free', async () => {
+		prisma.organization.findUnique.mockResolvedValue({ saasPlan: SaasBillingPlan.FREE, saasPlanExpiresAt: null });
+
+		await expect(service.assertCanUsePublicApi(1)).rejects.toBeInstanceOf(ForbiddenException);
+	});
+
+	it('autorise l’API publique sur plan Pro', async () => {
+		prisma.organization.findUnique.mockResolvedValue({ saasPlan: SaasBillingPlan.PRO, saasPlanExpiresAt: null });
+
+		await expect(service.assertCanUsePublicApi(1)).resolves.toBeUndefined();
+	});
+
+	it('expose publicApi sur Pro, Pro+e-facture et Agence', () => {
+		expect(service.hasFeature(SaasBillingPlan.FREE, 'publicApi')).toBe(false);
+		expect(service.hasFeature(SaasBillingPlan.PRO, 'publicApi')).toBe(true);
+		expect(service.hasFeature(SaasBillingPlan.PRO_EFACTURE, 'publicApi')).toBe(true);
+		expect(service.hasFeature(SaasBillingPlan.AGENCY, 'publicApi')).toBe(true);
+	});
 });

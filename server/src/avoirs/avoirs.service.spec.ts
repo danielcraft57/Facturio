@@ -73,7 +73,7 @@ describe('AvoirsService', () => {
 	describe('create', () => {
 		it('devrait créer un avoir', async () => {
 			const dto: CreateAvoirDto = {
-				clientId: 1,
+				clientId: '1',
 				lines: [
 					{
 						description: 'Remboursement',
@@ -90,7 +90,7 @@ describe('AvoirsService', () => {
 			mockPrismaService.avoir.create.mockResolvedValue({
 				id: 1,
 				number: 'AVO-2024-0001',
-				clientId: 1,
+				clientId: '1',
 				invoiceId: null,
 				date: new Date(),
 				status: 'DRAFT',
@@ -120,13 +120,13 @@ describe('AvoirsService', () => {
 
 			expect(result).toHaveProperty('id');
 			expect(result.number).toBe('AVO-2024-0001');
-			expect(result.clientId).toBe(1);
+			expect(result.clientId).toBe('1');
 			expect(mockPrismaService.avoir.create).toHaveBeenCalled();
 		});
 
 		it('devrait rejeter un avoir sans client', async () => {
 			const dto: CreateAvoirDto = {
-				clientId: 999,
+				clientId: '999',
 				lines: [
 					{
 						description: 'Test',
@@ -143,7 +143,7 @@ describe('AvoirsService', () => {
 
 		it('devrait rejeter un avoir sans lignes', async () => {
 			const dto: CreateAvoirDto = {
-				clientId: 1,
+				clientId: '1',
 				lines: []
 			};
 
@@ -158,7 +158,7 @@ describe('AvoirsService', () => {
 			const mockAvoir = {
 				id: 1,
 				number: 'AVO-2024-0001',
-				clientId: 1,
+				clientId: '1',
 				invoiceId: null,
 				subtotal: 100,
 				tax: 20,
@@ -190,7 +190,7 @@ describe('AvoirsService', () => {
 			const mockAvoir = {
 				id: 1,
 				number: 'AVO-2024-0001',
-				clientId: 1,
+				clientId: '1',
 				total: 120,
 				appliedAmount: 0,
 				status: 'DRAFT',
@@ -201,7 +201,7 @@ describe('AvoirsService', () => {
 
 			const mockInvoice = {
 				id: 1,
-				clientId: 1,
+				clientId: '1',
 				balance: 200,
 				status: 'SENT'
 			};
@@ -218,7 +218,7 @@ describe('AvoirsService', () => {
 			mockPrismaService.avoir.update.mockResolvedValue({ ...mockAvoir, status: 'SENT', appliedAmount: 50, accountingEntryId: null });
 			mockPrismaService.invoice.update.mockResolvedValue({ ...mockInvoice, balance: 150 });
 
-			const result = await service.apply(1, { invoiceId: 1, amount: 50 });
+			const result = await service.apply(1, { invoiceId: '1', amount: 50 });
 
 			expect(mockPrismaService.avoirApplication.create).toHaveBeenCalled();
 			expect(mockPrismaService.avoir.update).toHaveBeenCalled();
@@ -228,7 +228,7 @@ describe('AvoirsService', () => {
 		it('devrait rejeter une imputation supérieure au montant disponible', async () => {
 			const mockAvoir = {
 				id: 1,
-				clientId: 1,
+				clientId: '1',
 				total: 120,
 				appliedAmount: 100,
 				status: 'SENT',
@@ -237,14 +237,14 @@ describe('AvoirsService', () => {
 
 			const mockInvoice = {
 				id: 1,
-				clientId: 1,
+				clientId: '1',
 				balance: 200
 			};
 
 			mockPrismaService.avoir.findFirst.mockResolvedValue(mockAvoir);
 			mockPrismaService.invoice.findUnique.mockResolvedValue(mockInvoice);
 
-			await expect(service.apply(1, { invoiceId: 1, amount: 50 })).rejects.toThrow(BadRequestException);
+			await expect(service.apply(1, { invoiceId: '1', amount: 50 })).rejects.toThrow(BadRequestException);
 		});
 	});
 

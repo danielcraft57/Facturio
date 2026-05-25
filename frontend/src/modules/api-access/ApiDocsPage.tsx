@@ -24,6 +24,7 @@ import {
 } from '@mui/material'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { Link as RouterLink } from 'react-router-dom'
+import { ProPlanGate } from '../../components/billing/ProPlanGate'
 import {
   API_DOC_SECTIONS,
   API_ERROR_CODES,
@@ -338,6 +339,7 @@ export function ApiDocsPage() {
   const tabPanelSx = { minWidth: 0, width: '100%', maxWidth: '100%' } as const
 
   return (
+    <ProPlanGate featureLabel="La documentation API">
     <Box sx={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
@@ -482,5 +484,6 @@ export function ApiDocsPage() {
         </Paper>
       )}
     </Box>
+    </ProPlanGate>
   )
 }

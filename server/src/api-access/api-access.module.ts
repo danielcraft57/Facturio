@@ -10,9 +10,10 @@ import { InvoicesModule } from '../invoices/invoices.module';
 import { QuotesModule } from '../quotes/quotes.module';
 import { CommonModule } from '../common/common.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-	imports: [ClientsModule, ProductsModule, InvoicesModule, QuotesModule, CommonModule, OrganizationsModule],
+	imports: [ClientsModule, ProductsModule, InvoicesModule, QuotesModule, CommonModule, OrganizationsModule, BillingModule],
 	controllers: [ApiAccessTokenController, PublicApiController],
 	providers: [ApiAccessTokenService, ApiBearerGuard, PublicApiDispatchService],
 	exports: [ApiAccessTokenService],
