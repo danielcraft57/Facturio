@@ -120,11 +120,7 @@ else
 fi
 
 if [ "$LAST_OK_SHA" = "$DESIRED_SHA" ]; then
-	echo "[facturio-update] already deployed ($DESIRED_SHA)"
-	if uses_postgres_db; then
-		run_prisma_migrate_prod
-		sudo systemctl restart "$SERVICE"
-	fi
+	echo "[facturio-update] already deployed ($DESIRED_SHA), rien à faire"
 	exit 0
 fi
 
