@@ -8,6 +8,7 @@ vi.mock('./api', async () => {
     ...actual,
     apiClient: {
       ...actual.apiClient,
+      get: vi.fn(),
       getCached: vi.fn(),
       post: vi.fn(),
       put: vi.fn(),
@@ -26,7 +27,7 @@ describe('invoiceService', () => {
   })
 
   it('construit bien l URL pour getInvoices avec filtres', async () => {
-    ;(apiClient.getCached as any).mockResolvedValue({
+    ;(apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({
       success: true,
       data: {
         invoices: [],
@@ -49,14 +50,13 @@ describe('invoiceService', () => {
       sortOrder: 'desc',
     })
 
-    expect(apiClient.getCached).toHaveBeenCalledWith(
-      '/invoices?search=FAC-2025&status=paid&clientId=42&dateFrom=2025-01-01&dateTo=2025-12-31&page=2&limit=50&sortBy=issueDate&sortOrder=desc',
-      2 * 60 * 1000,
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/factures?search=FAC-2025&status=paid&clientId=42&dateFrom=2025-01-01&dateTo=2025-12-31&page=2&limit=50&sortBy=issueDate&sortOrder=desc',
     )
   })
 
   it('invalide le cache après création de facture', async () => {
-    ;(apiClient.post as any).mockResolvedValue({
+    ;(apiClient.post as ReturnType<typeof vi.fn>).mockResolvedValue({
       success: true,
       data: { id: '1', number: 'FAC-2025-0001' },
     })
@@ -70,7 +70,7 @@ describe('invoiceService', () => {
       ],
     }
 
-    const res = await invoiceService.createInvoice(payload as any)
+    const res = await invoiceService.createInvoice(payload as never)
 
     expect(apiClient.post).toHaveBeenCalledWith('/invoices', toCreateInvoiceApiBody(payload))
     expect(apiClient.invalidateCache).toHaveBeenCalledWith('/invoices')
@@ -79,7 +79,7 @@ describe('invoiceService', () => {
 
   it('appelle le bon endpoint pour la génération de PDF', async () => {
     const blob = new Blob(['test'], { type: 'application/pdf' })
-    ;(apiClient.client.get as any).mockResolvedValue({ data: blob })
+    ;(apiClient.client.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: blob })
 
     const result = await invoiceService.generatePDF('123')
 
@@ -89,5 +89,3 @@ describe('invoiceService', () => {
     expect(result).toBe(blob)
   })
 })
-
-

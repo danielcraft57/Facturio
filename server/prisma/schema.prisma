@@ -17,7 +17,7 @@ model Organization {
   rcsCity                     String?
   vatNumber                   String?                   @unique
   companyStatus               CompanyStatus?
-  companyType                 CompanyType               @default("B2B")
+  companyType                 CompanyType               @default(B2B)
   address                     String?
   address2                    String?
   city                        String?
@@ -48,7 +48,7 @@ model Organization {
   timezone                    String                    @default("Europe/Paris")
   createdAt                   DateTime                  @default(now())
   updatedAt                   DateTime                  @updatedAt
-  saasPlan                    SaasBillingPlan           @default("FREE")
+  saasPlan                    SaasBillingPlan           @default(FREE)
   saasPlanExpiresAt           DateTime?
   stripeCustomerId            String?
   stripeSubscriptionId        String?
@@ -116,8 +116,8 @@ model User {
   lastName                 String?
   phone                    String?
   avatar                   String?
-  role                     UserRole      @default("USER")
-  status                   UserStatus    @default("PENDING")
+  role                     UserRole      @default(USER)
+  status                   UserStatus    @default(PENDING)
   emailVerified            Boolean       @default(false)
   emailVerifiedAt          DateTime?
   lastLoginAt              DateTime?
@@ -190,7 +190,7 @@ model OrganizationDocument {
   fileName        String
   mimeType        String?
   fileSize        Int?
-  status          DocumentStatus @default("PENDING")
+  status          DocumentStatus @default(PENDING)
   expiresAt       DateTime?
   uploadedBy      Int?
   validatedBy     Int?
@@ -220,7 +220,7 @@ model Client {
   isVatExempt           Boolean             @default(false)
   taxRateOverrideId     Int?
   countryCode           String?
-  status                ClientStatus        @default("ACTIVE")
+  status                ClientStatus        @default(ACTIVE)
   organizationId        Int?
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
@@ -248,7 +248,7 @@ model Invoice {
   number              String             @unique
   date                DateTime           @default(now())
   dueDate             DateTime?
-  status              InvoiceStatus      @default("DRAFT")
+  status              InvoiceStatus      @default(DRAFT)
   clientId            String
   subscriptionId      Int?
   organizationId      Int?
@@ -261,7 +261,7 @@ model Invoice {
   publicToken         String?            @unique
   sentAt              DateTime?
   sourceQuoteId       String?            @unique
-  eInvoiceStatus      EInvoiceStatus     @default("NOT_READY")
+  eInvoiceStatus      EInvoiceStatus     @default(NOT_READY)
   eInvoiceGeneratedAt DateTime?
   eInvoiceXmlHash     String?
   archivedAt          DateTime?
@@ -319,7 +319,7 @@ model Avoir {
   id                Int                @id @default(autoincrement())
   number            String             @unique
   date              DateTime           @default(now())
-  status            AvoirStatus        @default("DRAFT")
+  status            AvoirStatus        @default(DRAFT)
   invoiceId         String?
   clientId          String
   subtotal          Decimal            @default(0)
@@ -376,7 +376,7 @@ model Quote {
   number           String        @unique
   date             DateTime      @default(now())
   expiryDate       DateTime?
-  status           QuoteStatus   @default("DRAFT")
+  status           QuoteStatus   @default(DRAFT)
   clientId         String
   organizationId   Int?
   subtotal         Decimal       @default(0)
@@ -451,7 +451,7 @@ model Product {
   templateProductId        Int?
   name                     String
   sku                      String?
-  kind                     ProductKind               @default("SERVICE")
+  kind                     ProductKind               @default(SERVICE)
   unitPrice                Decimal?
   defaultTaxRateId         Int?
   /// * But métier : site web, SaaS, e-commerce, vitrine
@@ -541,7 +541,7 @@ model Subscription {
   clientId           String
   planId             Int
   organizationId     Int?
-  status             SubscriptionStatus @default("ACTIVE")
+  status             SubscriptionStatus @default(ACTIVE)
   quantity           Int                @default(1)
   startDate          DateTime           @default(now())
   currentPeriodStart DateTime
@@ -565,7 +565,7 @@ model Filing {
   periodStart DateTime
   periodEnd   DateTime
   dueDate     DateTime
-  status      FilingStatus       @default("DRAFT")
+  status      FilingStatus       @default(DRAFT)
   notes       String?
   amountDue   Decimal            @default(0)
   amountPaid  Decimal            @default(0)
@@ -660,7 +660,7 @@ model JournalEntry {
   date        DateTime      @default(now())
   reference   String?
   memo        String?
-  status      EntryStatus   @default("DRAFT")
+  status      EntryStatus   @default(DRAFT)
   totalDebit  Decimal       @default(0)
   totalCredit Decimal       @default(0)
   createdAt   DateTime      @default(now())
@@ -701,13 +701,13 @@ model Prospect {
   decisionMakerEmail    String?
   decisionMakerPhone    String?
   decisionMakerLinkedin String?
-  status                ProspectStatus @default("NEW")
-  sourceType            SourceType     @default("DIRECT")
+  status                ProspectStatus @default(NEW)
+  sourceType            SourceType     @default(DIRECT)
   sourceName            String?
   sourceCost            Decimal?
   sourceConversionRate  Decimal?
   score                 Int            @default(50)
-  priority              Priority       @default("MEDIUM")
+  priority              Priority       @default(MEDIUM)
   assignedTo            String?
   lastContact           DateTime?
   nextFollowUp          DateTime?
@@ -756,7 +756,7 @@ model TaxDeduction {
   deductibleRate Decimal               @default(1.0)
   invoiceId      String?
   documentId     Int?
-  status         TaxDeductionStatus    @default("PENDING")
+  status         TaxDeductionStatus    @default(PENDING)
   notes          String?
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
@@ -799,7 +799,7 @@ model TaxCredit {
   rate           Decimal
   creditAmount   Decimal
   year           Int
-  status         TaxCreditStatus @default("ELIGIBLE")
+  status         TaxCreditStatus @default(ELIGIBLE)
   documents      Json?
   notes          String?
   createdAt      DateTime        @default(now())

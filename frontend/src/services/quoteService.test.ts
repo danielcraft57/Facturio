@@ -32,26 +32,25 @@ describe('quoteService', () => {
     await quoteService.getQuotes({ status: 'SENT', search: 'DEV-2025' } as never, 2, 5)
 
     expect(mockClient.get).toHaveBeenCalledWith(
-      expect.stringContaining('/quotes'),
+      '/devis?status=SENT&search=DEV-2025&page=2&limit=5',
     )
   })
 
   it('appelle l\'API pour les actions CRUD', async () => {
     mockClient.post.mockResolvedValue({ success: true, data: { id: 1 } })
-    mockClient.patch.mockResolvedValue({ success: true, data: { id: 1 } })
-    mockClient.delete.mockResolvedValue({ success: true, data: true })
+    mockClient.patch.mockResolvedValue({ success: true, data: { id: '1' } })
     const { quoteService } = await import('./quoteService')
 
     await quoteService.createQuote({ clientId: 1 } as never)
     expect(mockClient.post).toHaveBeenCalledWith('/quotes', expect.any(Object))
 
-    await quoteService.updateQuote(1, {} as never)
-    expect(mockClient.patch).toHaveBeenCalledWith('/quotes/1', expect.any(Object))
+    await quoteService.updateQuote('1', {} as never)
+    expect(mockClient.patch).toHaveBeenCalledWith('/devis/1', expect.any(Object))
 
-    await quoteService.deleteQuote(1)
-    expect(mockClient.delete).toHaveBeenCalledWith('/quotes/1')
+    await quoteService.deleteQuote('1')
+    expect(mockClient.post).toHaveBeenCalledWith('/devis/1/archive', {})
 
-    await quoteService.sendQuote(1)
+    await quoteService.sendQuote('1')
     expect(mockClient.post).toHaveBeenCalledWith('/quotes/1/send')
   })
 })
