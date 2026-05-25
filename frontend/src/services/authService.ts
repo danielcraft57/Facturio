@@ -24,6 +24,7 @@ export interface SignupDto {
   organizationName: string
   acceptTerms: boolean
   acceptPrivacy: boolean
+  technologyIds?: string[]
 }
 
 export interface User {
@@ -32,6 +33,7 @@ export interface User {
   firstName?: string
   lastName?: string
   role: string
+  emailVerified?: boolean
   organization?: {
     id: string
     name: string
@@ -43,10 +45,10 @@ export interface AuthResponse {
   user: User
 }
 
-/** Réponse signup quand vérification email requise (pas de token). */
-export interface SignupNeedVerificationResponse {
+/** Réponse signup : connecté mais email encore à confirmer. */
+export interface SignupPendingEmailResponse extends AuthResponse {
   message: string
-  needVerification: true
+  emailVerificationPending: true
 }
 
 /**
@@ -112,22 +114,18 @@ class AuthService {
 
   /**
    * Inscription d'un nouvel utilisateur.
-   * Si le serveur renvoie needVerification, aucun token n'est stocké : l'utilisateur doit cliquer sur le lien reçu par email.
+   * Connecte l'utilisateur même si l'email reste à confirmer (assistant avant validation).
    *
    * @param data - Données d'inscription
    * @returns AuthResponse (connecté) ou SignupNeedVerificationResponse (email de confirmation envoyé)
    */
-  async signup(data: SignupDto): Promise<AuthResponse | SignupNeedVerificationResponse> {
+  async signup(data: SignupDto): Promise<AuthResponse | SignupPendingEmailResponse> {
     try {
-      const response = await apiClient.post<AuthResponse | SignupNeedVerificationResponse>(
+      const response = await apiClient.post<AuthResponse | SignupPendingEmailResponse>(
         `${this.baseUrl}/signup`,
         data
       )
-      const payload = this.unwrap<AuthResponse | SignupNeedVerificationResponse>(response)
-
-      if (payload && (payload as SignupNeedVerificationResponse).needVerification) {
-        return payload as SignupNeedVerificationResponse
-      }
+      const payload = this.unwrap<AuthResponse | SignupPendingEmailResponse>(response)
 
       const auth = payload as AuthResponse
       if (auth?.access_token) {
@@ -253,8 +251,19 @@ class AuthService {
    * 
    * @returns true si un token est présent
    */
-  isAuthenticated(): boolean {
+  hasSessionToken(): boolean {
     return !!localStorage.getItem('auth_token')
+  }
+
+  /** Session complète : email confirmé (accès tableau de bord). */
+  isFullyAuthenticated(): boolean {
+    const user = this.getStoredUser()
+    return this.hasSessionToken() && user?.emailVerified === true
+  }
+
+  /** Token présent (assistant / confirmation email). */
+  isAuthenticated(): boolean {
+    return this.hasSessionToken()
   }
 
   /** Efface la session locale (token + profil). */

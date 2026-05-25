@@ -17,6 +17,11 @@ export function generateEntityId(): string {
 	return id
 }
 
+/** Ajoute un id public pour Prisma create/upsert (Client, Invoice, Quote). */
+export function withEntityId<T extends Record<string, unknown>>(data: T): T & { id: string } {
+	return { ...data, id: generateEntityId() }
+}
+
 export function isEntityId(value: unknown): value is string {
 	return typeof value === 'string' && ENTITY_ID_REGEX.test(value)
 }

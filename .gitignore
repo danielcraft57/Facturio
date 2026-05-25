@@ -52,6 +52,12 @@ server/prisma/prisma/
 *.pdf
 **/tmp/
 
+# Étude recherche noms de domaine (whois) — artefacts générés localement
+scripts/whois-*.json
+scripts/whois-batch-results.json
+docs/rapports/RAPPORT-RECHERCHE-DOMAINES-*.pdf
+# Scripts de génération versionnés : scripts/generate-domain-report-pdf.py, whois-batch*.ps1
+
 # Secrets & clés
 *.pem
 *.key

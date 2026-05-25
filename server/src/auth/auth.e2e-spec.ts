@@ -74,8 +74,9 @@ describe('Auth e2e', () => {
 				})
 				.expect(201)
 				.expect((res) => {
-					expect(res.body.needVerification).toBe(true);
-					expect(res.body.message).toMatch(/confirmation/i);
+					expect(res.body.access_token).toBeDefined();
+					expect(res.body.user?.email).toBe('test@example.com');
+					expect(res.body.emailVerificationPending).toBe(true);
 				});
 		});
 

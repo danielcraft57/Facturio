@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import type { SeedContext } from './base.seed';
+import { withEntityId } from '../../src/common/entity-id';
 
 export async function seedClients(prisma: PrismaClient, ctx: { def10Id: number; organizationId?: number }): Promise<any[]> {
 	const { def10Id: taxDef10Id, organizationId } = ctx;
@@ -123,7 +123,7 @@ export async function seedClients(prisma: PrismaClient, ctx: { def10Id: number; 
 		const data = { ...c, organizationId: organizationId ?? undefined };
 		const existing = await prisma.client.findUnique({ where: { email: c.email } });
 		if (!existing) {
-			created.push(await prisma.client.create({ data }));
+			created.push(await prisma.client.create({ data: withEntityId(data) }));
 		} else {
 			await prisma.client.update({ where: { email: c.email }, data });
 			created.push(existing);

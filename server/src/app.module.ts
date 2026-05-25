@@ -3,12 +3,15 @@ import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { EmailVerifiedGuard } from './auth/guards/email-verified.guard';
 import { RateLimitMiddleware, RateLimitService } from './common/rate-limit.middleware';
 import { PublicAccessRateLimitMiddleware } from './common/public-access-rate-limit.middleware';
 import { ClientsModule } from './clients/clients.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { TaxesModule } from './taxes/taxes.module';
 import { ProductsModule } from './products/products.module';
+import { CatalogModule } from './catalog/catalog.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { FilingsModule } from './filings/filings.module';
@@ -48,6 +51,8 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
 		InvoicesModule,
 		TaxesModule,
 		ProductsModule,
+		CatalogModule,
+		OnboardingModule,
 		QuotesModule,
 		SubscriptionsModule,
 		FilingsModule,
@@ -68,6 +73,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
 	controllers: [WebhooksController],
 	providers: [
 		{ provide: APP_GUARD, useClass: JwtAuthGuard },
+		{ provide: APP_GUARD, useClass: EmailVerifiedGuard },
 		RateLimitService,
 		PublicAccessRateLimitMiddleware,
 	]

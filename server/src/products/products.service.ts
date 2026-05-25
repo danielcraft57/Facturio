@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
@@ -19,7 +20,10 @@ import { Prisma } from '@prisma/client';
  */
 @Injectable()
 export class ProductsService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly catalogPersonalization: CatalogPersonalizationService,
+	) {}
 
 	/**
 	 * Crée un nouveau produit
@@ -36,11 +40,30 @@ export class ProductsService {
 		};
 	}
 
-	create(data: CreateProductDto) {
+	create(data: CreateProductDto, organizationId?: number) {
 		return this.prisma.product.create({
-			data: this.toPrismaData(data),
+			data: {
+				...this.toPrismaData(data),
+				organizationId: organizationId ?? null,
+			},
 			include: { defaultTaxRate: true },
 		});
+	}
+
+	private orgProductWhere(organizationId?: number): Prisma.ProductWhereInput {
+		if (!organizationId) {
+			return { organizationId: null };
+		}
+		return { organizationId };
+	}
+
+	private async assertOrgProduct(id: number, organizationId?: number) {
+		const product = await this.prisma.product.findFirst({
+			where: { id, ...this.orgProductWhere(organizationId) },
+			include: { defaultTaxRate: true },
+		});
+		if (!product) throw new NotFoundException('Produit non trouve');
+		return product;
 	}
 
 	/**
@@ -49,13 +72,32 @@ export class ProductsService {
 	 * @param query - Paramètres de pagination/recherche/tri
 	 * @returns Liste paginée de produits avec taux de TVA
 	 */
-	async findAll(query?: ListProductsQueryDto) {
+	async findAll(query?: ListProductsQueryDto, organizationId?: number) {
 		const page = query?.page ? parseInt(query.page.toString(), 10) : 1;
 		const pageSize = query?.pageSize ?? query?.limit;
 		const take = pageSize != null ? parseInt(String(pageSize), 10) : 20;
 		const skip = (page - 1) * take;
 
-		const where: Prisma.ProductWhereInput = {};
+		const where: Prisma.ProductWhereInput = this.orgProductWhere(organizationId);
+
+		if (query?.scope && organizationId) {
+			let catalogIds: number[] = [];
+			if (query.scope === 'organization') {
+				catalogIds = await this.catalogPersonalization.getOrganizationCatalogProductIds(organizationId);
+			} else if (query.scope === 'client' && query.clientId) {
+				const client = await this.prisma.client.findFirst({
+					where: { id: query.clientId, organizationId },
+				});
+				if (client) {
+					catalogIds = await this.catalogPersonalization.getClientCatalogProductIds(query.clientId);
+				}
+			}
+			if (catalogIds.length > 0) {
+				where.id = { in: catalogIds };
+			} else {
+				return { items: [], total: 0, page, pageSize: take };
+			}
+		}
 
 		if (query?.search) {
 			where.OR = [
@@ -110,10 +152,8 @@ export class ProductsService {
 	 * @returns Produit avec taux de TVA par défaut
 	 * @throws {NotFoundException} Si produit non trouvé
 	 */
-	async findOne(id: number) {
-		const product = await this.prisma.product.findUnique({ where: { id }, include: { defaultTaxRate: true } });
-		if (!product) throw new NotFoundException('Produit non trouve');
-		return product;
+	async findOne(id: number, organizationId?: number) {
+		return this.assertOrgProduct(id, organizationId);
 	}
 
 	/**
@@ -124,8 +164,8 @@ export class ProductsService {
 	 * @returns Produit mis à jour
 	 * @throws {NotFoundException} Si produit non trouvé
 	 */
-	async update(id: number, data: UpdateProductDto) {
-		await this.findOne(id);
+	async update(id: number, data: UpdateProductDto, organizationId?: number) {
+		await this.assertOrgProduct(id, organizationId);
 		return this.prisma.product.update({
 			where: { id },
 			data: this.toPrismaData(data),
@@ -140,8 +180,8 @@ export class ProductsService {
 	 * @returns Confirmation de suppression
 	 * @throws {NotFoundException} Si produit non trouvé
 	 */
-	async remove(id: number) {
-		await this.findOne(id);
+	async remove(id: number, organizationId?: number) {
+		await this.assertOrgProduct(id, organizationId);
 		await this.prisma.product.delete({ where: { id } });
 		return { success: true };
 	}

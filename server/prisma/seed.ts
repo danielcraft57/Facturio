@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { createSeedPrismaClient } from './seed-prisma';
 import {
 	purgeAll,
 	seedTaxRates,
@@ -8,6 +9,7 @@ import {
 	type SeedContext,
 } from './seeds/base.seed';
 import { seedProducts, seedPlans } from './seeds/products.seed';
+import { seedCatalogRulesValidation } from './seeds/catalog-rules.seed';
 import { seedClients } from './seeds/clients.seed';
 import { seedInvoices } from './seeds/invoices.seed';
 import { seedQuotes } from './seeds/quotes.seed';
@@ -16,7 +18,7 @@ import { seedFilings } from './seeds/filings.seed';
 import { seedProspects } from './seeds/prospects.seed';
 import { seedPacks } from './seeds/packs.seed';
 
-const prisma = new PrismaClient();
+const prisma = createSeedPrismaClient();
 
 /**
  * Exécute un seed ou ignore si la table du modèle n'existe pas (P2021).
@@ -67,6 +69,7 @@ async function main(): Promise<void> {
 	console.log('📦 Seeds des produits et plans...');
 	const products = await seedProducts(prisma, taxIds);
 	const plans = await seedPlans(prisma, products.productSaas);
+	await seedCatalogRulesValidation(prisma);
 	console.log('✅ Produits et plans créés\n');
 
 	// 4. Clients (rattachés à l'organisation par défaut pour que le backend les retourne)

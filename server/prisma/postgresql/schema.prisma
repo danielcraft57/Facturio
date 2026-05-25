@@ -146,6 +146,11 @@ model Organization {
   defaultLanguage String  @default("fr")
   timezone        String  @default("Europe/Paris")
 
+  preferredTechnologies Json?
+  onboardingCompletedAt DateTime?
+  catalogItems          OrganizationCatalogItem[]
+  products              Product[]
+
   // Prospection externe (ProspectLab)
   prospectLabApiUrl String?
   prospectLabApiKey String?
@@ -335,6 +340,8 @@ model Client {
   countryCode       String? // ISO 3166-1 alpha-2
   organizationId    Int?
   organization      Organization?  @relation(fields: [organizationId], references: [id])
+  preferredTechnologies Json?
+  catalogItems      ClientCatalogItem[]
   invoices          Invoice[]
   quotes            Quote[]
   subscriptions     Subscription[]
@@ -528,8 +535,13 @@ enum ProductKind {
 
 model Product {
   id               Int            @id @default(autoincrement())
+  organizationId   Int?
+  organization     Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  templateProductId Int?
+  templateProduct   Product?      @relation("ProductFromTemplate", fields: [templateProductId], references: [id], onDelete: SetNull)
+  clonedProducts    Product[]     @relation("ProductFromTemplate")
   name             String
-  sku              String?        @unique
+  sku              String?
   kind             ProductKind    @default(SERVICE)
   unitPrice        Decimal? // optionnel si via plan
   defaultTaxRateId Int?
@@ -555,8 +567,44 @@ model Product {
   plans            Plan[]         @relation("PlanProduct")
   quoteLines       QuoteLine[]
   invoiceLines     InvoiceLine[]
+  organizationCatalogItems OrganizationCatalogItem[]
+  clientCatalogItems       ClientCatalogItem[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+
+  @@unique([organizationId, sku])
+  @@index([organizationId])
+  @@index([templateProductId])
+}
+
+model OrganizationCatalogItem {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productId      Int
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  matchScore     Float        @default(0)
+  source         String       @default("algorithm")
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, productId])
+  @@index([organizationId, sortOrder])
+}
+
+model ClientCatalogItem {
+  id         Int      @id @default(autoincrement())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  matchScore Float    @default(0)
+  source     String   @default("algorithm")
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([clientId, productId])
+  @@index([clientId, sortOrder])
 }
 
 enum BillingInterval {

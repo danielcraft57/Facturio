@@ -4,6 +4,8 @@ import { Box, LinearProgress, Typography, alpha, useTheme } from '@mui/material'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import MailOutlineIcon from '@mui/icons-material/MailOutline'
 import { useAuthStore } from '../../../stores/authStore'
+import { resolvePostAuthPath } from '../../../utils/postAuthRedirect'
+import { usePageTitle } from '../../../hooks/usePageTitle'
 
 const MIN_DISPLAY_MS = 1200
 
@@ -23,13 +25,15 @@ export function AuthBootPage() {
   const { bootstrapSession } = useAuthStore()
 
   const pendingDevice = searchParams.get('pending') === 'device'
-  const from = searchParams.get('from') || '/dashboard'
+  const from = searchParams.get('from') || '/installation'
 
   const [stepIndex, setStepIndex] = useState(0)
   const [progress, setProgress] = useState(8)
   const [error, setError] = useState<string | null>(null)
 
   const stepLabel = useMemo(() => STEPS[Math.min(stepIndex, STEPS.length - 1)], [stepIndex])
+
+  usePageTitle(pendingDevice ? 'Confirmer la connexion' : error ? 'Connexion interrompue' : stepLabel)
 
   useEffect(() => {
     if (pendingDevice) return
@@ -53,7 +57,13 @@ export function AuthBootPage() {
         const elapsed = performance.now() - started
         const wait = Math.max(0, MIN_DISPLAY_MS - elapsed)
         window.setTimeout(() => {
-          if (!cancelled) navigate(from, { replace: true })
+          if (cancelled) return
+          void (async () => {
+            const user = useAuthStore.getState().user
+            const target =
+              user?.emailVerified === true ? from : await resolvePostAuthPath(user)
+            navigate(target, { replace: true })
+          })()
         }, wait)
       } catch (err: unknown) {
         if (cancelled) return

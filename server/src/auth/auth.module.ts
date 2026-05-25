@@ -9,6 +9,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from '../common/common.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { EmailVerifiedGuard } from './guards/email-verified.guard';
 
 @Module({
 	imports: [
@@ -21,8 +22,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 		}),
 	],
 	controllers: [AuthController],
-	providers: [AuthService, AuthSessionService, JwtStrategy, GoogleStrategy, JwtAuthGuard],
-	exports: [AuthService, AuthSessionService, JwtAuthGuard],
+	providers: [AuthService, AuthSessionService, JwtStrategy, GoogleStrategy, JwtAuthGuard, EmailVerifiedGuard],
+	exports: [AuthService, AuthSessionService, JwtAuthGuard, EmailVerifiedGuard],
 })
 export class AuthModule {}
 

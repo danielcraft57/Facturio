@@ -40,8 +40,6 @@ const NavLink = ({
   compact?: boolean
   active?: boolean
 }) => {
-  const highlighted = active || primary
-
   return (
     <Link
       component={RouterLink}
@@ -50,28 +48,37 @@ const NavLink = ({
       aria-current={active ? 'page' : undefined}
       sx={{
         fontSize: compact ? '0.8125rem' : '0.875rem',
-        fontWeight: highlighted ? 600 : 500,
+        fontWeight: active || primary ? 600 : 500,
         px: compact ? 1 : primary ? 2 : 1.25,
         py: 0.75,
         borderRadius: 2,
         whiteSpace: 'nowrap',
-        transition: 'color 0.2s, background-color 0.2s',
-        ...(highlighted
+        transition: 'color 0.2s, background-color 0.2s, box-shadow 0.2s',
+        ...(primary
           ? {
-              bgcolor: (t) => alpha(t.palette.primary.main, active && !primary ? 0.14 : 0.12),
-              color: 'primary.main',
+              bgcolor: (t) => (active ? t.palette.primary.dark : t.palette.primary.main),
+              color: 'primary.contrastText',
+              boxShadow: active ? 2 : 1,
               '&:hover': {
-                bgcolor: (t) => alpha(t.palette.primary.main, 0.18),
-                color: 'primary.dark',
+                bgcolor: 'primary.dark',
               },
             }
-          : {
-              color: 'text.secondary',
-              '&:hover': {
+          : active
+            ? {
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.14),
                 color: 'primary.main',
-                bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
-              },
-            }),
+                '&:hover': {
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.18),
+                  color: 'primary.dark',
+                },
+              }
+            : {
+                color: 'text.secondary',
+                '&:hover': {
+                  color: 'primary.main',
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
+                },
+              }),
       }}
     >
       {children}
@@ -88,7 +95,9 @@ function isNavActive(pathname: string, to: string) {
 
 export function PublicLayout({ children }: PublicLayoutProps) {
   const location = useLocation()
-  const { isAuthenticated } = useAuthStore()
+  const user = useAuthStore((s) => s.user)
+  /** Accès app complet uniquement après validation email */
+  const showDashboardLink = user?.emailVerified === true
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -155,7 +164,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                   {item.shortLabel}
                 </NavLink>
               ))}
-              {isAuthenticated ? (
+              {showDashboardLink ? (
                 <NavLink
                   to="/dashboard"
                   primary
@@ -230,7 +239,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
               </ListItemButton>
             </ListItem>
           ))}
-          {isAuthenticated ? (
+          {showDashboardLink ? (
             <ListItem disablePadding>
               <ListItemButton
                 component={RouterLink}

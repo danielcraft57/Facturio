@@ -36,12 +36,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 			include: { organization: true },
 		});
 
-		if (!user || user.status !== 'ACTIVE') {
+		if (!user || (user.status !== 'ACTIVE' && user.status !== 'PENDING')) {
 			throw new UnauthorizedException('Compte non actif');
-		}
-
-		if (!user.emailVerified) {
-			throw new UnauthorizedException('Veuillez vérifier votre adresse email pour accéder à votre compte');
 		}
 
 		if (payload.sid) {

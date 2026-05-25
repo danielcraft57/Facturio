@@ -5,6 +5,7 @@ import {
 	IsNotEmpty,
 	IsOptional,
 	IsString,
+	IsArray,
 	MinLength,
 	MaxLength,
 	Matches,
@@ -55,5 +56,11 @@ export class SignupDto {
 	@IsBoolean()
 	@Equals(true, { message: 'Vous devez accepter la politique de confidentialité' })
 	acceptPrivacy!: boolean;
+
+	/** IDs d'options tech-stack (voir GET /catalog/tech-choices). */
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	technologyIds?: string[];
 }
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
 import {
   Alert,
@@ -15,6 +15,7 @@ import {
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import { useAuthStore } from '../../../stores/authStore'
+import { authService } from '../../../services/authService'
 import { MarketingHero } from '../components/MarketingHero'
 import { HeroDashboardMock } from '../components/HeroDashboardMock'
 import { FeatureGrid } from '../components/FeatureGrid'
@@ -37,15 +38,37 @@ export function LandingPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const accessMessage = (location.state as { message?: string } | null)?.message
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const checkAuth = useAuthStore((s) => s.checkAuth)
+  const [resolvingSession, setResolvingSession] = useState(() => authService.hasSessionToken())
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true })
+    if (!authService.hasSessionToken()) {
+      setResolvingSession(false)
+      return
     }
-  }, [navigate, isAuthenticated])
+    let cancelled = false
+    void (async () => {
+      try {
+        await checkAuth()
+        const user = useAuthStore.getState().user
+        if (cancelled) return
+        // Accueil public : redirection uniquement si l’email est déjà confirmé
+        if (user?.emailVerified === true) {
+          navigate('/dashboard', { replace: true })
+          return
+        }
+      } catch {
+        authService.clearLocalSession()
+        useAuthStore.setState({ user: null, isAuthenticated: false })
+      }
+      if (!cancelled) setResolvingSession(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [checkAuth, navigate])
 
-  if (isAuthenticated) return null
+  if (resolvingSession) return null
 
   return (
     <Box>

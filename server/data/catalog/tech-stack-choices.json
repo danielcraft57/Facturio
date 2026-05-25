@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "audience": "young_developers",
+  "title": "Votre stack technique",
+  "subtitle": "Sélectionnez ce que vous utilisez — nous préparerons un catalogue de prestations adapté (budget maîtrisé).",
+  "minTotalSelect": 2,
+  "maxTotalSelect": 28,
+  "categories": [
+    {
+      "id": "languages",
+      "label": "Langages",
+      "hint": "Langages que vous codez au quotidien",
+      "maxSelect": 8,
+      "options": [
+        { "id": "html-css", "label": "HTML / CSS", "matchTags": ["HTML", "CSS"] },
+        { "id": "javascript", "label": "JavaScript", "matchTags": ["JavaScript", "JS"] },
+        { "id": "typescript", "label": "TypeScript", "matchTags": ["TypeScript", "TS"] },
+        { "id": "python", "label": "Python", "matchTags": ["Python"] },
+        { "id": "php", "label": "PHP", "matchTags": ["PHP"] },
+        { "id": "ruby", "label": "Ruby", "matchTags": ["Ruby"] },
+        { "id": "go", "label": "Go", "matchTags": ["Go", "Golang"] },
+        { "id": "rust", "label": "Rust", "matchTags": ["Rust"] },
+        { "id": "java", "label": "Java", "matchTags": ["Java"] },
+        { "id": "csharp", "label": "C#", "matchTags": ["C#", "CSharp"] }
+      ]
+    },
+    {
+      "id": "frontend",
+      "label": "Frontend & frameworks",
+      "hint": "UI, SPA, meta-frameworks",
+      "maxSelect": 6,
+      "options": [
+        { "id": "react", "label": "React", "matchTags": ["React"] },
+        { "id": "vue", "label": "Vue.js", "matchTags": ["Vue", "Vue.js"] },
+        { "id": "angular", "label": "Angular", "matchTags": ["Angular"] },
+        { "id": "svelte", "label": "Svelte", "matchTags": ["Svelte"] },
+        { "id": "nextjs", "label": "Next.js", "matchTags": ["Next.js", "NextJS", "React"] },
+        { "id": "nuxt", "label": "Nuxt", "matchTags": ["Nuxt", "Vue"] },
+        { "id": "remix", "label": "Remix", "matchTags": ["Remix", "React"] }
+      ]
+    },
+    {
+      "id": "backend",
+      "label": "Backend & API",
+      "hint": "Serveurs, APIs REST/GraphQL",
+      "maxSelect": 6,
+      "options": [
+        { "id": "nodejs", "label": "Node.js", "matchTags": ["Node.js", "NodeJS"] },
+        { "id": "nestjs", "label": "NestJS", "matchTags": ["NestJS", "Node.js"] },
+        { "id": "express", "label": "Express", "matchTags": ["Express", "Node.js"] },
+        { "id": "fastapi", "label": "FastAPI", "matchTags": ["FastAPI", "Python"] },
+        { "id": "django", "label": "Django", "matchTags": ["Django", "Python"] },
+        { "id": "laravel", "label": "Laravel", "matchTags": ["Laravel", "PHP"] },
+        { "id": "symfony", "label": "Symfony", "matchTags": ["Symfony", "PHP"] },
+        { "id": "rails", "label": "Ruby on Rails", "matchTags": ["Rails", "Ruby"] },
+        { "id": "spring", "label": "Spring", "matchTags": ["Spring", "Java"] }
+      ]
+    },
+    {
+      "id": "cms",
+      "label": "CMS & e-commerce",
+      "hint": "WordPress, headless, boutiques",
+      "maxSelect": 5,
+      "options": [
+        { "id": "wordpress", "label": "WordPress", "matchTags": ["WordPress", "PHP"] },
+        { "id": "strapi", "label": "Strapi", "matchTags": ["Strapi", "Node.js"] },
+        { "id": "drupal", "label": "Drupal", "matchTags": ["Drupal", "PHP"] },
+        { "id": "shopify", "label": "Shopify", "matchTags": ["Shopify", "JavaScript"] },
+        { "id": "prestashop", "label": "PrestaShop", "matchTags": ["PrestaShop", "PHP"] },
+        { "id": "webflow", "label": "Webflow", "matchTags": ["Webflow", "HTML", "CSS"] }
+      ]
+    },
+    {
+      "id": "databases",
+      "label": "Bases de données",
+      "hint": "SQL, NoSQL, BaaS",
+      "maxSelect": 5,
+      "options": [
+        { "id": "postgresql", "label": "PostgreSQL", "matchTags": ["PostgreSQL", "SQL"] },
+        { "id": "mysql", "label": "MySQL / MariaDB", "matchTags": ["MySQL", "MariaDB"] },
+        { "id": "mongodb", "label": "MongoDB", "matchTags": ["MongoDB"] },
+        { "id": "sqlite", "label": "SQLite", "matchTags": ["SQLite"] },
+        { "id": "redis", "label": "Redis", "matchTags": ["Redis"] },
+        { "id": "supabase", "label": "Supabase", "matchTags": ["Supabase", "PostgreSQL"] },
+        { "id": "firebase", "label": "Firebase", "matchTags": ["Firebase"] }
+      ]
+    },
+    {
+      "id": "devops",
+      "label": "DevOps & hébergement",
+      "hint": "Déploiement, CI/CD, cloud",
+      "maxSelect": 5,
+      "options": [
+        { "id": "docker", "label": "Docker", "matchTags": ["Docker"] },
+        { "id": "kubernetes", "label": "Kubernetes", "matchTags": ["Kubernetes", "K8s"] },
+        { "id": "github-actions", "label": "GitHub Actions", "matchTags": ["GitHub Actions", "CI/CD"] },
+        { "id": "vercel", "label": "Vercel", "matchTags": ["Vercel", "Next.js"] },
+        { "id": "netlify", "label": "Netlify", "matchTags": ["Netlify"] },
+        { "id": "aws", "label": "AWS", "matchTags": ["AWS", "Amazon"] },
+        { "id": "nginx", "label": "Nginx", "matchTags": ["Nginx"] }
+      ]
+    },
+    {
+      "id": "ai",
+      "label": "IA & automatisation",
+      "hint": "ChatGPT, APIs IA, bots",
+      "maxSelect": 4,
+      "options": [
+        { "id": "chatgpt", "label": "ChatGPT / OpenAI", "matchTags": ["ChatGPT", "ChatGPT API", "OpenAI"] },
+        { "id": "claude", "label": "Claude / Anthropic", "matchTags": ["Claude", "Anthropic"] },
+        { "id": "langchain", "label": "LangChain", "matchTags": ["LangChain", "Python"] },
+        { "id": "n8n", "label": "n8n / Make", "matchTags": ["n8n", "Make", "automation"] }
+      ]
+    },
+    {
+      "id": "mobile",
+      "label": "Mobile",
+      "hint": "Apps natives ou cross-platform",
+      "maxSelect": 3,
+      "options": [
+        { "id": "react-native", "label": "React Native", "matchTags": ["React Native", "React"] },
+        { "id": "flutter", "label": "Flutter", "matchTags": ["Flutter", "Dart"] },
+        { "id": "swift", "label": "Swift / iOS", "matchTags": ["Swift", "iOS"] },
+        { "id": "kotlin", "label": "Kotlin / Android", "matchTags": ["Kotlin", "Android"] }
+      ]
+    },
+    {
+      "id": "cybersecurity",
+      "label": "Cybersécurité",
+      "hint": "Audit, pentest, durcissement, outils défensifs",
+      "maxSelect": 8,
+      "options": [
+        { "id": "owasp", "label": "OWASP / bonnes pratiques", "matchTags": ["OWASP", "sécurité", "security"] },
+        { "id": "pentest", "label": "Tests d'intrusion (pentest)", "matchTags": ["pentest", "sécurité"] },
+        { "id": "burp-suite", "label": "Burp Suite", "matchTags": ["Burp", "pentest"] },
+        { "id": "wireshark", "label": "Wireshark / analyse réseau", "matchTags": ["Wireshark", "réseau"] },
+        { "id": "nmap", "label": "Nmap / reconnaissance", "matchTags": ["Nmap", "réseau"] },
+        { "id": "vault", "label": "HashiCorp Vault / secrets", "matchTags": ["Vault", "secrets"] },
+        { "id": "snyk", "label": "Snyk / dépendances", "matchTags": ["Snyk", "SCA"] },
+        { "id": "sonarqube", "label": "SonarQube / qualité code", "matchTags": ["SonarQube", "SAST"] },
+        { "id": "waf", "label": "WAF (Cloudflare, etc.)", "matchTags": ["WAF", "Cloudflare"] },
+        { "id": "siem", "label": "SIEM / supervision sécurité", "matchTags": ["SIEM", "SOC"] }
+      ]
+    }
+  ]
+}

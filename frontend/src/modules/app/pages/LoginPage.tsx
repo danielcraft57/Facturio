@@ -19,41 +19,69 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { useAuthStore } from '../../../stores/authStore'
 import { authService } from '../../../services/authService'
 import type { DeviceVerificationResponse } from '../../../services/authService'
+import { PendingEmailVerificationCard } from '../../../components/auth/PendingEmailVerificationCard'
+import { usePendingEmailVerification } from '../../../hooks/usePendingEmailVerification'
 
 /**
  * Page de connexion
- * 
- * Permet aux utilisateurs de se connecter avec :
- * - Email et mot de passe
- * - Google OAuth
- * 
- * Redirige vers la page d'origine après connexion réussie.
  */
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, isLoading, error, clearError, isAuthenticated } = useAuthStore()
+  const { login, isLoading, error, clearError } = useAuthStore()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
-  const [resendLoading, setResendLoading] = useState(false)
   const [resendSuccess, setResendSuccess] = useState<string | null>(null)
 
-  const successMessage = (location.state as any)?.message
+  const {
+    pending,
+    refresh: refreshPending,
+    dismiss: dismissPending,
+    setPendingFromEmail,
+    clearPending,
+  } = usePendingEmailVerification(email)
 
-  // Rediriger uniquement si un JWT est présent (évite la boucle session/bootstrap avec user orphelin)
+  const successMessage = (location.state as { message?: string } | null)?.message
+
+  // Redirection uniquement si l’email est déjà confirmé
   useEffect(() => {
-    if (!isAuthenticated || !localStorage.getItem('auth_token')) return
-    const from = (location.state as any)?.from?.pathname || '/dashboard'
-    navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
-  }, [isAuthenticated, navigate, location])
+    if (!authService.hasSessionToken()) return
+    let cancelled = false
+    void (async () => {
+      try {
+        await refreshPending()
+        const user = useAuthStore.getState().user
+        if (cancelled || user?.emailVerified !== true) return
+        const from =
+          (location.state as { from?: string })?.from ||
+          (location.state as { from?: { pathname?: string } })?.from?.pathname ||
+          '/dashboard'
+        navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
+      } catch {
+        authService.clearLocalSession()
+        useAuthStore.setState({ user: null, isAuthenticated: false })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [navigate, location, refreshPending])
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value)
+    if (pending && value.trim().toLowerCase() !== pending.email.trim().toLowerCase()) {
+      clearPending()
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLocalError(null)
     clearError()
+    setResendSuccess(null)
 
     if (!email || !password) {
       setLocalError('Veuillez remplir tous les champs')
@@ -62,14 +90,22 @@ export function LoginPage() {
 
     try {
       const result = await login({ email, password })
-      const from = (location.state as any)?.from?.pathname || '/dashboard'
       if ((result as DeviceVerificationResponse | undefined)?.needDeviceVerification) {
         navigate('/auth/session?pending=device', { replace: true })
         return
       }
-      navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
-    } catch (err: any) {
-      setLocalError(err.message || 'Erreur lors de la connexion')
+      const user = useAuthStore.getState().user
+      if (user?.emailVerified === true) {
+        const from =
+          (location.state as { from?: string })?.from ||
+          (location.state as { from?: { pathname?: string } })?.from?.pathname ||
+          '/dashboard'
+        navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
+        return
+      }
+      await setPendingFromEmail(user?.email ?? email)
+    } catch (err: unknown) {
+      setLocalError(err instanceof Error ? err.message : 'Erreur lors de la connexion')
     }
   }
 
@@ -77,23 +113,7 @@ export function LoginPage() {
     authService.loginWithGoogle()
   }
 
-  const handleResendVerification = async () => {
-    if (!email?.trim()) return
-    setResendLoading(true)
-    setResendSuccess(null)
-    setLocalError(null)
-    try {
-      const result = await authService.resendVerificationEmail(email.trim())
-      setResendSuccess(result?.message || 'Un nouvel email de confirmation a été envoyé.')
-    } catch (err: any) {
-      setLocalError(err.message || 'Impossible d\'envoyer l\'email.')
-    } finally {
-      setResendLoading(false)
-    }
-  }
-
   const displayError = localError || error
-  const isEmailNotVerifiedError = displayError && /vérifier.*email|email.*vérifier|confirmation/i.test(displayError)
 
   return (
     <Container maxWidth="sm">
@@ -117,9 +137,17 @@ export function LoginPage() {
               Connexion
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Connectez-vous à votre compte Facturio
+              Connectez-vous à votre espace
             </Typography>
           </Box>
+
+          {pending && (
+            <PendingEmailVerificationCard
+              pending={pending}
+              onDismiss={dismissPending}
+              onResendSuccess={(msg) => setResendSuccess(msg)}
+            />
+          )}
 
           {successMessage && (
             <Alert severity="success" sx={{ mb: 3 }} onClose={() => navigate('/login', { replace: true, state: {} })}>
@@ -134,18 +162,6 @@ export function LoginPage() {
           {displayError && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={() => { setLocalError(null); clearError() }}>
               {displayError}
-              {isEmailNotVerifiedError && email?.trim() && (
-                <Box sx={{ mt: 2 }}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={handleResendVerification}
-                    disabled={resendLoading}
-                  >
-                    {resendLoading ? 'Envoi...' : 'Renvoyer l\'email de confirmation'}
-                  </Button>
-                </Box>
-              )}
             </Alert>
           )}
 
@@ -155,7 +171,7 @@ export function LoginPage() {
               label="Email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => handleEmailChange(e.target.value)}
               margin="normal"
               required
               autoComplete="email"
@@ -231,4 +247,3 @@ export function LoginPage() {
     </Container>
   )
 }
-

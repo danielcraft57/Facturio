@@ -1,0 +1,282 @@
+{
+  "version": 1,
+  "maxCatalogItems": 22,
+  "budgetMaxUnitPrice": 400,
+  "alwaysIncludeSkus": ["SEO-BASIQUE", "PAGE-SUPP", "DEPANNAGE-2H"],
+  "starterProfileSkus": ["SITE-VITRINE", "SEO-BASIQUE", "PAGE-SUPP", "FORM-AVANCE", "MAINT-MENSUEL", "FORMATION-DEMI"],
+  "rules": [
+    {
+      "id": "fullstack-ts",
+      "whenAnyOption": ["typescript", "react", "nestjs", "nodejs"],
+      "skus": ["AUTO-METIER", "INTEG-API", "REFONTE-LEGERE", "CONSEIL-ARCHI", "DEV-API-REST", "DEV-GRAPHQL", "DEVOPS-CICD-GHA"],
+      "weight": 8
+    },
+    {
+      "id": "react-spa",
+      "whenAnyOption": ["react", "nextjs", "remix"],
+      "skus": ["REFONTE-LEGERE", "PAGE-SUPP", "FORM-AVANCE", "RAPPORT-PERF", "DEV-API-REST", "DEVOPS-VERCEL-NEXT"],
+      "weight": 7
+    },
+    {
+      "id": "python-data",
+      "whenAnyOption": ["python", "fastapi", "django"],
+      "skus": ["MIGRATION-DONNEES", "IA-ANALYSE-DONNEES", "INTEG-API", "DEV-API-REST", "IA-LANGCHAIN-BOT"],
+      "weight": 8
+    },
+    {
+      "id": "wordpress-cms",
+      "whenAnyOption": ["wordpress", "prestashop", "drupal"],
+      "skus": ["SITE-VITRINE", "MAJ-CONTENU-5H", "REFONTE-LEGERE", "HEBERG-DOMAIN"],
+      "weight": 7
+    },
+    {
+      "id": "shopify-ecom",
+      "whenAnyOption": ["shopify"],
+      "skus": ["ECOM-SHOPIFY-THEME", "IA-CHATBOT-ECOMMERCE", "SEO-BASIQUE", "PACK-SEO-GOOGLE-CHATGPT", "PAGE-SUPP"],
+      "weight": 7
+    },
+    {
+      "id": "ai-stack",
+      "whenAnyOption": ["chatgpt", "claude", "langchain", "n8n"],
+      "skus": ["IA-FAQ-SITE", "IA-CONTENUS-WEB", "IA-AUTOMATISATION-TACHES", "IA-CHATBOT-ECOMMERCE", "SEO-CHATGPT", "PACK-SEO-GOOGLE-CHATGPT"],
+      "weight": 9
+    },
+    {
+      "id": "static-vitrine",
+      "whenAnyOption": ["html-css", "javascript", "webflow"],
+      "skus": ["SITE-VITRINE", "IDENTITE-MULTI", "SEO-BASIQUE"],
+      "weight": 8
+    },
+    {
+      "id": "crm-integration",
+      "whenAnyOption": ["nestjs", "laravel", "symfony", "spring"],
+      "skus": ["INTEG-CRM", "INTEG-API", "CONSEIL-ARCHI"],
+      "weight": 5
+    },
+    {
+      "id": "mobile-apps",
+      "whenAnyOption": ["react-native", "flutter"],
+      "skus": ["APP-MOBILE-RN", "APP-MOBILE-FLUTTER", "AUTO-METIER", "ACCOMP-H", "AUDIT-OPTIM", "INTEG-API"],
+      "weight": 8
+    },
+    {
+      "id": "devops-infra",
+      "whenAnyOption": ["docker", "kubernetes", "aws", "nginx"],
+      "skus": ["DEVOPS-DOCKER-SETUP", "DEVOPS-K8S-DEPLOY", "DEVOPS-AWS-INFRA", "DEVOPS-NGINX-CONFIG", "HEBERG-DOMAIN", "BACKUP-SECU", "SSL-CONFIG", "RAPPORT-PERF"],
+      "weight": 8
+    },
+    {
+      "id": "db-migration",
+      "whenAnyOption": ["postgresql", "mysql", "mongodb", "supabase"],
+      "skus": ["MIGRATION-DONNEES", "DATA-POSTGRES-OPTIM", "DATA-MONGODB-SCHEMA", "AUDIT-OPTIM", "BaaS-SUPABASE-SETUP"],
+      "weight": 8
+    },
+    {
+      "id": "support-maint",
+      "whenAnyOption": ["nodejs", "typescript", "react"],
+      "skus": ["MAINT-MENSUEL", "SUPPORT-ABO", "SUPPORT-H"],
+      "weight": 4
+    },
+    {
+      "id": "cybersecurity",
+      "whenAnyOption": ["owasp", "pentest", "burp-suite", "wireshark", "nmap", "vault", "snyk", "sonarqube", "waf", "siem"],
+      "skus": ["SEC-AUDIT-PENTEST", "SEC-DEP-SCAN", "SEC-SONAR-CODE", "AUDIT-OPTIM", "BACKUP-SECU", "SSL-CONFIG", "SEC-WAF-SETUP", "SEC-VAULT-SECRETS"],
+      "weight": 9
+    },
+    {
+      "id": "vue-nuxt",
+      "whenAnyOption": ["vue", "nuxt"],
+      "skus": ["DEV-VUE-SPA", "REFONTE-LEGERE", "PAGE-SUPP", "FORM-AVANCE", "INTEG-API", "RAPPORT-PERF"],
+      "weight": 8
+    },
+    {
+      "id": "angular",
+      "whenAnyOption": ["angular"],
+      "skus": ["DEV-ANGULAR-ENT", "CONSEIL-ARCHI", "INTEG-API", "INTEG-CRM", "RAPPORT-PERF"],
+      "weight": 7
+    },
+    {
+      "id": "svelte",
+      "whenAnyOption": ["svelte"],
+      "skus": ["DEV-SVELTE-SITE", "REFONTE-LEGERE", "PAGE-SUPP", "RAPPORT-PERF"],
+      "weight": 7
+    },
+    {
+      "id": "php-laravel-symfony",
+      "whenAnyOption": ["php", "laravel", "symfony"],
+      "skus": ["DEV-PHP-CUSTOM", "INTEG-API", "INTEG-CRM", "MIGRATION-DONNEES", "DEPANNAGE-2H"],
+      "weight": 8
+    },
+    {
+      "id": "ruby-rails",
+      "whenAnyOption": ["ruby", "rails"],
+      "skus": ["DEV-RAILS-APP", "INTEG-API", "MIGRATION-DONNEES", "CONSEIL-ARCHI"],
+      "weight": 7
+    },
+    {
+      "id": "java-spring",
+      "whenAnyOption": ["java", "spring"],
+      "skus": ["DEV-SPRING-API", "INTEG-API", "INTEG-CRM", "MIGRATION-DONNEES", "CONSEIL-ARCHI"],
+      "weight": 7
+    },
+    {
+      "id": "go-rust",
+      "whenAnyOption": ["go", "rust"],
+      "skus": ["DEV-GO-SERVICE", "DEV-RUST-PERF", "INTEG-API", "RAPPORT-PERF", "CONSEIL-ARCHI"],
+      "weight": 7
+    },
+    {
+      "id": "csharp-dotnet",
+      "whenAnyOption": ["csharp"],
+      "skus": ["DEV-API-REST", "INTEG-API", "INTEG-CRM", "CONSEIL-ARCHI", "MIGRATION-DONNEES"],
+      "weight": 6
+    },
+    {
+      "id": "express-node-api",
+      "whenAnyOption": ["express", "nodejs"],
+      "skus": ["DEV-API-REST", "INTEG-API", "DEVOPS-DOCKER-SETUP", "DEPANNAGE-2H", "ACCOMP-H"],
+      "weight": 6
+    },
+    {
+      "id": "fastapi-django",
+      "whenAnyOption": ["fastapi", "django"],
+      "skus": ["DEV-API-REST", "IA-ANALYSE-DONNEES", "MIGRATION-DONNEES", "INTEG-API", "IA-LANGCHAIN-BOT"],
+      "weight": 7
+    },
+    {
+      "id": "strapi-headless",
+      "whenAnyOption": ["strapi"],
+      "skus": ["CMS-STRAPI-HEADLESS", "INTEG-API", "DEV-API-REST", "PAGE-SUPP", "SEO-BASIQUE"],
+      "weight": 8
+    },
+    {
+      "id": "prestashop-shop",
+      "whenAnyOption": ["prestashop"],
+      "skus": ["CMS-PRESTASHOP-SHOP", "SITE-VITRINE", "MAJ-CONTENU-5H", "SEO-BASIQUE", "BACKUP-SECU"],
+      "weight": 7
+    },
+    {
+      "id": "wordpress-theme",
+      "whenAnyOption": ["wordpress"],
+      "skus": ["CMS-WORDPRESS-THEME", "SITE-VITRINE", "MAJ-CONTENU-5H", "PLUGIN-WP-SECU", "SEO-BASIQUE"],
+      "weight": 8
+    },
+    {
+      "id": "redis-cache",
+      "whenAnyOption": ["redis"],
+      "skus": ["DATA-REDIS-CACHE", "DEVOPS-DOCKER-SETUP", "RAPPORT-PERF", "INTEG-API"],
+      "weight": 6
+    },
+    {
+      "id": "sqlite-embedded",
+      "whenAnyOption": ["sqlite"],
+      "skus": ["MIGRATION-DONNEES", "DEV-API-REST", "DEPANNAGE-2H", "BACKUP-SECU"],
+      "weight": 5
+    },
+    {
+      "id": "supabase-baas",
+      "whenAnyOption": ["supabase"],
+      "skus": ["BaaS-SUPABASE-SETUP", "INTEG-API", "MIGRATION-DONNEES", "DEV-API-REST", "DATA-POSTGRES-OPTIM"],
+      "weight": 8
+    },
+    {
+      "id": "firebase-baas",
+      "whenAnyOption": ["firebase"],
+      "skus": ["BaaS-FIREBASE-APP", "APP-MOBILE-RN", "APP-MOBILE-FLUTTER", "INTEG-API"],
+      "weight": 7
+    },
+    {
+      "id": "vercel-netlify",
+      "whenAnyOption": ["vercel", "netlify", "nextjs"],
+      "skus": ["DEVOPS-VERCEL-NEXT", "DEVOPS-CICD-GHA", "RAPPORT-PERF", "SSL-CONFIG", "HEBERG-DOMAIN"],
+      "weight": 7
+    },
+    {
+      "id": "github-actions-cicd",
+      "whenAnyOption": ["github-actions"],
+      "skus": ["DEVOPS-CICD-GHA", "DEVOPS-DOCKER-SETUP", "SEC-SONAR-CODE", "RAPPORT-PERF"],
+      "weight": 7
+    },
+    {
+      "id": "kubernetes-scale",
+      "whenAnyOption": ["kubernetes"],
+      "skus": ["DEVOPS-K8S-DEPLOY", "DEVOPS-DOCKER-SETUP", "DEVOPS-AWS-INFRA", "RAPPORT-PERF", "BACKUP-SECU"],
+      "weight": 8
+    },
+    {
+      "id": "aws-cloud",
+      "whenAnyOption": ["aws"],
+      "skus": ["DEVOPS-AWS-INFRA", "DEVOPS-K8S-DEPLOY", "BACKUP-SECU", "HEBERG-DOMAIN", "SSL-CONFIG"],
+      "weight": 7
+    },
+    {
+      "id": "nginx-proxy",
+      "whenAnyOption": ["nginx"],
+      "skus": ["DEVOPS-NGINX-CONFIG", "SSL-CONFIG", "DEVOPS-DOCKER-SETUP", "RAPPORT-PERF"],
+      "weight": 6
+    },
+    {
+      "id": "flutter-mobile",
+      "whenAnyOption": ["flutter"],
+      "skus": ["APP-MOBILE-FLUTTER", "INTEG-API", "CONSEIL-ARCHI", "RAPPORT-PERF", "AUTO-METIER"],
+      "weight": 8
+    },
+    {
+      "id": "react-native-mobile",
+      "whenAnyOption": ["react-native"],
+      "skus": ["APP-MOBILE-RN", "INTEG-API", "AUTO-METIER", "ACCOMP-H", "RAPPORT-PERF"],
+      "weight": 8
+    },
+    {
+      "id": "ios-swift",
+      "whenAnyOption": ["swift"],
+      "skus": ["APP-IOS-SWIFT", "INTEG-API", "CONSEIL-ARCHI", "RAPPORT-PERF"],
+      "weight": 7
+    },
+    {
+      "id": "android-kotlin",
+      "whenAnyOption": ["kotlin"],
+      "skus": ["APP-ANDROID-KOTLIN", "INTEG-API", "CONSEIL-ARCHI", "RAPPORT-PERF"],
+      "weight": 7
+    },
+    {
+      "id": "claude-ai",
+      "whenAnyOption": ["claude"],
+      "skus": ["IA-CLAUDE-INTEG", "IA-CONTENUS-WEB", "IA-AUTOMATISATION-TACHES", "IA-REDACTION-COMMERCIALE", "SEO-CHATGPT"],
+      "weight": 8
+    },
+    {
+      "id": "langchain-rag",
+      "whenAnyOption": ["langchain"],
+      "skus": ["IA-LANGCHAIN-BOT", "IA-ANALYSE-DONNEES", "IA-AUTOMATISATION-TACHES", "INTEG-API"],
+      "weight": 9
+    },
+    {
+      "id": "n8n-automation",
+      "whenAnyOption": ["n8n"],
+      "skus": ["AUTO-N8N-WORKFLOW", "IA-AUTOMATISATION-TACHES", "INTEG-API", "INTEG-CRM"],
+      "weight": 8
+    },
+    {
+      "id": "webflow-no-code",
+      "whenAnyOption": ["webflow"],
+      "skus": ["SITE-VITRINE", "REFONTE-LEGERE", "PAGE-SUPP", "SEO-BASIQUE", "IDENTITE-MULTI"],
+      "weight": 6
+    },
+    {
+      "id": "drupal-enterprise",
+      "whenAnyOption": ["drupal"],
+      "skus": ["CMS-WORDPRESS-THEME", "MAJ-CONTENU-5H", "MIGRATION-DONNEES", "SEC-AUDIT-PENTEST"],
+      "weight": 6
+    },
+    {
+      "id": "graphql-api",
+      "whenAnyOption": ["nestjs", "nodejs", "typescript", "react", "nextjs"],
+      "skus": ["DEV-GRAPHQL", "INTEG-API", "DEV-API-REST", "CONSEIL-ARCHI"],
+      "weight": 5
+    }
+  ],
+  "languageOverlapWeight": 5,
+  "budgetFriendlyBonus": 3,
+  "ruleMatchBonus": 2
+}

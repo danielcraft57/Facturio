@@ -5,14 +5,22 @@ import { EmailService } from './email.service';
 import { OrganizationMiddleware } from './middleware/organization.middleware';
 import { TrackController } from './track.controller';
 import { CleanupUnverifiedUsersService } from './cleanup-unverified-users.service';
+import { UnverifiedAccountService } from './unverified-account.service';
 import { RateLimitService } from './rate-limit.middleware';
 
 @Global()
 @Module({
 	imports: [ScheduleModule.forRoot()],
 	controllers: [TrackController],
-	providers: [PdfService, EmailService, OrganizationMiddleware, CleanupUnverifiedUsersService, RateLimitService],
-	exports: [PdfService, EmailService, OrganizationMiddleware, RateLimitService]
+	providers: [
+		PdfService,
+		EmailService,
+		OrganizationMiddleware,
+		CleanupUnverifiedUsersService,
+		UnverifiedAccountService,
+		RateLimitService,
+	],
+	exports: [PdfService, EmailService, OrganizationMiddleware, RateLimitService, UnverifiedAccountService],
 })
 export class CommonModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {

@@ -8,6 +8,7 @@ import {
 	buildClientFolderWhere,
 	type ClientFolder,
 } from './client-folder.util';
+import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
 
 /**
  * Service de gestion des clients
@@ -22,7 +23,10 @@ import {
  */
 @Injectable()
 export class ClientsService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly catalogPersonalization: CatalogPersonalizationService,
+	) {}
 
 	/**
 	 * Crée un nouveau client
@@ -60,18 +64,31 @@ export class ClientsService {
 			throw new BadRequestException('Email invalide');
 		}
 		
-		// Nettoyer les données pour Prisma
-		const cleanData: any = {
-			...data,
-			taxRateOverrideId: data.taxRateOverrideId || undefined
+		const { technologyIds, ...rest } = data;
+		const cleanData: Record<string, unknown> = {
+			...rest,
+			taxRateOverrideId: data.taxRateOverrideId || undefined,
 		};
-		
-		// Ajouter organizationId si fourni (pour compatibilité multi-tenant)
+
 		if (organizationId) {
 			cleanData.organizationId = organizationId;
 		}
-		
-		return this.prisma.client.create({ data: cleanData });
+
+		const client = await this.prisma.client.create({ data: cleanData as never });
+
+		if (technologyIds?.length) {
+			try {
+				await this.catalogPersonalization.assignClientCatalog(
+					client.id,
+					technologyIds,
+					'client_create',
+				);
+			} catch {
+				// catalogue optionnel
+			}
+		}
+
+		return client;
 	}
 
 	/**

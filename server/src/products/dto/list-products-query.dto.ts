@@ -22,4 +22,14 @@ export class ListProductsQueryDto extends ListQueryDto {
 	@IsOptional()
 	@IsIn(['icon', 'library', 'custom'])
 	visualType?: 'icon' | 'library' | 'custom';
+
+	/** Filtre catalogue personnalisé : organization | client */
+	@IsOptional()
+	@IsIn(['organization', 'client'])
+	scope?: 'organization' | 'client';
+
+	/** Requis si scope=client */
+	@IsOptional()
+	@IsString()
+	clientId?: string;
 }

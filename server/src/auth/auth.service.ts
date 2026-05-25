@@ -8,6 +8,7 @@ import * as crypto from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { AuthSessionService, type LoginDeviceContext } from './auth-session.service';
+import { UnverifiedAccountService } from '../common/unverified-account.service';
 
 /**
  * Service d'authentification
@@ -28,6 +29,7 @@ export class AuthService {
 		private jwtService: JwtService,
 		private emailService: EmailService,
 		private authSessionService: AuthSessionService,
+		private unverifiedAccountService: UnverifiedAccountService,
 	) {}
 
 	private readonly logger = new Logger(AuthService.name);
@@ -108,9 +110,12 @@ export class AuthService {
 		});
 
 		this.logger.log(`Signup success for ${data.email}, verification email sent (userId=${user.id})`);
+		const session = await this.finishLogin(user, {});
 		return {
-			message: 'Un email de confirmation vous a été envoyé. Cliquez sur le lien pour activer votre compte.',
-			needVerification: true,
+			...session,
+			message:
+				'Compte créé. Configurez votre espace développeur, puis confirmez votre email pour accéder au tableau de bord.',
+			emailVerificationPending: true,
 		};
 	}
 
@@ -160,17 +165,9 @@ export class AuthService {
 			throw new UnauthorizedException('Email ou mot de passe incorrect');
 		}
 
-		if (user.status !== 'ACTIVE') {
+		if (user.status !== 'ACTIVE' && user.status !== 'PENDING') {
 			this.logger.warn(`Login failed for ${data.email}: status=${user.status}`);
-			if (user.status === 'PENDING' && !user.emailVerified) {
-				throw new UnauthorizedException('Veuillez vérifier votre adresse email. Consultez votre boîte de réception ou demandez un nouvel email de confirmation.');
-			}
 			throw new UnauthorizedException('Compte non actif');
-		}
-
-		if (!user.emailVerified) {
-			this.logger.warn(`Login failed for ${data.email}: email not verified`);
-			throw new UnauthorizedException('Veuillez vérifier votre adresse email. Consultez votre boîte de réception ou demandez un nouvel email de confirmation.');
 		}
 
 		// Mettre à jour dernière connexion
@@ -208,7 +205,7 @@ export class AuthService {
 			where: { id: userId },
 			include: { organization: true },
 		});
-		if (!user || user.status !== 'ACTIVE') {
+		if (!user || (user.status !== 'ACTIVE' && user.status !== 'PENDING')) {
 			throw new BadRequestException('Compte introuvable ou inactif');
 		}
 		return this.generateTokens(user, sessionId);
@@ -361,21 +358,22 @@ export class AuthService {
 	/**
 	 * Demande de réinitialisation du mot de passe (mot de passe oublié).
 	 * Envoie un email avec un lien contenant un token valide 1h.
+	 * Réponse toujours identique (200) pour ne pas révéler si l'email existe.
 	 *
 	 * @param email - Email du compte
-	 * @throws {NotFoundException} Si l'email n'est pas associé à un compte (message générique pour la confidentialité)
 	 */
 	async forgotPassword(email: string) {
+		const genericMessage = 'Si ce compte existe, un email de réinitialisation a été envoyé.';
 		const user = await this.prisma.user.findUnique({
 			where: { email: email.trim().toLowerCase() },
 		});
 		if (!user) {
 			this.logger.warn(`Forgot password: email not found ${email}`);
-			throw new NotFoundException('Si ce compte existe, un email de réinitialisation a été envoyé.');
+			return { message: genericMessage };
 		}
 		if (!user.password) {
 			this.logger.warn(`Forgot password: account has no password (Google-only) ${email}`);
-			throw new NotFoundException('Si ce compte existe, un email de réinitialisation a été envoyé.');
+			return { message: genericMessage };
 		}
 		const token = crypto.randomBytes(32).toString('hex');
 		const expires = new Date(Date.now() + 60 * 60 * 1000);
@@ -391,7 +389,7 @@ export class AuthService {
 			resetUrl,
 		});
 		this.logger.log(`Forgot password email sent to ${user.email}`);
-		return { message: 'Si ce compte existe, un email de réinitialisation a été envoyé.' };
+		return { message: genericMessage };
 	}
 
 	/**
@@ -434,13 +432,21 @@ export class AuthService {
 	 */
 	async verifyEmail(token: string) {
 		const user = await this.prisma.user.findFirst({
-			where: {
-				emailVerificationToken: token,
-				emailVerificationExpires: { gt: new Date() },
-			},
+			where: { emailVerificationToken: token },
 		});
 		if (!user) {
-			throw new BadRequestException('Lien invalide ou expiré. Vous pouvez demander un nouvel email de confirmation depuis la page de connexion.');
+			throw new BadRequestException('Lien invalide. Vous pouvez créer un nouveau compte.');
+		}
+		if (user.emailVerified) {
+			return { message: 'Adresse email déjà confirmée. Vous pouvez vous connecter.' };
+		}
+		const expired =
+			!user.emailVerificationExpires || user.emailVerificationExpires.getTime() <= Date.now();
+		if (expired) {
+			await this.unverifiedAccountService.deleteUnverifiedUser(user);
+			throw new BadRequestException(
+				'Lien expiré : votre compte non confirmé a été supprimé. Vous pouvez vous réinscrire.',
+			);
 		}
 		await this.prisma.user.update({
 			where: { id: user.id },
@@ -453,7 +459,7 @@ export class AuthService {
 			},
 		});
 		this.logger.log(`Email verified for user ${user.id}`);
-		return { message: 'Adresse email confirmée. Vous pouvez maintenant vous connecter.' };
+		return { message: 'Adresse email confirmée. Vous pouvez accéder à votre tableau de bord.' };
 	}
 
 	/**
@@ -573,6 +579,7 @@ export class AuthService {
 				firstName: user.firstName,
 				lastName: user.lastName,
 				role: user.role,
+				emailVerified: user.emailVerified,
 				organization: user.organization,
 			},
 		};

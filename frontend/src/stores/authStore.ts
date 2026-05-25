@@ -24,7 +24,7 @@ interface AuthState {
 interface AuthActions {
   login: (credentials: LoginDto) => Promise<void | DeviceVerificationResponse>
   bootstrapSession: () => Promise<void | DeviceVerificationResponse>
-  signup: (data: SignupDto) => Promise<void | { needVerification: true; message?: string }>
+  signup: (data: SignupDto) => Promise<void>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
   clearError: () => void
@@ -42,7 +42,7 @@ type AuthStore = AuthState & AuthActions
 export const useAuthStore = create<AuthStore>((set, get) => ({
   // État initial
   user: authService.getStoredUser(),
-  isAuthenticated: authService.isAuthenticated(),
+  isAuthenticated: authService.hasSessionToken(),
   isLoading: false,
   error: null,
 
@@ -78,18 +78,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   /**
    * Inscription d'un nouvel utilisateur.
-   * Si le serveur renvoie needVerification (validation email), ne connecte pas l'utilisateur.
    */
   signup: async (data: SignupDto) => {
     set({ isLoading: true, error: null })
     try {
       const response = await authService.signup(data)
-      if ((response as any).needVerification) {
-        set({ isLoading: false, error: null })
-        return response as any
-      }
       set({
-        user: (response as any).user,
+        user: response.user,
         isAuthenticated: true,
         isLoading: false,
         error: null,
@@ -168,6 +163,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         error: null,
       })
     } catch {
+      authService.clearLocalSession()
       set({
         user: null,
         isAuthenticated: false,

@@ -42,10 +42,9 @@ export class AuthController {
 	@Post('signup')
 	async signup(@Body() data: SignupDto, @Res({ passthrough: true }) res: Response) {
 		const result = await this.authService.signup(data);
-		if ((result as any).needVerification) {
-			return result;
+		if ((result as { access_token?: string }).access_token) {
+			this.setAuthCookie(res, (result as { access_token: string }).access_token);
 		}
-		this.setAuthCookie(res, (result as any).access_token);
 		return result;
 	}
 
@@ -291,6 +290,7 @@ export class AuthController {
 			firstName: user.firstName,
 			lastName: user.lastName,
 			role: user.role,
+			emailVerified: user.emailVerified,
 			organization: user.organization,
 		};
 	}

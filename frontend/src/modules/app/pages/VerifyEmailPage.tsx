@@ -11,6 +11,7 @@ import {
 } from '@mui/material'
 import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline'
 import { authService } from '../../../services/authService'
+import { useAuthStore } from '../../../stores/authStore'
 
 /**
  * Page de vérification d'adresse email (lien reçu après inscription).
@@ -19,6 +20,7 @@ import { authService } from '../../../services/authService'
 export function VerifyEmailPage() {
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
+  const checkAuth = useAuthStore((s) => s.checkAuth)
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState<string>('')
   const hasVerifiedRef = useRef(false)
@@ -35,9 +37,14 @@ export function VerifyEmailPage() {
     hasVerifiedRef.current = true
     authService
       .verifyEmail(token.trim())
-      .then((res) => {
+      .then(async (res) => {
         setStatus('success')
-        setMessage(res?.message || 'Adresse email confirmée. Vous pouvez vous connecter.')
+        setMessage(res?.message || 'Adresse email confirmée.')
+        try {
+          await checkAuth()
+        } catch {
+          /* session absente : connexion manuelle */
+        }
       })
       .catch((err: any) => {
         setStatus('error')
@@ -45,8 +52,24 @@ export function VerifyEmailPage() {
       })
   }, [token])
 
+  const goToDashboard = () => {
+    navigate('/dashboard', {
+      replace: true,
+      state: { message: 'Email confirmé. Bienvenue sur Facturio !' },
+    })
+  }
+
   const goToLogin = () => {
-    navigate('/login', { replace: true, state: { message: status === 'success' ? message : undefined } })
+    navigate('/login', {
+      replace: true,
+      state: {
+        message:
+          status === 'success'
+            ? 'Email confirmé. Connectez-vous pour accéder à votre tableau de bord.'
+            : undefined,
+        from: '/dashboard',
+      },
+    })
   }
 
   return (
@@ -84,8 +107,11 @@ export function VerifyEmailPage() {
               <Alert severity="success" sx={{ mb: 3, textAlign: 'left' }}>
                 {message}
               </Alert>
-              <Button component={RouterLink} to="/login" variant="contained" size="large" onClick={goToLogin}>
-                Se connecter
+              <Button variant="contained" size="large" onClick={goToDashboard} sx={{ mb: 1 }}>
+                Accéder au tableau de bord
+              </Button>
+              <Button variant="text" size="small" onClick={goToLogin}>
+                Ou se connecter sur un autre appareil
               </Button>
             </>
           )}
@@ -94,7 +120,10 @@ export function VerifyEmailPage() {
               <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
                 {message}
               </Alert>
-              <Button component={RouterLink} to="/login" variant="contained" size="large">
+              <Button component={RouterLink} to="/signup" variant="contained" size="large" sx={{ mb: 1 }}>
+                Créer un nouveau compte
+              </Button>
+              <Button component={RouterLink} to="/login" variant="text" size="small">
                 Retour à la connexion
               </Button>
             </>

@@ -16,6 +16,7 @@ import {
 } from '../common/document-folder.util';
 import type { QuoteListQueryDto } from './dto/quote-document-folder.dto';
 import type { UpdateQuoteDocumentFlagsDto } from './dto/quote-document-folder.dto';
+import { generateEntityId } from '../common/entity-id';
 
 /**
  * Ligne de devis
@@ -221,6 +222,7 @@ export class QuotesService {
 		const number = data.number ?? (await this.nextQuoteNumber());
 		const created = await this.prisma.quote.create({
 			data: {
+				id: generateEntityId(),
 				number,
 				clientId: data.clientId,
 				organizationId: orgId,

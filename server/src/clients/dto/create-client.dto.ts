@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsEnum, IsInt, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsEnum, IsInt, IsOptional, IsString, Length, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ClientStatus } from '@prisma/client';
 
@@ -52,6 +52,11 @@ export class CreateClientDto {
 	@IsOptional()
 	@IsEnum(ClientStatus)
 	status?: ClientStatus;
+
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	technologyIds?: string[];
 }
 
 

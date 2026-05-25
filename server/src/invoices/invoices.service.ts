@@ -19,6 +19,7 @@ import {
 } from '../common/document-folder.util';
 import type { InvoiceListQueryDto } from './dto/invoice-document-folder.dto';
 import type { UpdateInvoiceDocumentFlagsDto } from './dto/invoice-document-folder.dto';
+import { generateEntityId } from '../common/entity-id';
 
 /**
  * Ligne de facture
@@ -293,6 +294,7 @@ export class InvoicesService {
 		const name = data.clientName?.trim() || this.deriveClientNameFromEmail(email);
 		const created = await this.prisma.client.create({
 			data: {
+				id: generateEntityId(),
 				name,
 				email,
 				organizationId,
@@ -352,6 +354,7 @@ export class InvoicesService {
 		
 		const created = await this.prisma.invoice.create({
 			data: {
+				id: generateEntityId(),
 				number,
 				clientId,
 				organizationId: orgId,

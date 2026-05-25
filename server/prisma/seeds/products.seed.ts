@@ -35,9 +35,15 @@ export async function seedProducts(prisma: PrismaClient, taxIds: { def20Id: numb
 			imageData: p.imageData ?? null,
 		};
 
-		const existing = await prisma.product.findFirst({ where: { sku: p.sku } });
+		const existing = await prisma.product.findFirst({
+			where: { sku: p.sku, organizationId: null },
+		});
 		if (!existing) {
-			created.push(await prisma.product.create({ data }));
+			created.push(
+				await prisma.product.create({
+					data: { ...data, organizationId: null },
+				}),
+			);
 		} else {
 			created.push(
 				await prisma.product.update({

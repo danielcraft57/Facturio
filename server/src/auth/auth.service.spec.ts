@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { AuthSessionService } from './auth-session.service';
+import { UnverifiedAccountService } from '../common/unverified-account.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../common/email.service';
 import { JwtService } from '@nestjs/jwt';
@@ -40,6 +41,10 @@ describe('AuthService', () => {
 		revokeSession: jest.fn(),
 	};
 
+	const mockUnverifiedAccountService = {
+		deleteUnverifiedUser: jest.fn().mockResolvedValue(true),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -59,6 +64,10 @@ describe('AuthService', () => {
 				{
 					provide: AuthSessionService,
 					useValue: mockAuthSessionService,
+				},
+				{
+					provide: UnverifiedAccountService,
+					useValue: mockUnverifiedAccountService,
 				},
 			],
 		}).compile();
@@ -91,13 +100,15 @@ describe('AuthService', () => {
 				firstName: 'John',
 				lastName: 'Doe',
 				organizationId: 1,
+				emailVerified: false,
 				organization: { id: 1, name: 'Test Org' },
 			});
 			mockJwtService.sign.mockReturnValue('jwt-token');
 
 			const result = await service.signup(signupDto);
 
-			expect(result).toHaveProperty('needVerification', true);
+			expect(result).toHaveProperty('access_token', 'jwt-token');
+			expect(result).toHaveProperty('emailVerificationPending', true);
 			expect(mockEmailService.sendVerifyEmail).toHaveBeenCalled();
 			expect(mockPrismaService.organization.create).toHaveBeenCalled();
 			expect(mockPrismaService.user.create).toHaveBeenCalled();

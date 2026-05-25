@@ -38,6 +38,11 @@ const SalesTermsPage = lazy(() =>
 )
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
+import { SignupConfirmationPage } from './pages/SignupConfirmationPage'
+import { OnboardingInstallPage } from './pages/OnboardingInstallPage'
+import { OnboardingRoute } from '../../components/OnboardingRoute'
+import { AuthSessionHydrator } from '../../components/AuthSessionHydrator'
+import { SeoManager } from '../../components/SeoManager'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { AuthBootPage } from './pages/AuthBootPage'
 import { ConfirmDevicePage } from './pages/ConfirmDevicePage'
@@ -179,14 +184,16 @@ export function App() {
   // Wrapper pour les routes privées avec layout
   const PrivateRouteWrapper = ({ children }: { children: ReactNode }) => (
     <ProtectedRoute>
-      <FinanceRealtimeBridge />
-      <AppLayout
-        mode={settings.mode}
-        onToggleMode={handleToggleMode}
-        onOpenSettings={handleOpenSettings}
-      >
-        {children}
-      </AppLayout>
+      <OnboardingRoute>
+        <FinanceRealtimeBridge />
+        <AppLayout
+          mode={settings.mode}
+          onToggleMode={handleToggleMode}
+          onOpenSettings={handleOpenSettings}
+        >
+          {children}
+        </AppLayout>
+      </OnboardingRoute>
     </ProtectedRoute>
   )
 
@@ -195,6 +202,8 @@ export function App() {
       <CssBaseline />
       <AppWithToasts>
         <BrowserRouter>
+          <AuthSessionHydrator />
+          <SeoManager />
           <TopRouteProgress />
           
           <Suspense fallback={
@@ -266,6 +275,23 @@ export function App() {
               />
               <Route path="/auth/session" element={<AuthBootPage />} />
               <Route path="/auth/confirmer-appareil" element={<ConfirmDevicePage />} />
+
+              <Route
+                path="/installation"
+                element={
+                  <ProtectedRoute>
+                    <OnboardingInstallPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inscription/confirmation"
+                element={
+                  <ProtectedRoute>
+                    <SignupConfirmationPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Routes publiques devis / factures (accès par token) */}
               <Route

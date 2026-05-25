@@ -42,6 +42,7 @@ export async function createTestUser(
 		firstName?: string;
 		lastName?: string;
 		organizationName?: string;
+		technologyIds?: string[];
 	}
 ): Promise<TestUser> {
 	const email = overrides?.email || `test-${Date.now()}@example.com`;
@@ -59,6 +60,9 @@ export async function createTestUser(
 			organizationName,
 			acceptTerms: true,
 			acceptPrivacy: true,
+			...(overrides?.technologyIds?.length
+				? { technologyIds: overrides.technologyIds }
+				: {}),
 		})
 		.expect(201);
 

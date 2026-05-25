@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
 	'/api/auth/verify-device',
 	'/api/auth/google',
 	'/api/auth/google/callback',
+	'/api/catalog/tech-choices',
 	'/api/public',
 	'/api/track',
 	'/api/webhooks',

@@ -14,12 +14,16 @@ import {
   IconButton,
   Checkbox,
   FormControlLabel,
+  FormGroup,
+  alpha,
 } from '@mui/material'
 import GoogleIcon from '@mui/icons-material/Google'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { useAuthStore } from '../../../stores/authStore'
 import { authService } from '../../../services/authService'
+import { PendingEmailVerificationCard } from '../../../components/auth/PendingEmailVerificationCard'
+import { usePendingEmailVerification } from '../../../hooks/usePendingEmailVerification'
 
 /**
  * Page d'inscription
@@ -32,8 +36,8 @@ import { authService } from '../../../services/authService'
  */
 export function SignupPage() {
   const navigate = useNavigate()
-  const { signup, isLoading, error, clearError, isAuthenticated } = useAuthStore()
-
+  const { signup, isLoading, error, clearError } = useAuthStore()
+  const [resendSuccess, setResendSuccess] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -42,23 +46,46 @@ export function SignupPage() {
     lastName: '',
     organizationName: '',
   })
+
+  const {
+    pending,
+    refresh: refreshPending,
+    dismiss: dismissPending,
+    setPendingFromEmail,
+    clearPending,
+  } = usePendingEmailVerification(formData.email)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
-
-  // Rediriger si déjà authentifié
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/auth/session?from=/dashboard', { replace: true })
+    if (!authService.hasSessionToken()) return
+    let cancelled = false
+    void (async () => {
+      await refreshPending()
+      const user = useAuthStore.getState().user
+      if (!cancelled && user?.emailVerified === true) {
+        navigate('/auth/session?from=/dashboard', { replace: true })
+      }
+    })()
+    return () => {
+      cancelled = true
     }
-  }, [isAuthenticated, navigate])
+  }, [navigate, refreshPending])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    if (
+      name === 'email' &&
+      pending &&
+      value.trim().toLowerCase() !== pending.email.trim().toLowerCase()
+    ) {
+      clearPending()
+    }
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     })
   }
 
@@ -89,7 +116,7 @@ export function SignupPage() {
     }
 
     try {
-      const result = await signup({
+      await signup({
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName || undefined,
@@ -98,11 +125,8 @@ export function SignupPage() {
         acceptTerms: true,
         acceptPrivacy: true,
       })
-      if (result && (result as any).needVerification) {
-        navigate('/login', { replace: true, state: { message: (result as any).message } })
-        return
-      }
-      navigate('/auth/session?from=/dashboard', { replace: true })
+      await setPendingFromEmail(formData.email)
+      navigate('/auth/session?from=/installation', { replace: true })
     } catch (err: any) {
       setLocalError(err.message || 'Erreur lors de l\'inscription')
     }
@@ -113,6 +137,16 @@ export function SignupPage() {
   }
 
   const displayError = localError || error
+
+  const canSubmit =
+    acceptTerms &&
+    acceptPrivacy &&
+    !pending &&
+    formData.email.trim().length > 0 &&
+    formData.organizationName.trim().length > 0 &&
+    formData.password.length >= 8 &&
+    formData.confirmPassword.length > 0 &&
+    formData.password === formData.confirmPassword
 
   return (
     <Container maxWidth="sm">
@@ -136,9 +170,23 @@ export function SignupPage() {
               Créer un compte
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Commencez votre essai gratuit dès maintenant
+              Essai gratuit — assistant développeur (stack + catalogue) dès l&apos;inscription
             </Typography>
           </Box>
+
+          {pending && (
+            <PendingEmailVerificationCard
+              pending={pending}
+              onDismiss={dismissPending}
+              onResendSuccess={(msg) => setResendSuccess(msg)}
+            />
+          )}
+
+          {resendSuccess && (
+            <Alert severity="success" sx={{ mb: 3 }} onClose={() => setResendSuccess(null)}>
+              {resendSuccess}
+            </Alert>
+          )}
 
           {displayError && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={() => { setLocalError(null); clearError() }}>
@@ -237,58 +285,133 @@ export function SignupPage() {
                 ),
               }}
             />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={acceptTerms}
-                  onChange={(e) => setAcceptTerms(e.target.checked)}
-                  required
+            <Box
+              sx={(theme) => ({
+                mt: 2.5,
+                mb: 0.5,
+                p: 2,
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: !acceptTerms || !acceptPrivacy
+                  ? alpha(theme.palette.primary.main, 0.35)
+                  : theme.palette.divider,
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                transition: 'border-color 0.2s ease',
+              })}
+            >
+              <Typography
+                variant="subtitle2"
+                sx={{ fontWeight: 600, mb: 1.5, color: 'text.primary' }}
+              >
+                Consentements requis
+              </Typography>
+              <FormGroup sx={{ gap: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={acceptTerms}
+                      onChange={(e) => setAcceptTerms(e.target.checked)}
+                      color="primary"
+                      sx={{
+                        alignSelf: 'flex-start',
+                        mt: 0.15,
+                        p: 0.5,
+                        '& .MuiSvgIcon-root': { fontSize: 22 },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" component="span" sx={{ lineHeight: 1.5 }}>
+                      J&apos;accepte les{' '}
+                      <Link
+                        component={RouterLink}
+                        to="/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        underline="hover"
+                        sx={{ fontWeight: 600 }}
+                      >
+                        conditions générales d&apos;utilisation
+                      </Link>
+                      <Box component="span" sx={{ color: 'error.main', ml: 0.25 }} aria-hidden>
+                        *
+                      </Box>
+                    </Typography>
+                  }
+                  sx={{
+                    m: 0,
+                    alignItems: 'flex-start',
+                    gap: 1,
+                    py: 0.75,
+                    px: 1,
+                    borderRadius: 1,
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
                 />
-              }
-              label={
-                <Typography variant="body2">
-                  J&apos;accepte les{' '}
-                  <Link component={RouterLink} to="/terms" target="_blank" underline="hover">
-                    CGU
-                  </Link>
-                </Typography>
-              }
-              sx={{ mt: 1, alignItems: 'flex-start' }}
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={acceptPrivacy}
-                  onChange={(e) => setAcceptPrivacy(e.target.checked)}
-                  required
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={acceptPrivacy}
+                      onChange={(e) => setAcceptPrivacy(e.target.checked)}
+                      color="primary"
+                      sx={{
+                        alignSelf: 'flex-start',
+                        mt: 0.15,
+                        p: 0.5,
+                        '& .MuiSvgIcon-root': { fontSize: 22 },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" component="span" sx={{ lineHeight: 1.5 }}>
+                      J&apos;accepte la{' '}
+                      <Link
+                        component={RouterLink}
+                        to="/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        underline="hover"
+                        sx={{ fontWeight: 600 }}
+                      >
+                        politique de confidentialité
+                      </Link>
+                      <Box component="span" sx={{ color: 'error.main', ml: 0.25 }} aria-hidden>
+                        *
+                      </Box>
+                    </Typography>
+                  }
+                  sx={{
+                    m: 0,
+                    alignItems: 'flex-start',
+                    gap: 1,
+                    py: 0.75,
+                    px: 1,
+                    borderRadius: 1,
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
                 />
-              }
-              label={
-                <Typography variant="body2">
-                  J&apos;accepte la{' '}
-                  <Link component={RouterLink} to="/privacy" target="_blank" underline="hover">
-                    politique de confidentialité
-                  </Link>
-                </Typography>
-              }
-              sx={{ alignItems: 'flex-start' }}
-            />
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-              Les{' '}
-              <Link component={RouterLink} to="/cgv" target="_blank" underline="hover">
-                CGV
-              </Link>{' '}
-              s&apos;appliquent aux abonnements payants Facturio.
-            </Typography>
+              </FormGroup>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5, pl: 0.5 }}>
+                Les{' '}
+                <Link component={RouterLink} to="/cgv" target="_blank" rel="noopener noreferrer" underline="hover">
+                  CGV
+                </Link>{' '}
+                s&apos;appliquent aux abonnements payants Facturio.
+              </Typography>
+            </Box>
             <Button
               type="submit"
               fullWidth
               variant="contained"
               size="large"
               sx={{ mt: 2, py: 1.5 }}
-              disabled={isLoading || !acceptTerms || !acceptPrivacy}
+              disabled={isLoading || !canSubmit}
             >
-              {isLoading ? 'Création du compte...' : 'Créer mon compte'}
+              {isLoading
+                ? 'Création du compte...'
+                : pending
+                  ? 'Compte en attente — voir le message ci-dessus'
+                  : 'Créer mon compte'}
             </Button>
           </Box>
 

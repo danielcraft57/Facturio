@@ -15,16 +15,28 @@ export const entityIdExtension = Prisma.defineExtension({
 				ensureIdOnCreate(args.data as { id?: string })
 				return query(args)
 			},
+			upsert({ args, query }) {
+				ensureIdOnCreate(args.create as { id?: string })
+				return query(args)
+			},
 		},
 		invoice: {
 			create({ args, query }) {
 				ensureIdOnCreate(args.data as { id?: string })
 				return query(args)
 			},
+			upsert({ args, query }) {
+				ensureIdOnCreate(args.create as { id?: string })
+				return query(args)
+			},
 		},
 		quote: {
 			create({ args, query }) {
 				ensureIdOnCreate(args.data as { id?: string })
+				return query(args)
+			},
+			upsert({ args, query }) {
+				ensureIdOnCreate(args.create as { id?: string })
 				return query(args)
 			},
 		},
