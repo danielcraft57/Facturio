@@ -41,6 +41,23 @@ uses_postgres_db() {
 	[ -f "$APP_DIR/server/.env" ] && grep -qE '^DATABASE_URL=.*postgresql' "$APP_DIR/server/.env"
 }
 
+# P3009 : migration marquée failed dans _prisma_migrations (ex. entity_cuid_ids corrigée dans le dépôt).
+recover_failed_prisma_migrations() {
+	local name finished rolled_back
+	while IFS='|' read -r name finished rolled_back; do
+		[ -z "$name" ] && continue
+		[ -n "$finished" ] && continue
+		[ -n "$rolled_back" ] && continue
+		echo "[facturio-update] migration en échec détectée: $name → resolve --rolled-back"
+		npx prisma migrate resolve --rolled-back "$name" --schema=prisma/postgresql/schema.prisma
+	done < <(
+		sudo -u postgres psql -d facturio -tA -F'|' -c \
+			"SELECT migration_name, COALESCE(finished_at::text,''), COALESCE(rolled_back_at::text,'')
+			 FROM \"_prisma_migrations\"
+			 WHERE finished_at IS NULL AND rolled_back_at IS NULL AND logs IS NOT NULL;"
+	)
+}
+
 run_prisma_migrate_prod() {
 	if ! uses_postgres_db; then
 		echo "[facturio-update] prisma migrate ignoré (DATABASE_URL non Postgres)"
@@ -52,6 +69,7 @@ run_prisma_migrate_prod() {
 		npm ci --omit=dev --no-audit --prefer-offline
 		sha256_file package-lock.json > "$LOCK_HASH_FILE" 2>/dev/null || true
 	fi
+	recover_failed_prisma_migrations
 	echo "[facturio-update] prisma migrate deploy (prisma/postgresql/migrations)..."
 	npm run migrate:prod
 	run_pg_grant_facturio_role

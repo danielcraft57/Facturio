@@ -85,12 +85,13 @@ cd /opt/facturio/server
 sudo -u postgres psql -d facturio -c \
   "SELECT migration_name, finished_at, rolled_back_at, logs FROM \"_prisma_migrations\" ORDER BY started_at DESC LIMIT 5;"
 
-# Marquer l’échec comme annulé (après pull du correctif SQL)
+# Marquer l’échec comme annulé (après pull du correctif SQL), puis redéployer
 npx prisma migrate resolve --rolled-back 20260525120000_entity_cuid_ids \
   --schema=prisma/postgresql/schema.prisma
+sudo -u pi bash /usr/local/bin/facturio-update.sh
 
-# Réappliquer (idempotent si colonnes déjà en TEXT)
-npm run migrate:prod
+# Ou uniquement migrate (si `facturio-update.sh` est à jour, il fait le resolve automatiquement) :
+# npm run migrate:prod
 sudo -u postgres psql -d facturio -f /opt/facturio/scripts/deploy/postgresql/grant-facturio-role.sql
 sudo systemctl restart facturio
 ```
