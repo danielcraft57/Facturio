@@ -1,4 +1,5 @@
 import * as request from 'supertest';
+import { generateEntityId } from '../common/entity-id';
 import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -114,10 +115,10 @@ describe('Filings e2e', () => {
 		// les collisions de contrainte d'unicité entre plusieurs runs.
 		const suffix = Date.now();
 		const client1 = await prisma.client.create({
-			data: { name: 'Client 1', email: `client1+${suffix}@test.com`, isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
+			data: { id: generateEntityId(),  name: 'Client 1', email: `client1+${suffix}@test.com`, isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
 		});
 		const client2 = await prisma.client.create({
-			data: { name: 'Client 2', email: `client2+${suffix}@test.com`, isCompany: true, countryCode: 'DE', organizationId: testUser.organizationId }
+			data: { id: generateEntityId(),  name: 'Client 2', email: `client2+${suffix}@test.com`, isCompany: true, countryCode: 'DE', organizationId: testUser.organizationId }
 		});
 
 		// Facture avec TVA française (20%)

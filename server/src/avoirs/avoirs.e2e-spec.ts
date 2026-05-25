@@ -5,6 +5,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { createTestUser, authenticatedRequest } from '../common/test-helpers/auth.helper';
+import { generateEntityId } from '../common/entity-id';
 
 describe('Avoirs e2e', () => {
 	let app: INestApplication;
@@ -65,7 +66,7 @@ describe('Avoirs e2e', () => {
 
 		// Créer un client de test avec l'organisation de l'utilisateur de test
 		const client = await prisma.client.create({
-			data: {
+			data: { id: generateEntityId(), 
 				name: 'Test Client',
 				email: `test-${Date.now()}@example.com`,
 				isCompany: true,
@@ -233,7 +234,7 @@ describe('Avoirs e2e', () => {
 			});
 
 			const invoice = await prisma.invoice.create({
-				data: {
+				data: { id: generateEntityId(), 
 					number: 'FAC-2024-0001',
 					clientId,
 					organizationId: testUser.organizationId,

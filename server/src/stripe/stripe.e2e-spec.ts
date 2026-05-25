@@ -1,4 +1,5 @@
 import * as request from 'supertest';
+import { generateEntityId } from '../common/entity-id';
 import { randomBytes } from 'crypto';
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
@@ -38,7 +39,7 @@ describe('Stripe e2e', () => {
 		prisma = app.get(PrismaService);
 
 		const client = await prisma.client.create({
-			data: {
+			data: { id: generateEntityId(), 
 				name: 'Stripe Test Client',
 				email: `stripe-${Date.now()}@example.com`,
 				isCompany: true,
@@ -47,7 +48,7 @@ describe('Stripe e2e', () => {
 		});
 
 		const invoice = await prisma.invoice.create({
-			data: {
+			data: { id: generateEntityId(), 
 				number: `STR-${Date.now()}`,
 				clientId: client.id,
 				status: 'SENT',

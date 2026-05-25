@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { SaasBillingPlan } from '@prisma/client';
 import { AppModule } from '../app.module';
 import { authenticatedRequest, createTestUser, TestUser } from '../common/test-helpers/auth.helper';
+import { generateEntityId } from '../common/entity-id';
 import { PrismaService } from '../prisma/prisma.service';
 
 function uniqueEmail(base: string): string {
@@ -65,7 +66,7 @@ describe('E-invoicing e2e', () => {
 		});
 
 		const client = await prisma.client.create({
-			data: {
+			data: { id: generateEntityId(), 
 				name: 'Client B2B',
 				email: uniqueEmail('b2b-efacture@test.com'),
 				isCompany: true,
@@ -79,7 +80,7 @@ describe('E-invoicing e2e', () => {
 		});
 
 		const invoice = await prisma.invoice.create({
-			data: {
+			data: { id: generateEntityId(), 
 				number: `FAC-E2E-${Date.now()}`,
 				status: 'SENT',
 				sentAt: new Date(),

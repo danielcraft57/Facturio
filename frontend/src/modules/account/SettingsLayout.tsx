@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { billingService, type BillingUsage } from '../../services/billing'
+import { unwrapApiPayload } from '../../services/clients'
 import { OrganizationProfileProvider, useOrganizationProfile } from './OrganizationProfileContext'
 import { AnimatedSettingsOutlet } from './components/AnimatedSettingsOutlet'
 import {
@@ -31,7 +32,7 @@ function SettingsLayoutContent() {
       .getUsage()
       .then((res) => {
         if (!cancelled) {
-          setUsage((res.data as { data?: BillingUsage })?.data ?? (res.data as BillingUsage) ?? null)
+          setUsage(unwrapApiPayload<BillingUsage>(res))
         }
       })
       .catch(() => {

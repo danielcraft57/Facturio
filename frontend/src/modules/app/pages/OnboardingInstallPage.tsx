@@ -83,7 +83,7 @@ export function OnboardingInstallPage() {
         if (user?.emailVerified !== true) {
           navigate('/inscription/confirmation', {
             replace: true,
-            state: { email: user.email, onboardingDone: true },
+            state: { email: user?.email ?? '', onboardingDone: true },
           })
         } else {
           navigate('/dashboard', { replace: true })
@@ -135,7 +135,7 @@ export function OnboardingInstallPage() {
       if (user?.emailVerified !== true) {
         navigate('/inscription/confirmation', {
           replace: true,
-          state: { email: user.email, onboardingDone: true, productCount: count },
+          state: { email: user?.email ?? '', onboardingDone: true, productCount: count },
         })
       } else {
         navigate('/dashboard', { replace: true, state: { onboardingDone: true, productCount: count } })

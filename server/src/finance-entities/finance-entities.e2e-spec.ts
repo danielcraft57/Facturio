@@ -1,4 +1,5 @@
 import * as cookieParser from 'cookie-parser'
+import { generateEntityId } from '../common/entity-id';
 import { INestApplication, ValidationPipe } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import * as request from 'supertest'
@@ -70,7 +71,7 @@ describe('Finance entities (client, facture, devis) e2e', () => {
 
 	it('facture: create + patch retournent un id court (10 car.)', async () => {
 		const client = await prisma.client.create({
-			data: {
+			data: { id: generateEntityId(), 
 				name: 'Client facture',
 				email: uniqueEmail('finance-invoice-client@example.com'),
 				isCompany: true,
@@ -107,7 +108,7 @@ describe('Finance entities (client, facture, devis) e2e', () => {
 
 	it('devis: create + patch retournent un id court (10 car.)', async () => {
 		const client = await prisma.client.create({
-			data: {
+			data: { id: generateEntityId(), 
 				name: 'Client devis',
 				email: uniqueEmail('finance-quote-client@example.com'),
 				isCompany: true,

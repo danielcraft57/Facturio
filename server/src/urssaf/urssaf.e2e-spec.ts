@@ -5,6 +5,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { createTestUser, authenticatedRequest, TestUser } from '../common/test-helpers/auth.helper';
+import { generateEntityId } from '../common/entity-id';
 import { UrssafActivity } from './dto/update-organization-urssaf.dto';
 
 /**
@@ -93,7 +94,7 @@ describe('Urssaf e2e', () => {
 
 		// Créer un client de test
 		const client = await prisma.client.create({
-			data: {
+			data: { id: generateEntityId(), 
 				name: 'Test Client',
 				email: `client-${Date.now()}@example.com`,
 				isCompany: true,
@@ -103,7 +104,7 @@ describe('Urssaf e2e', () => {
 
 		// Créer des factures de test pour janvier 2024
 		await prisma.invoice.create({
-			data: {
+			data: { id: generateEntityId(), 
 				number: 'INV-2024-001',
 				date: new Date('2024-01-15'),
 				clientId: client.id,
@@ -118,7 +119,7 @@ describe('Urssaf e2e', () => {
 		});
 
 		await prisma.invoice.create({
-			data: {
+			data: { id: generateEntityId(), 
 				number: 'INV-2024-002',
 				date: new Date('2024-01-20'),
 				clientId: client.id,

@@ -1,4 +1,5 @@
 import * as request from 'supertest';
+import { generateEntityId } from '../common/entity-id';
 import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -60,7 +61,7 @@ describe('Quotes e2e', () => {
 
 	it('create -> send -> view -> accept', async () => {
 		const client = await prisma.client.create({
-			data: { 
+			data: { id: generateEntityId(),  
 				name: 'Test Client', 
 				email: uniqueEmail('test-quote@example.com'), 
 				isCompany: true, 
@@ -106,7 +107,7 @@ describe('Quotes e2e', () => {
 
 	it('email sending and webhook processing', async () => {
 		const client = await prisma.client.create({
-			data: { 
+			data: { id: generateEntityId(),  
 				name: 'Email Client', 
 				email: uniqueEmail('email@test.com'), 
 				isCompany: true, 
@@ -159,7 +160,7 @@ describe('Quotes e2e', () => {
 
 	it('PDF generation', async () => {
 		const client = await prisma.client.create({
-			data: { 
+			data: { id: generateEntityId(),  
 				name: 'PDF Client', 
 				email: uniqueEmail('pdf@c.test'), 
 				isCompany: true, 
@@ -189,7 +190,7 @@ describe('Quotes e2e', () => {
 
 	it('off-balance entry created on send and contra on reject', async () => {
 		const client = await prisma.client.create({
-			data: { 
+			data: { id: generateEntityId(),  
 				name: 'HB Client', 
 				email: uniqueEmail('hb@test.com'), 
 				isCompany: true, 
@@ -245,7 +246,7 @@ describe('Quotes e2e', () => {
 
 	it('quote to invoice conversion', async () => {
 		const client = await prisma.client.create({
-			data: { 
+			data: { id: generateEntityId(),  
 				name: 'Convert Client', 
 				email: uniqueEmail('convert@test.com'), 
 				isCompany: true, 
@@ -281,7 +282,7 @@ describe('Quotes e2e', () => {
 
 	it('validation errors', async () => {
 		const client = await prisma.client.create({
-			data: { 
+			data: { id: generateEntityId(),  
 				name: 'Test Client', 
 				email: uniqueEmail('test-validation@example.com'), 
 				isCompany: true, 

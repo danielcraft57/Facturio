@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Alert, Box, Button, CircularProgress } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { billingService, type BillingUsage } from '../../services/billing'
+import { unwrapApiPayload } from '../../services/clients'
 
 type ProPlanGateProps = {
   children: ReactNode
@@ -21,7 +22,7 @@ export function ProPlanGate({ children, featureLabel = 'cette fonctionnalité' }
     ;(async () => {
       try {
         const res = await billingService.getUsage()
-        if (!cancelled) setUsage(res.data?.data ?? (res as { data?: BillingUsage }).data ?? null)
+        if (!cancelled) setUsage(unwrapApiPayload<BillingUsage>(res))
       } catch {
         if (!cancelled) setError('Impossible de charger votre abonnement.')
       } finally {

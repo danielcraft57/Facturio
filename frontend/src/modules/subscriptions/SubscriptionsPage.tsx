@@ -173,7 +173,7 @@ export function SubscriptionsPage() {
       setSavingSubscription(true)
       setError(null)
       await subscriptionsService.createSubscription({
-        clientId: Number(subscriptionClientId),
+        clientId: String(subscriptionClientId),
         planId: Number(subscriptionPlanId),
         quantity: subscriptionQuantity === '' ? 1 : Number(subscriptionQuantity),
         startDate: subscriptionStartDate || undefined,

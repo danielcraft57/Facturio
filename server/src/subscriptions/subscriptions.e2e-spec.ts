@@ -5,6 +5,7 @@ import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingInterval, SubscriptionStatus } from '@prisma/client';
 import { createTestUser, authenticatedRequest, type TestUser } from '../common/test-helpers/auth.helper';
+import { generateEntityId } from '../common/entity-id';
 
 function uniqueEmail(base: string): string {
 	const [local, domain] = base.split('@');
@@ -44,7 +45,7 @@ describe('Subscriptions e2e', () => {
 		await prisma.product.deleteMany();
 
 		const client = await prisma.client.create({
-			data: {
+			data: { id: generateEntityId(), 
 				name: 'Client Abonnement',
 				email: uniqueEmail('sub-client@test.com'),
 				isCompany: true,

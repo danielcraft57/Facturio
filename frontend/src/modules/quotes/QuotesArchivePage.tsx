@@ -57,7 +57,7 @@ export function QuotesArchivePage() {
   const handleRestore = async (id: string | number) => {
     try {
       setRestoringId(id)
-      await quoteService.restoreQuote(Number(id))
+      await quoteService.restoreQuote(String(id))
       toast.success('Devis restauré')
       await load()
     } catch (err: unknown) {

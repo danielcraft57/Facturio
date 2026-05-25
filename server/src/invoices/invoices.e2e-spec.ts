@@ -1,4 +1,5 @@
 import * as request from 'supertest';
+import { generateEntityId } from '../common/entity-id';
 import * as cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -53,7 +54,7 @@ describe('Invoices e2e', () => {
 
 	it('create invoice then add payment -> status paid', async () => {
 		const client = await prisma.client.create({
-			data: { name: 'Test Client', email: uniqueEmail('test-invoice@example.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
+			data: { id: generateEntityId(),  name: 'Test Client', email: uniqueEmail('test-invoice@example.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
 		});
 
 		// CREATE INVOICE
@@ -97,7 +98,7 @@ describe('Invoices e2e', () => {
 
 	it('VAT calculations and policies', async () => {
 		const client = await prisma.client.create({
-			data: { name: 'VAT Client', email: uniqueEmail('vat-invoice@test.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
+			data: { id: generateEntityId(),  name: 'VAT Client', email: uniqueEmail('vat-invoice@test.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
 		});
 
 		// Test TVA française (20%)
@@ -117,7 +118,7 @@ describe('Invoices e2e', () => {
 
 		// Test client UE B2B (0% TVA)
 		const clientUE = await prisma.client.create({
-			data: {
+			data: { id: generateEntityId(), 
 				name: 'UE Client',
 				email: uniqueEmail('ue-invoice@test.com'),
 				isCompany: true,
@@ -147,7 +148,7 @@ describe('Invoices e2e', () => {
 
 	it('PDF generation', async () => {
 		const client = await prisma.client.create({
-			data: { name: 'PDF Client INV', email: uniqueEmail('pdf-inv@test.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
+			data: { id: generateEntityId(),  name: 'PDF Client INV', email: uniqueEmail('pdf-inv@test.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
 		});
 		const invoice = await authenticatedRequest(app, testUser.cookies)
 			.post('/api/invoices')
@@ -171,7 +172,7 @@ describe('Invoices e2e', () => {
 
 	it('validation errors', async () => {
 		const client = await prisma.client.create({
-			data: { name: 'Test Client', email: uniqueEmail('test-invoice2@example.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
+			data: { id: generateEntityId(),  name: 'Test Client', email: uniqueEmail('test-invoice2@example.com'), isCompany: true, countryCode: 'FR', organizationId: testUser.organizationId }
 		});
 
 		// Client inexistant

@@ -39,7 +39,7 @@ describe('subscriptionsService', () => {
       data: { id: 1, clientId: 1, planId: 1 },
     })
 
-    const payload = { clientId: 1, planId: 2, quantity: 3 }
+    const payload = { clientId: '1', planId: 2, quantity: 3 }
 
     const res = await subscriptionsService.createSubscription(payload)
 

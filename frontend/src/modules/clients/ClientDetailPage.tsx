@@ -128,7 +128,7 @@ export function ClientDetailPage() {
     if (!id) return
     
     try {
-      const response = await quoteService.getQuotes({ clientId: Number(id) }, 1, 100)
+      const response = await quoteService.getQuotes({ clientId: id }, 1, 100)
       if (response.data?.data) {
         setQuotes(response.data.data)
       }
