@@ -98,6 +98,8 @@ sudo systemctl restart facturio
 
 La migration CUID supprime clients / factures / devis liés avant conversion des IDs en `TEXT` (réimport seed si besoin).
 
+Si l’erreur mentionne `incompatible types: integer and text` sur `Invoice_clientId_fkey`, faire un `git pull` (correctif : FK supprimées avant `ALTER TYPE`), puis `resolve --rolled-back` et relancer `facturio-update`.
+
 ## Vérifications
 
 ```bash
