@@ -15,8 +15,8 @@ describe('Payments e2e', () => {
 	let app: INestApplication;
 	let prisma: PrismaService;
 	let testUser: TestUser;
-	let testClientId: number;
-	let testInvoiceId: number;
+	let testClientId: string;
+	let testInvoiceId: string;
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({

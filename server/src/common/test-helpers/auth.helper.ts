@@ -66,21 +66,14 @@ export async function createTestUser(
 		})
 		.expect(201);
 
+	// Inscription renvoie un JWT même si l'email n'est pas vérifié (emailVerificationPending).
+	// Les e2e doivent activer le compte pour passer EmailVerifiedGuard.
+	await activatePendingUser(prisma, email);
+
 	let cookies = parseCookies(signupRes.headers['set-cookie']);
 	let token: string | undefined = signupRes.body?.access_token;
 
-	if (signupRes.body?.needVerification || !token) {
-		await prisma.user.update({
-			where: { email },
-			data: {
-				status: 'ACTIVE',
-				emailVerified: true,
-				emailVerifiedAt: new Date(),
-				emailVerificationToken: null,
-				emailVerificationExpires: null,
-			},
-		});
-
+	if (!token) {
 		const loginRes = await (request as any)(httpServer)
 			.post('/api/auth/login')
 			.send({ email, password })
@@ -94,6 +87,13 @@ export async function createTestUser(
 		where: { email },
 		include: { organization: true },
 	});
+
+	if (user?.organizationId) {
+		await prisma.organization.update({
+			where: { id: user.organizationId },
+			data: { onboardingCompletedAt: new Date() },
+		});
+	}
 
 	if (!user) {
 		throw new Error('Utilisateur non créé');

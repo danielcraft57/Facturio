@@ -1,7 +1,7 @@
-import { IsInt, IsNotEmpty, IsNumber, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
 
 export class ApplyAvoirDto {
-	@IsInt()
+	@IsString()
 	@IsNotEmpty()
 	invoiceId!: string;
 
