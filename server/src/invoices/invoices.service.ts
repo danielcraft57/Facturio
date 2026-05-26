@@ -89,7 +89,7 @@ export interface UpdateInvoiceInput {
  * - La création de factures avec numérotation automatique
  * - Le calcul automatique des totaux (HT, TVA, TTC)
  * - La politique TVA selon le client (FR, UE, international, exonéré)
- * - La comptabilisation automatique (écritures comptables)
+ * - La comptabilisation à l'émission (vente VE) et au paiement (encaissement BQ)
  * - La gestion des paiements et du solde
  * - Le filtrage multi-tenant par organizationId
  * 
@@ -128,6 +128,20 @@ export class InvoicesService {
 		meta?: { number?: string; status?: string },
 	): void {
 		if (organizationId) this.realtime.emit(organizationId, 'invoices', action, id, meta);
+	}
+
+	/** Statuts pour lesquels la vente doit être comptabilisée (émise, pas brouillon). */
+	private isEmittedInvoiceStatus(status: string): boolean {
+		return status === 'SENT' || status === 'PAID' || status === 'OVERDUE';
+	}
+
+	/** Écriture VE 411/706/44571 — à l'émission, pas en brouillon (idempotent). */
+	private async postSaleOnEmission(invoiceId: string): Promise<void> {
+		try {
+			await this.accounting.postInvoiceSale({ invoiceId });
+		} catch (err) {
+			this.logger.warn(`Compta vente facture ${invoiceId}: ${(err as Error).message}`);
+		}
 	}
 
 	/**
@@ -382,14 +396,13 @@ export class InvoicesService {
 			include: { lines: true, client: true, payments: true }
 		});
 
-		// Comptabilisation automatique de la vente (411/706/44571)
-		try {
-			await this.accounting.postInvoiceSale({ invoiceId: created.id });
-		} catch (_) {}
+		if (this.isEmittedInvoiceStatus(invoiceStatus)) {
+			await this.postSaleOnEmission(created.id);
+		}
 
 		if (markPaid) {
 			const payDate = data.externalPaymentDate ? new Date(data.externalPaymentDate) : new Date();
-			await this.prisma.payment.create({
+			const extPayment = await this.prisma.payment.create({
 				data: {
 					invoiceId: created.id,
 					amount: totals.total,
@@ -402,6 +415,8 @@ export class InvoicesService {
 				await this.accounting.postInvoicePayment({
 					invoiceId: created.id,
 					amount: totals.total,
+					paymentId: extPayment.id,
+					date: payDate
 				});
 			} catch (_) {}
 			const full = await this.findOne(created.id, orgId);
@@ -545,6 +560,7 @@ export class InvoicesService {
 		const paid = agg?._sum?.amount ? (agg._sum.amount as any).toNumber?.() ?? Number(agg._sum.amount) : 0;
 		const newBalance = totals.total - paid;
 
+		const previousStatus = invoice?.status ?? 'DRAFT';
 		const updated = await this.prisma.invoice.update({
 			where: { id },
 			data: {
@@ -572,6 +588,12 @@ export class InvoicesService {
 			},
 			include: { lines: true, client: true, payments: true }
 		});
+		if (
+			this.isEmittedInvoiceStatus(updated.status) &&
+			!this.isEmittedInvoiceStatus(previousStatus)
+		) {
+			await this.postSaleOnEmission(id);
+		}
 		this.notifyInvoice(organizationId, 'updated', id, {
 			number: updated.number,
 			status: updated.status,
@@ -749,7 +771,12 @@ export class InvoicesService {
 		});
 		// Comptabilisation de l'encaissement (512/411)
 		try {
-			await this.accounting.postInvoicePayment({ invoiceId: id, amount });
+			await this.accounting.postInvoicePayment({
+				invoiceId: id,
+				amount,
+				paymentId: payment.id,
+				date: payment.date
+			});
 		} catch (_) {}
 
 		if (newStatus === 'PAID' && !wasFullyPaid) {
@@ -914,6 +941,9 @@ export class InvoicesService {
 		await this.prisma.emailEvent.create({
 			data: { invoiceId: id, type: 'sent' }
 		});
+		if (this.isEmittedInvoiceStatus(nextStatus)) {
+			await this.postSaleOnEmission(id);
+		}
 		const publicUrl = InvoicesService.buildPublicPaymentUrl(token);
 		this.notifyInvoice(organizationId, 'sent', id, {
 			number: updated.number,

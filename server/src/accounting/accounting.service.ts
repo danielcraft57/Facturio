@@ -345,21 +345,196 @@ export class AccountingService {
 	 * @returns Écriture créée
 	 * @throws {BadRequestException} Si facture introuvable
 	 */
+	private saleReference(invoiceNumber: string): string {
+		return `VENTE ${invoiceNumber}`;
+	}
+
+	private paymentReference(invoiceNumber: string, paymentId?: number): string {
+		return paymentId != null ? `PAIEMENT ${invoiceNumber}#${paymentId}` : `PAIEMENT ${invoiceNumber}`;
+	}
+
+	private async entryExists(reference: string): Promise<boolean> {
+		const found = await this.prisma.journalEntry.findFirst({
+			where: { reference, status: 'POSTED' }
+		});
+		return !!found;
+	}
+
+	/**
+	 * Liste les mouvements (lignes d'écritures) sur une période.
+	 */
+	async listMovements(params: { start?: string; end?: string; organizationId?: number }) {
+		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
+		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
+
+		const orgInvoiceNumbers =
+			params.organizationId != null
+				? new Set(
+						(
+							await this.prisma.invoice.findMany({
+								where: { organizationId: params.organizationId },
+								select: { number: true }
+							})
+						).map(i => i.number)
+					)
+				: null;
+
+		const lines = await this.prisma.journalLine.findMany({
+			where: { entry: { date: { gte: start, lte: end }, status: 'POSTED' } },
+			include: { account: true, entry: { include: { journal: true } } },
+			orderBy: [{ entry: { date: 'desc' } }, { entry: { id: 'desc' } }, { id: 'asc' }]
+		});
+
+		const belongsToOrg = (reference: string | null | undefined): boolean => {
+			if (!orgInvoiceNumbers || !reference) return true;
+			if (reference.startsWith('VENTE ')) return orgInvoiceNumbers.has(reference.slice(6));
+			if (reference.startsWith('PAIEMENT ')) return orgInvoiceNumbers.has(reference.slice(9).split('#')[0]);
+			return true;
+		};
+
+		const filtered = lines.filter(l => belongsToOrg(l.entry.reference));
+
+		return filtered.map(l => ({
+			lineId: l.id,
+			entryId: l.entryId,
+			date: l.entry.date,
+			journalCode: l.entry.journal.code,
+			journalName: l.entry.journal.name,
+			reference: l.entry.reference,
+			memo: l.entry.memo,
+			accountCode: l.account.code,
+			accountName: l.account.name,
+			description: l.description,
+			debit: this.toNumber(l.debit),
+			credit: this.toNumber(l.credit)
+		}));
+	}
+
+	/**
+	 * Indicateurs financiers dérivés des factures payées sur la période.
+	 */
+	async getFinanceSummary(params: { start?: string; end?: string; organizationId?: number }) {
+		const start = params.start ? new Date(params.start) : new Date(new Date().getFullYear(), 0, 1);
+		const end = params.end ? new Date(params.end) : new Date();
+		const where: any = {
+			status: 'PAID',
+			date: { gte: start, lte: end }
+		};
+		if (params.organizationId != null) where.organizationId = params.organizationId;
+
+		const paid = await this.prisma.invoice.findMany({
+			where,
+			select: { subtotal: true, tax: true, total: true, number: true }
+		});
+
+		let revenueHt = 0;
+		let vatCollected = 0;
+		let totalTtc = 0;
+		for (const inv of paid) {
+			revenueHt += this.toNumber(inv.subtotal);
+			vatCollected += this.toNumber(inv.tax);
+			totalTtc += this.toNumber(inv.total);
+		}
+
+		const movements = await this.listMovements({ start: params.start, end: params.end, organizationId: params.organizationId });
+
+		return {
+			paidInvoicesCount: paid.length,
+			revenueHt: Number(revenueHt.toFixed(2)),
+			vatCollected: Number(vatCollected.toFixed(2)),
+			totalTtc: Number(totalTtc.toFixed(2)),
+			movementsCount: movements.length
+		};
+	}
+
+	/**
+	 * Génère les écritures manquantes à partir des factures émises / payées.
+	 */
+	async syncFromInvoices(organizationId?: number) {
+		const where: any = {
+			status: { in: ['SENT', 'PAID', 'OVERDUE'] }
+		};
+		if (organizationId != null) where.organizationId = organizationId;
+
+		const invoices = await this.prisma.invoice.findMany({
+			where,
+			include: { payments: true },
+			orderBy: { date: 'asc' }
+		});
+
+		const result = { salesCreated: 0, paymentsCreated: 0, skipped: 0, errors: [] as string[] };
+
+		for (const invoice of invoices) {
+			const saleRef = this.saleReference(invoice.number);
+			try {
+				if (!(await this.entryExists(saleRef))) {
+					await this.postInvoiceSale({
+						invoiceId: invoice.id,
+						date: invoice.date
+					});
+					result.salesCreated++;
+				}
+			} catch (e: any) {
+				result.errors.push(`${saleRef}: ${e?.message ?? 'erreur'}`);
+			}
+
+			for (const payment of invoice.payments) {
+				const payRef = this.paymentReference(invoice.number, payment.id);
+				const legacyRef = this.paymentReference(invoice.number);
+				const exists =
+					(await this.entryExists(payRef)) ||
+					(invoice.payments.length === 1 && (await this.entryExists(legacyRef)));
+				if (exists) {
+					result.skipped++;
+					continue;
+				}
+				try {
+					await this.postInvoicePayment({
+						invoiceId: invoice.id,
+						amount: this.toNumber(payment.amount),
+						paymentId: payment.id,
+						date: payment.date
+					});
+					result.paymentsCreated++;
+				} catch (e: any) {
+					result.errors.push(`${payRef}: ${e?.message ?? 'erreur'}`);
+				}
+			}
+		}
+
+		return result;
+	}
+
 	// Vente: 411/706/44571
-	async postInvoiceSale(params: { invoiceId: string; customerAccountCode?: string; revenueAccountCode?: string; vatCollectedAccountCode?: string }) {
+	async postInvoiceSale(params: {
+		invoiceId: string;
+		date?: Date | string;
+		customerAccountCode?: string;
+		revenueAccountCode?: string;
+		vatCollectedAccountCode?: string;
+	}) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
 		if (!invoice) throw new BadRequestException('Facture introuvable');
+		if (await this.entryExists(this.saleReference(invoice.number))) {
+			return null;
+		}
 		const subtotal = Number((invoice.subtotal as any)?.toNumber?.() ?? invoice.subtotal);
 		const tax = Number((invoice.tax as any)?.toNumber?.() ?? invoice.tax);
 		const total = Number((invoice.total as any)?.toNumber?.() ?? invoice.total);
 		const journal = await this.prisma.journal.findUnique({ where: { code: 'VE' } });
 		if (!journal) throw new BadRequestException('Journal VE manquant');
 		const lines = [
-			{ accountCode: params.customerAccountCode ?? '411', debit: total },
-			{ accountCode: params.revenueAccountCode ?? '706', credit: subtotal },
-			{ accountCode: params.vatCollectedAccountCode ?? '44571', credit: tax }
+			{ accountCode: params.customerAccountCode ?? '411', debit: total, description: `Client — ${invoice.number}` },
+			{ accountCode: params.revenueAccountCode ?? '706', credit: subtotal, description: 'Prestations de services' },
+			{ accountCode: params.vatCollectedAccountCode ?? '44571', credit: tax, description: 'TVA collectée 20 %' }
 		];
-		return this.postEntry({ journalCode: 'VE', reference: `VENTE ${invoice.number}`, lines });
+		return this.postEntry({
+			journalCode: 'VE',
+			date: params.date ?? invoice.date,
+			reference: this.saleReference(invoice.number),
+			memo: `Facture ${invoice.number}`,
+			lines
+		});
 	}
 
 	/**
@@ -372,14 +547,27 @@ export class AccountingService {
 	 * @throws {BadRequestException} Si facture introuvable
 	 */
 	// Encaissement: 512/411
-	async postInvoicePayment(params: { invoiceId: string; amount: number; bankAccountCode?: string; customerAccountCode?: string }) {
+	async postInvoicePayment(params: {
+		invoiceId: string;
+		amount: number;
+		paymentId?: number;
+		date?: Date | string;
+		bankAccountCode?: string;
+		customerAccountCode?: string;
+	}) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
 		if (!invoice) throw new BadRequestException('Facture introuvable');
 		const lines = [
-			{ accountCode: params.bankAccountCode ?? '512', debit: params.amount },
-			{ accountCode: params.customerAccountCode ?? '411', credit: params.amount }
+			{ accountCode: params.bankAccountCode ?? '512', debit: params.amount, description: 'Encaissement banque' },
+			{ accountCode: params.customerAccountCode ?? '411', credit: params.amount, description: `Règlement ${invoice.number}` }
 		];
-		return this.postEntry({ journalCode: 'BQ', reference: `PAIEMENT ${invoice.number}`, lines });
+		return this.postEntry({
+			journalCode: 'BQ',
+			date: params.date,
+			reference: this.paymentReference(invoice.number, params.paymentId),
+			memo: `Encaissement facture ${invoice.number}`,
+			lines
+		});
 	}
 
 	// Achat services: 622/44566/401

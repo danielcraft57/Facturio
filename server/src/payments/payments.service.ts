@@ -99,7 +99,12 @@ export class PaymentsService {
 
 		// Comptabilisation de l'encaissement
 		try {
-			await this.accounting.postInvoicePayment({ invoiceId: data.invoiceId, amount: data.amount });
+			await this.accounting.postInvoicePayment({
+				invoiceId: data.invoiceId,
+				amount: data.amount,
+				paymentId: payment.id,
+				date: payment.date
+			});
 		} catch (_) {}
 
 		if (newStatus === 'PAID' && !wasFullyPaid) {

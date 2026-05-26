@@ -36,24 +36,58 @@ export interface JournalLine {
   credit: number
 }
 
-export interface TrialBalance {
-  account: Account
-  openingDebit: number
-  openingCredit: number
-  periodDebit: number
-  periodCredit: number
-  closingDebit: number
-  closingCredit: number
-}
-
-export interface GeneralLedgerEntry {
-  date: string
-  journal: string
-  reference?: string
-  description?: string
+/** Balance API (champs plats renvoyés par le backend). */
+export interface TrialBalanceRow {
+  accountCode: string
+  accountName: string
   debit: number
   credit: number
   balance: number
+}
+
+export interface GeneralLedgerAccountGroup {
+  accountCode: string
+  accountName: string
+  lines: Array<{
+    date: string
+    journalCode: string
+    reference?: string
+    memo?: string
+    debit: number
+    credit: number
+  }>
+  totalDebit: number
+  totalCredit: number
+}
+
+export interface AccountingMovement {
+  lineId: number
+  entryId: number
+  date: string
+  journalCode: string
+  journalName: string
+  reference?: string
+  memo?: string
+  accountCode: string
+  accountName: string
+  description?: string
+  debit: number
+  credit: number
+}
+
+export interface FinanceSummary {
+  paidInvoicesCount: number
+  revenueHt: number
+  vatCollected: number
+  totalTtc: number
+  movementsCount: number
+}
+
+export interface SyncInvoicesResult {
+  salesCreated: number
+  paymentsCreated: number
+  skipped: number
+  errors: string[]
 }
 
 export class AccountingService {
@@ -85,27 +119,55 @@ export class AccountingService {
     return apiClient.post<JournalEntry>(`${this.baseUrl}/entries`, data)
   }
 
-  async getTrialBalance(start?: string, end?: string): Promise<ApiResponse<TrialBalance[]>> {
+  async getTrialBalance(start?: string, end?: string): Promise<ApiResponse<TrialBalanceRow[]>> {
     const params = new URLSearchParams()
     if (start) params.append('start', start)
     if (end) params.append('end', end)
     const query = params.toString()
-    return apiClient.getCached<TrialBalance[]>(
+    return apiClient.getCached<TrialBalanceRow[]>(
       `${this.baseUrl}/reports/balance${query ? `?${query}` : ''}`,
       5 * 60 * 1000
     )
   }
 
-  async getGeneralLedger(start?: string, end?: string, accountCode?: string): Promise<ApiResponse<GeneralLedgerEntry[]>> {
+  async getGeneralLedger(
+    start?: string,
+    end?: string,
+    accountCode?: string
+  ): Promise<ApiResponse<GeneralLedgerAccountGroup[]>> {
     const params = new URLSearchParams()
     if (start) params.append('start', start)
     if (end) params.append('end', end)
     if (accountCode) params.append('account', accountCode)
     const query = params.toString()
-    return apiClient.getCached<GeneralLedgerEntry[]>(
+    return apiClient.getCached<GeneralLedgerAccountGroup[]>(
       `${this.baseUrl}/reports/general-ledger${query ? `?${query}` : ''}`,
       5 * 60 * 1000
     )
+  }
+
+  async getMovements(start?: string, end?: string): Promise<ApiResponse<AccountingMovement[]>> {
+    const params = new URLSearchParams()
+    if (start) params.append('start', start)
+    if (end) params.append('end', end)
+    const query = params.toString()
+    return apiClient.get<AccountingMovement[]>(
+      `${this.baseUrl}/movements${query ? `?${query}` : ''}`
+    )
+  }
+
+  async getSummary(start?: string, end?: string): Promise<ApiResponse<FinanceSummary>> {
+    const params = new URLSearchParams()
+    if (start) params.append('start', start)
+    if (end) params.append('end', end)
+    const query = params.toString()
+    return apiClient.get<FinanceSummary>(
+      `${this.baseUrl}/summary${query ? `?${query}` : ''}`
+    )
+  }
+
+  async syncFromInvoices(): Promise<ApiResponse<SyncInvoicesResult>> {
+    return apiClient.post<SyncInvoicesResult>(`${this.baseUrl}/sync/invoices`, {})
   }
 
   async exportFEC(start?: string, end?: string): Promise<Blob> {

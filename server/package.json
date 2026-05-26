@@ -6,7 +6,7 @@
     "build": "tsc -p tsconfig.json && node scripts/copy-pdf-assets.js",
     "build:prod": "prisma generate --schema=prisma/postgresql/schema.prisma && tsc -p tsconfig.json && node scripts/copy-pdf-assets.js",
     "start": "node dist/main.js",
-    "start:dev": "cross-env NODE_ENV=dev DATABASE_URL=file:./prisma/prisma/dev.db PORT=3000 LOG_LEVEL=debug ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/main.ts",
+    "start:dev": "cross-env NODE_ENV=dev DATABASE_URL=file:./prisma/prisma/dev.db prisma generate && cross-env NODE_ENV=dev DATABASE_URL=file:./prisma/prisma/dev.db PORT=3000 LOG_LEVEL=debug ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/main.ts",
     "start:prod": "cross-env NODE_ENV=prod node dist/main.js",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "cross-env NODE_ENV=test jest -c jest.config.js --testPathIgnorePatterns=e2e-spec",

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AccountingService } from './accounting.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('accounting')
 export class AccountingController {
@@ -127,6 +128,29 @@ export class AccountingController {
 	@Get('reports/general-ledger')
 	getGeneralLedger(@Query('start') start: string, @Query('end') end: string, @Query('account') accountCode?: string) {
 		return this.accounting.getGeneralLedger({ start, end, accountCode });
+	}
+
+	@Get('movements')
+	listMovements(
+		@Query('start') start: string,
+		@Query('end') end: string,
+		@CurrentUser() user: { organizationId?: number }
+	) {
+		return this.accounting.listMovements({ start, end, organizationId: user?.organizationId });
+	}
+
+	@Get('summary')
+	getSummary(
+		@Query('start') start: string,
+		@Query('end') end: string,
+		@CurrentUser() user: { organizationId?: number }
+	) {
+		return this.accounting.getFinanceSummary({ start, end, organizationId: user?.organizationId });
+	}
+
+	@Post('sync/invoices')
+	syncFromInvoices(@CurrentUser() user: { organizationId?: number }) {
+		return this.accounting.syncFromInvoices(user?.organizationId);
 	}
 }
 
