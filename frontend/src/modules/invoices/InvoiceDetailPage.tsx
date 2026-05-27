@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import {
   Box,
@@ -54,6 +54,7 @@ import { EInvoicingReadinessPanel } from '../e-invoicing/EInvoicingReadinessPane
 import { useRealtimePanelHighlight } from '../../hooks/useRealtimeRowHighlight'
 import { getRealtimePanelSx } from '../../utils/realtimeRowHighlight'
 import { isDocumentFolder } from '../../types/documentFolders'
+import { usePageTitle } from '../../hooks/usePageTitle'
 
 interface Payment {
   id: number
@@ -84,74 +85,71 @@ export function InvoiceDetailPage() {
   const [sendingEmail, setSendingEmail] = useState(false)
   const toast = useToast()
   const panelHighlight = useRealtimePanelHighlight('invoices', id)
+  const initialLoadDone = useRef(false)
 
-  useEffect(() => {
-    if (id) {
-      loadData()
+  const loadPayments = useCallback(async (invoiceTotal: number) => {
+    if (!id) return
+    try {
+      const response = await apiClient.get<Payment[]>(`/factures/${id}/payments`)
+      const payload = unwrapApiPayload<Payment[]>(response)
+      const paymentsList = Array.isArray(payload) ? payload : []
+      setPayments(paymentsList)
+      const totalPaid = paymentsList.reduce((sum, p) => sum + p.amount, 0)
+      setPaymentAmount(Math.max(0, invoiceTotal - totalPaid))
+    } catch (err) {
+      console.error('Erreur lors du chargement des paiements:', err)
     }
   }, [id])
+
+  const loadInvoice = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!id) return
+    if (!opts?.silent) setLoading(true)
+    setError(null)
+    try {
+      const data = await invoiceService.getInvoice(id)
+      setInvoice(data)
+      if (!opts?.silent) setLoading(false)
+      initialLoadDone.current = true
+      void loadPayments(data.total)
+      if (!data.seenAt) {
+        void invoiceService.updateDocumentFlags(data.id, { markSeen: true }).catch(() => {})
+      }
+    } catch (err: unknown) {
+      setInvoice(null)
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement de la facture')
+      console.error('Invoice error:', err)
+      if (!opts?.silent) setLoading(false)
+      initialLoadDone.current = true
+    }
+  }, [id, loadPayments])
+
+  useEffect(() => {
+    if (!id) return
+    initialLoadDone.current = false
+    void loadInvoice()
+  }, [id, loadInvoice])
+
+  usePageTitle(
+    loading
+      ? 'Chargement de la facture…'
+      : invoice
+        ? `Facture ${invoice.number}`
+        : error
+          ? 'Facture introuvable'
+          : null,
+  )
 
   useEffect(() => {
     if (!id) return
     const onRealtime = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ id?: number }>).detail
+      const detail = (ev as CustomEvent<{ id?: string | number }>).detail
       if (detail?.id != null && String(detail.id) === id) {
-        void loadData()
+        void loadInvoice({ silent: initialLoadDone.current })
       }
     }
     window.addEventListener('facturio:invoice-realtime', onRealtime)
     return () => window.removeEventListener('facturio:invoice-realtime', onRealtime)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData stable enough
-  }, [id])
-
-  useEffect(() => {
-    if (!invoice?.id || invoice.seenAt) return
-    void invoiceService.updateDocumentFlags(invoice.id, { markSeen: true })
-  }, [invoice?.id, invoice?.seenAt])
-
-  const loadData = async () => {
-    await Promise.all([loadInvoice(), loadPayments()])
-  }
-
-  const loadInvoice = async () => {
-    if (!id) return
-    
-    try {
-      setLoading(true)
-      setError(null)
-      apiClient.invalidateCache(`/invoices/${id}`)
-      const response = await invoiceService.getInvoice(id)
-      const raw = unwrapApiPayload<Record<string, unknown>>(response)
-      if (raw) {
-        setInvoice(normalizeInvoiceFromApi(raw))
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement de la facture')
-      console.error('Invoice error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadPayments = async () => {
-    if (!id) return
-    
-    try {
-      const response = await apiClient.get<Payment[]>(`/invoices/${id}/payments`)
-      if (response.data) {
-        const paymentsList = Array.isArray(response.data) ? response.data : []
-        setPayments(paymentsList)
-        // Mettre à jour le montant de paiement après avoir chargé les paiements
-        if (invoice) {
-          const totalPaid = paymentsList.reduce((sum, p) => sum + p.amount, 0)
-          const remaining = invoice.total - totalPaid
-          setPaymentAmount(Math.max(0, remaining))
-        }
-      }
-    } catch (err) {
-      console.error('Erreur lors du chargement des paiements:', err)
-    }
-  }
+  }, [id, loadInvoice])
 
   const handleDownloadPDF = async () => {
     if (!id) return
@@ -193,7 +191,7 @@ export function InvoiceDetailPage() {
         href: `/factures/${id}`,
       })
       setSendDialogOpen(false)
-      await loadData()
+      await loadInvoice({ silent: true })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'envoi")
     } finally {
@@ -243,7 +241,7 @@ export function InvoiceDetailPage() {
       })
       setPaymentDialogOpen(false)
       setPaymentNotes('')
-      await loadData()
+      await loadInvoice({ silent: true })
       // Réinitialiser le montant pour le prochain paiement après rechargement
       setTimeout(() => {
         if (invoice) {
@@ -419,7 +417,25 @@ export function InvoiceDetailPage() {
         </Stack>
       </Stack>
 
-      <EInvoicingReadinessPanel invoiceId={Number(id)} />
+      {/^\d+$/.test(id ?? '') ? <EInvoicingReadinessPanel invoiceId={Number(id)} /> : null}
+
+      {(invoice.tags?.includes('ACOMPTE_10') || invoice.tags?.includes('SOLDE_APRES_ACOMPTE')) && (
+        <Alert
+          severity={invoice.tags?.includes('ACOMPTE_10') ? 'warning' : 'info'}
+          sx={{ mb: 2, borderRadius: 2 }}
+        >
+          <Typography fontWeight={700} sx={{ mb: 0.5 }}>
+            {invoice.tags?.includes('ACOMPTE_10')
+              ? "Facture d'acompte — paiement acompte (10 %)"
+              : 'Facture de solde'}
+          </Typography>
+          {invoice.notes && (
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {invoice.notes}
+            </Typography>
+          )}
+        </Alert>
+      )}
 
       {/* Informations principales */}
       <GridLegacy container spacing={3} sx={{ mb: 3 }}>
@@ -820,7 +836,7 @@ export function InvoiceDetailPage() {
           onSubmit={async (items) => {
             try {
               await invoiceService.createCreditNote(invoice.id, items)
-              await loadData()
+              await loadInvoice({ silent: true })
               alert('Avoir créé avec succès')
             } catch (err: any) {
               setError(err.message || 'Erreur lors de la création de l\'avoir')

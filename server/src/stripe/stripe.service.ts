@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnav
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { assertValidPublicToken } from '../invoices/public-token.util';
+import { canAccessInvoiceByPublicToken } from '../invoices/invoice-public-access.util';
 import { decryptOrgStripeSecrets } from '../crypto/organization-stripe-secrets.util';
 import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
 import { createStripeClient, type StripeClient } from './stripe-client';
@@ -80,7 +81,7 @@ export class StripeService {
 				},
 			},
 		});
-		if (!invoice || !invoice.sentAt) {
+		if (!invoice || !canAccessInvoiceByPublicToken(invoice)) {
 			throw new NotFoundException('Facture introuvable');
 		}
 		if (!invoice.organization) {

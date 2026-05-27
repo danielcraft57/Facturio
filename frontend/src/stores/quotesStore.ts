@@ -37,6 +37,12 @@ interface QuotesState {
   acceptQuote: (id: string) => Promise<{ quote: Quote; invoiceId: string | null } | null>;
   rejectQuote: (id: string) => Promise<Quote | null>;
   convertToInvoice: (id: string) => Promise<string | null>;
+  payQuote: (
+    id: string,
+    data: { mode: 'FULL' | 'DEPOSIT'; depositRate?: number },
+  ) => Promise<{ quote: Quote; invoiceId: string | null; invoiceNumber?: string } | null>;
+
+  remindDepositQuote: (id: string) => Promise<boolean>;
   
   // State management
   setSelectedQuote: (quote: Quote | null) => void;
@@ -165,18 +171,18 @@ export const useQuotesStore = create<QuotesState>()(
       },
 
       sendQuote: async (id: string) => {
-        try {
-          const res = await quoteService.sendQuote(id);
-          const quote = (res as any)?.data ?? res;
-          if (quote && isEntityCuid(quote.id)) {
-            set(state => ({
-              quotes: state.quotes.map(q => (q.id === id ? quote : q)),
-              selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote
-            }));
-            return quote;
-          }
-        } catch (error) {
-          console.error('Erreur lors de l\'envoi du devis:', error);
+        const res = await quoteService.sendQuote(id);
+        const anyRes: any = res as any;
+        if (anyRes?.success === false) {
+          throw new Error(anyRes?.error || "Impossible d'envoyer le devis");
+        }
+        const quote = anyRes?.data ?? anyRes;
+        if (quote && isEntityCuid(quote.id)) {
+          set((state) => ({
+            quotes: state.quotes.map((q) => (q.id === id ? quote : q)),
+            selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote,
+          }));
+          return quote;
         }
         return null;
       },
@@ -229,6 +235,39 @@ export const useQuotesStore = create<QuotesState>()(
           console.error('Erreur lors de la conversion en facture:', error);
         }
         return null;
+      },
+
+      payQuote: async (id: string, data) => {
+        try {
+          const res = await quoteService.payQuote(id, data);
+          const raw: any = (res as any)?.data ?? res;
+          const quote: any = raw?.quote ?? raw;
+          if (quote && isEntityCuid(quote.id)) {
+            set((state) => ({
+              quotes: state.quotes.map((q) => (q.id === id ? quote : q)),
+              selectedQuote: state.selectedQuote?.id === id ? quote : state.selectedQuote,
+            }));
+            return {
+              quote,
+              invoiceId: raw?.invoiceId != null ? String(raw.invoiceId) : null,
+              invoiceNumber: raw?.invoiceNumber != null ? String(raw.invoiceNumber) : undefined,
+            };
+          }
+        } catch (error) {
+          console.error('Erreur lors du paiement du devis:', error);
+        }
+        return null;
+      },
+
+      remindDepositQuote: async (id: string) => {
+        try {
+          const res = await quoteService.remindDepositQuote(id);
+          const raw: any = (res as any)?.data ?? res;
+          return Boolean(raw?.success);
+        } catch (error) {
+          console.error("Erreur lors de la relance acompte:", error);
+          return false;
+        }
       },
 
       setSelectedQuote: (quote: Quote | null) => set({ selectedQuote: quote }),

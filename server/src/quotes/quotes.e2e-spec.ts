@@ -35,6 +35,13 @@ describe('Quotes e2e', () => {
 
 		// Créer un utilisateur de test
 		testUser = await createTestUser(app, prisma);
+		await prisma.organization.update({
+			where: { id: testUser.organizationId },
+			data: {
+				invoiceStripeSecretKey: 'sk_test_e2e_facturio',
+				invoiceStripePublishableKey: 'pk_test_e2e_facturio',
+			},
+		});
 		// On remet à zéro les données liées aux devis / factures / compta,
 		// sans supprimer les clients globaux pour ne pas casser les autres tests.
 		await prisma.$executeRawUnsafe('DELETE FROM JournalLine');

@@ -155,7 +155,8 @@ export function InvoicesPage() {
         /* ignore */
       }
     }
-    navigate(`/factures/${invoice.id}`)
+    const { openInvoiceView } = await import('../../utils/openDocumentView')
+    openInvoiceView(invoice.id)
   }
 
   const getStatusColor = (status: string) => {
@@ -245,6 +246,8 @@ export function InvoicesPage() {
       await invoiceService.sendInvoice(invoiceToSend.id, {
         to: payload.to,
         updateClientEmail: payload.updateClientEmail,
+        copyToSelf: payload.copyToSelf,
+        additionalRecipients: payload.additionalRecipients,
       })
       toast.success(`Facture ${invoiceToSend.number} envoyée à ${payload.to}`)
       logActivity({
@@ -403,8 +406,13 @@ export function InvoicesPage() {
               onNavigate={(id) => {
                 const inv = displayedInvoices.find((i) => i.id === id)
                 if (inv) void openInvoice(inv)
-                else navigate(`/factures/${id}`)
+                else {
+                  void import('../../utils/openDocumentView').then(({ openInvoiceView }) =>
+                    openInvoiceView(id),
+                  )
+                }
               }}
+              onEditNavigate={(id) => navigate(`/factures/${id}/edit`)}
               onSend={openSendDialog}
               onRemind={handleSendReminder}
               onArchive={(inv) => {

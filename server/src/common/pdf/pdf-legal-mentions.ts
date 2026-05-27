@@ -131,17 +131,14 @@ export function buildFrenchLegalFooter(ctx: LegalMentionsContext): LegalFooterCo
 	} else {
 		const validity =
 			ctx.expiryDate != null
-				? `Ce devis est valable jusqu'au ${new Date(ctx.expiryDate).toLocaleDateString('fr-FR')} inclus.`
-				: "Ce devis est valable 30 jours à compter de sa date d'émission, sauf mention contraire.";
+				? `Validité : jusqu'au ${new Date(ctx.expiryDate).toLocaleDateString('fr-FR')} inclus.`
+				: "Validité : 30 jours à compter de la date d'émission, sauf mention contraire.";
 		paragraphs.push(
-			validity,
-			'Les prix sont indiqués hors taxes (HT) ; la TVA applicable sera celle en vigueur à la date de facturation.',
-			'Acceptation : bon pour accord signé, signature précédée de la mention « Bon pour accord », ou commande ferme du client. Toute commande vaut acceptation des présentes conditions.',
-			'Acompte éventuel et modalités de règlement : selon accord écrit entre les parties.'
+			`${validity} Prix HT ; TVA en vigueur à la facturation. Acceptation par signature « Bon pour accord », bon de commande ou paiement selon modalités convenues.`,
 		);
 		if (isB2C) {
 			paragraphs.push(
-				'Droit de rétractation (consommateur) : 14 jours à compter de l\'acceptation du devis pour les contrats conclus à distance ou hors établissement, sauf exceptions légales (prestation personnalisée, etc.).'
+				'Consommateur : droit de rétractation de 14 jours (contrats à distance ou hors établissement), sauf exceptions légales.',
 			);
 		}
 	}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import {
   Alert,
   Button,
@@ -12,35 +13,27 @@ import {
   Typography,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
-import { Link as RouterLink } from 'react-router-dom'
-import type { Invoice } from '../../../services/invoices'
-import { organizationService } from '../../../services/organizationService'
+import type { Quote } from '../../../types/quote'
+import { organizationService, type OrganizationProfile } from '../../../services/organizationService'
 import { unwrapApiPayload } from '../../../services/clients'
-import type { OrganizationProfile } from '../../../services/organizationService'
 import { useAuthStore } from '../../../stores/authStore'
 
-export type SendInvoicePayload = {
+export type SendQuotePayload = {
   to: string
   updateClientEmail: boolean
   copyToSelf: boolean
   additionalRecipients: string
 }
 
-type SendInvoiceDialogProps = {
+type Props = {
   open: boolean
-  invoice: Invoice | null
+  quote: Quote | null
   onClose: () => void
-  onSend: (payload: SendInvoicePayload) => void | Promise<void>
+  onSend: (payload: SendQuotePayload) => void | Promise<void>
   sending?: boolean
 }
 
-export function SendInvoiceDialog({
-  open,
-  invoice,
-  onClose,
-  onSend,
-  sending = false,
-}: SendInvoiceDialogProps) {
+export function SendQuoteDialog({ open, quote, onClose, onSend, sending = false }: Props) {
   const [email, setEmail] = useState('')
   const [updateClientEmail, setUpdateClientEmail] = useState(true)
   const [stripeConfigured, setStripeConfigured] = useState<boolean | null>(null)
@@ -48,21 +41,16 @@ export function SendInvoiceDialog({
   const [additionalRecipients, setAdditionalRecipients] = useState('')
   const currentUser = useAuthStore((s) => s.user)
 
-  const clientHasEmail = Boolean(invoice?.client?.email?.trim())
+  const clientHasEmail = Boolean(quote?.client?.email?.trim())
 
   useEffect(() => {
-    if (open && invoice) {
-      setEmail(invoice.client?.email || '')
+    if (open && quote) {
+      setEmail(quote.client?.email || '')
       setUpdateClientEmail(!clientHasEmail)
       setCopyToSelf(true)
       setAdditionalRecipients('')
     }
-  }, [open, invoice, clientHasEmail])
-
-  const isPaid = invoice?.status === 'paid'
-  const isDepositLike = Boolean(
-    invoice?.tags?.includes('ACOMPTE_10') || invoice?.tags?.includes('SOLDE_APRES_ACOMPTE'),
-  )
+  }, [open, quote, clientHasEmail])
 
   useEffect(() => {
     if (!open) return
@@ -98,35 +86,29 @@ export function SendInvoiceDialog({
     })
   }
 
-  const blockSendBecauseStripeMissing =
-    !isPaid && stripeConfigured === false
+  // Désactivé par défaut : on active uniquement quand Stripe est confirmé configuré.
+  const canSend = stripeConfigured === true
+  const blockSend = !canSend
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Envoyer la facture par email</DialogTitle>
+      <DialogTitle>Envoyer le devis par email</DialogTitle>
       <DialogContent>
-        {invoice && (
+        {quote && (
           <>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Facture <strong>{invoice.number}</strong>
-              {isPaid ? ' — déjà réglée : le client recevra un justificatif sans lien de paiement.' : ''}
+              Devis <strong>{quote.number}</strong>
             </Typography>
-            {isPaid && (
-              <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
-                Cette facture est marquée comme payée. L’email indiquera qu’elle a déjà été réglée.
-              </Alert>
-            )}
 
-            {!isPaid && stripeConfigured === false && (
-              <Alert
-                severity="error"
-                sx={{ mb: 2, borderRadius: 2 }}
-              >
+            {stripeConfigured !== true && (
+              <Alert severity={stripeConfigured === false ? 'error' : 'warning'} sx={{ mb: 2, borderRadius: 2 }}>
                 <Typography fontWeight={800} sx={{ mb: 0.5 }}>
                   Paiement en ligne Stripe non configuré
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>
-                  Tant que Stripe prestataire n’est pas configuré, l’envoi est bloqué (le client ne pourra pas payer en ligne).
+                  {stripeConfigured === null
+                    ? 'Vérification de la configuration Stripe…'
+                    : 'Tant que Stripe prestataire n’est pas configuré, l’envoi est bloqué (le client ne pourra pas payer en ligne).'}
                 </Typography>
                 <Button
                   component={RouterLink}
@@ -170,7 +152,7 @@ export function SendInvoiceDialog({
                   onChange={(e) => setCopyToSelf(e.target.checked)}
                 />
               }
-              label="M’envoyer une copie (sans lien de paiement)"
+              label="M’envoyer une copie (sans lien d’acceptation / paiement)"
               sx={{ mt: 1 }}
             />
             {copyToSelf && (
@@ -182,7 +164,7 @@ export function SendInvoiceDialog({
                   label="M’envoyer une copie à"
                   value={currentUser?.email ?? ''}
                   InputProps={{ readOnly: true }}
-                  helperText="Copie informative sans lien de paiement."
+                  helperText="Copie informative sans lien d’acceptation ni de paiement."
                 />
                 <TextField
                   fullWidth
@@ -206,7 +188,7 @@ export function SendInvoiceDialog({
           variant="contained"
           startIcon={<SendIcon />}
           onClick={() => void handleSubmit()}
-          disabled={sending || !email.trim() || blockSendBecauseStripeMissing}
+          disabled={sending || !email.trim() || blockSend}
         >
           {sending ? 'Envoi…' : 'Envoyer'}
         </Button>
@@ -214,3 +196,4 @@ export function SendInvoiceDialog({
     </Dialog>
   )
 }
+

@@ -1,8 +1,7 @@
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { isDocumentFolder } from '../../../types/documentFolders'
-import { isEntityCuid } from '../../../utils/entityId'
+import { isEntityId } from '../../../utils/entityId'
 import { InvoicesPage } from '../../invoices/InvoicesPage'
-import { InvoiceDetailPage } from '../../invoices/InvoiceDetailPage'
 import { QuotesPage } from '../../quotes/QuotesPage'
 
 /** Redirection création depuis /factures/new ou /devis/new */
@@ -22,7 +21,11 @@ export function FacturesSegmentRoute() {
   if (folder === 'archive') return <Navigate to="/factures/archives" replace />
   if (isDocumentFolder(folder)) return <InvoicesPage />
 
-  return <InvoiceDetailPage />
+  if (isEntityId(folder)) {
+    return <Navigate to={`/factures/voir/${folder}`} replace />
+  }
+
+  return <Navigate to="/factures/inbox" replace />
 }
 
 export function DevisSegmentRoute() {
@@ -33,9 +36,8 @@ export function DevisSegmentRoute() {
   if (folder === 'archive') return <Navigate to="/devis/archives" replace />
   if (isDocumentFolder(folder)) return <QuotesPage />
 
-  // ID devis (lien client) : pas de fiche dédiée → liste avec focus recherche
-  if (isEntityCuid(folder)) {
-    return <Navigate to={`/devis/inbox?quoteId=${folder}`} replace />
+  if (isEntityId(folder)) {
+    return <Navigate to={`/devis/voir/${folder}`} replace />
   }
 
   return <Navigate to="/devis/inbox" replace />

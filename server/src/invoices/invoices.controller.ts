@@ -112,7 +112,7 @@ export class InvoicesController {
 		@Body() body: SendInvoiceDto,
 		@CurrentUser() user: any,
 	) {
-		return this.invoiceSend.sendByEmail(id, user.organizationId, body);
+		return this.invoiceSend.sendByEmail(id, user.organizationId, body, user.email);
 	}
 
 	@Post(':id/remind')
@@ -175,6 +175,16 @@ export class PublicInvoicesController {
 		const invoice = await this.invoices.findByPublicTokenForPdf(token);
 		const buf = await this.pdfService.generateInvoicePdf(invoice);
 		res.setHeader('Content-Disposition', `inline; filename=facture-${invoice.number}.pdf`);
+		return res.send(buf);
+	}
+
+	@Get(':token/engagement-contract.pdf')
+	@Header('Content-Type', 'application/pdf')
+	async downloadEngagementContractPdf(@Param('token') token: string, @Res() res: Response) {
+		assertValidPublicToken(token);
+		const invoice = await this.invoices.findByPublicTokenForPdf(token);
+		const buf = await this.pdfService.generateEngagementContractPdf(invoice);
+		res.setHeader('Content-Disposition', `inline; filename=contrat-engagement-${invoice.number}.pdf`);
 		return res.send(buf);
 	}
 }

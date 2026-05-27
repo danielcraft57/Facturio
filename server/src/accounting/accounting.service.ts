@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { parseTagsJson } from '../common/document-folder.util';
 
 /**
  * Service de comptabilité
@@ -523,17 +524,33 @@ export class AccountingService {
 		const total = Number((invoice.total as any)?.toNumber?.() ?? invoice.total);
 		const journal = await this.prisma.journal.findUnique({ where: { code: 'VE' } });
 		if (!journal) throw new BadRequestException('Journal VE manquant');
+		const tags = parseTagsJson(invoice.tags);
+		const isDeposit = tags.includes('ACOMPTE_10');
+		const isRemainder = tags.includes('SOLDE_APRES_ACOMPTE');
 		const lines = [
 			{ accountCode: params.customerAccountCode ?? '411', debit: total, description: `Client — ${invoice.number}` },
-			{ accountCode: params.revenueAccountCode ?? '706', credit: subtotal, description: 'Prestations de services' },
-			{ accountCode: params.vatCollectedAccountCode ?? '44571', credit: tax, description: 'TVA collectée 20 %' }
+			{
+				accountCode: params.revenueAccountCode ?? '706',
+				credit: subtotal,
+				description: isDeposit
+					? 'Prestations — acompte 10 %'
+					: isRemainder
+						? 'Prestations — solde après acompte'
+						: 'Prestations de services',
+			},
+			{ accountCode: params.vatCollectedAccountCode ?? '44571', credit: tax, description: 'TVA collectée 20 %' },
 		];
+		const memo = isDeposit
+			? `Facture d'acompte ${invoice.number}`
+			: isRemainder
+				? `Facture de solde ${invoice.number}`
+				: `Facture ${invoice.number}`;
 		return this.postEntry({
 			journalCode: 'VE',
 			date: params.date ?? invoice.date,
 			reference: this.saleReference(invoice.number),
-			memo: `Facture ${invoice.number}`,
-			lines
+			memo,
+			lines,
 		});
 	}
 

@@ -404,7 +404,11 @@ export function ClientDetailPage() {
                           <TableCell align="center">
                             <IconButton
                               size="small"
-                              onClick={() => navigate(`/factures/${invoice.id}`)}
+                              onClick={() => {
+                                void import('../../utils/openDocumentView').then(({ openInvoiceView }) =>
+                                  openInvoiceView(invoice.id),
+                                )
+                              }}
                             >
                               <Description />
                             </IconButton>

@@ -7,8 +7,7 @@ import { createCustomTheme, type ThemeSettings } from '../../theme/theme'
 import { AppLayout } from './components/AppLayout'
 import { PublicLayout } from './components/PublicLayout'
 import { ThemeSettingsDrawer } from './components/ThemeSettingsDrawer'
-import { ToastContainer } from '../../components/Toast'
-import { useToast } from '../../components/useToast'
+import { ToastProvider } from '../../components/useToast'
 import { TopRouteProgress } from '../../components/TopRouteProgress'
 import { DocumentFolderRouteFallback } from '../../components/loading/DocumentFolderRouteFallback'
 import { ProtectedRoute } from '../../components/ProtectedRoute'
@@ -54,6 +53,8 @@ import { ClientPaymentLayout } from './components/ClientPaymentLayout'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
+import { InvoiceDetailPage } from '../invoices/InvoiceDetailPage'
+import { QuoteDetailPage } from '../quotes/QuoteDetailPage'
 
 // Lazy loading des pages pour optimiser les performances
 const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -115,23 +116,6 @@ const ApiTokensPage = lazy(() =>
 const ApiDocsPage = lazy(() =>
   import('../api-access').then((m) => ({ default: m.ApiDocsPage })),
 )
-
-// Composant pour gérer les toasts globaux
-function AppWithToasts({ children }: { children: ReactNode }) {
-  const toast = useToast()
-
-  // Exposer le toast globalement pour les tests
-  if (typeof window !== 'undefined') {
-    ;(window as any).toast = toast
-  }
-
-  return (
-    <>
-      <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
-      {children}
-    </>
-  )
-}
 
 function LegacyPublicInvoiceRedirect() {
   const { token } = useParams<{ token: string }>()
@@ -200,7 +184,7 @@ export function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppWithToasts>
+      <ToastProvider>
         <BrowserRouter>
           <AuthSessionHydrator />
           <SeoManager />
@@ -388,12 +372,28 @@ export function App() {
                 }
               />
               <Route
+                path="/factures/voir/:id"
+                element={
+                  <PrivateRouteWrapper>
+                    <InvoiceDetailPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
                 path="/factures/:id/edit"
                 element={
                   <PrivateRouteWrapper>
                     <Suspense fallback={<DocumentFolderRouteFallback resource="factures" />}>
                       <InvoiceEditPage />
                     </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/devis/voir/:id"
+                element={
+                  <PrivateRouteWrapper>
+                    <QuoteDetailPage />
                   </PrivateRouteWrapper>
                 }
               />
@@ -519,7 +519,7 @@ export function App() {
             onChange={handleSettingsChange}
           />
         </BrowserRouter>
-      </AppWithToasts>
+      </ToastProvider>
     </ThemeProvider>
   )
 }

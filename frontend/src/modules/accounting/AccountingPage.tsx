@@ -484,7 +484,7 @@ export function AccountingPage() {
     connectFinanceRealtime()
     const unsub = subscribeFinanceRealtime((ev) => {
       if (
-        ev.type === 'invoices' &&
+        ev.resource === 'invoices' &&
         (ev.action === 'paid' || ev.action === 'updated' || ev.action === 'created' || ev.action === 'sent')
       ) {
         refreshTab()
@@ -517,7 +517,11 @@ export function AccountingPage() {
       setSyncing(true)
       setSyncMessage(null)
       const response = await accountingService.syncFromInvoices()
-      const result = unwrapApiPayload(response)
+      const result = unwrapApiPayload<{
+        salesCreated: number
+        paymentsCreated: number
+        errors: unknown[]
+      }>(response)
       if (result) {
         const parts = [
           result.salesCreated > 0 ? `${result.salesCreated} vente(s)` : null,
@@ -866,7 +870,7 @@ export function AccountingPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>{entry.journal}</TableCell>
-                      <TableCell fontFamily="monospace" sx={{ fontSize: '0.8rem' }}>
+                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
                         {entry.reference || '—'}
                       </TableCell>
                       <TableCell>{entry.description || '—'}</TableCell>

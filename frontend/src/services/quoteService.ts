@@ -64,7 +64,18 @@ export function normalizeQuoteFromApi(raw: Record<string, unknown>): Quote {
     publicToken: raw.publicToken ? String(raw.publicToken) : undefined,
     sentAt: raw.sentAt ? String(raw.sentAt) : undefined,
     acceptedAt: raw.acceptedAt ? String(raw.acceptedAt) : undefined,
-    invoiceId: raw.invoiceId != null ? String(raw.invoiceId) : undefined,
+    invoiceId:
+      raw.invoiceId != null
+        ? String(raw.invoiceId)
+        : (raw.convertedInvoice as Record<string, unknown> | undefined)?.id != null
+          ? String((raw.convertedInvoice as Record<string, unknown>).id)
+          : undefined,
+    invoiceNumber:
+      raw.invoiceNumber != null
+        ? String(raw.invoiceNumber)
+        : (raw.convertedInvoice as Record<string, unknown> | undefined)?.number != null
+          ? String((raw.convertedInvoice as Record<string, unknown>).number)
+          : undefined,
     createdAt: String(raw.createdAt ?? ''),
     updatedAt: String(raw.updatedAt ?? ''),
     archivedAt: raw.archivedAt ? String(raw.archivedAt) : undefined,
@@ -158,8 +169,19 @@ class QuoteService {
     return this.archiveQuote(id);
   }
 
-  async sendQuote(id: string): Promise<ApiResponse<Quote>> {
-    return this.apiClient.post<Quote>(`/quotes/${id}/send`);
+  async sendQuote(
+    id: string,
+    payload?: {
+      to?: string
+      email?: string
+      updateClientEmail?: boolean
+      copyToSelf?: boolean
+      additionalRecipients?: string
+    },
+  ): Promise<
+    ApiResponse<Quote & { copiesSent?: string[]; sentTo?: string; emailSent?: boolean }>
+  > {
+    return this.apiClient.post(`/quotes/${id}/send`, payload ?? {});
   }
 
   async acceptQuote(id: string): Promise<ApiResponse<Quote>> {
@@ -172,6 +194,28 @@ class QuoteService {
 
   async convertToInvoice(id: string): Promise<ApiResponse<{ invoiceId: string }>> {
     return this.apiClient.post<{ invoiceId: string }>(`/quotes/${id}/convert-to-invoice`);
+  }
+
+  async payQuote(
+    id: string,
+    data: { mode: 'FULL' | 'DEPOSIT'; depositRate?: number; date?: string | Date; method?: string; notes?: string },
+  ): Promise<
+    ApiResponse<{
+      quote?: Quote
+      invoiceId: string
+      invoiceNumber: string
+      paymentId: number
+      paymentAmount: number
+      remaining: number
+    }>
+  > {
+    return this.apiClient.post(`/quotes/${id}/pay`, data)
+  }
+
+  async remindDepositQuote(
+    id: string,
+  ): Promise<ApiResponse<{ success: boolean; invoiceId?: string; daysOverdue?: number | null }>> {
+    return this.apiClient.post(`/quotes/${id}/remind-deposit`, {});
   }
 }
 

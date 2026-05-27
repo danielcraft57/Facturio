@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
 import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { QuoteListQueryDto, UpdateQuoteDocumentFlagsDto } from './dto/quote-document-folder.dto';
 import { CreateQuoteDto, QuotesService, UpdateQuoteDto } from './quotes.service';
@@ -8,6 +8,11 @@ import { PdfService } from '../common/pdf.service';
 import { EmailService } from '../common/email.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { InvoicesService } from '../invoices/invoices.service';
+import type { PublicAcceptDepositDto } from './quotes.service';
+import type { PayQuoteDto } from './quotes.service';
+import { QuoteSendService } from './quote-send.service';
+import { SendDocumentEmailDto } from '../common/dto/send-document-email.dto';
 
 @Controller(['quotes', 'devis'])
 export class QuotesController {
@@ -15,7 +20,9 @@ export class QuotesController {
 		private readonly quotes: QuotesService,
 		private readonly pdfService: PdfService,
 		private readonly email: EmailService,
-		private readonly organizations: OrganizationsService
+		private readonly organizations: OrganizationsService,
+		private readonly invoices: InvoicesService,
+		private readonly quoteSend: QuoteSendService,
 	) {}
 
 	@Post()
@@ -86,6 +93,52 @@ export class QuotesController {
 		return this.quotes.rejectQuote(id, user.organizationId);
 	}
 
+	/**
+	 * Relance l'acompte (facture split) si celui-ci n'est pas encore payé.
+	 */
+	@Post(':id/remind-deposit')
+	async remindDeposit(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@CurrentUser() user: any,
+	) {
+		// Vérifie que le devis existe bien et appartient à l'organisation.
+		const quote = await this.quotes.findOne(id, user.organizationId);
+		if (quote.status !== QuoteStatus.ACCEPTED && quote.status !== QuoteStatus.SENT) {
+			// On autorise SENT par robustesse (selon transitions).
+			throw new BadRequestException('Devis non éligible à la relance d’acompte');
+		}
+
+		const depositInvoice = await this.quotes.findDepositInvoiceForQuote(id, user.organizationId);
+		if (!depositInvoice) {
+			throw new BadRequestException('Aucun acompte trouvé pour ce devis');
+		}
+
+		const { invoice, daysOverdue, publicUrl } = await this.invoices.prepareReminder(
+			depositInvoice.id,
+			user.organizationId,
+		);
+		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
+		const pdf = await this.pdfService.generateInvoicePdf(invoice, organization);
+		const client = invoice.client as { email?: string; name?: string; companyName?: string };
+
+		if (!client?.email) {
+			throw new BadRequestException('Le client n’a pas d’adresse email');
+		}
+
+		await this.email.sendReminder({
+			to: client.email,
+			invoiceNumber: invoice.number,
+			invoiceDate: invoice.date,
+			clientName: client.name || client.companyName || '',
+			amount: Number(invoice.total),
+			daysOverdue,
+			paymentUrl: publicUrl,
+			pdfBuffer: pdf,
+		});
+
+		return { success: true, invoiceId: invoice.id, daysOverdue: daysOverdue ?? null };
+	}
+
 	@Post(':id/convert-to-invoice')
 	async convertToInvoice(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		const quote = await this.quotes.findOne(id, user.organizationId);
@@ -95,32 +148,28 @@ export class QuotesController {
 		return this.quotes.convertQuoteToInvoice(id, user.organizationId);
 	}
 
+	/**
+	 * Paye un devis (100% ou acompte).
+	 * - valide le devis (acceptation)
+	 * - convertit en facture (statut SENT)
+	 * - enregistre un paiement sur la facture
+	 */
+	@Post(':id/pay')
+	async pay(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Body() body: PayQuoteDto,
+		@CurrentUser() user: any,
+	) {
+		return this.quotes.payQuote(id, body, user.organizationId);
+	}
+
 	@Post(':id/send')
-	async sendQuote(@Param('id') id: string, @CurrentUser() user: any) {
-		const result = await this.quotes.sendQuote(id, user.organizationId);
-		const token = result.publicToken;
-		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
-		const pdf = await this.pdfService.generateQuotePdf(result, organization);
-		if (result.client?.email && token) {
-			const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
-			const baseUrl = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
-			const trackOpenUrl = `${apiUrl}/api/track/opened/quote/${token}`;
-			const acceptUrl = `${baseUrl}/public/devis/${token}/accepter`;
-			const rejectUrl = `${baseUrl}/public/devis/${token}/refuser`;
-			await this.email.sendQuote({
-				to: result.client.email,
-				quoteNumber: result.number,
-				quoteDate: result.createdAt,
-				clientName: result.client.name || result.client.companyName || '',
-				total: Number(result.total),
-				expiryDate: result.expiryDate || undefined,
-				pdfBuffer: pdf,
-				trackOpenUrl,
-				acceptUrl,
-				rejectUrl
-			});
-		}
-		return result;
+	async sendQuote(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Body() body: SendDocumentEmailDto,
+		@CurrentUser() user: any,
+	) {
+		return this.quoteSend.sendByEmail(id, user.organizationId, body, user.email);
 	}
 
 	@Get(':id/pdf')
@@ -158,6 +207,15 @@ export class PublicQuotesController {
 	@Post(':token/accept')
 	async accept(@Param('token') token: string, @Req() req: Request) {
 		return this.quotes.publicAccept(token, req.ip);
+	}
+
+	@Post(':token/accept-pay')
+	async acceptPay(
+		@Param('token') token: string,
+		@Body() body: PublicAcceptDepositDto,
+		@Req() req: Request,
+	) {
+		return this.quotes.publicAcceptWithDeposit(token, body, req.ip);
 	}
 
 	@Post(':token/reject')

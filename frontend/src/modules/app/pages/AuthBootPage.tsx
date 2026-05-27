@@ -5,6 +5,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import MailOutlineIcon from '@mui/icons-material/MailOutline'
 import { useAuthStore } from '../../../stores/authStore'
 import { resolvePostAuthPath } from '../../../utils/postAuthRedirect'
+import { warmAppDataAfterLogin } from '../../../utils/warmAppData'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 
 const MIN_DISPLAY_MS = 1200
@@ -60,9 +61,18 @@ export function AuthBootPage() {
           if (cancelled) return
           void (async () => {
             const user = useAuthStore.getState().user
+            await warmAppDataAfterLogin()
             const target =
               user?.emailVerified === true ? from : await resolvePostAuthPath(user)
-            navigate(target, { replace: true })
+
+            // Sécurité : on évite un redirection relative vers " [object Object] "
+            // (peut arriver si `from` a été encodé depuis un objet).
+            const safeTarget =
+              typeof target === 'string' && target.startsWith('/')
+                ? target
+                : '/dashboard'
+
+            navigate(safeTarget, { replace: true })
           })()
         }, wait)
       } catch (err: unknown) {

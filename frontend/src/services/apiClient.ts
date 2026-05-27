@@ -83,10 +83,21 @@ class ApiClient {
     try {
       const response = await this.axiosInstance.post<ApiResponse<T>>(url, data, config);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { message?: string | string[] } };
+        message?: string;
+      };
+      const raw = err.response?.data?.message;
+      const message =
+        typeof raw === 'string'
+          ? raw
+          : Array.isArray(raw)
+            ? raw.join(', ')
+            : err.message || 'Erreur réseau';
       return {
         success: false,
-        error: error.response?.data?.message || error.message || 'Erreur réseau'
+        error: message,
       };
     }
   }

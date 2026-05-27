@@ -8,10 +8,9 @@ import {
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import { useState, useEffect, useCallback } from 'react'
-import type { ToastMessage } from './useToast'
-import { useToast } from './useToast'
+import type { ToastMessage } from './toastContext'
 
-export type { ToastMessage, ToastSeverity } from './useToast'
+export type { ToastMessage, ToastSeverity } from './toastContext'
 
 export interface ToastProps {
   message: ToastMessage
@@ -175,50 +174,3 @@ export function PersistentToast({ message, onClose }: ToastProps) {
   )
 }
 
-// Exemple d'utilisation dans un composant
-export function ToastExample() {
-  const toast = useToast()
-
-  const showSuccess = () => {
-    toast.success('Opération réussie !')
-  }
-
-  const showError = () => {
-    toast.error('Une erreur est survenue', {
-      title: 'Erreur',
-      duration: 10000, // 10 secondes
-    })
-  }
-
-  const showWarning = () => {
-    toast.warning('Attention, cette action est irréversible', {
-      title: 'Avertissement',
-      action: (
-        <IconButton size="small" color="inherit">
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      ),
-    })
-  }
-
-  const showInfo = () => {
-    toast.info('Information importante', {
-      title: 'Info',
-      autoHide: false, // Ne se ferme pas automatiquement
-    })
-  }
-
-  return (
-    <Box>
-      <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
-      
-      {/* Boutons d'exemple */}
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <button onClick={showSuccess}>Success</button>
-        <button onClick={showError}>Error</button>
-        <button onClick={showWarning}>Warning</button>
-        <button onClick={showInfo}>Info</button>
-      </Box>
-    </Box>
-  )
-}

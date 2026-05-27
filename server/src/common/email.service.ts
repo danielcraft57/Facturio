@@ -127,37 +127,49 @@ export class EmailService {
 		clientName: string;
 		total: number;
 		pdfBuffer: Buffer;
+		extraAttachments?: { filename: string; content: Buffer; contentType?: string }[];
 		trackOpenUrl?: string;
 		paymentUrl?: string;
 		/** Facture déjà réglée : pas de bouton payer, message adapté */
 		alreadyPaid?: boolean;
 		invoiceViewUrl?: string;
+		/** Copie prestataire / tiers : PDF joint, sans lien de paiement ni suivi d’ouverture */
+		informativeCopy?: boolean;
 	}): Promise<void> {
 		const company = process.env.COMPANY_NAME || 'Facturio';
-		const subject = options.alreadyPaid
-			? `Facture ${options.invoiceNumber} (réglée) — ${company}`
-			: `Facture ${options.invoiceNumber} — ${company}`;
+		const copy = options.informativeCopy === true;
+		const subject = copy
+			? `[Copie] Facture ${options.invoiceNumber} — ${options.clientName} — ${company}`
+			: options.alreadyPaid
+				? `Facture ${options.invoiceNumber} (réglée) — ${company}`
+				: `Facture ${options.invoiceNumber} — ${company}`;
 		const html = this.getInvoiceTemplate({
 			invoiceNumber: options.invoiceNumber,
 			invoiceDate: options.invoiceDate,
 			clientName: options.clientName,
 			total: options.total,
-			trackOpenUrl: options.trackOpenUrl,
-			paymentUrl: options.paymentUrl,
-			alreadyPaid: options.alreadyPaid,
-			invoiceViewUrl: options.invoiceViewUrl,
+			trackOpenUrl: copy ? undefined : options.trackOpenUrl,
+			paymentUrl: copy ? undefined : options.paymentUrl,
+			alreadyPaid: copy ? undefined : options.alreadyPaid,
+			invoiceViewUrl: copy ? undefined : options.invoiceViewUrl,
+			informativeCopy: copy,
 		});
 
-		const paymentLine = options.alreadyPaid
-			? options.invoiceViewUrl
-				? `\n\nConsulter la facture en ligne :\n${options.invoiceViewUrl}\n`
-				: ''
-			: options.paymentUrl
-				? `\n\nConsulter et payer en ligne :\n${options.paymentUrl}\n`
-				: '';
+		const paymentLine =
+			copy || options.alreadyPaid
+				? options.alreadyPaid && !copy && options.invoiceViewUrl
+					? `\n\nConsulter la facture en ligne :\n${options.invoiceViewUrl}\n`
+					: ''
+				: options.paymentUrl
+					? `\n\nConsulter et payer en ligne :\n${options.paymentUrl}\n`
+					: '';
 
-		const paidNote = options.alreadyPaid
-			? '\n\nCette facture a déjà été réglée. Vous trouverez le justificatif en pièce jointe.\n'
+		const paidNote =
+			!copy && options.alreadyPaid
+				? '\n\nCette facture a déjà été réglée. Vous trouverez le justificatif en pièce jointe.\n'
+				: '';
+		const copyNote = copy
+			? '\n\nCopie à titre informatif (document envoyé au client). Aucun lien de paiement en ligne dans ce message.\n'
 			: '';
 
 		await this.send({
@@ -166,16 +178,21 @@ export class EmailService {
 			subject,
 			html,
 			text:
-				`Bonjour ${options.clientName},\n\n` +
-				`Veuillez trouver ci-joint la facture ${options.invoiceNumber} ` +
+				(copy ? 'Bonjour,\n\n' : `Bonjour ${options.clientName},\n\n`) +
+				(copy
+					? `Copie de la facture ${options.invoiceNumber} `
+					: `Veuillez trouver ci-joint la facture ${options.invoiceNumber} `) +
 				`du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')} ` +
-				`d'un montant de ${this.formatCurrency(options.total)}.${paidNote}${paymentLine}\n` +
+				`d'un montant de ${this.formatCurrency(options.total)}.${copyNote}${paidNote}${paymentLine}\n` +
 				`Cordialement,\n${company}`,
-			attachments: [{
-				filename: `facture-${options.invoiceNumber}.pdf`,
-				content: options.pdfBuffer,
-				contentType: 'application/pdf'
-			}]
+			attachments: [
+				{
+					filename: `facture-${options.invoiceNumber}.pdf`,
+					content: options.pdfBuffer,
+					contentType: 'application/pdf'
+				},
+				...(options.extraAttachments ?? []),
+			]
 		});
 	}
 
@@ -193,25 +210,41 @@ export class EmailService {
 		trackOpenUrl?: string;
 		acceptUrl?: string;
 		rejectUrl?: string;
+		/** Copie prestataire / tiers : PDF joint, sans accepter/refuser ni suivi */
+		informativeCopy?: boolean;
 	}): Promise<void> {
-		const subject = `Devis ${options.quoteNumber}`;
+		const company = process.env.COMPANY_NAME || 'Facturio';
+		const copy = options.informativeCopy === true;
+		const subject = copy
+			? `[Copie] Devis ${options.quoteNumber} — ${options.clientName} — ${company}`
+			: `Devis ${options.quoteNumber}`;
 		const html = this.getQuoteTemplate({
 			quoteNumber: options.quoteNumber,
 			quoteDate: options.quoteDate,
 			clientName: options.clientName,
 			total: options.total,
 			expiryDate: options.expiryDate,
-			trackOpenUrl: options.trackOpenUrl,
-			acceptUrl: options.acceptUrl,
-			rejectUrl: options.rejectUrl
+			trackOpenUrl: copy ? undefined : options.trackOpenUrl,
+			acceptUrl: copy ? undefined : options.acceptUrl,
+			rejectUrl: copy ? undefined : options.rejectUrl,
+			informativeCopy: copy,
 		});
+
+		const copyNote = copy
+			? '\n\nCopie à titre informatif (document envoyé au client). Aucun lien d’acceptation ou de paiement dans ce message.\n'
+			: '';
 
 		await this.send({
 			from: this.quoteFrom,
 			to: options.to,
 			subject,
 			html,
-			text: `Bonjour,\n\nVeuillez trouver ci-joint le devis ${options.quoteNumber} d'un montant de ${this.formatCurrency(options.total)}.\n\nCordialement`,
+			text:
+				`Bonjour,\n\n` +
+				(copy
+					? `Copie du devis ${options.quoteNumber} `
+					: `Veuillez trouver ci-joint le devis ${options.quoteNumber} `) +
+				`d'un montant de ${this.formatCurrency(options.total)}.${copyNote}\n\nCordialement`,
 			attachments: [{
 				filename: `devis-${options.quoteNumber}.pdf`,
 				content: options.pdfBuffer,
@@ -273,16 +306,43 @@ export class EmailService {
 		issuerName: string;
 		invoiceViewUrl?: string;
 		replyTo?: string;
+		attachments?: { filename: string; content: Buffer; contentType?: string }[];
+		paidContext?: {
+			kind: 'deposit' | 'remainder' | 'standard';
+			contractTotal?: number;
+			remainderAmount?: number;
+		};
 	}): Promise<void> {
 		const html = this.getInvoicePaidClientTemplate(options);
 		const viewLine = options.invoiceViewUrl
 			? `\n\nConsulter la facture : ${options.invoiceViewUrl}`
 			: '';
+		const attachmentLine =
+			(options.attachments?.length ?? 0) > 0
+				? '\n\nVous trouverez en pièce jointe votre facture PDF' +
+					(options.attachments!.length > 1 ? ' et le contrat de prestation.' : '.')
+				: '';
+
+		let statusLine: string;
+		if (options.paidContext?.kind === 'deposit') {
+			const solde =
+				options.paidContext.remainderAmount != null
+					? this.formatCurrency(options.paidContext.remainderAmount)
+					: null;
+			statusLine =
+				`Montant de cette facture d'acompte : ${this.formatCurrency(options.total)} — réglée.` +
+				(solde ? `\nSolde restant sur le devis : ${solde} (facturé ultérieurement).` : '');
+		} else if (options.paidContext?.kind === 'remainder') {
+			statusLine = `Montant total de la facture de solde : ${this.formatCurrency(options.total)} — réglée. Votre devis est entièrement payé.`;
+		} else {
+			statusLine = `Montant total de la facture : ${this.formatCurrency(options.total)} — facture réglée.`;
+		}
+
 		const text =
 			`Bonjour ${options.clientName},\n\n` +
 			`Nous confirmons la réception de votre paiement pour la facture ${options.invoiceNumber} ` +
 			`(${this.formatCurrency(options.lastPaymentAmount)} — ${options.paymentMethodLabel}).\n\n` +
-			`Montant total de la facture : ${this.formatCurrency(options.total)}. La facture est réglée.${viewLine}\n\n` +
+			`${statusLine}${attachmentLine}${viewLine}\n\n` +
 			`Cordialement,\n${options.issuerName}`;
 
 		await this.send({
@@ -292,6 +352,7 @@ export class EmailService {
 			subject: `Paiement reçu — Facture ${options.invoiceNumber}`,
 			html,
 			text,
+			attachments: options.attachments,
 		});
 	}
 
@@ -353,7 +414,11 @@ export class EmailService {
 		paymentUrl?: string;
 		alreadyPaid?: boolean;
 		invoiceViewUrl?: string;
+		informativeCopy?: boolean;
 	}): string {
+		const copyBanner = data.informativeCopy
+			? `<p style="margin: 16px 0; padding: 12px 14px; background: #fef3c7; border-radius: 8px; color: #92400e; font-size: 14px;"><strong>Copie à titre informatif</strong> — document envoyé au client. Ce message ne contient pas de lien de paiement en ligne.</p>`
+			: '';
 		const pixel = data.trackOpenUrl
 			? `<img src="${data.trackOpenUrl}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
 			: '';
@@ -384,14 +449,17 @@ export class EmailService {
 			<h2>Facture ${data.invoiceNumber}</h2>
 		</div>
 		<div class="content">
-			<p>Bonjour ${data.clientName},</p>
-			<p>Veuillez trouver ci-joint la facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')}.</p>
+			${copyBanner}
+			<p>Bonjour${data.informativeCopy ? '' : ` ${data.clientName}`},</p>
+			<p>${data.informativeCopy ? 'Copie de la ' : 'Veuillez trouver ci-joint la '}facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')}${data.informativeCopy ? ` (client : ${data.clientName})` : ''}.</p>
 			<p class="total">Montant total : ${this.formatCurrency(data.total)}</p>
-			${data.alreadyPaid
+			${data.informativeCopy
+				? ''
+				: data.alreadyPaid
 				? `<p style="color: #15803d; font-weight: 600;">Cette facture a déjà été réglée.</p>
 			<p>Vous trouverez le justificatif en pièce jointe${data.invoiceViewUrl ? ' ; vous pouvez aussi la consulter en ligne.' : '.'}</p>`
 				: '<p>Merci de régler cette facture dans les délais convenus.</p>'}
-			${data.alreadyPaid && data.invoiceViewUrl
+			${!data.informativeCopy && data.alreadyPaid && data.invoiceViewUrl
 				? `
 			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 24px;">
 				<tr>
@@ -402,7 +470,7 @@ export class EmailService {
 					</td>
 				</tr>
 			</table>`
-				: data.paymentUrl
+				: !data.informativeCopy && data.paymentUrl
 					? `
 			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 24px;">
 				<tr>
@@ -434,11 +502,57 @@ export class EmailService {
 		paymentMethodLabel: string;
 		issuerName: string;
 		invoiceViewUrl?: string;
+		attachments?: { filename: string; content: Buffer; contentType?: string }[];
+		paidContext?: {
+			kind: 'deposit' | 'remainder' | 'standard';
+			contractTotal?: number;
+			remainderAmount?: number;
+		};
 	}): string {
 		const legal = this.getLegalFooter();
 		const viewBtn = data.invoiceViewUrl
 			? `<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 20px;"><tr><td><a href="${data.invoiceViewUrl}" style="display: inline-block; padding: 14px 28px; background: #16a34a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Voir la facture</a></td></tr></table>`
 			: '';
+
+		const kind = data.paidContext?.kind ?? 'standard';
+		const intro =
+			kind === 'deposit'
+				? `Votre <strong>paiement acompte</strong> pour la facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')} a bien été enregistré.`
+				: kind === 'remainder'
+					? `Votre paiement du <strong>solde</strong> pour la facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')} a bien été enregistré.`
+					: `Nous confirmons la réception de votre paiement pour la facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')}.`;
+
+		let statusHtml: string;
+		if (kind === 'deposit') {
+			const solde =
+				data.paidContext?.remainderAmount != null
+					? this.formatCurrency(data.paidContext.remainderAmount)
+					: null;
+			const totalDevis =
+				data.paidContext?.contractTotal != null
+					? this.formatCurrency(data.paidContext.contractTotal)
+					: null;
+			statusHtml =
+				`<p>Cette facture d&apos;acompte (<strong>${this.formatCurrency(data.total)}</strong>) est réglée.</p>` +
+				(totalDevis && solde
+					? `<p style="margin-top: 12px; padding: 12px 14px; background: #eff6ff; border-radius: 8px; color: #1e3a8a; font-size: 14px;">` +
+						`<strong>Devis ${totalDevis}</strong> — solde restant : <strong>${solde}</strong><br>` +
+						`<span style="color: #475569;">Le solde vous sera facturé séparément après réalisation / livraison.</span></p>`
+					: '');
+		} else if (kind === 'remainder') {
+			statusHtml = `<p>Facture de solde (<strong>${this.formatCurrency(data.total)}</strong>) réglée — votre devis est entièrement payé. Merci !</p>`;
+		} else {
+			statusHtml = `<p>Montant total de la facture : ${this.formatCurrency(data.total)} — <strong>facture réglée</strong>.</p>`;
+		}
+
+		const attachmentNote =
+			(data.attachments?.length ?? 0) > 0
+				? `<p style="margin-top: 16px; font-size: 14px; color: #475569;">` +
+					`Pièces jointes : facture PDF` +
+					(data.attachments!.length > 1 ? ' et contrat de prestation.' : '.') +
+					`</p>`
+				: '';
+
 		return `
 <!DOCTYPE html>
 <html lang="fr">
@@ -461,9 +575,10 @@ export class EmailService {
 		<div class="header"><h2>Paiement reçu</h2></div>
 		<div class="content">
 			<p>Bonjour ${data.clientName},</p>
-			<p>Nous confirmons la réception de votre paiement pour la facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')}.</p>
+			<p>${intro}</p>
 			<p class="highlight">Montant encaissé : ${this.formatCurrency(data.lastPaymentAmount)} (${data.paymentMethodLabel})</p>
-			<p>Montant total de la facture : ${this.formatCurrency(data.total)} — <strong>facture réglée</strong>.</p>
+			${statusHtml}
+			${attachmentNote}
 			${viewBtn}
 			<p style="margin-top: 20px;">Cordialement,<br><strong>${data.issuerName}</strong></p>
 </div>
@@ -526,7 +641,11 @@ export class EmailService {
 		trackOpenUrl?: string;
 		acceptUrl?: string;
 		rejectUrl?: string;
+		informativeCopy?: boolean;
 	}): string {
+		const copyBanner = data.informativeCopy
+			? `<p style="margin: 16px 0; padding: 12px 14px; background: #fef3c7; border-radius: 8px; color: #92400e; font-size: 14px;"><strong>Copie à titre informatif</strong> — document envoyé au client. Aucun lien d’acceptation ou de paiement dans ce message.</p>`
+			: '';
 		const expiryText = data.expiryDate
 			? `<p><strong style="color: #dc2626;">Valable jusqu'au ${new Date(data.expiryDate).toLocaleDateString('fr-FR')}</strong></p>`
 			: '';
@@ -566,11 +685,12 @@ export class EmailService {
 			<h2>Devis ${data.quoteNumber}</h2>
 		</div>
 		<div class="content">
-			<p>Bonjour ${data.clientName},</p>
-			<p>Veuillez trouver ci-joint le devis <strong>${data.quoteNumber}</strong> du ${new Date(data.quoteDate).toLocaleDateString('fr-FR')}.</p>
-			${expiryText}
+			${copyBanner}
+			<p>Bonjour${data.informativeCopy ? '' : ` ${data.clientName}`},</p>
+			<p>${data.informativeCopy ? 'Copie du ' : 'Veuillez trouver ci-joint le '}devis <strong>${data.quoteNumber}</strong> du ${new Date(data.quoteDate).toLocaleDateString('fr-FR')}${data.informativeCopy ? ` (client : ${data.clientName})` : ''}.</p>
+			${data.informativeCopy ? '' : expiryText}
 			<p class="total">Montant total : ${this.formatCurrency(data.total)}</p>
-			<p>Nous restons à votre disposition pour toute question.</p>
+			${data.informativeCopy ? '' : '<p>Nous restons à votre disposition pour toute question.</p>'}
 			${buttons}
 		</div>
 		<div class="footer">

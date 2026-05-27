@@ -283,8 +283,13 @@ export class InvoiceService {
   }
 
   // Récupérer une facture par ID
-  async getInvoice(id: string): Promise<ApiResponse<Invoice>> {
-    return apiClient.getCached<Invoice>(`${this.baseUrl}/${id}`, 5 * 60 * 1000) // Cache 5 minutes
+  async getInvoice(id: string): Promise<Invoice> {
+    const response = await apiClient.get<Record<string, unknown>>(`/factures/${id}`)
+    const raw = unwrapApiPayload<Record<string, unknown>>(response)
+    if (!raw?.id) {
+      throw new Error('Facture introuvable')
+    }
+    return normalizeInvoiceFromApi(raw)
   }
 
   // Créer une nouvelle facture (corps API NestJS)
@@ -344,7 +349,12 @@ export class InvoiceService {
   // Envoyer une facture par email
   async sendInvoice(
     id: string,
-    emailData?: { to?: string; updateClientEmail?: boolean },
+    emailData?: {
+      to?: string
+      updateClientEmail?: boolean
+      copyToSelf?: boolean
+      additionalRecipients?: string
+    },
   ): Promise<ApiResponse<unknown>> {
     const response = await apiClient.post<unknown>(`${this.baseUrl}/${id}/send`, emailData ?? {})
     
