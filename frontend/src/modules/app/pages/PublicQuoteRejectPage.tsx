@@ -77,11 +77,11 @@ export function PublicQuoteRejectPage() {
     setStatus('loading')
     setMessage('')
     try {
-      const res = await api.post<any>(`public/quotes/${token}/reject`, {})
-      if (res?.ok !== false) {
+      const res = await api.post<{ status?: string }>(`public/quotes/${token}/reject`, {})
+      if (res.success !== false && !res.error) {
         setStatus('success')
         setMessage('Devis refusé. Merci de nous avoir prévenu.')
-      } else if (res?.error) {
+      } else if (res.error) {
         setStatus('error')
         setMessage(res.error)
       } else {

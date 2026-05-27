@@ -5,8 +5,21 @@ import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { StripeService } from '../stripe/stripe.service';
 import { createTestUser, authenticatedRequest } from '../common/test-helpers/auth.helper';
 import { seedChartOfAccounts } from '../../prisma/seeds/base.seed';
+
+const mockStripeService = {
+	isOrgStripeConfigured: () => true,
+	createPaymentIntentForInvoice: jest.fn().mockResolvedValue({
+		clientSecret: 'pi_test_deposit_e2e',
+		amount: 100,
+		currency: 'EUR',
+		stripePublishableKey: 'pk_test_e2e_facturio',
+	}),
+	handleOrgWebhook: jest.fn().mockResolvedValue({ received: true }),
+	fulfillPaymentIntent: jest.fn(),
+};
 
 function uniqueEmail(base: string): string {
 	const [local, domain] = base.split('@');
@@ -25,7 +38,10 @@ describe('Quotes deposit e2e', () => {
 	let testUser: { cookies: string[]; organizationId: number };
 
 	beforeAll(async () => {
-		const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+		const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+			.overrideProvider(StripeService)
+			.useValue(mockStripeService)
+			.compile();
 		app = moduleRef.createNestApplication();
 		app.setGlobalPrefix('api');
 		app.use(cookieParser());

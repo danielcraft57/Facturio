@@ -392,10 +392,12 @@ export function ClientInvoicePage() {
     )
   }, [isPaid, invoice, clientSecret, stripePromise])
 
-  const isDeposit =
-    invoice?.documentKind === 'deposit' || invoice?.tags?.includes('ACOMPTE_10')
-  const isRemainder =
-    invoice?.documentKind === 'remainder' || invoice?.tags?.includes('SOLDE_APRES_ACOMPTE')
+  const isDeposit = Boolean(
+    invoice?.documentKind === 'deposit' || invoice?.tags?.includes('ACOMPTE_10'),
+  )
+  const isRemainder = Boolean(
+    invoice?.documentKind === 'remainder' || invoice?.tags?.includes('SOLDE_APRES_ACOMPTE'),
+  )
   const pageTitle = invoice?.titleLabel ?? (isDeposit ? "Facture d'acompte" : isRemainder ? 'Facture de solde' : 'Facture')
   const paymentContextLabel = useMemo(() => {
     if (!invoice) return null
