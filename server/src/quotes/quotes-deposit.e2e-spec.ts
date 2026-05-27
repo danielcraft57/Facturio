@@ -222,9 +222,9 @@ describe('Quotes deposit e2e', () => {
 		expect(afterReload.status).toBe('SENT');
 		expect(afterReload.sentAt).toBeTruthy();
 
-		const token = remainderSent!.publicToken!;
+		const remainderPublicToken = remainderSent!.publicToken!;
 		await request(app.getHttpServer())
-			.get(`/api/public/invoices/${token}/checkout`)
+			.get(`/api/public/invoices/${remainderPublicToken}/checkout`)
 			.expect(200);
 	});
 
