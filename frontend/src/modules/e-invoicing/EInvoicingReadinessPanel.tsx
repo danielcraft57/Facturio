@@ -17,11 +17,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import DownloadIcon from '@mui/icons-material/Download'
-import {
-  eInvoicingService,
-  type InvoiceReadiness,
-  type OrganizationReadiness,
-} from '../../services/eInvoicing'
+import { eInvoicingService, type InvoiceReadiness, type OrganizationReadiness } from '../../services/eInvoicing'
 
 type Props = {
   invoiceId?: number
@@ -152,8 +148,8 @@ export function EInvoicingReadinessPanel({ invoiceId, compact }: Props) {
         )}
 
         <Alert severity="info" sx={{ mt: 2 }}>
-          Envoi via Plateforme Agréée : prochaine étape (connexion PA partenaire). Le XML généré prépare le
-          format structuré EN 16931.
+          Envoi via Plateforme Agréée : disponible depuis la fiche facture (action « Envoyer à la PA ») lorsque le
+          plan e-facture est actif et la facture prête.
         </Alert>
       </CardContent>
     </Card>

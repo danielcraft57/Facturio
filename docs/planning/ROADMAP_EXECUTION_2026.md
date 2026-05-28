@@ -24,8 +24,8 @@ Plan opérationnel (branche `feat/roadmap-execution-2026`) dérivé de [STRATEGI
 | S1-1 | Mentions obligatoires réforme sur modèle facture + PDF | P0 | 🔄 |
 | S1-2 | Champs client : adresse livraison, catégorie opération | P0 | 🔄 |
 | S1-3 | Factur-X PDF/A-3 complet (au-delà XML seul) | P0 | ⬜ |
-| S1-4 | Short-list + contrat API PA partenaire | P0 | ⬜ |
-| S1-5 | Client HTTP PA (auth, submit, idempotence) | P0 | ⬜ |
+| S1-4 | Short-list + contrat API PA partenaire | P0 | 🔄 |
+| S1-5 | Client HTTP PA (auth, submit, idempotence) | P0 | 🔄 |
 | S1-6 | Webhooks / polling statuts PA | P0 | ⬜ |
 | S1-7 | UI Paramètres : connexion PA, test, envoi e-facture | P0 | ⬜ |
 | S1-8 | Journal transmissions (audit) | P1 | ⬜ |

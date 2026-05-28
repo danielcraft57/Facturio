@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Header, Param, Query, Res } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Header, Param, Post, Query, Res } from '@nestjs/common';
 import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -26,6 +26,16 @@ export class EInvoicingController {
 		return this.eInvoicing.getOrganizationReadiness(orgIdFromUser(user));
 	}
 
+	@Get('pa/status')
+	getPaStatus() {
+		return this.eInvoicing.getPaConnectionStatus();
+	}
+
+	@Post('pa/test')
+	testPaConnection() {
+		return this.eInvoicing.testPaConnection();
+	}
+
 	@Get('invoices/:id/readiness')
 	getInvoiceReadiness(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.eInvoicing.getInvoiceReadiness(id, orgIdFromUser(user));
@@ -41,5 +51,13 @@ export class EInvoicingController {
 		const { xml, filename } = await this.eInvoicing.generateFacturX(id, orgIdFromUser(user));
 		res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 		res.send(xml);
+	}
+
+	@Post('invoices/:id/submit-pa')
+	submitInvoiceToPa(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@CurrentUser() user: any,
+	) {
+		return this.eInvoicing.submitInvoiceToPa(id, orgIdFromUser(user));
 	}
 }

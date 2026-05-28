@@ -51,6 +51,19 @@ export type ReformSchedule = {
   recommendation: string
 }
 
+export type PaConnectionStatus = {
+  configured: boolean
+  baseUrl: string | null
+  provider: string
+  mode: 'mock' | 'api'
+}
+
+export type PaConnectionTestResult = {
+  ok: boolean
+  mode: 'mock' | 'api'
+  message: string
+}
+
 export const eInvoicingService = {
   getReformSchedule: async (companySize?: string): Promise<ReformSchedule> => {
     const q = companySize ? `?companySize=${encodeURIComponent(companySize)}` : ''
@@ -71,6 +84,16 @@ export const eInvoicingService = {
   getInvoiceReadiness: async (invoiceId: number): Promise<InvoiceReadiness> => {
     const res = await apiClient.get<InvoiceReadiness>(`e-invoicing/invoices/${invoiceId}/readiness`)
     return unwrapApiPayload<InvoiceReadiness>(res)
+  },
+
+  getPaStatus: async (): Promise<PaConnectionStatus> => {
+    const res = await apiClient.get<PaConnectionStatus>('e-invoicing/pa/status')
+    return unwrapApiPayload<PaConnectionStatus>(res)
+  },
+
+  testPaConnection: async (): Promise<PaConnectionTestResult> => {
+    const res = await apiClient.post<PaConnectionTestResult>('e-invoicing/pa/test', {})
+    return unwrapApiPayload<PaConnectionTestResult>(res)
   },
 
   async downloadFacturX(invoiceId: number): Promise<void> {
