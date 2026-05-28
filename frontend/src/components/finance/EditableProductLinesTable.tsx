@@ -32,6 +32,7 @@ type Props = {
   products: Product[]
   taxHeader: string
   taxInputProps?: Record<string, number>
+  showQuantity?: boolean
   quantityWidth?: number
   unitPriceWidth?: number
   taxWidth?: number
@@ -47,6 +48,7 @@ export function EditableProductLinesTable({
   products,
   taxHeader,
   taxInputProps,
+  showQuantity = false,
   quantityWidth = 72,
   unitPriceWidth = 96,
   taxWidth = 72,
@@ -77,7 +79,7 @@ export function EditableProductLinesTable({
           <TableHead>
             <TableRow>
               <TableCell>Description</TableCell>
-              <TableCell align="right">Qté</TableCell>
+              {showQuantity && <TableCell align="right">Qté</TableCell>}
               <TableCell align="right">Prix unit.</TableCell>
               <TableCell align="right">{taxHeader}</TableCell>
               <TableCell width={48} />
@@ -95,15 +97,18 @@ export function EditableProductLinesTable({
                     renderInput={(params) => <TextField {...params} size="small" fullWidth sx={financeFieldSx} />}
                   />
                 </TableCell>
-                <TableCell align="right">
-                  <TextField
-                    size="small"
-                    type="number"
-                    sx={{ width: quantityWidth, ...financeFieldSx }}
-                    value={line.quantity}
-                    onChange={(e) => onLineChange(index, 'quantity', e.target.value)}
-                  />
-                </TableCell>
+                {showQuantity && (
+                  <TableCell align="right">
+                    <TextField
+                      size="small"
+                      type="number"
+                      sx={{ width: quantityWidth, ...financeFieldSx }}
+                      value={line.quantity}
+                      onChange={(e) => onLineChange(index, 'quantity', e.target.value)}
+                      inputProps={{ min: 1, step: 1 }}
+                    />
+                  </TableCell>
+                )}
                 <TableCell align="right">
                   <TextField
                     size="small"
@@ -111,6 +116,7 @@ export function EditableProductLinesTable({
                     sx={{ width: unitPriceWidth, ...financeFieldSx }}
                     value={line.unitPrice}
                     onChange={(e) => onLineChange(index, 'unitPrice', e.target.value)}
+                    inputProps={{ min: 0, step: 1 }}
                   />
                 </TableCell>
                 <TableCell align="right">

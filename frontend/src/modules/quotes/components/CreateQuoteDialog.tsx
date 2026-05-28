@@ -7,30 +7,15 @@ import {
   Select,
   MenuItem,
   Box,
-  Typography,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   Stack,
   InputAdornment,
-  alpha,
   CircularProgress,
 } from '@mui/material'
-import {
-  Add,
-  Delete,
-  Description,
-  CalendarMonth,
-  ShoppingCart,
-} from '@mui/icons-material'
+import { Description, CalendarMonth } from '@mui/icons-material'
 import { apiClient } from '../../../services/api'
 import { clientService, parseClientsListResponse } from '../../../services/clients'
 import { useProductsStore } from '../../../stores/productsStore'
+import { productService } from '../../../services/productService'
 import type { CreateQuoteLineData } from '../../../types/quote'
 import { financePrimaryButtonSx, financeOutlinedButtonSx } from '../../../components/finance/financeStyles'
 import {
@@ -39,6 +24,7 @@ import {
   FinanceFormTotalsBox,
   financeFieldSx,
 } from '../../../components/finance/FinanceFormDialog'
+import { EditableProductLinesTable } from '../../../components/finance/EditableProductLinesTable'
 
 interface CreateQuoteFormData {
   clientId: string
@@ -69,7 +55,6 @@ export function CreateQuoteDialog({
   const productsStore = useProductsStore()
   const [clients, setClients] = useState<ClientOption[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedProductId, setSelectedProductId] = useState<number | ''>('')
   const [formData, setFormData] = useState<CreateQuoteFormData>({
     clientId: '',
     expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -125,42 +110,6 @@ export function CreateQuoteDialog({
     }))
   }
 
-  const handleAddProductAsLine = () => {
-    if (selectedProductId === '') return
-    const product = productsStore.products.find(
-      (p: { id: number | string }) => Number(p.id) === Number(selectedProductId),
-    )
-    if (!product) return
-    const unitPrice = Number(
-      (product as { unitPrice?: number; unit_price?: number }).unitPrice ??
-        (product as { unit_price?: number }).unit_price ??
-        0,
-    )
-    const description =
-      String(
-        (product as { description?: string; name?: string }).description ??
-          (product as { name?: string }).name ??
-          '',
-      ).trim() || (product as { name?: string }).name
-    const newLine = {
-      productId: Number((product as { id: number | string }).id),
-      description: description ?? '',
-      quantity: 1,
-      unitPrice,
-      taxRate: 0.2,
-    }
-    setFormData((prev) => {
-      const isSingleEmptyLine =
-        prev.lines.length === 1 &&
-        !String(prev.lines[0].description ?? '').trim() &&
-        Number(prev.lines[0].unitPrice ?? 0) === 0
-      if (isSingleEmptyLine) {
-        return { ...prev, lines: [newLine] }
-      }
-      return { ...prev, lines: [...prev.lines, newLine] }
-    })
-  }
-
   const handleRemoveLine = (index: number) => {
     if (formData.lines.length <= 1) return
     setFormData((prev) => ({
@@ -177,8 +126,12 @@ export function CreateQuoteDialog({
     setFormData((prev) => {
       const next = [...prev.lines]
       const line = { ...next[index] }
-      if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
-        line[field] = Number(value)
+      if (field === 'quantity') {
+        line.quantity = 1
+      } else if (field === 'unitPrice') {
+        line.unitPrice = Math.round(Number(value) || 0)
+      } else if (field === 'taxRate') {
+        line.taxRate = Number(value)
       } else if (field === 'description') {
         line.description = String(value)
       } else if (field === 'productId') {
@@ -189,12 +142,34 @@ export function CreateQuoteDialog({
     })
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (
       formData.clientId === '' ||
       formData.lines.some((l) => !l.description.trim() || Number(l.unitPrice) < 0)
     ) {
       return
+    }
+    const existingNames = new Set(
+      productsStore.products.map((p) => (p.description ?? p.name ?? '').trim().toLowerCase()),
+    )
+    const productCandidates = formData.lines
+      .map((line) => ({
+        name: line.description.trim(),
+        unitPrice: Number(line.unitPrice),
+      }))
+      .filter((line) => line.name.length > 0 && !existingNames.has(line.name.toLowerCase()))
+
+    for (const candidate of productCandidates) {
+      try {
+        await productService.createProduct({
+          name: candidate.name,
+          description: candidate.name,
+          unitPrice: candidate.unitPrice > 0 ? candidate.unitPrice : undefined,
+        })
+        existingNames.add(candidate.name.toLowerCase())
+      } catch {
+        // On laisse la création du devis continuer même si la création produit échoue.
+      }
     }
     onSubmit({
       clientId: formData.clientId,
@@ -202,8 +177,8 @@ export function CreateQuoteDialog({
       lines: formData.lines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
         productId: productId ?? undefined,
         description: description.trim(),
-        quantity: Number(quantity),
-        unitPrice: Number(unitPrice),
+        quantity: 1,
+        unitPrice: Math.round(Number(unitPrice)),
         taxRate: Number(taxRate),
       })),
     })
@@ -211,15 +186,14 @@ export function CreateQuoteDialog({
   }
 
   const subtotal = formData.lines.reduce(
-    (s, l) => s + Number(l.quantity) * Number(l.unitPrice),
+    (s, l) => s + 1 * Number(l.unitPrice),
     0,
   )
   const tax = formData.lines.reduce(
-    (s, l) => s + Number(l.quantity) * Number(l.unitPrice) * Number(l.taxRate ?? 0),
+    (s, l) => s + 1 * Number(l.unitPrice) * Number(l.taxRate ?? 0),
     0,
   )
   const total = subtotal + tax
-  const totalHeures = formData.lines.reduce((s, l) => s + Number(l.quantity ?? 0), 0)
 
   const submitDisabled =
     submitting ||
@@ -297,151 +271,32 @@ export function CreateQuoteDialog({
           />
         </Box>
 
-        <Box>
-          <FinanceFormSectionTitle>Catalogue produits</FinanceFormSectionTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <FormControl size="small" sx={{ minWidth: 280, flex: 1, ...financeFieldSx }}>
-              <InputLabel>Ajouter un produit</InputLabel>
-              <Select
-                value={selectedProductId}
-                label="Ajouter un produit"
-                onChange={(e) => setSelectedProductId(e.target.value as number | '')}
-              >
-                <MenuItem value="">Sélectionner un produit…</MenuItem>
-                {productsStore.products.map((p: { id: number | string; name: string; unitPrice?: number }) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name} – {Number(p.unitPrice ?? 0).toFixed(2)} € HT
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<ShoppingCart />}
-              onClick={handleAddProductAsLine}
-              disabled={selectedProductId === ''}
-              sx={financePrimaryButtonSx}
-            >
-              Ajouter cette ligne
-            </Button>
-          </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            Choisissez un produit puis cliquez sur « Ajouter cette ligne » — répétez pour plusieurs
-            articles.
-          </Typography>
-        </Box>
-
-        <Box>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-            <FinanceFormSectionTitle sx={{ mb: 0 }}>Lignes du devis</FinanceFormSectionTitle>
-            <Button
-              startIcon={<Add />}
-              onClick={handleAddLine}
-              size="small"
-              variant="outlined"
-              sx={financeOutlinedButtonSx}
-            >
-              Ligne vide
-            </Button>
-          </Stack>
-          <TableContainer
-            component={Paper}
-            variant="outlined"
-            sx={{
-              borderRadius: 2,
-              borderColor: (t) => alpha('#0f172a', t.palette.mode === 'dark' ? 0.2 : 0.1),
-            }}
-          >
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    Qté
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    Prix unit. HT
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    TVA (0–1)
-                  </TableCell>
-                  <TableCell width={48} />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {formData.lines.map((line, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={line.description}
-                        onChange={(e) => handleLineChange(i, 'description', e.target.value)}
-                        placeholder="Description"
-                        sx={financeFieldSx}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        inputProps={{ min: 0.01, step: 1 }}
-                        sx={{ width: 70, ...financeFieldSx }}
-                        value={line.quantity}
-                        onChange={(e) => handleLineChange(i, 'quantity', e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        inputProps={{ min: 0, step: 0.01 }}
-                        sx={{ width: 100, ...financeFieldSx }}
-                        value={
-                          line.unitPrice !== undefined && line.unitPrice !== null
-                            ? line.unitPrice
-                            : ''
-                        }
-                        onChange={(e) => handleLineChange(i, 'unitPrice', e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        inputProps={{ min: 0, max: 1, step: 0.01 }}
-                        sx={{ width: 80, ...financeFieldSx }}
-                        value={line.taxRate ?? 0.2}
-                        onChange={(e) => handleLineChange(i, 'taxRate', e.target.value)}
-                        placeholder="0.2"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleRemoveLine(i)}
-                        disabled={formData.lines.length <= 1}
-                        color="error"
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
+        <EditableProductLinesTable
+          title="Lignes du devis"
+          addLabel="Ligne vide"
+          lines={formData.lines.map((line) => ({
+            description: line.description,
+            quantity: 1,
+            unitPrice: Math.round(Number(line.unitPrice ?? 0)),
+            taxRate: Number(line.taxRate ?? 0.2),
+          }))}
+          products={productsStore.products}
+          taxHeader="TVA (0-1)"
+          taxInputProps={{ min: 0, max: 1, step: 0.01 }}
+          unitPriceWidth={100}
+          taxWidth={80}
+          onAddLine={handleAddLine}
+          onRemoveLine={handleRemoveLine}
+          onLineChange={(index, field, value) => handleLineChange(index, field, value)}
+        />
 
         <FinanceFormTotalsBox
           rows={[
-            { label: 'Total heures / qté', value: String(totalHeures) },
-            { label: 'Total HT', value: `${subtotal.toFixed(2)} €` },
-            { label: 'TVA', value: `${tax.toFixed(2)} €` },
+            { label: 'Total HT', value: `${Math.round(subtotal).toFixed(0)} €` },
+            { label: 'TVA', value: `${Math.round(tax).toFixed(0)} €` },
           ]}
           totalLabel="Total TTC"
-          totalValue={`${total.toFixed(2)} €`}
+          totalValue={`${Math.round(total).toFixed(0)} €`}
         />
       </Stack>
     </FinanceFormDialogShell>

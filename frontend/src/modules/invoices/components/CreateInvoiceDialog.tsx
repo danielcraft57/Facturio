@@ -7,18 +7,9 @@ import {
   Select,
   MenuItem,
   Box,
-  Typography,
   FormControlLabel,
   Checkbox,
   Alert,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   Stack,
 
   InputAdornment,
@@ -28,8 +19,6 @@ import {
   CircularProgress,
 } from '@mui/material'
 import {
-  Add,
-  Delete,
   ReceiptLong,
   Email,
   CalendarMonth,
@@ -42,9 +31,12 @@ import {
   FinanceFormTotalsBox,
   financeFieldSx,
 } from '../../../components/finance/FinanceFormDialog'
+import { EditableProductLinesTable } from '../../../components/finance/EditableProductLinesTable'
 import { apiClient } from '../../../services/api'
 import { clientService, parseClientsListResponse } from '../../../services/clients'
 import type { Client } from '../../../services/clients'
+import { useProductsStore } from '../../../stores/productsStore'
+import { productService } from '../../../services/productService'
 
 interface InvoiceItem {
   id: string
@@ -104,6 +96,7 @@ export function CreateInvoiceDialog({
 }: CreateInvoiceDialogProps) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const productsStore = useProductsStore()
   
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
@@ -122,6 +115,9 @@ export function CreateInvoiceDialog({
         ...(defaultClientId ? { clientId: defaultClientId } : {}),
       })
       loadClients()
+      if (productsStore.isStale || productsStore.products.length === 0) {
+        productsStore.fetchProducts()
+      }
     }
   }, [open, defaultClientId])
 
@@ -216,7 +212,13 @@ export function CreateInvoiceDialog({
   const handleItemChange = (index: number, field: keyof InvoiceItem, value: any) => {
     setFormData(prev => {
       const newItems = [...prev.items]
-      newItems[index] = { ...newItems[index], [field]: value }
+      if (field === 'quantity') {
+        newItems[index] = { ...newItems[index], quantity: 1 }
+      } else if (field === 'unitPrice') {
+        newItems[index] = { ...newItems[index], unitPrice: Math.round(Number(value) || 0) }
+      } else {
+        newItems[index] = { ...newItems[index], [field]: value }
+      }
       
       // Recalculer les totaux
       if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
@@ -229,9 +231,9 @@ export function CreateInvoiceDialog({
   }
 
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0)
+    const subtotal = formData.items.reduce((sum, item) => sum + (1 * item.unitPrice), 0)
     const taxTotal = formData.items.reduce((sum, item) => {
-      const itemTotal = item.quantity * item.unitPrice
+      const itemTotal = 1 * item.unitPrice
       return sum + (itemTotal * item.taxRate / 100)
     }, 0)
     const total = subtotal + taxTotal
@@ -247,7 +249,7 @@ export function CreateInvoiceDialog({
       formData.clientEmail?.trim() ||
       matchedClient?.email ||
       selected?.email?.trim()
-    if (!email || formData.items.some((item) => !item.description || item.unitPrice <= 0)) {
+    if (!email || formData.items.some((item) => !item.description || item.unitPrice < 0)) {
       return
     }
     if (willCreateClient && !formData.newClientName?.trim()) {
@@ -256,11 +258,40 @@ export function CreateInvoiceDialog({
     if (formData.sendByEmailAfterCreate && !(formData.sendToEmail || email)?.trim()) {
       return
     }
+
+    const existingNames = new Set(
+      productsStore.products.map((p) => (p.description ?? p.name ?? '').trim().toLowerCase()),
+    )
+    const productCandidates = formData.items
+      .map((line) => ({
+        name: String(line.description ?? '').trim(),
+        unitPrice: Number(line.unitPrice),
+      }))
+      .filter((line) => line.name.length > 0 && !existingNames.has(line.name.toLowerCase()))
+
+    for (const candidate of productCandidates) {
+      try {
+        await productService.createProduct({
+          name: candidate.name,
+          description: candidate.name,
+          unitPrice: candidate.unitPrice > 0 ? candidate.unitPrice : undefined,
+        })
+        existingNames.add(candidate.name.toLowerCase())
+      } catch {
+        // On laisse la création de la facture continuer même si la création produit échoue.
+      }
+    }
+
     const payload: CreateInvoiceData = {
       ...formData,
       clientEmail: email,
       clientId: matchedClient?.id || formData.clientId || undefined,
       sendToEmail: formData.sendToEmail?.trim() || email,
+      items: formData.items.map((it) => ({
+        ...it,
+        quantity: 1,
+        unitPrice: Math.round(Number(it.unitPrice) || 0),
+      })),
     }
     await onSubmit(payload)
   }
@@ -446,100 +477,39 @@ export function CreateInvoiceDialog({
           </Box>
 
           <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-              <FinanceFormSectionTitle>Lignes de facturation</FinanceFormSectionTitle>
-              <Button
-                startIcon={<Add />}
-                onClick={handleAddItem}
-                variant="outlined"
-                size="small"
-                sx={financeOutlinedButtonSx}
-              >
-                Ajouter une ligne
-              </Button>
-            </Stack>
-            
-            <TableContainer
-              component={Paper}
-              variant="outlined"
-              sx={{ borderRadius: 2, borderColor: (t) => alpha('#0f172a', t.palette.mode === 'dark' ? 0.2 : 0.1) }}
-            >
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ width: '40%' }}>Description</TableCell>
-                    <TableCell align="right" sx={{ width: '15%' }}>Quantité</TableCell>
-                    <TableCell align="right" sx={{ width: '20%' }}>Prix unitaire</TableCell>
-                    <TableCell align="right" sx={{ width: '15%' }}>TVA (%)</TableCell>
-                    <TableCell align="right" sx={{ width: '10%' }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {formData.items.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          placeholder="Description de l'article"
-                          value={item.description}
-                          onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
-                          inputProps={{ min: 1, style: { textAlign: 'right' } }}
-                          sx={{ width: 80 }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.unitPrice}
-                          onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                          inputProps={{ min: 0, step: 0.01, style: { textAlign: 'right' } }}
-                          sx={{ width: 100 }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.taxRate}
-                          onChange={(e) => handleItemChange(index, 'taxRate', parseFloat(e.target.value) || 0)}
-                          inputProps={{ min: 0, max: 100, step: 0.1, style: { textAlign: 'right' } }}
-                          sx={{ width: 80 }}
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleRemoveItem(index)}
-                          disabled={formData.items.length === 1}
-                          color="error"
-                        >
-                          <Delete />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <EditableProductLinesTable
+              title="Lignes de facturation"
+              addLabel="Ajouter une ligne"
+              lines={formData.items.map((it) => ({
+                description: it.description,
+                quantity: 1,
+                unitPrice: Math.round(Number(it.unitPrice) || 0),
+                taxRate: it.taxRate,
+              }))}
+              products={productsStore.products}
+              taxHeader="TVA (%)"
+              taxInputProps={{ min: 0, max: 100, step: 0.1 }}
+              unitPriceWidth={100}
+              taxWidth={80}
+              onAddLine={handleAddItem}
+              onRemoveLine={handleRemoveItem}
+              onLineChange={(index, field, value) => {
+                if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
+                  handleItemChange(index, field, Number(value) || 0)
+                  return
+                }
+                handleItemChange(index, field, value)
+              }}
+            />
           </Box>
 
           <FinanceFormTotalsBox
             rows={[
-              { label: 'Sous-total HT', value: `${subtotal.toFixed(2)} ${currencySymbol}` },
-              { label: 'TVA', value: `${taxTotal.toFixed(2)} ${currencySymbol}` },
+              { label: 'Sous-total HT', value: `${Math.round(subtotal).toFixed(0)} ${currencySymbol}` },
+              { label: 'TVA', value: `${Math.round(taxTotal).toFixed(0)} ${currencySymbol}` },
             ]}
             totalLabel="Total TTC"
-            totalValue={`${total.toFixed(2)} ${currencySymbol}`}
+            totalValue={`${Math.round(total).toFixed(0)} ${currencySymbol}`}
           />
 
           <Box>

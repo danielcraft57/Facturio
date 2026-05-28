@@ -123,14 +123,13 @@ export function QuoteEditPage() {
   }
 
   const totals = useMemo(() => {
-    if (!form) return { subtotal: 0, tax: 0, total: 0, qty: 0 }
-    const subtotal = form.lines.reduce((s, l) => s + Number(l.quantity) * Number(l.unitPrice), 0)
+    if (!form) return { subtotal: 0, tax: 0, total: 0 }
+    const subtotal = form.lines.reduce((s, l) => s + 1 * Number(l.unitPrice), 0)
     const tax = form.lines.reduce(
-      (s, l) => s + Number(l.quantity) * Number(l.unitPrice) * Number(l.taxRate ?? 0),
+      (s, l) => s + 1 * Number(l.unitPrice) * Number(l.taxRate ?? 0),
       0,
     )
-    const qty = form.lines.reduce((s, l) => s + Number(l.quantity ?? 0), 0)
-    return { subtotal, tax, total: subtotal + tax, qty }
+    return { subtotal, tax, total: subtotal + tax }
   }, [form])
 
   const handleAddLine = () => {
@@ -160,7 +159,9 @@ export function QuoteEditPage() {
       if (!prev) return prev
       const lines = [...prev.lines]
       const line = { ...lines[index] }
-      if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
+      if (field === 'quantity') {
+        line.quantity = 1
+      } else if (field === 'unitPrice' || field === 'taxRate') {
         line[field] = Number(value)
       } else if (field === 'description') {
         line.description = String(value)
@@ -210,8 +211,8 @@ export function QuoteEditPage() {
         lines: form.lines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
           productId: productId ?? undefined,
           description: description.trim(),
-          quantity: Number(quantity),
-          unitPrice: Number(unitPrice),
+          quantity: 1,
+          unitPrice: Math.round(Number(unitPrice)),
           taxRate: Number(taxRate),
         })),
       })
@@ -356,14 +357,13 @@ export function QuoteEditPage() {
           addLabel="Ligne vide"
           lines={form.lines.map((line) => ({
             description: line.description,
-            quantity: line.quantity,
-            unitPrice: line.unitPrice,
+            quantity: 1,
+            unitPrice: Math.round(Number(line.unitPrice)),
             taxRate: line.taxRate ?? 0.2,
           }))}
           products={productsStore.products}
           taxHeader="TVA (0-1)"
           taxInputProps={{ min: 0, max: 1, step: 0.01 }}
-          quantityWidth={70}
           unitPriceWidth={100}
           taxWidth={80}
           onAddLine={handleAddLine}
@@ -373,12 +373,11 @@ export function QuoteEditPage() {
 
         <FinanceFormTotalsBox
           rows={[
-            { label: 'Total qté / heures', value: String(totals.qty) },
-            { label: 'Total HT', value: `${totals.subtotal.toFixed(2)} €` },
-            { label: 'TVA', value: `${totals.tax.toFixed(2)} €` },
+            { label: 'Total HT', value: `${Math.round(totals.subtotal).toFixed(0)} €` },
+            { label: 'TVA', value: `${Math.round(totals.tax).toFixed(0)} €` },
           ]}
           totalLabel="Total TTC"
-          totalValue={`${totals.total.toFixed(2)} €`}
+          totalValue={`${Math.round(totals.total).toFixed(0)} €`}
         />
       </Stack>
     </FinanceFormPageShell>

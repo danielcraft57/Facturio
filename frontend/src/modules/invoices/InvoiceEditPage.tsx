@@ -125,9 +125,9 @@ export function InvoiceEditPage() {
 
   const totals = useMemo(() => {
     if (!form) return { subtotal: 0, taxTotal: 0, total: 0 }
-    const subtotal = form.items.reduce((s, it) => s + it.quantity * it.unitPrice, 0)
+    const subtotal = form.items.reduce((s, it) => s + 1 * it.unitPrice, 0)
     const taxTotal = form.items.reduce((s, it) => {
-      const base = it.quantity * it.unitPrice
+      const base = 1 * it.unitPrice
       return s + base * (it.taxRate / 100)
     }, 0)
     return { subtotal, taxTotal, total: subtotal + taxTotal }
@@ -158,14 +158,20 @@ export function InvoiceEditPage() {
     setForm((prev) => {
       if (!prev) return prev
       const items = [...prev.items]
-      items[index] = { ...items[index], [field]: value }
+      if (field === 'quantity') {
+        items[index] = { ...items[index], quantity: 1 }
+      } else if (field === 'unitPrice') {
+        items[index] = { ...items[index], unitPrice: Math.round(Number(value) || 0) }
+      } else {
+        items[index] = { ...items[index], [field]: value }
+      }
       return { ...prev, items }
     })
   }
 
   const handleSave = async () => {
     if (!id || !form) return
-    if (!form.clientId || form.items.some((it) => !it.description.trim() || it.unitPrice <= 0)) {
+    if (!form.clientId || form.items.some((it) => !it.description.trim() || it.unitPrice < 0)) {
       toast.error('Client, descriptions et prix unitaires sont obligatoires.')
       return
     }
@@ -200,7 +206,11 @@ export function InvoiceEditPage() {
         dueDate: form.dueDate,
         currency: form.currency,
         status: form.status,
-        items: form.items,
+        items: form.items.map((it) => ({
+          ...it,
+          quantity: 1,
+          unitPrice: Math.round(Number(it.unitPrice) || 0),
+        })),
       }
       await invoiceService.updateInvoice(payload)
       toast.success('Facture mise à jour')
@@ -357,11 +367,11 @@ export function InvoiceEditPage() {
 
         <FinanceFormTotalsBox
           rows={[
-            { label: 'Sous-total HT', value: `${totals.subtotal.toFixed(2)} ${currencySymbol}` },
-            { label: 'TVA', value: `${totals.taxTotal.toFixed(2)} ${currencySymbol}` },
+            { label: 'Sous-total HT', value: `${Math.round(totals.subtotal).toFixed(0)} ${currencySymbol}` },
+            { label: 'TVA', value: `${Math.round(totals.taxTotal).toFixed(0)} ${currencySymbol}` },
           ]}
           totalLabel="Total TTC"
-          totalValue={`${totals.total.toFixed(2)} ${currencySymbol}`}
+          totalValue={`${Math.round(totals.total).toFixed(0)} ${currencySymbol}`}
         />
       </Stack>
     </FinanceFormPageShell>
