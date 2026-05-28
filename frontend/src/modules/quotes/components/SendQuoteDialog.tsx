@@ -86,9 +86,7 @@ export function SendQuoteDialog({ open, quote, onClose, onSend, sending = false 
     })
   }
 
-  // Désactivé par défaut : on active uniquement quand Stripe est confirmé configuré.
-  const canSend = stripeConfigured === true
-  const blockSend = !canSend
+  const blockSend = false
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -101,14 +99,14 @@ export function SendQuoteDialog({ open, quote, onClose, onSend, sending = false 
             </Typography>
 
             {stripeConfigured !== true && (
-              <Alert severity={stripeConfigured === false ? 'error' : 'warning'} sx={{ mb: 2, borderRadius: 2 }}>
+              <Alert severity={stripeConfigured === false ? 'info' : 'warning'} sx={{ mb: 2, borderRadius: 2 }}>
                 <Typography fontWeight={800} sx={{ mb: 0.5 }}>
                   Paiement en ligne Stripe non configuré
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>
                   {stripeConfigured === null
                     ? 'Vérification de la configuration Stripe…'
-                    : 'Tant que Stripe prestataire n’est pas configuré, l’envoi est bloqué (le client ne pourra pas payer en ligne).'}
+                    : 'Le devis peut être envoyé sans paiement en ligne. Le client ne pourra simplement pas payer en ligne.'}
                 </Typography>
                 <Button
                   component={RouterLink}
@@ -117,7 +115,7 @@ export function SendQuoteDialog({ open, quote, onClose, onSend, sending = false 
                   color="warning"
                   size="small"
                 >
-                  Configurer Stripe dans Paramètres
+                  Configurer Stripe (optionnel)
                 </Button>
               </Alert>
             )}

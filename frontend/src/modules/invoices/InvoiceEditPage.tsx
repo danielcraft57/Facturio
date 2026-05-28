@@ -8,30 +8,22 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  IconButton,
-  Paper,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
   alpha,
 } from '@mui/material'
-import { Add, Delete, Edit, ReceiptLong } from '@mui/icons-material'
+import { Edit, ReceiptLong } from '@mui/icons-material'
 import {
   invoiceService,
-  normalizeInvoiceFromApi,
-  unwrapApiPayload,
   type Invoice,
   type UpdateInvoiceData,
 } from '../../services/invoices'
 import { clientService, parseClientsListResponse } from '../../services/clients'
 import type { Client } from '../../services/clients'
+import { useProductsStore } from '../../stores/productsStore'
+import { productService } from '../../services/productService'
 import { useToast } from '../../components/useToast'
 import { apiClient } from '../../services/api'
 import { formatDate } from '../../utils/formatters'
@@ -42,6 +34,7 @@ import {
   FinanceFormTotalsBox,
   financeFieldSx,
 } from '../../components/finance/FinanceFormDialog'
+import { EditableProductLinesTable } from '../../components/finance/EditableProductLinesTable'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
 type LineForm = {
@@ -78,6 +71,7 @@ export function InvoiceEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const toast = useToast()
+  const productsStore = useProductsStore()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [clients, setClients] = useState<Client[]>([])
   const [form, setForm] = useState<InvoiceEditForm | null>(null)
@@ -88,6 +82,9 @@ export function InvoiceEditPage() {
   useEffect(() => {
     if (!id) return
     void load(id)
+    if (productsStore.isStale || productsStore.products.length === 0) {
+      productsStore.fetchProducts()
+    }
   }, [id])
 
   const load = async (invoiceId: string) => {
@@ -174,6 +171,29 @@ export function InvoiceEditPage() {
     }
     try {
       setSaving(true)
+      const existingNames = new Set(
+        productsStore.products.map((p) => (p.description ?? p.name ?? '').trim().toLowerCase()),
+      )
+      const productCandidates = form.items
+        .map((line) => ({
+          name: line.description.trim(),
+          unitPrice: Number(line.unitPrice),
+        }))
+        .filter((line) => line.name.length > 0 && !existingNames.has(line.name.toLowerCase()))
+
+      for (const candidate of productCandidates) {
+        try {
+          await productService.createProduct({
+            name: candidate.name,
+            description: candidate.name,
+            unitPrice: candidate.unitPrice > 0 ? candidate.unitPrice : undefined,
+          })
+          existingNames.add(candidate.name.toLowerCase())
+        } catch {
+          // On laisse la sauvegarde de la facture continuer même si la création produit échoue.
+        }
+      }
+
       const payload: UpdateInvoiceData = {
         id,
         clientId: form.clientId,
@@ -319,89 +339,21 @@ export function InvoiceEditPage() {
           </Box>
         </Box>
 
-        <Box>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-            <FinanceFormSectionTitle sx={{ mb: 0 }}>Lignes</FinanceFormSectionTitle>
-            <Button size="small" startIcon={<Add />} onClick={handleAddItem} sx={financeOutlinedButtonSx}>
-              Ajouter une ligne
-            </Button>
-          </Stack>
-          <TableContainer
-            component={Paper}
-            variant="outlined"
-            sx={{ borderRadius: 2, borderColor: (t) => alpha('#0f172a', t.palette.mode === 'dark' ? 0.2 : 0.1) }}
-          >
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Description</TableCell>
-                  <TableCell align="right">Qté</TableCell>
-                  <TableCell align="right">Prix unit.</TableCell>
-                  <TableCell align="right">TVA (%)</TableCell>
-                  <TableCell width={48} />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {form.items.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        sx={financeFieldSx}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        sx={{ width: 72, ...financeFieldSx }}
-                        value={item.quantity}
-                        onChange={(e) =>
-                          handleItemChange(index, 'quantity', parseInt(e.target.value, 10) || 0)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        sx={{ width: 96, ...financeFieldSx }}
-                        value={item.unitPrice}
-                        onChange={(e) =>
-                          handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        sx={{ width: 72, ...financeFieldSx }}
-                        value={item.taxRate}
-                        onChange={(e) =>
-                          handleItemChange(index, 'taxRate', parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        disabled={form.items.length <= 1}
-                        onClick={() => handleRemoveItem(index)}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
+        <EditableProductLinesTable
+          lines={form.items}
+          products={productsStore.products}
+          taxHeader="TVA (%)"
+          addLabel="Ajouter une ligne"
+          onAddLine={handleAddItem}
+          onRemoveLine={handleRemoveItem}
+          onLineChange={(index, field, value) => {
+            if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
+              handleItemChange(index, field, Number(value) || 0)
+              return
+            }
+            handleItemChange(index, field, value)
+          }}
+        />
 
         <FinanceFormTotalsBox
           rows={[
