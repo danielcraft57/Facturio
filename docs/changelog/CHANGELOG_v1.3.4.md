@@ -41,3 +41,8 @@ Cette version unifie la **comptabilité affichée** (facture, PDF, page publique
 - e2e remboursements acompte (`refunds-deposit.e2e-spec.ts`)
 - e2e avoirs / factures (existants, étendus)
 - **e2e fiche client finance** (`clients-finance.e2e-spec.ts`) : synthèse `GET …/finance`, crédits, opérations diverses, imputation, filtres `clientId` factures/devis, imputation auto à la création — exécuté par `npm run test:e2e` en CI
+
+## Versionning
+
+- Version applicative montée à `1.3.4`.
+- Tag Git publié : `v1.3.4`.
