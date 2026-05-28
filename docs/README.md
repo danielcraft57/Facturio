@@ -70,6 +70,12 @@ Vision produit (dev web, logiciel, automatisation) et développement du vertical
 ### [Monétisation (bootstrap)](./planning/MONETISATION.md)
 Méthode économique pour rentabiliser Facturio (freemium, dogfooding DanielCraft, PA partenaire, SEO).
 
+### [Stratégie acquisition & inscriptions 2026](./planning/STRATEGIE_ACQUISITION_INSCRIPTIONS_2026.md)
+Concurrence, réglementation, entonnoir d’inscription, priorisation produit et messages marketing (landing pages).
+
+### [Roadmap d'exécution 2026](./planning/ROADMAP_EXECUTION_2026.md)
+Sprints opérationnels (conformité PA, vertical métier, compta UI) — suivi branche `feat/roadmap-execution-2026`.
+
 ### [Facturation électronique 2026–2027](./planning/FACTURATION_ELECTRONIQUE_2026.md)
 Plan de mise en conformité avec la réforme française (PA, Factur-X, e-reporting, jalons sept. 2026 / 2027).
 
@@ -131,6 +137,7 @@ Notes techniques et décisions de développement pour les fonctionnalités prior
 - [Roadmap](./planning/ROADMAP.md)
 - [Positionnement prestations services](./planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md)
 - [Monétisation](./planning/MONETISATION.md)
+- [Stratégie acquisition 2026](./planning/STRATEGIE_ACQUISITION_INSCRIPTIONS_2026.md)
 - [Facturation électronique 2026](./planning/FACTURATION_ELECTRONIQUE_2026.md)
 - [TODO](./planning/TODO.md)
 - [Avancement](./planning/AVANCEMENT.md)

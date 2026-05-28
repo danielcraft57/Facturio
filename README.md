@@ -3,7 +3,7 @@
 
 API de facturation orientée **prestations de services numériques** : développement web, logiciel sur mesure, automatisation, intégrations API, maintenance et offres IA. Clients, catalogue de prestations, devis, factures, paiements, TVA (FR/UE) et déclarations.
 
-→ [Positionnement](docs/planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md) · [Monétisation](docs/planning/MONETISATION.md) · [Réforme 2026](docs/planning/FACTURATION_ELECTRONIQUE_2026.md) · [Dossier PA](docs/accreditation-pa/README.md)
+→ [Positionnement](docs/planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md) · [Monétisation](docs/planning/MONETISATION.md) · [Stratégie acquisition 2026](docs/planning/STRATEGIE_ACQUISITION_INSCRIPTIONS_2026.md) · [Réforme 2026](docs/planning/FACTURATION_ELECTRONIQUE_2026.md) · [Dossier PA](docs/accreditation-pa/README.md)
 
 ### Démarrage rapide
 Pré-requis: Node 20+ et npm.

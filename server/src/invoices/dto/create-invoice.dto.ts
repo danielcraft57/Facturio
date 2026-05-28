@@ -4,6 +4,8 @@ import { normalizeTaxRateDecimal } from '../../common/tax-rate.util';
 // On évite de dépendre des enums Prisma côté DTO pour rester stable
 export const INVOICE_STATUS_VALUES = ['DRAFT','SENT','PAID','OVERDUE','CANCELLED'] as const;
 export type InvoiceStatusLiteral = typeof INVOICE_STATUS_VALUES[number];
+export const INVOICE_OPERATION_CATEGORY_VALUES = ['GOODS', 'SERVICE', 'MIXED'] as const;
+export type InvoiceOperationCategoryLiteral = typeof INVOICE_OPERATION_CATEGORY_VALUES[number];
 
 class InvoiceLineDto {
 	@IsString()
@@ -34,6 +36,21 @@ export class CreateInvoiceDto {
 	@IsOptional()
 	@IsDateString()
 	dueDate?: string;
+
+	/** Catégorie d'opération demandée par la réforme (biens, services, mixte). */
+	@IsOptional()
+	@IsEnum(INVOICE_OPERATION_CATEGORY_VALUES)
+	operationCategory?: InvoiceOperationCategoryLiteral;
+
+	/** TVA sur les débits (option activée). */
+	@IsOptional()
+	@IsBoolean()
+	vatOnDebits?: boolean;
+
+	/** Adresse de livraison si différente de l'adresse de facturation. */
+	@IsOptional()
+	@IsString()
+	deliveryAddress?: string;
 
 	@IsOptional()
 	@IsEnum(INVOICE_STATUS_VALUES)

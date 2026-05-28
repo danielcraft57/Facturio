@@ -47,18 +47,18 @@ const MARKETING: Record<string, RouteSeo> = {
     title: 'Accueil',
     description: SITE_DESCRIPTION,
     ogImage: DEFAULT_OG_IMAGE,
-    keywords: `${DEFAULT_KEYWORDS}, logiciel facturation développeur`,
+    keywords: `${DEFAULT_KEYWORDS}, logiciel facturation développeur, facturation électronique 2026`,
   },
   '/prestations': {
     title: 'Prestations',
     description:
-      'Catalogue de prestations pour développeurs et agences web : sites, apps, maintenance, SEO et IA — prêtes à facturer sur la plateforme.',
+      'Forfaits dev, maintenance, régie et packs catalogue : facturez sites, apps, intégrations API et offres IA comme vous travaillez.',
     ogImage: '/images/facturio-prestations.png',
   },
   '/fonctionnalites': {
     title: 'Fonctionnalités',
     description:
-      'Devis, factures PDF, clients, produits, TVA, paiements Stripe et suivi comptable — tout-en-un pour freelances tech.',
+      'Devis, factures, Stripe, TVA, prospection, export FEC et conformité e-facture 2026 — outil vertical pour freelances tech et agences web.',
     ogImage: '/images/facturio-features.png',
   },
   '/facturation-electronique': {
@@ -70,7 +70,7 @@ const MARKETING: Record<string, RouteSeo> = {
   '/tarifs': {
     title: 'Tarifs',
     description:
-      'Essai gratuit, offres adaptées aux développeurs et agences. Comparez les formules et démarrez sans engagement.',
+      'Free (10 factures/mois), Pro 12 €, Pro + e-facture 24 € et packs catalogue. Anticipez la réforme septembre 2026 sans engagement.',
     ogImage: '/images/facturio-pricing.png',
   },
   '/legal': {

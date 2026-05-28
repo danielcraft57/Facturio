@@ -22,6 +22,12 @@ const COUNTRY_LABELS: Record<string, string> = {
 	LU: 'Luxembourg'
 };
 
+const OPERATION_CATEGORY_LABELS: Record<string, string> = {
+	GOODS: 'Livraison de biens',
+	SERVICE: 'Prestation de services',
+	MIXED: 'Opération mixte (biens et services)',
+};
+
 export function formatCountryLabel(country?: string | null, countryCode?: string | null): string {
 	if (country && country.length > 2) return country;
 	const code = (countryCode || country || '').toUpperCase();
@@ -105,6 +111,16 @@ export function buildFrenchLegalFooter(ctx: LegalMentionsContext): LegalFooterCo
 				? `Conditions de règlement : paiement par virement bancaire à réception, au plus tard le ${due} (date d'échéance).`
 				: 'Conditions de règlement : paiement par virement bancaire à réception de facture, sauf accord écrit contraire.'
 		);
+		const opCategory = String(doc?.operationCategory ?? '').toUpperCase();
+		if (opCategory && OPERATION_CATEGORY_LABELS[opCategory]) {
+			paragraphs.push(`Catégorie d'opération : ${OPERATION_CATEGORY_LABELS[opCategory]}.`);
+		}
+		if (doc?.vatOnDebits === true) {
+			paragraphs.push('Option de TVA sur les débits : oui.');
+		}
+		if (doc?.deliveryAddress?.trim()) {
+			paragraphs.push(`Adresse de livraison : ${doc.deliveryAddress.trim()}.`);
+		}
 		if (iban) {
 			paragraphs.push(`Coordonnées bancaires : IBAN ${iban}.`);
 		}

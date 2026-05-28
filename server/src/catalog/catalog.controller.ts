@@ -3,6 +3,7 @@ import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { getTechStackChoices } from './catalog-data';
+import { listCatalogPacks } from './catalog-packs';
 import { CatalogPersonalizationService } from './catalog-personalization.service';
 import { UpdateOrganizationCatalogDto } from './dto/update-organization-catalog.dto';
 
@@ -17,6 +18,20 @@ export class CatalogController {
 	@Get('tech-choices')
 	getTechChoices() {
 		return getTechStackChoices();
+	}
+
+	/** Packs métier importables (marketing + onboarding). */
+	@Get('packs')
+	listPacks() {
+		return { packs: listCatalogPacks() };
+	}
+
+	@Post('packs/:packId/install')
+	installPack(
+		@Param('packId') packId: string,
+		@CurrentUser() user: { organizationId: number },
+	) {
+		return this.catalog.installCatalogPack(user.organizationId, packId);
 	}
 
 	@Get('organization')

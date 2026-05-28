@@ -14,6 +14,8 @@ const PUBLIC_PATHS = [
 	'/api/auth/google',
 	'/api/auth/google/callback',
 	'/api/catalog/tech-choices',
+	'/api/catalog/packs',
+	'/api/e-invoicing/reform-schedule',
 	'/api/public',
 	'/api/track',
 	'/api/webhooks',

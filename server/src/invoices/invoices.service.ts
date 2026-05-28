@@ -57,6 +57,12 @@ export interface CreateInvoiceInput {
 	clientId?: string;
 	/** Date d'échéance */
 	dueDate?: string | Date | null;
+	/** Catégorie d'opération réforme (GOODS, SERVICE, MIXED) */
+	operationCategory?: 'GOODS' | 'SERVICE' | 'MIXED';
+	/** Option TVA sur les débits */
+	vatOnDebits?: boolean;
+	/** Adresse de livraison si différente */
+	deliveryAddress?: string | null;
 	/** Statut de la facture */
 	status?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 	/** Lignes de facture */
@@ -87,6 +93,12 @@ export interface UpdateInvoiceInput {
 	clientId?: string;
 	/** Date d'échéance */
 	dueDate?: string | Date | null;
+	/** Catégorie d'opération réforme (GOODS, SERVICE, MIXED) */
+	operationCategory?: 'GOODS' | 'SERVICE' | 'MIXED';
+	/** Option TVA sur les débits */
+	vatOnDebits?: boolean;
+	/** Adresse de livraison si différente */
+	deliveryAddress?: string | null;
 	/** Statut de la facture */
 	status?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 	/** Lignes de facture */
@@ -552,6 +564,12 @@ export class InvoicesService {
 						clientId,
 						organizationId: orgId,
 						dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+						operationCategory: data.operationCategory,
+						vatOnDebits: data.vatOnDebits,
+						deliveryAddress:
+							data.deliveryAddress === undefined || data.deliveryAddress === null
+								? undefined
+								: data.deliveryAddress.trim() || null,
 						status: invoiceStatus,
 						currency: data.currency ?? 'EUR',
 						subtotal: totals.subtotal,
@@ -831,6 +849,12 @@ export class InvoicesService {
 				number: data.number,
 				clientId: data.clientId,
 				dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+				operationCategory: data.operationCategory,
+				vatOnDebits: data.vatOnDebits,
+				deliveryAddress:
+					data.deliveryAddress === undefined || data.deliveryAddress === null
+						? undefined
+						: data.deliveryAddress.trim() || null,
 				status: data.status,
 				currency: data.currency,
 				subtotal: totals.subtotal,

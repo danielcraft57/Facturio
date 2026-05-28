@@ -1,8 +1,9 @@
-import { BadRequestException, Controller, Get, Header, Param, Res } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Header, Param, Query, Res } from '@nestjs/common';
 import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { EInvoicingService } from './e-invoicing.service';
+import { computeReformSchedule } from './reform-schedule.util';
 
 function orgIdFromUser(user: { organizationId?: number; organization?: { id?: number } }): number {
 	const id = Number(user?.organizationId ?? user?.organization?.id);
@@ -13,6 +14,12 @@ function orgIdFromUser(user: { organizationId?: number; organization?: { id?: nu
 @Controller('e-invoicing')
 export class EInvoicingController {
 	constructor(private readonly eInvoicing: EInvoicingService) {}
+
+	/** Calendrier réforme selon taille d'entreprise (public). */
+	@Get('reform-schedule')
+	getReformSchedule(@Query('companySize') companySize?: string) {
+		return computeReformSchedule(companySize);
+	}
 
 	@Get('readiness')
 	getOrganizationReadiness(@CurrentUser() user: any) {

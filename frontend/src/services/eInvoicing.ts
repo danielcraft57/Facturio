@@ -1,4 +1,4 @@
-import { apiClient, type ApiResponse } from './api'
+import { apiClient } from './api'
 import { unwrapApiPayload } from './clients'
 import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl'
 
@@ -32,7 +32,37 @@ export type InvoiceReadiness = {
   client?: { ready: boolean; score: number; checks: ComplianceCheck[] }
 }
 
+export type ReformMilestone = {
+  kind: 'reception' | 'emission' | 'ereporting'
+  date: string
+  label: string
+  description: string
+  active: boolean
+}
+
+export type ReformSchedule = {
+  companySize: string
+  companySizeLabel: string
+  receptionDate: string
+  emissionDate: string
+  ereportingDate: string
+  milestones: ReformMilestone[]
+  summary: string
+  recommendation: string
+}
+
 export const eInvoicingService = {
+  getReformSchedule: async (companySize?: string): Promise<ReformSchedule> => {
+    const q = companySize ? `?companySize=${encodeURIComponent(companySize)}` : ''
+    const res = await fetch(`${resolveApiBaseUrl()}/e-invoicing/reform-schedule${q}`, {
+      credentials: 'include',
+    })
+    if (!res.ok) {
+      throw new Error('Impossible de charger le calendrier réforme')
+    }
+    return res.json() as Promise<ReformSchedule>
+  },
+
   getOrganizationReadiness: async (): Promise<OrganizationReadiness> => {
     const res = await apiClient.get<OrganizationReadiness>('e-invoicing/readiness')
     return unwrapApiPayload<OrganizationReadiness>(res)
