@@ -4,6 +4,7 @@ Documentation des modules spécialisés de Facturio.
 
 ## 📚 Contenu
 
+- [Finance, avoirs & remboursements](./FINANCE_REMBOURSEMENTS_AVOIRS.md) — Soldes, fiche client, imputation, PDF
 - [OSINT](./OSINT.md) - Intégration OSINT pour enrichissement de données
 - [Scraper](./SCRAPER.md) - Module de scraping web
 - [Outils OSINT](./OSINT_TOOLS.md) - Liste complète des outils OSINT

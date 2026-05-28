@@ -27,6 +27,7 @@ import {
 } from './invoice-deposit.util';
 import { resolveEngagementBreakdownForInvoice } from './invoice-engagement-breakdown.util';
 import { canAccessInvoiceByPublicToken } from './invoice-public-access.util';
+import { AvoirsService } from '../avoirs/avoirs.service';
 
 export type InvoiceNumberKind = 'standard' | 'deposit' | 'remainder';
 
@@ -73,6 +74,7 @@ export interface CreateInvoiceInput {
 	/** Met à jour l’email du client à la création */
 	clientEmail?: string;
 	clientName?: string;
+	applyClientCredits?: boolean;
 }
 
 /**
@@ -130,7 +132,51 @@ export class InvoicesService {
 		private readonly billing: BillingService,
 		private readonly paidNotifications: InvoicePaymentNotificationService,
 		private readonly realtime: RealtimeEventsService,
+		private readonly avoirs: AvoirsService,
 	) {}
+
+	private async applyAvailableClientCredits(
+		invoiceId: string,
+		clientId: string,
+		organizationId: number,
+	): Promise<number> {
+		const invoice = await this.prisma.invoice.findUnique({
+			where: { id: invoiceId },
+			select: { balance: true, status: true },
+		});
+		if (!invoice) return 0;
+		let remaining = Number(invoice.balance ?? 0);
+		if (remaining <= 0.01 || invoice.status === 'CANCELLED') return 0;
+
+		const credits = await this.prisma.avoir.findMany({
+			where: {
+				clientId,
+				organizationId,
+				invoiceId: null,
+				status: { in: ['SENT', 'APPLIED'] },
+			},
+			orderBy: { date: 'asc' },
+		});
+
+		let appliedTotal = 0;
+		for (const credit of credits) {
+			if (remaining <= 0.01) break;
+			const available = Number(credit.total) - Number(credit.appliedAmount ?? 0);
+			if (available <= 0.01) continue;
+			const amountToApply = Math.min(available, remaining);
+			if (amountToApply <= 0.01) continue;
+			await this.avoirs.apply(
+				credit.id,
+				{ invoiceId, amount: Number(amountToApply.toFixed(2)) },
+				organizationId,
+			);
+			appliedTotal += amountToApply;
+			remaining = Number((remaining - amountToApply).toFixed(2));
+		}
+
+		await this.syncInvoiceFinancials(invoiceId, { organizationId });
+		return Number(appliedTotal.toFixed(2));
+	}
 
 	private notifyInvoice(
 		organizationId: number | undefined,
@@ -139,6 +185,105 @@ export class InvoicesService {
 		meta?: { number?: string; status?: string },
 	): void {
 		if (organizationId) this.realtime.emit(organizationId, 'invoices', action, id, meta);
+	}
+
+	/** Somme des avoirs déjà imputés sur la facture (AvoirApplication). */
+	async getAppliedCreditTotal(invoiceId: string): Promise<number> {
+		const agg = await this.prisma.avoirApplication.aggregate({
+			where: { invoiceId },
+			_sum: { amount: true },
+		});
+		return Number(agg._sum.amount ?? 0);
+	}
+
+	/**
+	 * Recalcule balance + statut à partir du TTC, encaissements et avoirs imputés.
+	 */
+	async syncInvoiceFinancials(
+		invoiceId: string,
+		options?: { organizationId?: number },
+	): Promise<{
+		grossTotal: number;
+		cashPaid: number;
+		refunded: number;
+		netPaid: number;
+		appliedCreditTotal: number;
+		balance: number;
+		settlementLabel: 'A_PAYER' | 'SOLDEE_CB' | 'SOLDEE_AVOIR' | 'SOLDEE_MIXTE' | 'ANNULEE';
+	}> {
+		const where: { id: string; organizationId?: number } = { id: invoiceId };
+		if (options?.organizationId != null) where.organizationId = options.organizationId;
+
+		const invoice = await this.prisma.invoice.findFirst({
+			where,
+			include: {
+				payments: true,
+				refunds: { where: { status: 'COMPLETED' } },
+			},
+		});
+		if (!invoice) throw new NotFoundException('Facture non trouvée');
+
+		const grossTotal = Number(invoice.total);
+		const cashPaid = invoice.payments.reduce((s, p) => s + Number(p.amount), 0);
+		const refunded = invoice.refunds.reduce((s, r) => s + Number(r.amount), 0);
+		const netPaid = Number((cashPaid - refunded).toFixed(2));
+		const appliedCreditTotal = await this.getAppliedCreditTotal(invoiceId);
+		const balance = Math.max(0, Number((grossTotal - netPaid - appliedCreditTotal).toFixed(2)));
+
+		let status = invoice.status;
+		if (invoice.status !== 'CANCELLED') {
+			if (balance <= 0.01) {
+				status = 'PAID';
+			} else if (status === 'PAID' && balance > 0.01) {
+				status = 'SENT';
+			}
+		}
+
+		let settlementLabel: 'A_PAYER' | 'SOLDEE_CB' | 'SOLDEE_AVOIR' | 'SOLDEE_MIXTE' | 'ANNULEE' =
+			'A_PAYER';
+		if (invoice.status === 'CANCELLED') {
+			settlementLabel = 'ANNULEE';
+		} else if (balance <= 0.01) {
+			if (netPaid >= grossTotal - 0.01) {
+				settlementLabel = 'SOLDEE_CB';
+			} else if (appliedCreditTotal >= grossTotal - 0.01 && netPaid < 0.01) {
+				settlementLabel = 'SOLDEE_AVOIR';
+			} else if (appliedCreditTotal > 0.01) {
+				settlementLabel = 'SOLDEE_MIXTE';
+			}
+		}
+
+		const storedBalance = Number(invoice.balance ?? 0);
+		if (
+			Math.abs(storedBalance - balance) > 0.01 ||
+			(status !== invoice.status && invoice.status !== 'CANCELLED')
+		) {
+			await this.prisma.invoice.update({
+				where: { id: invoiceId },
+				data: { balance, status },
+			});
+		}
+
+		return {
+			grossTotal,
+			cashPaid,
+			refunded,
+			netPaid,
+			appliedCreditTotal,
+			balance,
+			settlementLabel,
+		};
+	}
+
+	private async enrichInvoiceWithSettlement(invoice: any, organizationId?: number) {
+		const settlement = await this.syncInvoiceFinancials(invoice.id, { organizationId });
+		return {
+			...invoice,
+			appliedCreditTotal: settlement.appliedCreditTotal,
+			balance: settlement.balance,
+			settlement: settlement.settlementLabel,
+			settlementDetails: settlement,
+		};
 	}
 
 	/** Statuts pour lesquels la vente doit être comptabilisée (émise, pas brouillon). */
@@ -427,7 +572,7 @@ export class InvoicesService {
 							})),
 						},
 					},
-					include: { lines: true, client: true, payments: true },
+					include: { lines: true, client: true, payments: true, appliedAvoirs: true },
 				});
 				break;
 			} catch (err: unknown) {
@@ -441,6 +586,10 @@ export class InvoicesService {
 		}
 		if (!created) {
 			throw new BadRequestException('Impossible de créer la facture (numéro en conflit)');
+		}
+
+		if (!markPaid && data.applyClientCredits !== false) {
+			await this.applyAvailableClientCredits(created.id, clientId, orgId);
 		}
 
 		if (this.isEmittedInvoiceStatus(invoiceStatus)) {
@@ -474,11 +623,15 @@ export class InvoicesService {
 			return full;
 		}
 
-		this.notifyInvoice(orgId, 'created', created.id, {
-			number: created.number,
-			status: created.status,
-		});
-		return created;
+		const settled = await this.syncInvoiceFinancials(created.id, { organizationId: orgId });
+		const full = await this.findOne(created.id, orgId);
+		this.notifyInvoice(
+			orgId,
+			settled.balance <= 0.01 ? 'paid' : 'created',
+			created.id,
+			{ number: full.number, status: full.status },
+		);
+		return full;
 	}
 
 	/**
@@ -521,6 +674,9 @@ export class InvoicesService {
 		if (q.tag?.trim()) {
 			where.tags = { contains: `"${q.tag.trim()}"` };
 		}
+		if (q.clientId?.trim()) {
+			where.clientId = q.clientId.trim();
+		}
 
 		try {
 			const [items, total] = await this.prisma.$transaction([
@@ -531,7 +687,7 @@ export class InvoicesService {
 					orderBy: useFolderSort
 						? documentFolderOrderBy('invoice')
 						: { [sortBy]: order },
-					include: { lines: true, client: true, payments: true }
+					include: { lines: true, client: true, payments: true, appliedAvoirs: true }
 				}),
 				this.prisma.invoice.count({ where })
 			]);
@@ -571,11 +727,11 @@ export class InvoicesService {
 		if (organizationId != null) where.organizationId = organizationId;
 		let invoice = await this.prisma.invoice.findFirst({
 			where,
-			include: { lines: true, client: true, payments: true }
+			include: { lines: true, client: true, payments: true, appliedAvoirs: true }
 		});
 		if (!invoice) throw new NotFoundException('Facture non trouvee');
 		invoice = await this.reconcileRemainderAwaitingSend(invoice);
-		return invoice;
+		return this.enrichInvoiceWithSettlement(invoice, organizationId);
 	}
 
 	/**
@@ -838,7 +994,21 @@ export class InvoicesService {
 	 */
 	async listPayments(id: string, organizationId?: number) {
 		await this.findOne(id, organizationId);
-		return this.prisma.payment.findMany({ where: { invoiceId: id }, orderBy: { date: 'desc' } });
+		const payments = await this.prisma.payment.findMany({
+			where: { invoiceId: id },
+			orderBy: { date: 'desc' },
+			include: { refunds: { where: { status: 'COMPLETED' } } },
+		});
+		return payments.map((p) => {
+			const refunded = p.refunds.reduce((s, r) => s + Number(r.amount), 0);
+			const amount = Number(p.amount);
+			return {
+				...p,
+				amount,
+				refundedAmount: refunded,
+				refundableAmount: Math.max(0, amount - refunded),
+			};
+		});
 	}
 
 	/**
@@ -860,23 +1030,20 @@ export class InvoicesService {
 	 */
 	async addPayment(id: string, amount: number, date?: string | Date, method?: string, notes?: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
-		const invoiceTotal = Number(invoice.total);
-		const priorPaid = (invoice.payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
-		const remaining = invoiceTotal - priorPaid;
-		const wasFullyPaid = invoice.status === 'PAID' || remaining <= 0;
+		const before = await this.syncInvoiceFinancials(id, { organizationId });
+		const wasFullyPaid = before.balance <= 0.01;
+
+		if (amount > before.balance + 0.01) {
+			throw new BadRequestException(
+				`Le montant du paiement (${amount}) dépasse le solde restant (${before.balance})`,
+			);
+		}
 
 		const payment = await this.prisma.payment.create({
 			data: { invoiceId: id, amount, date: date ? new Date(date) : undefined, method, notes }
 		});
-		const agg = await this.prisma.payment.aggregate({ where: { invoiceId: id }, _sum: { amount: true } });
-		const paid = agg?._sum?.amount ? (agg._sum.amount as any).toNumber?.() ?? Number(agg._sum.amount) : 0;
-		const newBalance = invoiceTotal - paid;
-		const newStatus = newBalance <= 0 ? 'PAID' : (invoice.status as any);
-		await this.prisma.invoice.update({
-			where: { id },
-			data: { balance: newBalance, status: newStatus },
-			include: { lines: true, client: true, payments: true }
-		});
+		const after = await this.syncInvoiceFinancials(id, { organizationId });
+		const newStatus = after.balance <= 0.01 ? 'PAID' : invoice.status;
 		// Comptabilisation de l'encaissement (512/411)
 		try {
 			await this.accounting.postInvoicePayment({
@@ -887,7 +1054,7 @@ export class InvoicesService {
 			});
 		} catch (_) {}
 
-		if (newStatus === 'PAID' && !wasFullyPaid) {
+		if (after.balance <= 0.01 && !wasFullyPaid) {
 			void this.paidNotifications.notifyInvoiceFullyPaid(id, {
 				lastPaymentAmount: amount,
 				paymentMethod: method,
@@ -896,9 +1063,9 @@ export class InvoicesService {
 
 		this.notifyInvoice(
 			organizationId,
-			newStatus === 'PAID' && !wasFullyPaid ? 'paid' : 'updated',
+			after.balance <= 0.01 && !wasFullyPaid ? 'paid' : 'updated',
 			id,
-			{ number: invoice.number, status: newStatus },
+			{ number: invoice.number, status: after.balance <= 0.01 ? 'PAID' : invoice.status },
 		);
 
 		// Retourner le paiement en nombre pour .toBe(250)
@@ -952,9 +1119,11 @@ export class InvoicesService {
 				invoiceStripePublishableKey?: string | null;
 			} | null;
 			payments: { amount: unknown }[];
+			appliedAvoirs?: { amount: unknown; avoirId: number }[];
 		},
 		balance: number,
-		totalPaid: number
+		totalPaid: number,
+		appliedCreditOverride?: number,
 	) {
 		const org = invoice.organization;
 		const stripeEnabled = !!(
@@ -964,6 +1133,12 @@ export class InvoicesService {
 		const tags = parseTagsJson(invoice.tags);
 		const presentation = resolveInvoiceDocumentPresentation(tags, invoice.legalMention, invoice.dueDate);
 		const engagementBreakdown = await this.buildEngagementBreakdown(invoice);
+		const appliedCreditTotal =
+			appliedCreditOverride ??
+			(invoice.appliedAvoirs ?? []).reduce(
+				(sum: number, a: { amount: unknown }) => sum + Number(a.amount ?? 0),
+				0,
+			);
 		return {
 			number: invoice.number,
 			documentKind: presentation.kind,
@@ -980,6 +1155,7 @@ export class InvoicesService {
 			total: Number(invoice.total),
 			balance,
 			totalPaid,
+			appliedCreditTotal: Number(appliedCreditTotal.toFixed(2)),
 			legalMention: invoice.legalMention,
 			stripeEnabled,
 			stripePublishableKey: org?.invoiceStripePublishableKey?.trim() || null,
@@ -1008,12 +1184,51 @@ export class InvoicesService {
 		const safeToken = assertValidPublicToken(token);
 		const invoice = await this.prisma.invoice.findUnique({
 			where: { publicToken: safeToken },
-			include: { lines: true, client: true, organization: true },
+			include: {
+				lines: true,
+				client: true,
+				payments: true,
+				appliedAvoirs: {
+					include: { avoir: { select: { number: true } } },
+				},
+				organization: {
+					select: {
+						name: true,
+						legalName: true,
+						privacyPolicyUrl: true,
+						dataControllerEmail: true,
+						invoiceStripeSecretKey: true,
+						invoiceStripePublishableKey: true,
+					},
+				},
+			},
 		});
 		if (!invoice?.publicToken || !canAccessInvoiceByPublicToken(invoice)) {
 			throw new NotFoundException('Facture introuvable');
 		}
-		return invoice;
+		await this.syncInvoiceFinancials(invoice.id);
+		const refreshed = await this.prisma.invoice.findUnique({
+			where: { id: invoice.id },
+			include: {
+				lines: true,
+				client: true,
+				payments: true,
+				appliedAvoirs: {
+					include: { avoir: { select: { number: true } } },
+				},
+				organization: {
+					select: {
+						name: true,
+						legalName: true,
+						privacyPolicyUrl: true,
+						dataControllerEmail: true,
+						invoiceStripeSecretKey: true,
+						invoiceStripePublishableKey: true,
+					},
+				},
+			},
+		});
+		return refreshed ?? invoice;
 	}
 
 	async publicView(token: string) {
@@ -1024,6 +1239,7 @@ export class InvoicesService {
 				lines: true,
 				client: true,
 				payments: true,
+				appliedAvoirs: true,
 				organization: {
 					select: {
 						name: true,
@@ -1039,10 +1255,14 @@ export class InvoicesService {
 		if (!invoice?.publicToken || !canAccessInvoiceByPublicToken(invoice)) {
 			throw new NotFoundException('Facture introuvable');
 		}
+		const settlement = await this.syncInvoiceFinancials(invoice.id);
 		const totalPaid = invoice.payments.reduce((sum, p) => sum + Number(p.amount), 0);
-		const total = Number(invoice.total);
-		const balance = Math.round((total - totalPaid) * 100) / 100;
-		return this.toPublicInvoiceDto(invoice, balance, totalPaid);
+		return this.toPublicInvoiceDto(
+			invoice,
+			settlement.balance,
+			totalPaid,
+			settlement.appliedCreditTotal,
+		);
 	}
 
 	static buildPublicPaymentUrl(token: string): string {

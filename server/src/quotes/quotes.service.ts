@@ -165,6 +165,57 @@ export class QuotesService {
 		});
 	}
 
+	/** Contexte acompte / solde pour l’UI back-office (fiche devis). */
+	async getDepositContextForQuote(quoteId: string, organizationId: number) {
+		await this.findOne(quoteId, organizationId);
+		const depositTag = this.quoteDepositTag(quoteId);
+		const remainderTag = this.quoteRemainderTag(quoteId);
+
+		const [deposit, remainder] = await Promise.all([
+			this.prisma.invoice.findFirst({
+				where: { organizationId, tags: { contains: `"${depositTag}"` } },
+				include: { payments: true, refunds: { where: { status: 'COMPLETED' } } },
+			}),
+			this.prisma.invoice.findFirst({
+				where: { organizationId, tags: { contains: `"${remainderTag}"` } },
+				select: { id: true, number: true, status: true, total: true, balance: true, tags: true },
+			}),
+		]);
+
+		const mapInvoice = (inv: typeof deposit) => {
+			if (!inv) return null;
+			const tags = parseTagsJson(inv.tags);
+			const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+			const refunded = (inv.refunds ?? []).reduce((s, r) => s + Number(r.amount), 0);
+			const total = Number(inv.total);
+			const balance = Number((inv.balance as any)?.toNumber?.() ?? inv.balance ?? 0);
+			return {
+				id: inv.id,
+				number: inv.number,
+				status: inv.status,
+				total,
+				balance,
+				netPaid: paid - refunded,
+				depositRefunded: tags.includes('ACOMPTE_REFUNDED'),
+				engagementCancelled: tags.includes('ENGAGEMENT_CANCELLED'),
+			};
+		};
+
+		return {
+			hasSplit: Boolean(deposit && remainder),
+			deposit: mapInvoice(deposit),
+			remainder: remainder
+				? {
+						id: remainder.id,
+						number: remainder.number,
+						status: remainder.status,
+						total: Number(remainder.total),
+						balance: Number((remainder.balance as any)?.toNumber?.() ?? remainder.balance ?? 0),
+					}
+				: null,
+		};
+	}
+
 	private quoteDepositTag(quoteId: string): string {
 		return `ACOMPTE_10_OF:${quoteId}`;
 	}
@@ -494,6 +545,9 @@ export class QuotesService {
 				{ number: { contains: q.search } },
 				{ client: { name: { contains: q.search } } },
 			];
+		}
+		if (q.clientId?.trim()) {
+			where.clientId = q.clientId.trim();
 		}
 
 		const [items, total] = await this.prisma.$transaction([
@@ -828,6 +882,9 @@ export class QuotesService {
 		if (!invoice) {
 			invoice = await this.convertQuoteToInvoice(quote.id, orgId);
 		}
+		if (!invoice) {
+			throw new BadRequestException('Impossible de créer la facture depuis ce devis');
+		}
 		const sent = await this.sendInvoiceForPublicPayment(invoice.id, invoice, orgId);
 		this.notifyQuote(quote.organizationId ?? undefined, 'updated', quote.id, {
 			number: quote.number,
@@ -1060,6 +1117,10 @@ export class QuotesService {
 				},
 				orgId,
 			);
+		}
+
+		if (!depositInvoice || !remainderInvoice) {
+			throw new BadRequestException('Impossible de créer les factures d\'acompte pour ce devis');
 		}
 
 		// Marquage tags pour le PDF + idempotence split

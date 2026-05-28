@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -20,10 +20,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Avatar,
-  useTheme,
-  useMediaQuery,
   GridLegacy,
 } from '@mui/material'
 import {
@@ -35,8 +32,6 @@ import {
   Business,
   Receipt,
   Description,
-  AttachMoney,
-  Note
 } from '@mui/icons-material'
 import { clientService, type Client } from '../../services/clients'
 import {
@@ -46,10 +41,18 @@ import {
   type ClientFormValues,
 } from './components/ClientFormDialog'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
-import { invoiceService, type Invoice } from '../../services/invoices'
-import { quoteService } from '../../services/quoteService'
+import { invoiceService, parseInvoicesListResponse, type Invoice } from '../../services/invoices'
+import { parseQuotesListPage, quoteService } from '../../services/quoteService'
+import { clientFinanceService, type ClientFinanceData } from '../../services/clientFinance'
 import type { Quote } from '../../types/quote'
 import { formatCurrency, formatDate } from '../../utils/formatters'
+import { isClientDetailRouteSegment } from '../../types/clientFolders'
+import {
+  openCreateInvoiceForClient,
+  openCreateQuoteForClient,
+} from '../../utils/openDocumentView'
+import { ClientFinancePanel } from './components/ClientFinancePanel'
+import { ClientDetailKpiStrip } from './components/ClientDetailKpiStrip'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -68,11 +71,9 @@ function TabPanel(props: TabPanelProps) {
 
 export function ClientDetailPage() {
   const { folder } = useParams<{ folder: string }>()
-  const id = folder && /^\d+$/.test(folder) ? folder : undefined
+  const id = isClientDetailRouteSegment(folder) ? folder : undefined
   const navigate = useNavigate()
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  
+
   const [client, setClient] = useState<Client | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [quotes, setQuotes] = useState<Quote[]>([])
@@ -83,14 +84,36 @@ export function ClientDetailPage() {
   const [editForm, setEditForm] = useState<ClientFormValues>(emptyClientFormValues)
   const [editError, setEditError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [finance, setFinance] = useState<ClientFinanceData | null>(null)
+  const [financeLoading, setFinanceLoading] = useState(true)
+  const [financeError, setFinanceError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (id) {
-      loadClient()
-      loadInvoices()
-      loadQuotes()
+  const loadFinance = useCallback(async () => {
+    if (!id) return
+    try {
+      setFinanceLoading(true)
+      setFinanceError(null)
+      const data = await clientFinanceService.getFinance(id)
+      setFinance(data)
+    } catch (err: unknown) {
+      setFinanceError(err instanceof Error ? err.message : 'Synthèse finance indisponible')
+      setFinance(null)
+    } finally {
+      setFinanceLoading(false)
     }
   }, [id])
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false)
+      setError('Identifiant client invalide')
+      return
+    }
+    void loadClient()
+    void loadInvoices()
+    void loadQuotes()
+    void loadFinance()
+  }, [id, loadFinance])
 
   const loadClient = async () => {
     if (!id) return
@@ -116,9 +139,7 @@ export function ClientDetailPage() {
     
     try {
       const response = await invoiceService.getInvoices({ clientId: id, limit: 100 })
-      if (response.data?.invoices) {
-        setInvoices(response.data.invoices)
-      }
+      setInvoices(parseInvoicesListResponse(response))
     } catch (err) {
       console.error('Erreur lors du chargement des factures:', err)
     }
@@ -129,9 +150,7 @@ export function ClientDetailPage() {
     
     try {
       const response = await quoteService.getQuotes({ clientId: id }, 1, 100)
-      if (response.data?.data) {
-        setQuotes(response.data.data)
-      }
+      setQuotes(parseQuotesListPage(response).quotes)
     } catch (err) {
       console.error('Erreur lors du chargement des devis:', err)
     }
@@ -155,13 +174,8 @@ export function ClientDetailPage() {
     }
   }
 
-  const totalRevenue = invoices
-    .filter(inv => inv.status === 'paid')
-    .reduce((sum, inv) => sum + inv.total, 0)
-
-  const pendingAmount = invoices
-    .filter(inv => inv.status === 'sent' || inv.status === 'overdue')
-    .reduce((sum, inv) => sum + inv.total, 0)
+  const invoiceTabCount = finance?.invoiceCount ?? invoices.length
+  const quoteTabCount = finance?.quoteCount ?? quotes.length
 
   const handleSaveEdit = async () => {
     if (!id || !client) return
@@ -254,19 +268,22 @@ export function ClientDetailPage() {
           </Button>
         )}
         <Button
+          variant="outlined"
+          startIcon={<Description />}
+          onClick={() => id && openCreateQuoteForClient(id)}
+        >
+          Nouveau devis
+        </Button>
+        <Button
           variant="contained"
           startIcon={<Receipt />}
-          onClick={() => navigate(`/factures/inbox?create=1&clientId=${id}`)}
+          onClick={() => id && openCreateInvoiceForClient(id)}
         >
           Nouvelle facture
         </Button>
       </Stack>
 
-      <GridLegacy container spacing={3}>
-        {/* Colonne principale */}
-        <GridLegacy item xs={12} md={8}>
-          {/* Informations client */}
-          <Card sx={{ mb: 3 }}>
+      <Card sx={{ mb: 3 }}>
             <CardContent>
               <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
                 <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '2rem' }}>
@@ -363,17 +380,59 @@ export function ClientDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Onglets */}
-          <Card>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-                <Tab label={`Factures (${invoices.length})`} />
-                <Tab label={`Devis (${quotes.length})`} />
-                <Tab label="Notes" />
-              </Tabs>
-            </Box>
+      {finance && !financeLoading && (
+        <ClientDetailKpiStrip
+          balances={finance.balances}
+          invoiceCount={invoiceTabCount}
+          quoteCount={quoteTabCount}
+        />
+      )}
 
-            <TabPanel value={tabValue} index={0}>
+      {financeError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {financeError}
+        </Alert>
+      )}
+
+      <Card>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: { xs: 1, sm: 2 } }}>
+          <Tabs
+            value={tabValue}
+            onChange={(_, newValue) => setTabValue(newValue)}
+            variant="scrollable"
+            scrollButtons="auto"
+          >
+            <Tab label="Synthèse finance" />
+            <Tab label={`Factures (${invoiceTabCount})`} />
+            <Tab label={`Devis (${quoteTabCount})`} />
+          </Tabs>
+        </Box>
+
+        <TabPanel value={tabValue} index={0}>
+          {financeLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress />
+            </Box>
+          )}
+          {!financeLoading && finance && id && (
+            <ClientFinancePanel
+              clientId={id}
+              finance={finance}
+              onReload={() => {
+                void loadFinance()
+              }}
+              onRefreshInvoices={() => {
+                void loadInvoices()
+                void loadFinance()
+              }}
+            />
+          )}
+          {!financeLoading && !finance && (
+            <Alert severity="info">Aucune donnée financière pour ce client.</Alert>
+          )}
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
               {invoices.length === 0 ? (
                 <Alert severity="info">Aucune facture pour ce client</Alert>
               ) : (
@@ -421,7 +480,7 @@ export function ClientDetailPage() {
               )}
             </TabPanel>
 
-            <TabPanel value={tabValue} index={1}>
+            <TabPanel value={tabValue} index={2}>
               {quotes.length === 0 ? (
                 <Alert severity="info">Aucun devis pour ce client</Alert>
               ) : (
@@ -452,7 +511,11 @@ export function ClientDetailPage() {
                           <TableCell align="center">
                             <IconButton
                               size="small"
-                              onClick={() => navigate(`/devis/inbox?quoteId=${quote.id}`)}
+                              onClick={() => {
+                                void import('../../utils/openDocumentView').then(({ openQuoteView }) =>
+                                  openQuoteView(quote.id),
+                                )
+                              }}
                             >
                               <Description />
                             </IconButton>
@@ -463,100 +526,8 @@ export function ClientDetailPage() {
                   </Table>
                 </TableContainer>
               )}
-            </TabPanel>
-
-            <TabPanel value={tabValue} index={2}>
-              <Alert severity="info">
-                Les notes seront disponibles prochainement
-              </Alert>
-            </TabPanel>
-          </Card>
-        </GridLegacy>
-
-        {/* Panneau latéral */}
-        <GridLegacy item xs={12} md={4}>
-          <Stack spacing={2}>
-            {/* Statistiques */}
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Statistiques
-                </Typography>
-                <Stack spacing={2}>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Chiffre d'affaires total
-                    </Typography>
-                    <Typography variant="h5" color="success.main">
-                      {formatCurrency(totalRevenue)}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      En attente de paiement
-                    </Typography>
-                    <Typography variant="h6" color="warning.main">
-                      {formatCurrency(pendingAmount)}
-                    </Typography>
-                  </Box>
-                  <Divider />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Nombre de factures
-                    </Typography>
-                    <Typography variant="body1">
-                      {invoices.length}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Nombre de devis
-                    </Typography>
-                    <Typography variant="body1">
-                      {quotes.length}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-
-            {/* Actions rapides */}
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Actions rapides
-                </Typography>
-                <Stack spacing={1}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<Receipt />}
-                    onClick={() => navigate(`/factures/inbox?create=1&clientId=${id}`)}
-                  >
-                    Créer une facture
-                  </Button>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<Description />}
-                    onClick={() => navigate(`/devis/inbox?create=1&clientId=${id}`)}
-                  >
-                    Créer un devis
-                  </Button>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<Email />}
-                    onClick={() => window.location.href = `mailto:${client.email}`}
-                  >
-                    Envoyer un email
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Stack>
-        </GridLegacy>
-      </GridLegacy>
+        </TabPanel>
+      </Card>
 
       <ClientFormDialog
         open={editOpen}

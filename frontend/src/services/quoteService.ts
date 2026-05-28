@@ -217,6 +217,25 @@ class QuoteService {
   ): Promise<ApiResponse<{ success: boolean; invoiceId?: string; daysOverdue?: number | null }>> {
     return this.apiClient.post(`/quotes/${id}/remind-deposit`, {});
   }
+
+  async getDepositContext(id: string): Promise<
+    ApiResponse<{
+      hasSplit: boolean
+      deposit: {
+        id: string
+        number: string
+        status: string
+        total: number
+        balance: number
+        netPaid: number
+        depositRefunded: boolean
+        engagementCancelled: boolean
+      } | null
+      remainder: { id: string; number: string; status: string; total: number; balance: number } | null
+    }>
+  > {
+    return this.apiClient.get(`/quotes/${id}/deposit-context`);
+  }
 }
 
 export const quoteService = new QuoteService();

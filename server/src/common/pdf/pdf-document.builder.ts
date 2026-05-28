@@ -522,14 +522,43 @@ export class PdfDocumentBuilder {
 			{ width: 110, align: 'right', lineBreak: false },
 		);
 
-		const barY = startY + rowH * 2 + 6;
+		const creditApplied = Number(totals.creditApplied ?? 0);
+		const hasCredit = creditApplied > 0.01;
+		let rowOffset = 2;
+		if (hasCredit) {
+			const creditY = startY + rowH * rowOffset;
+			doc.fontSize(9)
+				.fillColor(PDF_THEME.text)
+				.font('Helvetica')
+				.text('Total TTC', boxX, creditY, { width: 100 })
+				.text(this.formatCurrency(totals.total), boxX + 100, creditY, {
+					width: 110,
+					align: 'right',
+					lineBreak: false,
+				});
+			rowOffset += 1;
+			const avoirY = startY + rowH * rowOffset;
+			doc.text('Avoir imputé', boxX, avoirY, { width: 100 }).text(
+				`− ${this.formatCurrency(creditApplied)}`,
+				boxX + 100,
+				avoirY,
+				{ width: 110, align: 'right', lineBreak: false },
+			);
+			rowOffset += 1;
+		}
+
+		const barY = startY + rowH * rowOffset + 6;
 		const barH = 30;
+		const netLabel = hasCredit ? 'Net à payer' : 'Total TTC';
+		const netAmount = hasCredit
+			? Number(totals.netDue ?? Math.max(0, totals.total - creditApplied))
+			: totals.total;
 		doc.roundedRect(boxX, barY, boxWidth, barH, 15).fill(PDF_THEME.red);
 		doc.fontSize(11)
 			.fillColor(PDF_THEME.white)
 			.font('Helvetica-Bold')
-			.text('Total TTC', boxX + 14, barY + 9, { width: 80 })
-			.text(this.formatCurrency(totals.total), boxX + 90, barY + 9, {
+			.text(netLabel, boxX + 14, barY + 9, { width: 80 })
+			.text(this.formatCurrency(netAmount), boxX + 90, barY + 9, {
 				width: boxWidth - 100,
 				align: 'right',
 				lineBreak: false,

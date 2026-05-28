@@ -72,6 +72,11 @@ import {
 import { ClientFolderMobileList } from './components/ClientFolderMobileList'
 import { ClientRowActionsMenu } from './components/ClientRowActionsMenu'
 import { formatCurrency, formatDate } from '../../utils/formatters'
+import {
+  openClientView,
+  openCreateInvoiceForClient,
+  openCreateQuoteForClient,
+} from '../../utils/openDocumentView'
 
 export function ClientsPage() {
   const { folder: folderParam } = useParams<{ folder?: string }>()
@@ -311,7 +316,9 @@ export function ClientsPage() {
       resourceLabel="Clients"
       placeholder="Nom, email, statut, SIREN… (ex. dupont actif)"
       onSelect={(opt) => {
-        if (opt?.href) navigate(opt.href)
+        if (!opt?.href) return
+        const match = opt.href.match(/^\/clients\/([^/]+)$/)
+        if (match?.[1]) openClientView(match[1])
       }}
     />
   )
@@ -380,14 +387,14 @@ export function ClientsPage() {
                 clients={displayedClients}
                 getStatusLabel={getStatusLabel}
                 getStatusColor={getStatusColor}
-                onView={(c) => navigate(`/clients/${c.id}`)}
+                onView={(c) => openClientView(c.id)}
                 onEdit={handleOpenEditDialog}
                 onDelete={(c) => {
                   setSelectedClientId(c.id)
                   setDeleteDialogOpen(true)
                 }}
-                onNewQuote={(c) => navigate(`/devis/inbox?create=1&clientId=${c.id}`)}
-                onNewInvoice={(c) => navigate(`/factures/inbox?create=1&clientId=${c.id}`)}
+                onNewQuote={(c) => openCreateQuoteForClient(c.id)}
+                onNewInvoice={(c) => openCreateInvoiceForClient(c.id)}
               />
             ) : (
               <TableContainer sx={{ ...documentFolderTableContainerSx, maxHeight: 600 }}>
@@ -418,7 +425,24 @@ export function ClientsPage() {
                               {client.name.charAt(0).toUpperCase()}
                             </Avatar>
                             <Box sx={{ minWidth: 0 }}>
-                              <Typography variant="body2" fontWeight={600} noWrap>
+                              <Typography
+                                variant="body2"
+                                fontWeight={600}
+                                noWrap
+                                component="button"
+                                type="button"
+                                onClick={() => openClientView(client.id)}
+                                sx={{
+                                  border: 0,
+                                  p: 0,
+                                  bgcolor: 'transparent',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  font: 'inherit',
+                                  color: 'primary.main',
+                                  '&:hover': { textDecoration: 'underline' },
+                                }}
+                              >
                                 {client.name}
                               </Typography>
                               {client.company?.name && (
@@ -470,18 +494,14 @@ export function ClientsPage() {
                         <TableCell align="center">
                           <ClientRowActionsMenu
                             expanded={isWideActions}
-                            onView={() => navigate(`/clients/${client.id}`)}
+                            onView={() => openClientView(client.id)}
                             onEdit={() => handleOpenEditDialog(client)}
                             onDelete={() => {
                               setSelectedClientId(client.id)
                               setDeleteDialogOpen(true)
                             }}
-                            onNewQuote={() =>
-                              navigate(`/devis/inbox?create=1&clientId=${client.id}`)
-                            }
-                            onNewInvoice={() =>
-                              navigate(`/factures/inbox?create=1&clientId=${client.id}`)
-                            }
+                            onNewQuote={() => openCreateQuoteForClient(client.id)}
+                            onNewInvoice={() => openCreateInvoiceForClient(client.id)}
                           />
                         </TableCell>
                       </TableRow>

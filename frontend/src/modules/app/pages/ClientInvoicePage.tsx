@@ -45,6 +45,7 @@ export interface PublicInvoiceSummary {
   total: number
   balance: number
   totalPaid: number
+  appliedCreditTotal?: number
   canPayOnline: boolean
   stripeEnabled: boolean
   stripePublishableKey?: string | null
@@ -201,11 +202,17 @@ function InvoicePaymentRecap({
   const isRemainder = invoice.documentKind === 'remainder'
   const hasSplit = Boolean(breakdown)
 
+  const creditApplied = invoice.appliedCreditTotal ?? 0
+  const settledByCreditOnly =
+    isPaid && creditApplied > 0.01 && invoice.balance <= 0.01
+
   if (!hasSplit && !isDeposit && !isRemainder) {
     if (isPaid) {
       return (
         <Alert severity="success" sx={{ mb: 2.5, borderRadius: 2 }}>
-          Cette facture est réglée. Merci pour votre paiement.
+          {settledByCreditOnly
+            ? 'Cette facture est soldée par imputation d\'avoir. Aucun paiement supplémentaire n\'est attendu.'
+            : 'Cette facture est réglée. Merci pour votre paiement.'}
         </Alert>
       )
     }
@@ -331,6 +338,7 @@ export function ClientInvoicePage() {
       type CheckoutPayload = {
         invoice?: PublicInvoiceSummary
         payment?: { clientSecret: string; stripePublishableKey?: string }
+        paymentError?: string | null
         error?: string
       }
       const res = await api.get<CheckoutPayload | { data?: CheckoutPayload }>(
@@ -348,13 +356,14 @@ export function ClientInvoicePage() {
       }
       setInvoice(payload.invoice)
       setClientSecret(payload.payment?.clientSecret ?? null)
+      setPaymentError(payload.paymentError ?? null)
       const pk =
         payload.payment?.stripePublishableKey ||
         payload.invoice.stripePublishableKey ||
         null
       setOrgPublishableKey(pk)
-    } catch {
-      setError('Facture introuvable ou lien expiré')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Impossible de charger la facture')
     } finally {
       setLoading(false)
     }
@@ -376,6 +385,10 @@ export function ClientInvoicePage() {
     if (!invoice) return false
     return invoice.balance <= 0 || invoice.status === 'PAID' || paymentSuccess
   }, [invoice, paymentSuccess])
+  const isBelowStripeMinimum = useMemo(() => {
+    if (!invoice) return false
+    return invoice.balance > 0 && invoice.balance < 0.5
+  }, [invoice])
 
   const stripeMissing = useMemo(() => {
     if (!invoice) return false
@@ -388,9 +401,10 @@ export function ClientInvoicePage() {
       !isPaid &&
       !!invoice?.canPayOnline &&
       !!clientSecret &&
-      !!stripePromise
+      !!stripePromise &&
+      !isBelowStripeMinimum
     )
-  }, [isPaid, invoice, clientSecret, stripePromise])
+  }, [isPaid, invoice, clientSecret, stripePromise, isBelowStripeMinimum])
 
   const isDeposit = Boolean(
     invoice?.documentKind === 'deposit' || invoice?.tags?.includes('ACOMPTE_10'),
@@ -446,6 +460,12 @@ export function ClientInvoicePage() {
             </Typography>
 
             <InvoicePaymentRecap invoice={invoice} isPaid={isPaid} isDeposit={isDeposit} />
+
+            {(invoice.appliedCreditTotal ?? 0) > 0 && (
+              <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+                Avoir imputé sur cette facture : {formatCurrency(invoice.appliedCreditTotal ?? 0)}
+              </Alert>
+            )}
 
             {stripeMissing && (
               <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
@@ -507,12 +527,25 @@ export function ClientInvoicePage() {
                 <Typography fontWeight={700}>Total TTC</Typography>
                 <Typography fontWeight={700}>{formatCurrency(invoice.total)}</Typography>
               </Box>
-              {invoice.totalPaid > 0 && (
+              {(invoice.appliedCreditTotal ?? 0) > 0 && (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography color="text.secondary">Déjà réglé</Typography>
-                  <Typography>{formatCurrency(invoice.totalPaid)}</Typography>
+                  <Typography color="text.secondary">Avoir imputé</Typography>
+                  <Typography color="info.main">−{formatCurrency(invoice.appliedCreditTotal ?? 0)}</Typography>
                 </Box>
               )}
+              {invoice.totalPaid > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography color="text.secondary">Encaissé</Typography>
+                  <Typography>−{formatCurrency(invoice.totalPaid)}</Typography>
+                </Box>
+              )}
+              <Divider />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography fontWeight={800}>Net à payer</Typography>
+                <Typography fontWeight={800} color={invoice.balance <= 0.01 ? 'success.main' : 'warning.main'}>
+                  {formatCurrency(Math.max(0, invoice.balance))}
+                </Typography>
+              </Box>
             </Stack>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
@@ -616,8 +649,10 @@ export function ClientInvoicePage() {
 
         {!isPaid && invoice.canPayOnline && !clientSecret && (
           <Grid size={{ xs: 12, md: 5 }}>
-            <Alert severity="warning">
-              Le paiement en ligne est temporairement indisponible. Contactez l&apos;émetteur de la facture.
+            <Alert severity={isBelowStripeMinimum ? 'info' : 'warning'}>
+              {isBelowStripeMinimum
+                ? "Le solde est inférieur à 0,50 EUR. Stripe ne permet pas un paiement en ligne sur ce montant."
+                : "Le paiement en ligne est temporairement indisponible. Contactez l'émetteur de la facture."}
             </Alert>
           </Grid>
         )}

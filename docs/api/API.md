@@ -77,6 +77,45 @@ Content-Type: application/json
 DELETE /clients/:id
 ```
 
+### Synthèse finance client (v1.3.4+)
+
+```http
+GET /clients/:id/finance?start=2026-01-01&end=2026-12-31
+```
+
+Retourne soldes, TVA, timeline des mouvements, avoirs et factures ouvertes.
+
+```http
+POST /clients/:id/credits
+Content-Type: application/json
+
+{ "label": "Geste commercial", "amountTtc": 120, "notes": "optionnel" }
+```
+
+```http
+POST /clients/:id/misc-operations
+Content-Type: application/json
+
+{ "label": "Ajustement", "amountTtc": 50, "kind": "adjustment", "notes": "optionnel" }
+```
+
+### Lister les factures d’un client
+
+```http
+GET /factures?clientId={clientId}&limit=100
+```
+
+### Imputer un avoir
+
+```http
+POST /avoirs/:id/apply
+Content-Type: application/json
+
+{ "invoiceId": "…", "amount": 240 }
+```
+
+Voir aussi [Finance, avoirs & remboursements](../modules/FINANCE_REMBOURSEMENTS_AVOIRS.md).
+
 ## Factures
 
 ### Créer une facture

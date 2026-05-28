@@ -384,6 +384,95 @@ export class EmailService {
 	}
 
 	/**
+	 * Notification de remboursement — envoyée au client de la facture.
+	 * (Simple message transactionnel ; pas de template dédiée pour l'instant.)
+	 */
+	async sendInvoiceRefundedToClient(options: {
+		to: string;
+		clientName: string;
+		invoiceNumber: string;
+		invoiceDate: Date | string;
+		refundedAmount: number;
+		refundReason?: string | null;
+		issuerName: string;
+	}): Promise<void> {
+		const subject = `Remboursement effectué — Facture ${options.invoiceNumber}`;
+		const reasonLine = options.refundReason?.trim()
+			? `<p style="margin: 10px 0 0; color:#374151;">Motif : ${options.refundReason}</p>`
+			: '';
+		const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${subject}</title></head>
+<body style="font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height:1.6; color:#111827; background:#f8fafc; margin:0; padding:0;">
+	<div style="max-width:600px; margin:0 auto; padding:24px;">
+		<h2 style="margin:0 0 14px; color:#b91c1c;">Remboursement</h2>
+		<p>Bonjour ${options.clientName},</p>
+		<p>Nous vous confirmons que <b>${this.formatCurrency(options.refundedAmount)}</b> a été remboursé(e) pour la facture <b>${options.invoiceNumber}</b> (du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')}).</p>
+		${reasonLine}
+		<p style="margin-top:18px;">Cordialement,<br/>${options.issuerName}</p>
+	</div>
+</body></html>`;
+
+		const text =
+			`Bonjour ${options.clientName},\n\n` +
+			`Nous vous confirmons que ${this.formatCurrency(options.refundedAmount)} a été remboursé(e) pour la facture ` +
+			`${options.invoiceNumber}.\n` +
+			(options.refundReason?.trim() ? `Motif : ${options.refundReason.trim()}\n` : '') +
+			`\nCordialement,\n${options.issuerName}`;
+
+		await this.send({
+			from: this.invoiceFrom,
+			to: options.to,
+			subject,
+			html,
+			text,
+		});
+	}
+
+	/** Notification “crédit client” (avoir émis, à déduire d’une prochaine facture). */
+	async sendInvoiceCreditedToClient(options: {
+		to: string;
+		clientName: string;
+		invoiceNumber: string;
+		creditedAmount: number;
+		reason?: string | null;
+		issuerName: string;
+	}): Promise<void> {
+		const subject = `Crédit émis — Facture ${options.invoiceNumber}`;
+		const reasonLine = options.reason?.trim()
+			? `<p style="margin: 10px 0 0; color:#374151;">Motif : ${options.reason}</p>`
+			: '';
+		const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${subject}</title></head>
+<body style="font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height:1.6; color:#111827; background:#f8fafc; margin:0; padding:0;">
+	<div style="max-width:600px; margin:0 auto; padding:24px;">
+		<h2 style="margin:0 0 14px; color:#2563eb;">Crédit client</h2>
+		<p>Bonjour ${options.clientName},</p>
+		<p>Un crédit de <b>${this.formatCurrency(options.creditedAmount)}</b> a été émis pour la facture <b>${options.invoiceNumber}</b>.</p>
+		<p>Ce crédit sera déduit d’une prochaine facture (il n’y a pas de remboursement bancaire pour cette opération).</p>
+		${reasonLine}
+		<p style="margin-top:18px;">Cordialement,<br/>${options.issuerName}</p>
+	</div>
+</body></html>`;
+
+		const text =
+			`Bonjour ${options.clientName},\n\n` +
+			`Un crédit de ${this.formatCurrency(options.creditedAmount)} a été émis pour la facture ${options.invoiceNumber}.\n` +
+			`Ce crédit sera déduit d’une prochaine facture (pas de remboursement bancaire).\n` +
+			(options.reason?.trim() ? `Motif : ${options.reason.trim()}\n` : '') +
+			`\nCordialement,\n${options.issuerName}`;
+
+		await this.send({
+			from: this.invoiceFrom,
+			to: options.to,
+			subject,
+			html,
+			text,
+		});
+	}
+
+	/**
 	 * Pied de page avec mentions légales (SIRET, adresse, etc.) - style V6 / LCEN.
 	 */
 	private getLegalFooter(): string {

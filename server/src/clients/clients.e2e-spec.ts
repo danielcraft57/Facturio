@@ -35,6 +35,7 @@ describe('Clients e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirApplication');
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Avoir');
+		await prisma.$executeRawUnsafe('DELETE FROM Refund');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');

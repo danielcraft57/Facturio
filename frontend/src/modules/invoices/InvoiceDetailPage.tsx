@@ -40,6 +40,7 @@ import {
   Receipt,
   NotificationsActive,
   Unarchive,
+  MoneyOff,
 } from '@mui/icons-material'
 import { invoiceService, normalizeInvoiceFromApi, unwrapApiPayload, type Invoice } from '../../services/invoices'
 import { formatInvoiceSentAt, wasInvoiceEmailed } from './invoiceEmailUi'
@@ -48,6 +49,9 @@ import { logActivity } from '../../utils/activity'
 import { apiClient } from '../../services/api'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { CreateCreditNoteDialog } from './components/CreateCreditNoteDialog'
+import { RefundPaymentDialog } from './components/RefundPaymentDialog'
+import { CancelDepositDialog } from './components/CancelDepositDialog'
+import { refundsService, type Refund } from '../../services/refunds'
 import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInvoiceDialog'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { EInvoicingReadinessPanel } from '../e-invoicing/EInvoicingReadinessPanel'
@@ -62,6 +66,8 @@ interface Payment {
   date: string
   method?: string
   notes?: string
+  refundedAmount?: number
+  refundableAmount?: number
 }
 
 export function InvoiceDetailPage() {
@@ -81,6 +87,10 @@ export function InvoiceDetailPage() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0])
   const [paymentNotes, setPaymentNotes] = useState('')
   const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false)
+  const [creditNoteMode, setCreditNoteMode] = useState<'linked' | 'credit'>('linked')
+  const [refunds, setRefunds] = useState<Refund[]>([])
+  const [refundDialog, setRefundDialog] = useState<Payment | null>(null)
+  const [cancelDepositOpen, setCancelDepositOpen] = useState(false)
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const toast = useToast()
@@ -94,8 +104,11 @@ export function InvoiceDetailPage() {
       const payload = unwrapApiPayload<Payment[]>(response)
       const paymentsList = Array.isArray(payload) ? payload : []
       setPayments(paymentsList)
+      const refundsList = await refundsService.listByInvoice(id)
+      setRefunds(refundsList)
       const totalPaid = paymentsList.reduce((sum, p) => sum + p.amount, 0)
-      setPaymentAmount(Math.max(0, invoiceTotal - totalPaid))
+      const totalRefunded = refundsList.reduce((sum, r) => sum + r.amount, 0)
+      setPaymentAmount(Math.max(0, invoiceTotal - (totalPaid - totalRefunded)))
     } catch (err) {
       console.error('Erreur lors du chargement des paiements:', err)
     }
@@ -305,10 +318,35 @@ export function InvoiceDetailPage() {
     )
   }
 
-  // Calculer le montant restant
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0)
-  const remainingAmount = invoice.total - totalPaid
+  const totalRefunded = refunds.reduce((sum, r) => sum + r.amount, 0)
+  const netPaid = totalPaid - totalRefunded
+  const appliedCredit = invoice.appliedCreditTotal ?? 0
+  const remainingAmount = Math.max(
+    0,
+    invoice.balance ??
+      Number((invoice.total - netPaid - appliedCredit).toFixed(2)),
+  )
+  const isFullySettled = remainingAmount <= 0.01
+  const settledByCreditOnly = isFullySettled && netPaid < 0.01 && appliedCredit > 0.01
+  const settlementLabel =
+    invoice.settlement === 'SOLDEE_AVOIR'
+      ? 'Soldée (avoir)'
+      : invoice.settlement === 'SOLDEE_MIXTE'
+        ? 'Soldée (avoir + paiement)'
+        : invoice.settlement === 'SOLDEE_CB'
+          ? 'Payée'
+          : getStatusLabel(invoice.status)
   const isArchived = Boolean(invoice.archivedAt)
+  const isCancelled = invoice.status === 'cancelled'
+  const isDepositInvoice = invoice.tags?.includes('ACOMPTE_10')
+  const depositRefunded = invoice.tags?.includes('ACOMPTE_REFUNDED')
+  const canCancelDeposit =
+    isDepositInvoice &&
+    !isCancelled &&
+    !depositRefunded &&
+    payments.some((p) => (p.refundableAmount ?? p.amount) > 0.01)
+  const hasStripePayments = payments.some((p) => p.notes?.startsWith('stripe:'))
 
   const handleRestore = async () => {
     if (!id) return
@@ -421,13 +459,15 @@ export function InvoiceDetailPage() {
 
       {(invoice.tags?.includes('ACOMPTE_10') || invoice.tags?.includes('SOLDE_APRES_ACOMPTE')) && (
         <Alert
-          severity={invoice.tags?.includes('ACOMPTE_10') ? 'warning' : 'info'}
+          severity={depositRefunded ? 'success' : invoice.tags?.includes('ACOMPTE_10') ? 'warning' : 'info'}
           sx={{ mb: 2, borderRadius: 2 }}
         >
           <Typography fontWeight={700} sx={{ mb: 0.5 }}>
-            {invoice.tags?.includes('ACOMPTE_10')
-              ? "Facture d'acompte — paiement acompte (10 %)"
-              : 'Facture de solde'}
+            {depositRefunded
+              ? 'Acompte remboursé — contrat annulé'
+              : invoice.tags?.includes('ACOMPTE_10')
+                ? "Facture d'acompte — paiement acompte (10 %)"
+                : 'Facture de solde'}
           </Typography>
           {invoice.notes && (
             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
@@ -535,13 +575,31 @@ export function InvoiceDetailPage() {
                     </Box>
                     <Divider />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography variant="h6">Total:</Typography>
+                      <Typography variant="h6">Total TTC:</Typography>
                       <Typography variant="h6">{formatCurrency(invoice.total)}</Typography>
                     </Box>
-                    {remainingAmount > 0 && (
+                    {appliedCredit > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'info.main' }}>
+                        <Typography>Avoir imputé:</Typography>
+                        <Typography fontWeight="medium">−{formatCurrency(appliedCredit)}</Typography>
+                      </Box>
+                    )}
+                    {netPaid > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
+                        <Typography>Encaissé:</Typography>
+                        <Typography fontWeight="medium">−{formatCurrency(netPaid)}</Typography>
+                      </Box>
+                    )}
+                    {remainingAmount > 0.01 && (
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'error.main' }}>
                         <Typography>Reste à payer:</Typography>
                         <Typography fontWeight="medium">{formatCurrency(remainingAmount)}</Typography>
+                      </Box>
+                    )}
+                    {isFullySettled && settledByCreditOnly && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
+                        <Typography>Net à payer:</Typography>
+                        <Typography fontWeight="medium">{formatCurrency(0)}</Typography>
                       </Box>
                     )}
                   </Stack>
@@ -563,34 +621,87 @@ export function InvoiceDetailPage() {
                           <TableCell>Méthode</TableCell>
                           <TableCell align="right">Montant</TableCell>
                           <TableCell>Notes</TableCell>
+                          <TableCell align="right">Actions</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {payments.map((payment) => (
+                        {payments.map((payment) => {
+                          const refundable = payment.refundableAmount ?? payment.amount
+                          return (
                           <TableRow key={payment.id}>
                             <TableCell>{formatDate(payment.date)}</TableCell>
                             <TableCell>
-                              {payment.method === 'bank_transfer' ? 'Virement' :
+                              {payment.method === 'STRIPE' ? 'Stripe' :
+                               payment.method === 'bank_transfer' ? 'Virement' :
                                payment.method === 'check' ? 'Chèque' :
                                payment.method === 'cash' ? 'Espèces' :
                                payment.method === 'card' ? 'Carte' :
                                payment.method || 'Autre'}
                             </TableCell>
-                            <TableCell align="right">{formatCurrency(payment.amount)}</TableCell>
+                            <TableCell align="right">
+                              {formatCurrency(payment.amount)}
+                              {(payment.refundedAmount ?? 0) > 0 && (
+                                <Typography variant="caption" display="block" color="text.secondary">
+                                  Remb. {formatCurrency(payment.refundedAmount!)}
+                                </Typography>
+                              )}
+                            </TableCell>
                             <TableCell>{payment.notes || '-'}</TableCell>
+                            <TableCell align="right">
+                              {refundable > 0.01 && !depositRefunded && !isCancelled && (
+                                <Button
+                                  size="small"
+                                  color="warning"
+                                  startIcon={<MoneyOff />}
+                                  onClick={() => setRefundDialog(payment)}
+                                >
+                                  Rembourser
+                                </Button>
+                              )}
+                            </TableCell>
                           </TableRow>
-                        ))}
+                          )
+                        })}
                       </TableBody>
                     </Table>
                   </TableContainer>
                   <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="body2" fontWeight="medium">
-                      Total payé:
+                      Net encaissé:
                     </Typography>
                     <Typography variant="h6" color="success.main">
-                      {formatCurrency(totalPaid)}
+                      {formatCurrency(netPaid)}
                     </Typography>
                   </Box>
+                </>
+              )}
+
+              {refunds.length > 0 && (
+                <>
+                  <Divider sx={{ my: 3 }} />
+                  <Typography variant="h6" gutterBottom>
+                    Remboursements
+                  </Typography>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Date</TableCell>
+                          <TableCell align="right">Montant</TableCell>
+                          <TableCell>Motif</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {refunds.map((r) => (
+                          <TableRow key={r.id}>
+                            <TableCell>{formatDate(r.date)}</TableCell>
+                            <TableCell align="right">{formatCurrency(r.amount)}</TableCell>
+                            <TableCell>{r.reason || r.notes || '—'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 </>
               )}
 
@@ -638,7 +749,7 @@ export function InvoiceDetailPage() {
                       Statut
                     </Typography>
                     <Typography variant="body1">
-                      {getStatusLabel(invoice.status)}
+                      {settlementLabel}
                     </Typography>
                   </Box>
                   <Box>
@@ -657,7 +768,17 @@ export function InvoiceDetailPage() {
                       {formatCurrency(totalPaid)}
                     </Typography>
                   </Box>
-                  {remainingAmount > 0 && (
+                  {(invoice.appliedCreditTotal ?? 0) > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Avoir imputé
+                      </Typography>
+                      <Typography variant="body1" color="info.main" fontWeight="medium">
+                        -{formatCurrency(invoice.appliedCreditTotal ?? 0)}
+                      </Typography>
+                    </Box>
+                  )}
+                  {remainingAmount > 0.01 && (
                     <Box>
                       <Typography variant="caption" color="text.secondary">
                         Reste à payer
@@ -667,7 +788,17 @@ export function InvoiceDetailPage() {
                       </Typography>
                     </Box>
                   )}
-                  {remainingAmount <= 0 && payments.length > 0 && (
+                  {isFullySettled && settledByCreditOnly && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Règlement
+                      </Typography>
+                      <Typography variant="body1" color="success.main" fontWeight="medium">
+                        Soldée par avoir (aucun encaissement)
+                      </Typography>
+                    </Box>
+                  )}
+                  {remainingAmount <= 0.01 && payments.length > 0 && (
                     <Box>
                       <Typography variant="caption" color="text.secondary">
                         Payée le
@@ -724,6 +855,43 @@ export function InvoiceDetailPage() {
                       color="success"
                     >
                       {remainingAmount > 0 ? 'Ajouter paiement' : 'Enregistrer paiement'}
+                    </Button>
+                  )}
+                  {payments.length > 0 && !depositRefunded && !isCancelled && (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<Receipt />}
+                      onClick={() => {
+                        setCreditNoteMode('linked')
+                        setCreditNoteDialogOpen(true)
+                      }}
+                    >
+                      Créer un avoir
+                    </Button>
+                  )}
+                  {!depositRefunded && !isCancelled && (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<Receipt />}
+                      onClick={() => {
+                        setCreditNoteMode('credit')
+                        setCreditNoteDialogOpen(true)
+                      }}
+                    >
+                      Créer un crédit client
+                    </Button>
+                  )}
+                  {canCancelDeposit && (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      color="error"
+                      startIcon={<MoneyOff />}
+                      onClick={() => setCancelDepositOpen(true)}
+                    >
+                      Annuler acompte & rembourser
                     </Button>
                   )}
                   {invoice.status === 'draft' && (
@@ -835,12 +1003,56 @@ export function InvoiceDetailPage() {
           invoice={invoice}
           onSubmit={async (items) => {
             try {
-              await invoiceService.createCreditNote(invoice.id, items)
+              const res =
+                creditNoteMode === 'credit'
+                  ? await invoiceService.createClientCreditNote(invoice, items)
+                  : await invoiceService.createCreditNote(invoice, items)
               await loadInvoice({ silent: true })
-              alert('Avoir créé avec succès')
-            } catch (err: any) {
-              setError(err.message || 'Erreur lors de la création de l\'avoir')
+              toast.success(
+                creditNoteMode === 'credit'
+                  ? `Crédit client ${res.data?.number ?? ''} créé`
+                  : `Avoir ${res.data?.number ?? ''} créé`,
+              )
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : 'Erreur lors de la création de l\'avoir'
+              setError(msg)
+              toast.error(msg)
+              throw err
             }
+          }}
+        />
+      )}
+
+      {refundDialog && (
+        <RefundPaymentDialog
+          open
+          onClose={() => setRefundDialog(null)}
+          paymentId={refundDialog.id}
+          maxAmount={refundDialog.refundableAmount ?? refundDialog.amount}
+          isStripe={refundDialog.notes?.startsWith('stripe:')}
+          onSubmit={async (payload) => {
+            await refundsService.createOnPayment(refundDialog.id, {
+              ...payload,
+              paymentId: refundDialog.id,
+            })
+            toast.success('Remboursement enregistré')
+            await loadInvoice({ silent: true })
+          }}
+        />
+      )}
+
+      {invoice && (
+        <CancelDepositDialog
+          open={cancelDepositOpen}
+          onClose={() => setCancelDepositOpen(false)}
+          invoiceNumber={invoice.number}
+          hasStripePayments={hasStripePayments}
+          onSubmit={async (payload) => {
+            const result = await refundsService.cancelDeposit(invoice.id, payload)
+            toast.success(
+              `Contrat annulé — avoir ${result.avoir.number}, ${result.refunds.length} remboursement(s)`,
+            )
+            await loadInvoice({ silent: true })
           }}
         />
       )}

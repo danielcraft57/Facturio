@@ -29,6 +29,7 @@ import { usePageTitle } from '../../hooks/usePageTitle'
 import { SendQuoteDialog, type SendQuotePayload } from './components/SendQuoteDialog'
 import { useToast } from '../../components/useToast'
 import { openInvoiceView } from '../../utils/openDocumentView'
+import { QuoteDepositEngagementCard } from './components/QuoteDepositEngagementCard'
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Brouillon',
@@ -181,6 +182,8 @@ export function QuoteDetailPage() {
           ))}
         </Stack>
       )}
+
+      <QuoteDepositEngagementCard quoteId={quote.id} />
 
       <GridLegacy container spacing={2} sx={{ mb: 3 }}>
         <GridLegacy item xs={12} md={6}>

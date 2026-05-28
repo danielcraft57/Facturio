@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Logger, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { InvoicesService } from './invoices.service';
 import { InvoiceSendService } from './invoice-send.service';
@@ -13,6 +13,8 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StripeService } from '../stripe/stripe.service';
 import { assertValidPublicToken } from './public-token.util';
+import { RefundsService } from '../refunds/refunds.service';
+import { CreateRefundDto, CancelDepositDto } from '../refunds/dto/create-refund.dto';
 
 @Controller(['invoices', 'factures'])
 export class InvoicesController {
@@ -22,6 +24,7 @@ export class InvoicesController {
 		private readonly pdfService: PdfService,
 		private readonly organizations: OrganizationsService,
 		private readonly email: EmailService,
+		private readonly refunds: RefundsService,
 	) {}
 
 	@Post()
@@ -106,6 +109,29 @@ export class InvoicesController {
 		return this.invoices.addPayment(id, body.amount, body.date, body.method, body.notes, user.organizationId);
 	}
 
+	@Get(':id/refunds')
+	listRefunds(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
+		return this.refunds.findByInvoice(id, user.organizationId);
+	}
+
+	@Post(':id/refunds')
+	createRefund(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Body() body: CreateRefundDto,
+		@CurrentUser() user: any,
+	) {
+		return this.refunds.createForInvoice(id, body, user.organizationId);
+	}
+
+	@Post(':id/cancel-deposit')
+	cancelDeposit(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Body() body: CancelDepositDto,
+		@CurrentUser() user: any,
+	) {
+		return this.refunds.cancelDepositEngagement(id, user.organizationId, body);
+	}
+
 	@Post(':id/send')
 	async sendInvoice(
 		@Param('id', ParseEntityIdPipe) id: string,
@@ -141,6 +167,8 @@ export class InvoicesController {
  */
 @Controller('public/invoices')
 export class PublicInvoicesController {
+	private readonly logger = new Logger(PublicInvoicesController.name);
+
 	constructor(
 		private readonly invoices: InvoicesService,
 		private readonly pdfService: PdfService,
@@ -157,10 +185,18 @@ export class PublicInvoicesController {
 			currency: string;
 			stripePublishableKey: string;
 		} | null = null;
+		let paymentError: string | null = null;
 		if (invoice.canPayOnline) {
-			payment = await this.stripe.createPaymentIntentForInvoice(token);
+			try {
+				payment = await this.stripe.createPaymentIntentForInvoice(token);
+			} catch (err) {
+				paymentError = (err as Error).message || 'Paiement en ligne indisponible pour le moment';
+				this.logger.warn(
+					`Checkout public ${invoice.number} (${token.slice(0, 8)}...): ${paymentError}`,
+				);
+			}
 		}
-		return { invoice, payment };
+		return { invoice, payment, paymentError };
 	}
 
 	@Get(':token')

@@ -354,6 +354,10 @@ export class AccountingService {
 		return paymentId != null ? `PAIEMENT ${invoiceNumber}#${paymentId}` : `PAIEMENT ${invoiceNumber}`;
 	}
 
+	private refundReference(invoiceNumber: string, refundId?: number): string {
+		return refundId != null ? `REMBOURSEMENT ${invoiceNumber}#${refundId}` : `REMBOURSEMENT ${invoiceNumber}`;
+	}
+
 	private async entryExists(reference: string): Promise<boolean> {
 		const found = await this.prisma.journalEntry.findFirst({
 			where: { reference, status: 'POSTED' }
@@ -367,6 +371,9 @@ export class AccountingService {
 	async listMovements(params: { start?: string; end?: string; organizationId?: number }) {
 		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
 		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
+		if (params.end) {
+			end.setHours(23, 59, 59, 999);
+		}
 
 		const orgInvoiceNumbers =
 			params.organizationId != null
@@ -386,11 +393,28 @@ export class AccountingService {
 			orderBy: [{ entry: { date: 'desc' } }, { entry: { id: 'desc' } }, { id: 'asc' }]
 		});
 
+		const invoiceNumberFromReference = (reference: string | null | undefined): string | null => {
+			if (!reference) return null;
+			if (reference.startsWith('VENTE ')) return reference.slice(6).trim();
+			if (reference.startsWith('PAIEMENT ')) return reference.slice(9).split('#')[0]?.trim() ?? null;
+			if (reference.startsWith('REMBOURSEMENT ')) return reference.slice(14).split('#')[0]?.trim() ?? null;
+			return null;
+		};
+
 		const belongsToOrg = (reference: string | null | undefined): boolean => {
 			if (!orgInvoiceNumbers || !reference) return true;
-			if (reference.startsWith('VENTE ')) return orgInvoiceNumbers.has(reference.slice(6));
-			if (reference.startsWith('PAIEMENT ')) return orgInvoiceNumbers.has(reference.slice(9).split('#')[0]);
+			const num = invoiceNumberFromReference(reference);
+			if (num) return orgInvoiceNumbers.has(num);
 			return true;
+		};
+
+		const movementKindFromReference = (reference: string | null | undefined): string => {
+			if (!reference) return 'other';
+			if (reference.startsWith('VENTE ')) return 'sale';
+			if (reference.startsWith('PAIEMENT ')) return 'payment';
+			if (reference.startsWith('REMBOURSEMENT ')) return 'refund';
+			if (reference.startsWith('AVO-')) return 'credit_note';
+			return 'other';
 		};
 
 		const filtered = lines.filter(l => belongsToOrg(l.entry.reference));
@@ -407,7 +431,9 @@ export class AccountingService {
 			accountName: l.account.name,
 			description: l.description,
 			debit: this.toNumber(l.debit),
-			credit: this.toNumber(l.credit)
+			credit: this.toNumber(l.credit),
+			movementKind: movementKindFromReference(l.entry.reference),
+			invoiceNumber: invoiceNumberFromReference(l.entry.reference),
 		}));
 	}
 
@@ -417,6 +443,9 @@ export class AccountingService {
 	async getFinanceSummary(params: { start?: string; end?: string; organizationId?: number }) {
 		const start = params.start ? new Date(params.start) : new Date(new Date().getFullYear(), 0, 1);
 		const end = params.end ? new Date(params.end) : new Date();
+		if (params.end) {
+			end.setHours(23, 59, 59, 999);
+		}
 		const where: any = {
 			status: 'PAID',
 			date: { gte: start, lte: end }
@@ -439,12 +468,27 @@ export class AccountingService {
 
 		const movements = await this.listMovements({ start: params.start, end: params.end, organizationId: params.organizationId });
 
+		const refundWhere: { organizationId?: number; status: 'COMPLETED'; date: { gte: Date; lte: Date } } = {
+			status: 'COMPLETED',
+			date: { gte: start, lte: end },
+		};
+		if (params.organizationId != null) refundWhere.organizationId = params.organizationId;
+
+		const refunds = await this.prisma.refund.findMany({
+			where: refundWhere,
+			select: { amount: true },
+		});
+		const refundsTotal = refunds.reduce((s, r) => s + this.toNumber(r.amount), 0);
+
 		return {
 			paidInvoicesCount: paid.length,
 			revenueHt: Number(revenueHt.toFixed(2)),
 			vatCollected: Number(vatCollected.toFixed(2)),
 			totalTtc: Number(totalTtc.toFixed(2)),
-			movementsCount: movements.length
+			refundsCount: refunds.length,
+			refundsTotal: Number(refundsTotal.toFixed(2)),
+			netCashCollected: Number((totalTtc - refundsTotal).toFixed(2)),
+			movementsCount: movements.length,
 		};
 	}
 
@@ -459,11 +503,11 @@ export class AccountingService {
 
 		const invoices = await this.prisma.invoice.findMany({
 			where,
-			include: { payments: true },
+			include: { payments: true, refunds: { where: { status: 'COMPLETED' } } },
 			orderBy: { date: 'asc' }
 		});
 
-		const result = { salesCreated: 0, paymentsCreated: 0, skipped: 0, errors: [] as string[] };
+		const result = { salesCreated: 0, paymentsCreated: 0, refundsCreated: 0, skipped: 0, errors: [] as string[] };
 
 		for (const invoice of invoices) {
 			const saleRef = this.saleReference(invoice.number);
@@ -499,6 +543,25 @@ export class AccountingService {
 					result.paymentsCreated++;
 				} catch (e: any) {
 					result.errors.push(`${payRef}: ${e?.message ?? 'erreur'}`);
+				}
+			}
+
+			for (const refund of invoice.refunds ?? []) {
+				const refundRef = this.refundReference(invoice.number, refund.id);
+				if (await this.entryExists(refundRef)) {
+					result.skipped++;
+					continue;
+				}
+				try {
+					await this.postInvoiceRefund({
+						invoiceId: invoice.id,
+						amount: this.toNumber(refund.amount),
+						refundId: refund.id,
+						date: refund.date,
+					});
+					result.refundsCreated++;
+				} catch (e: any) {
+					result.errors.push(`${refundRef}: ${e?.message ?? 'erreur'}`);
 				}
 			}
 		}
@@ -584,6 +647,38 @@ export class AccountingService {
 			reference: this.paymentReference(invoice.number, params.paymentId),
 			memo: `Encaissement facture ${invoice.number}`,
 			lines
+		});
+	}
+
+	/** Remboursement client : 411 (débit) / 512 (crédit) — inverse de l'encaissement. */
+	async postInvoiceRefund(params: {
+		invoiceId: string;
+		amount: number;
+		refundId?: number;
+		date?: Date | string;
+		bankAccountCode?: string;
+		customerAccountCode?: string;
+	}) {
+		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
+		if (!invoice) throw new BadRequestException('Facture introuvable');
+		const lines = [
+			{
+				accountCode: params.customerAccountCode ?? '411',
+				debit: params.amount,
+				description: `Remboursement ${invoice.number}`,
+			},
+			{
+				accountCode: params.bankAccountCode ?? '512',
+				credit: params.amount,
+				description: 'Sortie banque',
+			},
+		];
+		return this.postEntry({
+			journalCode: 'BQ',
+			date: params.date,
+			reference: this.refundReference(invoice.number, params.refundId),
+			memo: `Remboursement facture ${invoice.number}`,
+			lines,
 		});
 	}
 

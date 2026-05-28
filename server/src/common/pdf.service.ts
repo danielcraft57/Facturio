@@ -61,6 +61,13 @@ export class PdfService {
 				? buildRemainderCommitmentParagraph(dueDateFr)
 				: null;
 
+		const appliedCreditTotal = Array.isArray(invoice?.appliedAvoirs)
+			? invoice.appliedAvoirs.reduce((sum: number, a: any) => sum + Number(a.amount ?? 0), 0)
+			: 0;
+		const grossTotal = Number(invoice.total ?? 0);
+		const netDue = Math.max(0, Number((grossTotal - appliedCreditTotal).toFixed(2)));
+		const linesForPdf = invoice.lines || [];
+
 		const document = {
 			...invoice,
 			...(paymentNote ? { paymentNote } : {}),
@@ -80,11 +87,14 @@ export class PdfService {
 			date: invoice.date || invoice.createdAt,
 			document,
 			client: invoice.client,
-			lines: invoice.lines || [],
+			lines: linesForPdf,
 			totals: {
 				subtotal: invoice.subtotal || 0,
 				tax: invoice.tax || 0,
-				total: invoice.total || 0
+				total: invoice.total || 0,
+				...(appliedCreditTotal > 0.01
+					? { creditApplied: appliedCreditTotal, netDue }
+					: {}),
 			},
 			organization,
 			pdfTitle,

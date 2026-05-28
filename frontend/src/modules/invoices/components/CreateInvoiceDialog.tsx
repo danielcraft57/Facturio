@@ -71,6 +71,7 @@ interface CreateInvoiceData {
   clientEmail?: string
   sendByEmailAfterCreate?: boolean
   sendToEmail?: string
+  applyClientCredits?: boolean
 }
 
 interface CreateInvoiceDialogProps {
@@ -90,6 +91,7 @@ function createEmptyInvoiceForm(): CreateInvoiceData {
     notes: '',
     terms: 'Paiement à 30 jours',
     currency: 'EUR',
+    applyClientCredits: true,
   }
 }
 
@@ -156,7 +158,16 @@ export function CreateInvoiceDialog({
       setLoading(true)
       apiClient.invalidateCache('/clients')
       const response = await clientService.getClients({ page: 1, limit: 100 })
-      setClients(parseClientsListResponse(response))
+      const list = parseClientsListResponse(response)
+      if (defaultClientId && !list.some((c) => c.id === defaultClientId)) {
+        try {
+          const one = await clientService.getClient(defaultClientId)
+          if (one.data) list.push(one.data)
+        } catch {
+          // client hors première page
+        }
+      }
+      setClients(list)
     } catch (error) {
       console.error('Erreur lors du chargement des clients:', error)
       setClients([])
@@ -164,6 +175,19 @@ export function CreateInvoiceDialog({
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (!open || !defaultClientId) return
+    const c = clients.find((cl) => cl.id === defaultClientId)
+    if (!c) return
+    setWillCreateClient(false)
+    setFormData((prev) => ({
+      ...prev,
+      clientId: c.id,
+      clientEmail: c.email?.trim() || prev.clientEmail,
+      newClientName: undefined,
+    }))
+  }, [open, defaultClientId, clients])
 
   const handleAddItem = () => {
     setFormData(prev => ({
@@ -609,6 +633,21 @@ export function CreateInvoiceDialog({
               />
             }
             label="Envoyer par email au client après création"
+          />
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={formData.applyClientCredits !== false}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    applyClientCredits: e.target.checked,
+                  }))
+                }
+              />
+            }
+            label="Imputer automatiquement les avoirs client disponibles"
           />
 
           {formData.sendByEmailAfterCreate && (

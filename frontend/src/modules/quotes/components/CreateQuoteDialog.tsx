@@ -95,8 +95,17 @@ export function CreateQuoteDialog({
       setLoading(true)
       apiClient.invalidateCache('/clients')
       const res = await clientService.getClients({ page: 1, limit: 100 })
+      const list = parseClientsListResponse(res)
+      if (defaultClientId && !list.some((c) => c.id === defaultClientId)) {
+        try {
+          const one = await clientService.getClient(defaultClientId)
+          if (one.data) list.push(one.data)
+        } catch {
+          // client hors première page
+        }
+      }
       setClients(
-        parseClientsListResponse(res).map((c) => ({
+        list.map((c) => ({
           id: String(c.id),
           name: c.name,
         })),

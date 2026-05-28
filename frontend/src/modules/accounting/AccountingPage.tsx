@@ -40,6 +40,9 @@ import {
   School,
   Search,
   ExpandMore,
+  MoneyOff,
+  CreditScore,
+  Savings,
 } from '@mui/icons-material'
 import {
   accountingService,
@@ -61,6 +64,15 @@ import {
   financeTableSx,
 } from '../../components/finance/financeStyles'
 import { flattenGeneralLedger, ACCOUNT_CODE_HINTS, type FlatLedgerRow } from './accountingMappers'
+import {
+  filterMovementsByKind,
+  movementKindColor,
+  movementKindLabel,
+  type MovementKind,
+} from './accountingMovementUi'
+import { RefundsPanel } from './components/RefundsPanel'
+import { AvoirsPanel } from './components/AvoirsPanel'
+import { DepositsPanel } from './components/DepositsPanel'
 import { subscribeFinanceRealtime, connectFinanceRealtime } from '../../services/financeRealtime'
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -112,6 +124,19 @@ const GLOSSARY: GlossaryRow[] = [
       'Association d’une facture et de son règlement (ex: 411 avec 512) pour suivre ce qui est soldé. Pas encore exposé dans l’UI.',
   },
   {
+    key: 'REMBOURSEMENT',
+    label: 'Remboursement',
+    description:
+      'Sortie de trésorerie liée à un encaissement annulé : écriture BQ D 411 / C 512. Référence REMBOURSEMENT FAC-…#id.',
+    examples: ['Annulation acompte 10 % après rétractation client'],
+  },
+  {
+    key: 'AVOIR',
+    label: 'Avoir',
+    description:
+      'Note de crédit qui annule tout ou partie d’une vente : écriture VE inverse (D 411 / C 706 + 44571). Numéro AVO-YYYY-NNNN.',
+  },
+  {
     key: 'URSSAF',
     label: 'URSSAF / charges sociales',
     description:
@@ -138,6 +163,17 @@ const GLOSSARY: GlossaryRow[] = [
     description:
       'Facturio enregistre la vente à l’émission (VE : D 411 / C 706 + 44571) et l’encaissement à la date de paiement (BQ : D 512 / C 411).',
     examples: ['Vente : D 411 / C 706 + 44571', 'Paiement : D 512 / C 411'],
+  },
+  {
+    key: 'AVOIR_VS_REMBOURSEMENT',
+    label: 'Avoir (crédit client) vs remboursement',
+    description:
+      'Important : un remboursement est une sortie de trésorerie (BQ) ; un avoir corrige la vente et la TVA (VE). Si tu veux “créditer” le client pour une prochaine facture, utilise un avoir non imputé (crédit disponible), puis impute-le sur la prochaine facture.',
+    examples: [
+      'Avoir (corrige CA + TVA) : VE D 411 / C 706 + C 44571',
+      'Remboursement (sortie banque) : BQ D 411 / C 512',
+      'Crédit client : avoir émis (reste > 0) puis imputation sur facture suivante',
+    ],
   },
 ]
 
@@ -236,6 +272,12 @@ function AccountingGuide({
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
                   Exemple référence : <code>PAIEMENT FAC-2026-0001#42</code>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Remboursement : <b>D 411</b> / <b>C 512</b> (inverse de l&apos;encaissement).
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                  Exemple : <code>REMBOURSEMENT ACO-2026-0001#3</code>
                 </Typography>
               </Box>
               <Box sx={{ flex: 1 }}>
@@ -408,6 +450,7 @@ export function AccountingPage() {
   const [startDate, setStartDate] = useState(defaultStart)
   const [endDate, setEndDate] = useState(defaultEnd)
   const [selectedAccount, setSelectedAccount] = useState<string>('')
+  const [movementKindFilter, setMovementKindFilter] = useState<MovementKind | 'all'>('all')
 
   const invalidateCache = useCallback(() => {
     accountingService.getAccounts()
@@ -520,12 +563,16 @@ export function AccountingPage() {
       const result = unwrapApiPayload<{
         salesCreated: number
         paymentsCreated: number
+        refundsCreated?: number
         errors: unknown[]
       }>(response)
       if (result) {
         const parts = [
           result.salesCreated > 0 ? `${result.salesCreated} vente(s)` : null,
           result.paymentsCreated > 0 ? `${result.paymentsCreated} encaissement(s)` : null,
+          result.refundsCreated && result.refundsCreated > 0
+            ? `${result.refundsCreated} remboursement(s)`
+            : null,
         ].filter(Boolean)
         setSyncMessage(
           parts.length
@@ -570,13 +617,14 @@ export function AccountingPage() {
     return 'default'
   }
 
-  const showDateFilters = tabValue !== 3
+  const showDateFilters = tabValue !== 6
+  const filteredMovements = filterMovementsByKind(movements, movementKindFilter)
 
   return (
     <Box sx={{ p: financePagePadding }}>
       <PageHeader
         title="Comptabilité"
-        subtitle="Vente à l'émission (VE), encaissement au paiement (BQ) — PCG 411, 706, 44571, 512"
+        subtitle="Ventes (VE), encaissements et remboursements (BQ), avoirs — PCG 411, 706, 44571, 512"
         actions={
           <Stack direction="row" spacing={1} flexWrap="wrap">
             <Button
@@ -612,34 +660,21 @@ export function AccountingPage() {
       )}
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            label="CA HT (factures payées)"
-            value={formatCurrency(summary?.revenueHt ?? 0)}
-            gradient={financeKpiGradients.revenue}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            label="TVA collectée"
-            value={formatCurrency(summary?.vatCollected ?? 0)}
-            gradient={financeKpiGradients.conversion}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            label="Encaissements TTC"
-            value={formatCurrency(summary?.totalTtc ?? 0)}
-            gradient={financeKpiGradients.clients}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            label="Lignes comptables"
-            value={String(summary?.movementsCount ?? movements.length)}
-            gradient={financeKpiGradients.unpaid}
-          />
-        </Grid>
+        {[
+          { label: 'CA HT (factures payées)', value: formatCurrency(summary?.revenueHt ?? 0), gradient: financeKpiGradients.revenue },
+          { label: 'TVA collectée', value: formatCurrency(summary?.vatCollected ?? 0), gradient: financeKpiGradients.conversion },
+          { label: 'Encaissements TTC', value: formatCurrency(summary?.totalTtc ?? 0), gradient: financeKpiGradients.clients },
+          { label: 'Remboursements', value: formatCurrency(summary?.refundsTotal ?? 0), gradient: financeKpiGradients.unpaid },
+          {
+            label: 'Trésorerie nette',
+            value: formatCurrency(summary?.netCashCollected ?? summary?.totalTtc ?? 0),
+            gradient: financeKpiGradients.revenue,
+          },
+        ].map((kpi) => (
+          <Grid key={kpi.label} size={{ xs: 12, sm: 6, md: 2.4 }}>
+            <KpiCard label={kpi.label} value={kpi.value} gradient={kpi.gradient} />
+          </Grid>
+        ))}
       </Grid>
 
       <Card sx={{ mb: 3, ...financeCardSx }}>
@@ -699,19 +734,33 @@ export function AccountingPage() {
             <Tab icon={<ReceiptLong />} label="Mouvements" />
             <Tab icon={<Assessment />} label="Balance" />
             <Tab icon={<Book />} label="Grand livre" />
+            <Tab icon={<MoneyOff />} label="Remboursements" />
+            <Tab icon={<CreditScore />} label="Avoirs" />
+            <Tab icon={<Savings />} label="Acomptes" />
             <Tab icon={<School />} label="Guide compta" />
           </Tabs>
         </Box>
 
         <TabPanel value={tabValue} index={0}>
+          <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap">
+            {(['all', 'sale', 'payment', 'refund', 'credit_note'] as const).map((k) => (
+              <Chip
+                key={k}
+                label={k === 'all' ? 'Tous' : movementKindLabel(k)}
+                onClick={() => setMovementKindFilter(k)}
+                color={movementKindFilter === k ? 'primary' : 'default'}
+                variant={movementKindFilter === k ? 'filled' : 'outlined'}
+              />
+            ))}
+          </Stack>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
               <CircularProgress />
             </Box>
-          ) : movements.length === 0 ? (
+          ) : filteredMovements.length === 0 ? (
             <Alert severity="info">
               Aucun mouvement sur la période. Cliquez sur « Synchroniser factures » pour générer les
-              écritures à partir de vos factures émises et payées.
+              écritures à partir de vos factures émises, payées et remboursées.
             </Alert>
           ) : (
             <TableContainer>
@@ -719,6 +768,7 @@ export function AccountingPage() {
                 <TableHead sx={financeTableHeadSx}>
                   <TableRow>
                     <TableCell>Date</TableCell>
+                    <TableCell>Type</TableCell>
                     <TableCell>Journal</TableCell>
                     <TableCell>Compte</TableCell>
                     <TableCell>Libellé</TableCell>
@@ -728,9 +778,17 @@ export function AccountingPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {movements.map((m) => (
+                  {filteredMovements.map((m) => (
                     <TableRow key={m.lineId} hover>
                       <TableCell>{formatDate(m.date)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={movementKindLabel(m.movementKind)}
+                          size="small"
+                          color={movementKindColor(m.movementKind)}
+                          variant="outlined"
+                        />
+                      </TableCell>
                       <TableCell>
                         <Chip
                           label={m.journalCode}
@@ -770,7 +828,7 @@ export function AccountingPage() {
             color="text.secondary"
             sx={{ mt: 2, display: 'block', px: 1 }}
           >
-            Ventes à l&apos;envoi ou au statut émis : D 411 / C 706 + 44571 (VE) — Paiements : D 512 / C 411 (BQ)
+            VE : vente — BQ encaissement D 512 / C 411 — BQ remboursement D 411 / C 512 — Avoir : AVO-… en VE
           </Typography>
         </TabPanel>
 
@@ -890,6 +948,18 @@ export function AccountingPage() {
         </TabPanel>
 
         <TabPanel value={tabValue} index={3}>
+          <RefundsPanel startDate={startDate} endDate={endDate} />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={4}>
+          <AvoirsPanel />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={5}>
+          <DepositsPanel />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={6}>
           <AccountingGuide accounts={safeAccounts} />
         </TabPanel>
       </Card>

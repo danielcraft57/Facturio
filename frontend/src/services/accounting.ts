@@ -73,6 +73,8 @@ export interface AccountingMovement {
   description?: string
   debit: number
   credit: number
+  movementKind?: 'sale' | 'payment' | 'refund' | 'credit_note' | 'other'
+  invoiceNumber?: string | null
 }
 
 export interface FinanceSummary {
@@ -80,12 +82,16 @@ export interface FinanceSummary {
   revenueHt: number
   vatCollected: number
   totalTtc: number
+  refundsCount?: number
+  refundsTotal?: number
+  netCashCollected?: number
   movementsCount: number
 }
 
 export interface SyncInvoicesResult {
   salesCreated: number
   paymentsCreated: number
+  refundsCreated?: number
   skipped: number
   errors: string[]
 }

@@ -237,4 +237,30 @@ export class StripeService {
 			notes: stripeRef,
 		});
 	}
+
+	/** Remboursement Stripe (clés organisation) sur un PaymentIntent encaissé. */
+	async refundPaymentIntent(
+		organizationId: number,
+		paymentIntentId: string,
+		amountEur: number,
+	): Promise<string> {
+		const org = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: {
+				invoiceStripeSecretKey: true,
+				invoiceStripePublishableKey: true,
+			},
+		});
+		if (!org) throw new NotFoundException('Organisation introuvable');
+		const stripe = this.getOrgStripeClient(org);
+		const amountCents = Math.round(amountEur * 100);
+		if (amountCents <= 0) {
+			throw new BadRequestException('Montant de remboursement invalide');
+		}
+		const refund = await stripe.refunds.create({
+			payment_intent: paymentIntentId,
+			amount: amountCents,
+		});
+		return refund.id;
+	}
 }

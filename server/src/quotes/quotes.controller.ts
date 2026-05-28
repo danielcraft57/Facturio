@@ -50,6 +50,11 @@ export class QuotesController {
 		return this.quotes.findOne(id, user.organizationId);
 	}
 
+	@Get(':id/deposit-context')
+	getDepositContext(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
+		return this.quotes.getDepositContextForQuote(id, user.organizationId);
+	}
+
 	@Patch(':id')
 	update(
 		@Param('id', ParseEntityIdPipe) id: string,

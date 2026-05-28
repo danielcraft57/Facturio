@@ -9,6 +9,8 @@ import { OrganizationsModule } from '../organizations/organizations.module';
 import { StripeModule } from '../stripe/stripe.module';
 import { BillingModule } from '../billing/billing.module';
 import { InvoicePaymentNotificationModule } from './invoice-payment-notification.module';
+import { RefundsModule } from '../refunds/refunds.module';
+import { AvoirsModule } from '../avoirs/avoirs.module';
 
 @Module({
 	imports: [
@@ -19,6 +21,8 @@ import { InvoicePaymentNotificationModule } from './invoice-payment-notification
 		StripeModule,
 		BillingModule,
 		InvoicePaymentNotificationModule,
+		RefundsModule,
+		AvoirsModule,
 	],
 	controllers: [InvoicesController, PublicInvoicesController],
 	providers: [InvoicesService, InvoiceSendService],
