@@ -64,6 +64,22 @@ export type PaConnectionTestResult = {
   message: string
 }
 
+export type PaSubmitResult = {
+  provider: string
+  mode: 'mock' | 'api'
+  status: 'accepted' | 'rejected'
+  externalId: string
+  message: string
+}
+
+export type SubmitInvoiceToPaResult = {
+  invoiceId: string
+  invoiceNumber: string
+  eInvoiceStatus: string
+  idempotencyKey: string
+  pa: PaSubmitResult
+}
+
 export const eInvoicingService = {
   getReformSchedule: async (companySize?: string): Promise<ReformSchedule> => {
     const q = companySize ? `?companySize=${encodeURIComponent(companySize)}` : ''
@@ -94,6 +110,11 @@ export const eInvoicingService = {
   testPaConnection: async (): Promise<PaConnectionTestResult> => {
     const res = await apiClient.post<PaConnectionTestResult>('e-invoicing/pa/test', {})
     return unwrapApiPayload<PaConnectionTestResult>(res)
+  },
+
+  submitInvoiceToPa: async (invoiceId: number): Promise<SubmitInvoiceToPaResult> => {
+    const res = await apiClient.post<SubmitInvoiceToPaResult>(`e-invoicing/invoices/${invoiceId}/submit-pa`, {})
+    return unwrapApiPayload<SubmitInvoiceToPaResult>(res)
   },
 
   async downloadFacturX(invoiceId: number): Promise<void> {
