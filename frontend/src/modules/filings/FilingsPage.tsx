@@ -35,6 +35,14 @@ import {
 } from '@mui/icons-material'
 import { filingsService, type Filing } from '../../services/filings'
 import { formatCurrency, formatDate } from '../../utils/formatters'
+import { PageHeader } from '../../components/finance/PageHeader'
+import {
+  financeCardSx,
+  financePagePadding,
+  financePrimaryButtonSx,
+  financeTableHeadSx,
+  financeTableSx,
+} from '../../components/finance/financeStyles'
 
 export function FilingsPage() {
   const [filings, setFilings] = useState<Filing[]>([])
@@ -119,19 +127,21 @@ export function FilingsPage() {
   }
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
-        <Typography variant="h4" sx={{ flexGrow: 1 }}>
-          Déclarations fiscales
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => setCreateDialogOpen(true)}
-        >
-          Nouvelle déclaration
-        </Button>
-      </Stack>
+    <Box sx={{ p: financePagePadding }}>
+      <PageHeader
+        title="Déclarations"
+        subtitle="TVA, URSSAF et obligations — calculs à partir de votre activité facturée"
+        actions={
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => setCreateDialogOpen(true)}
+            sx={financePrimaryButtonSx}
+          >
+            Nouvelle déclaration
+          </Button>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -140,7 +150,7 @@ export function FilingsPage() {
       )}
 
       {/* Filtres */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ mb: 3, ...financeCardSx }}>
         <CardContent>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ flexWrap: 'wrap' }}>
             <TextField
@@ -170,7 +180,7 @@ export function FilingsPage() {
       </Card>
 
       {/* Liste des déclarations */}
-      <Card>
+      <Card sx={financeCardSx}>
         <CardContent>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -180,8 +190,8 @@ export function FilingsPage() {
             <Alert severity="info">Aucune déclaration trouvée</Alert>
           ) : (
             <TableContainer>
-              <Table>
-                <TableHead>
+              <Table size="small" sx={financeTableSx}>
+                <TableHead sx={financeTableHeadSx}>
                   <TableRow>
                     <TableCell>Type</TableCell>
                     <TableCell>Période</TableCell>

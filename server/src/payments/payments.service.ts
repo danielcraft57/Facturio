@@ -66,11 +66,21 @@ export class PaymentsService {
 		}
 
 		const totalPaid = invoice.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+		const refundedAgg = await this.prisma.refund.aggregate({
+			where: { invoiceId: data.invoiceId, status: 'COMPLETED' },
+			_sum: { amount: true },
+		});
+		const totalRefunded = Number(refundedAgg._sum.amount ?? 0);
 		const invoiceTotal = Number(invoice.total);
-		const remaining = invoiceTotal - totalPaid;
+		const appliedCreditAgg = await this.prisma.avoirApplication.aggregate({
+			where: { invoiceId: data.invoiceId },
+			_sum: { amount: true },
+		});
+		const appliedCredit = Number(appliedCreditAgg._sum.amount ?? 0);
+		const remaining = Math.max(0, invoiceTotal - (totalPaid - totalRefunded) - appliedCredit);
 		const wasFullyPaid = invoice.status === 'PAID' || remaining <= 0;
 
-		if (data.amount > remaining) {
+		if (data.amount > remaining + 0.01) {
 			throw new BadRequestException(`Le montant du paiement (${data.amount}) depasse le solde restant (${remaining})`);
 		}
 
@@ -84,10 +94,10 @@ export class PaymentsService {
 			}
 		});
 
-		// Mettre à jour le solde de la facture
+		// Mettre à jour le solde de la facture (TTC − encaissements − avoirs imputés)
 		const newTotalPaid = totalPaid + data.amount;
-		const newBalance = invoiceTotal - newTotalPaid;
-		const newStatus = newBalance <= 0 ? 'PAID' : invoice.status;
+		const newBalance = Math.max(0, Number((invoiceTotal - newTotalPaid + totalRefunded - appliedCredit).toFixed(2)));
+		const newStatus = newBalance <= 0.01 ? 'PAID' : invoice.status;
 
 		await this.prisma.invoice.update({
 			where: { id: data.invoiceId },
@@ -99,7 +109,12 @@ export class PaymentsService {
 
 		// Comptabilisation de l'encaissement
 		try {
-			await this.accounting.postInvoicePayment({ invoiceId: data.invoiceId, amount: data.amount });
+			await this.accounting.postInvoicePayment({
+				invoiceId: data.invoiceId,
+				amount: data.amount,
+				paymentId: payment.id,
+				date: payment.date
+			});
 		} catch (_) {}
 
 		if (newStatus === 'PAID' && !wasFullyPaid) {
@@ -115,9 +130,10 @@ export class PaymentsService {
 				);
 		}
 
-		if (organizationId) {
+		const realtimeOrgId = organizationId ?? invoice.organizationId ?? undefined;
+		if (realtimeOrgId) {
 			this.realtime.emit(
-				organizationId,
+				realtimeOrgId,
 				'invoices',
 				newStatus === 'PAID' && !wasFullyPaid ? 'paid' : 'updated',
 				data.invoiceId,

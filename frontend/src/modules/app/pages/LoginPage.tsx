@@ -44,6 +44,15 @@ export function LoginPage() {
     clearPending,
   } = usePendingEmailVerification(email)
 
+  const resolveFrom = () => {
+    const rawFrom = (location.state as any)?.from
+    if (typeof rawFrom === 'string' && rawFrom.trim()) return rawFrom
+    if (rawFrom && typeof rawFrom === 'object' && typeof rawFrom.pathname === 'string' && rawFrom.pathname.trim()) {
+      return rawFrom.pathname
+    }
+    return '/dashboard'
+  }
+
   const successMessage = (location.state as { message?: string } | null)?.message
 
   // Redirection uniquement si l’email est déjà confirmé
@@ -55,10 +64,7 @@ export function LoginPage() {
         await refreshPending()
         const user = useAuthStore.getState().user
         if (cancelled || user?.emailVerified !== true) return
-        const from =
-          (location.state as { from?: string })?.from ||
-          (location.state as { from?: { pathname?: string } })?.from?.pathname ||
-          '/dashboard'
+        const from = resolveFrom()
         navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
       } catch {
         authService.clearLocalSession()
@@ -96,10 +102,7 @@ export function LoginPage() {
       }
       const user = useAuthStore.getState().user
       if (user?.emailVerified === true) {
-        const from =
-          (location.state as { from?: string })?.from ||
-          (location.state as { from?: { pathname?: string } })?.from?.pathname ||
-          '/dashboard'
+        const from = resolveFrom()
         navigate(`/auth/session?from=${encodeURIComponent(from)}`, { replace: true })
         return
       }

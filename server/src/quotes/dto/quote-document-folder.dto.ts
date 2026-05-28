@@ -13,6 +13,10 @@ export class QuoteListQueryDto extends ListQueryDto {
 	tag?: string;
 
 	@IsOptional()
+	@IsString()
+	clientId?: string;
+
+	@IsOptional()
 	@Transform(({ value }) => value === true || value === 'true' || value === '1')
 	@IsBoolean()
 	includeFolderCounts?: boolean;

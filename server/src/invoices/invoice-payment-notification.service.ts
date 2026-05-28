@@ -1,8 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EmailService } from '../common/email.service';
+import { PdfService } from '../common/pdf.service';
+import { parseTagsJson } from '../common/document-folder.util';
 import { buildPublicInvoiceUrl } from '../common/public-app-url';
 import { ConfigService } from '../config/config.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveEngagementBreakdownForInvoice } from './invoice-engagement-breakdown.util';
+import type { InvoiceDocumentKind } from './invoice-deposit.util';
 
 const PAID_NOTIFICATION_EVENT = 'invoice_paid_notified';
 
@@ -17,6 +22,12 @@ function formatPaymentMethodLabel(method?: string | null): string {
 	return method;
 }
 
+function resolveDocumentKind(tags: string[]): InvoiceDocumentKind {
+	if (tags.includes('ACOMPTE_10')) return 'deposit';
+	if (tags.includes('SOLDE_APRES_ACOMPTE')) return 'remainder';
+	return 'standard';
+}
+
 @Injectable()
 export class InvoicePaymentNotificationService {
 	private readonly logger = new Logger(InvoicePaymentNotificationService.name);
@@ -24,6 +35,8 @@ export class InvoicePaymentNotificationService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly email: EmailService,
+		private readonly pdfService: PdfService,
+		private readonly organizations: OrganizationsService,
 		private readonly config: ConfigService,
 	) {}
 
@@ -42,6 +55,7 @@ export class InvoicePaymentNotificationService {
 		const invoice = await this.prisma.invoice.findUnique({
 			where: { id: invoiceId },
 			include: {
+				lines: true,
 				client: true,
 				organization: {
 					select: {
@@ -68,6 +82,11 @@ export class InvoicePaymentNotificationService {
 			: undefined;
 		const appInvoiceUrl = `${this.config.frontendUrl.replace(/\/$/, '')}/factures/${invoice.id}`;
 
+		const tags = parseTagsJson(invoice.tags);
+		const documentKind = resolveDocumentKind(tags);
+		const engagementBreakdown = await resolveEngagementBreakdownForInvoice(this.prisma, invoice);
+		const attachments = await this.buildPaidEmailAttachments(invoice, documentKind);
+
 		let sentAny = false;
 
 		if (client?.email?.trim()) {
@@ -83,6 +102,12 @@ export class InvoicePaymentNotificationService {
 					issuerName,
 					invoiceViewUrl,
 					replyTo: org?.dataControllerEmail || org?.email || undefined,
+					attachments,
+					paidContext: {
+						kind: documentKind,
+						contractTotal: engagementBreakdown?.contractTotal,
+						remainderAmount: engagementBreakdown?.remainderAmount,
+					},
 				});
 				sentAny = true;
 			} catch (err) {
@@ -121,6 +146,60 @@ export class InvoicePaymentNotificationService {
 				data: { invoiceId, type: PAID_NOTIFICATION_EVENT },
 			});
 		}
+	}
+
+	private async buildPaidEmailAttachments(
+		invoice: {
+			id: string;
+			number: string;
+			organizationId: number | null;
+			tags: string | null;
+			sourceQuoteId: string | null;
+			total: unknown;
+			lines: unknown[];
+			client: unknown;
+		},
+		documentKind: InvoiceDocumentKind,
+	): Promise<{ filename: string; content: Buffer; contentType?: string }[]> {
+		const attachments: { filename: string; content: Buffer; contentType?: string }[] = [];
+		if (!invoice.organizationId) return attachments;
+
+		let organization: unknown;
+		try {
+			organization = await this.organizations.getProfile(invoice.organizationId);
+		} catch {
+			organization = undefined;
+		}
+
+		try {
+			const pdf = await this.pdfService.generateInvoicePdf(invoice, organization);
+			attachments.push({
+				filename: `facture-${invoice.number}.pdf`,
+				content: pdf,
+				contentType: 'application/pdf',
+			});
+		} catch (err) {
+			this.logger.warn(
+				`PDF facture (confirmation paiement ${invoice.number}): ${(err as Error).message}`,
+			);
+		}
+
+		if (documentKind === 'deposit') {
+			try {
+				const contractPdf = await this.pdfService.generateEngagementContractPdf(invoice, organization);
+				attachments.push({
+					filename: `contrat-prestation-${invoice.number}.pdf`,
+					content: contractPdf,
+					contentType: 'application/pdf',
+				});
+			} catch (err) {
+				this.logger.warn(
+					`PDF contrat (confirmation paiement ${invoice.number}): ${(err as Error).message}`,
+				);
+			}
+		}
+
+		return attachments;
 	}
 
 	private async resolveProviderEmail(

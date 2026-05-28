@@ -35,6 +35,7 @@ describe('Auth e2e', () => {
 		await prisma.filingLine.deleteMany({});
 		await prisma.authorityPayment.deleteMany({});
 		await prisma.filing.deleteMany({});
+		await prisma.refund.deleteMany({});
 		await prisma.payment.deleteMany({});
 		await prisma.invoiceLine.deleteMany({});
 		await prisma.avoirApplication.deleteMany({});

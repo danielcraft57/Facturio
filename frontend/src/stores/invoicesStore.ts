@@ -122,14 +122,13 @@ export const useInvoicesStore = create<InvoicesState>()(
         set({ isLoadingInvoice: true });
         
         try {
-          const response = await invoiceService.getInvoice(id);
-          const invoice = response.data;
-          set({ selectedInvoice: invoice, isLoadingInvoice: false });
-          return invoice;
+          const invoice = await invoiceService.getInvoice(id)
+          set({ selectedInvoice: invoice, isLoadingInvoice: false })
+          return invoice
         } catch (error) {
-          console.error('Erreur lors du chargement de la facture:', error);
-          set({ isLoadingInvoice: false });
-          return null;
+          console.error('Erreur lors du chargement de la facture:', error)
+          set({ isLoadingInvoice: false })
+          return null
         }
       },
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { CreateAvoirDto } from './dto/create-avoir.dto';
@@ -6,6 +6,7 @@ import { UpdateAvoirDto } from './dto/update-avoir.dto';
 import { ApplyAvoirDto } from './dto/apply-avoir.dto';
 import { AccountingService } from '../accounting/accounting.service';
 import { ConfigService } from '../config/config.service';
+import { EmailService } from '../common/email.service';
 
 /**
  * Ligne d'avoir
@@ -35,10 +36,13 @@ export interface AvoirLineInput {
  */
 @Injectable()
 export class AvoirsService {
+	private readonly logger = new Logger(AvoirsService.name);
+
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly accounting: AccountingService,
-		private readonly config: ConfigService
+		private readonly config: ConfigService,
+		private readonly email: EmailService,
 	) {}
 
 	/**
@@ -110,13 +114,25 @@ export class AvoirsService {
 			throw new BadRequestException('Le client doit appartenir à une organisation');
 		}
 
+		let linkedInvoice:
+			| {
+					id: string;
+					clientId: string;
+					total: unknown;
+					status: string;
+			  }
+			| null = null;
+
 		// Vérifier que la facture existe si fournie
 		if (data.invoiceId) {
-			const invoice = await this.prisma.invoice.findUnique({ where: { id: data.invoiceId } });
-			if (!invoice) {
+			linkedInvoice = await this.prisma.invoice.findUnique({ where: { id: data.invoiceId } });
+			if (!linkedInvoice) {
 				throw new NotFoundException('Facture introuvable');
 			}
-			if (invoice.clientId !== data.clientId) {
+			if (linkedInvoice.status === 'CANCELLED') {
+				throw new BadRequestException('Impossible de créer un avoir sur une facture déjà annulée');
+			}
+			if (linkedInvoice.clientId !== data.clientId) {
 				throw new BadRequestException('La facture doit appartenir au même client');
 			}
 		}
@@ -178,7 +194,66 @@ export class AvoirsService {
 			}
 		}
 
+		// Règle métier: un avoir lié couvrant 100% de la facture l'annule automatiquement.
+		if (linkedInvoice && linkedInvoice.status !== 'CANCELLED') {
+			const invoiceTotal = Number(linkedInvoice.total);
+			if (totals.total >= invoiceTotal - 0.01) {
+				await this.prisma.invoice.update({
+					where: { id: linkedInvoice.id },
+					data: {
+						status: 'CANCELLED',
+						balance: 0,
+					},
+				});
+			}
+		}
+
+		await this.sendAvoirNotification(created);
+
 		return this.formatAvoir(created);
+	}
+
+	private async sendAvoirNotification(avoir: {
+		id: number;
+		invoiceId?: string | null;
+		invoice?: { number?: string | null } | null;
+		client?: { email?: string | null; name?: string | null; companyName?: string | null } | null;
+		total: unknown;
+		legalMention?: string | null;
+	}) {
+		try {
+			const clientEmail = avoir.client?.email?.trim?.();
+			if (!clientEmail) return;
+			const type = `invoice_credit_notified:${avoir.id}`;
+			const exists = await this.prisma.emailEvent.findFirst({
+				where: { invoiceId: avoir.invoiceId ?? null, type },
+			});
+			if (exists) return;
+
+			const clientName =
+				avoir.client?.companyName?.trim?.() ||
+				avoir.client?.name?.trim?.() ||
+				'Client';
+
+			await this.email.sendInvoiceCreditedToClient({
+				to: clientEmail,
+				clientName,
+				invoiceNumber: avoir.invoice?.number ?? `#${avoir.invoiceId ?? avoir.id}`,
+				creditedAmount: Number(avoir.total),
+				reason: avoir.legalMention ?? null,
+				issuerName: 'Votre prestataire',
+			});
+
+			await this.prisma.emailEvent.create({
+				data: {
+					invoiceId: avoir.invoiceId ?? null,
+					type,
+					meta: { avoirId: avoir.id },
+				},
+			});
+		} catch (err) {
+			this.logger.warn(`Email avoir ${avoir.id}: ${(err as Error).message}`);
+		}
 	}
 
 	async findAll(query: ListQueryDto, organizationId?: number) {
@@ -188,6 +263,8 @@ export class AvoirsService {
 
 		const where: any = {};
 		if (organizationId != null) where.organizationId = organizationId;
+		const clientId = (query as { clientId?: string }).clientId?.trim();
+		if (clientId) where.clientId = clientId;
 		if (query.search) {
 			where.OR = [
 				{ number: { contains: query.search, mode: 'insensitive' } },
@@ -388,8 +465,14 @@ export class AvoirsService {
 		}
 
 		const invoiceBalance = (invoice.balance as any)?.toNumber?.() ?? Number(invoice.balance);
-		if (data.amount > invoiceBalance) {
-			throw new BadRequestException(`Montant supérieur au solde de la facture (${invoiceBalance})`);
+		if (invoiceBalance <= 0) {
+			throw new BadRequestException('La facture ne présente aucun solde à imputer');
+		}
+		// Sécurité métier : ne jamais dépasser le solde de la facture.
+		// Si l'utilisateur saisit un montant trop élevé, on l'écrête automatiquement.
+		const amountToApply = Math.min(data.amount, invoiceBalance);
+		if (amountToApply <= 0) {
+			throw new BadRequestException('Montant d\'imputation invalide');
 		}
 
 		// Créer l'imputation
@@ -397,12 +480,12 @@ export class AvoirsService {
 			data: {
 				avoirId: avoirId,
 				invoiceId: data.invoiceId,
-				amount: data.amount
+				amount: amountToApply
 			}
 		});
 
 		// Mettre à jour le montant imputé de l'avoir
-		const newAppliedAmount = appliedAmount + data.amount;
+		const newAppliedAmount = appliedAmount + amountToApply;
 		const newStatus = newAppliedAmount >= avoirTotal ? 'APPLIED' : avoir.status === 'DRAFT' ? 'SENT' : avoir.status;
 
 		const updated = await this.prisma.avoir.update({
@@ -422,16 +505,29 @@ export class AvoirsService {
 			}
 		}
 
-		// Mettre à jour le solde de la facture
-		const newInvoiceBalance = invoiceBalance - data.amount;
-		const newInvoiceStatus = newInvoiceBalance <= 0 ? 'PAID' : invoice.status;
+		// Recalcul du solde facture (TTC − encaissements − toutes imputations)
+		const payments = await this.prisma.payment.findMany({ where: { invoiceId: data.invoiceId } });
+		const refunds = await this.prisma.refund.findMany({
+			where: { invoiceId: data.invoiceId, status: 'COMPLETED' },
+		});
+		const appliedAgg = await this.prisma.avoirApplication.aggregate({
+			where: { invoiceId: data.invoiceId },
+			_sum: { amount: true },
+		});
+		const grossTotal = Number(invoice.total);
+		const netPaid =
+			payments.reduce((s, p) => s + Number(p.amount), 0) -
+			refunds.reduce((s, r) => s + Number(r.amount), 0);
+		const appliedTotal = Number(appliedAgg._sum.amount ?? 0);
+		const newInvoiceBalance = Math.max(0, Number((grossTotal - netPaid - appliedTotal).toFixed(2)));
+		const newInvoiceStatus = newInvoiceBalance <= 0.01 ? 'PAID' : invoice.status;
 
 		await this.prisma.invoice.update({
 			where: { id: data.invoiceId },
 			data: {
 				balance: newInvoiceBalance,
-				status: newInvoiceStatus
-			}
+				status: newInvoiceStatus,
+			},
 		});
 
 		return this.findOne(avoirId);

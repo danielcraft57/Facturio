@@ -17,6 +17,10 @@ import {
 import type { QuoteListQueryDto } from './dto/quote-document-folder.dto';
 import type { UpdateQuoteDocumentFlagsDto } from './dto/quote-document-folder.dto';
 import { generateEntityId } from '../common/entity-id';
+import {
+	buildDepositCommitmentParagraph,
+	buildRemainderCommitmentParagraph,
+} from '../invoices/invoice-deposit.util';
 
 /**
  * Ligne de devis
@@ -67,6 +71,39 @@ export interface UpdateQuoteDto {
 }
 
 /**
+ * Paiement d'un devis (acompte ou 100%).
+ *
+ * Le paiement :
+ * - valide la commande en acceptant le devis
+ * - convertit le devis en facture (si nécessaire)
+ * - ajoute un paiement sur la facture (qui réduit la balance)
+ */
+export interface PayQuoteDto {
+	/** 100% ou acompte */
+	mode: 'FULL' | 'DEPOSIT';
+	/** Taux d'acompte (ex: 0.1 pour 10%). Défault: 0.1 */
+	depositRate?: number;
+	/** Date du paiement (optionnel). Default: maintenant */
+	date?: string | Date;
+	/** Méthode paiement (optionnel) */
+	method?: string;
+	/** Notes (optionnel) */
+	notes?: string;
+}
+
+/**
+ * Acceptation publique d'un devis avec création et envoi de factures
+ * (100% ou acompte).
+ *
+ * Objectif : générer des factures publiques prêtes à être payées en ligne via Stripe.
+ */
+export interface PublicAcceptDepositDto {
+	mode: 'FULL' | 'DEPOSIT';
+	/** Par défaut : 0.1 => 10% */
+	depositRate?: number;
+}
+
+/**
  * Service de gestion des devis
  * 
  * Gère :
@@ -89,6 +126,21 @@ export class QuotesService {
 		private readonly realtime: RealtimeEventsService,
 	) {}
 
+	private async assertInvoiceStripeConfigured(organizationId: number) {
+		const org = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: { invoiceStripeSecretKey: true, invoiceStripePublishableKey: true },
+		});
+		const stripeOk = Boolean(
+			org?.invoiceStripeSecretKey?.trim() && org?.invoiceStripePublishableKey?.trim(),
+		);
+		if (!stripeOk) {
+			throw new BadRequestException(
+				"Paiement en ligne Stripe non configuré. Allez dans Paramètres → Paiements : /parametres/paiements",
+			);
+		}
+	}
+
 	private notifyQuote(
 		organizationId: number | undefined,
 		action: 'created' | 'updated' | 'deleted' | 'sent' | 'paid',
@@ -96,6 +148,225 @@ export class QuotesService {
 		meta?: { number?: string; status?: string },
 	): void {
 		if (organizationId) this.realtime.emit(organizationId, 'quotes', action, id, meta);
+	}
+
+	/**
+	 * Trouve la facture "acompte 10%" associée à un devis.
+	 * On la détecte via le tag enregistré pendant le split.
+	 */
+	async findDepositInvoiceForQuote(quoteId: string, organizationId: number) {
+		const depositTag = this.quoteDepositTag(quoteId);
+		return this.prisma.invoice.findFirst({
+			where: {
+				organizationId,
+				tags: { contains: `"${depositTag}"` },
+			},
+			include: { client: true },
+		});
+	}
+
+	/** Contexte acompte / solde pour l’UI back-office (fiche devis). */
+	async getDepositContextForQuote(quoteId: string, organizationId: number) {
+		await this.findOne(quoteId, organizationId);
+		const depositTag = this.quoteDepositTag(quoteId);
+		const remainderTag = this.quoteRemainderTag(quoteId);
+
+		const [deposit, remainder] = await Promise.all([
+			this.prisma.invoice.findFirst({
+				where: { organizationId, tags: { contains: `"${depositTag}"` } },
+				include: { payments: true, refunds: { where: { status: 'COMPLETED' } } },
+			}),
+			this.prisma.invoice.findFirst({
+				where: { organizationId, tags: { contains: `"${remainderTag}"` } },
+				select: { id: true, number: true, status: true, total: true, balance: true, tags: true },
+			}),
+		]);
+
+		const mapInvoice = (inv: typeof deposit) => {
+			if (!inv) return null;
+			const tags = parseTagsJson(inv.tags);
+			const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+			const refunded = (inv.refunds ?? []).reduce((s, r) => s + Number(r.amount), 0);
+			const total = Number(inv.total);
+			const balance = Number((inv.balance as any)?.toNumber?.() ?? inv.balance ?? 0);
+			return {
+				id: inv.id,
+				number: inv.number,
+				status: inv.status,
+				total,
+				balance,
+				netPaid: paid - refunded,
+				depositRefunded: tags.includes('ACOMPTE_REFUNDED'),
+				engagementCancelled: tags.includes('ENGAGEMENT_CANCELLED'),
+			};
+		};
+
+		return {
+			hasSplit: Boolean(deposit && remainder),
+			deposit: mapInvoice(deposit),
+			remainder: remainder
+				? {
+						id: remainder.id,
+						number: remainder.number,
+						status: remainder.status,
+						total: Number(remainder.total),
+						balance: Number((remainder.balance as any)?.toNumber?.() ?? remainder.balance ?? 0),
+					}
+				: null,
+		};
+	}
+
+	private quoteDepositTag(quoteId: string): string {
+		return `ACOMPTE_10_OF:${quoteId}`;
+	}
+
+	private quoteRemainderTag(quoteId: string): string {
+		return `SOLDE_APRES_ACOMPTE_OF:${quoteId}`;
+	}
+
+	private isQuoteDepositInvoice(invoice: { tags: string | null }, quoteId: string): boolean {
+		const tags = parseTagsJson(invoice.tags);
+		return tags.includes('ACOMPTE_10') || tags.includes(this.quoteDepositTag(quoteId));
+	}
+
+	private resolveInvoiceOrgId(invoice: { organizationId: number | null }, fallbackOrgId: number): number {
+		return invoice.organizationId ?? fallbackOrgId;
+	}
+
+	private async sendInvoiceForPublicPayment(
+		invoiceId: string,
+		invoice: { organizationId: number | null },
+		fallbackOrgId: number,
+	) {
+		return this.invoices.sendInvoice(invoiceId, this.resolveInvoiceOrgId(invoice, fallbackOrgId));
+	}
+
+	private async ensureRemainderPublicPaymentLink(
+		invoiceId: string,
+		invoice: { organizationId: number | null },
+		fallbackOrgId: number,
+	) {
+		return this.invoices.ensurePublicPaymentLink(
+			invoiceId,
+			this.resolveInvoiceOrgId(invoice, fallbackOrgId),
+		);
+	}
+
+	/**
+	 * Retrouve une facture déjà créée pour ce devis (sourceQuoteId, tags acompte, ou FAC orpheline même client/montant).
+	 */
+	private async resolveInvoiceLinkedToQuote(
+		quote: { id: string; clientId: string; total: unknown },
+		orgId: number,
+	) {
+		const bySource = await this.prisma.invoice.findUnique({
+			where: { sourceQuoteId: quote.id },
+		});
+		if (bySource) return bySource;
+
+		const depositTag = this.quoteDepositTag(quote.id);
+		const byDepositTag = await this.prisma.invoice.findFirst({
+			where: {
+				organizationId: orgId,
+				tags: { contains: `"${depositTag}"` },
+			},
+		});
+		if (byDepositTag) {
+			if (!byDepositTag.sourceQuoteId) {
+				try {
+					return await this.prisma.invoice.update({
+						where: { id: byDepositTag.id },
+						data: { sourceQuoteId: quote.id },
+					});
+				} catch {
+					return byDepositTag;
+				}
+			}
+			return byDepositTag;
+		}
+
+		const quoteTotal = Number(quote.total ?? 0);
+		const candidates = await this.prisma.invoice.findMany({
+			where: {
+				organizationId: orgId,
+				clientId: quote.clientId,
+				sourceQuoteId: null,
+				archivedAt: null,
+			},
+			orderBy: { createdAt: 'desc' },
+			take: 15,
+		});
+		const fullOrphans = candidates.filter((inv) => {
+			const tags = parseTagsJson(inv.tags);
+			if (tags.includes('ACOMPTE_10') || tags.includes('SOLDE_APRES_ACOMPTE')) return false;
+			if (Math.abs(Number(inv.total) - quoteTotal) > 0.02) return false;
+			return true;
+		});
+		if (fullOrphans.length >= 1) {
+			const pick = fullOrphans[0];
+			try {
+				return await this.prisma.invoice.update({
+					where: { id: pick.id },
+					data: { sourceQuoteId: quote.id },
+				});
+			} catch {
+				return pick;
+			}
+		}
+
+		return null;
+	}
+
+	/** Paiement 100 % : facture unique liée au devis (idempotent). */
+	private async publicAcceptFullPayment(
+		quote: {
+			id: string;
+			clientId: string;
+			total: unknown;
+			lines: { description: string; quantity: number; unitPrice: unknown; taxRate: unknown; productId?: number | null }[];
+		},
+		orgId: number,
+	) {
+		const remainderTag = this.quoteRemainderTag(quote.id);
+		const linked = await this.resolveInvoiceLinkedToQuote(quote, orgId);
+
+		if (linked) {
+			if (this.isQuoteDepositInvoice(linked, quote.id)) {
+				const remainder = await this.prisma.invoice.findFirst({
+					where: { tags: { contains: `"${remainderTag}"` } },
+				});
+				const depositSent = await this.sendInvoiceForPublicPayment(linked.id, linked, orgId);
+				return {
+					status: 'accepted',
+					depositInvoiceToken: depositSent.publicToken,
+					depositInvoiceNumber: depositSent.number,
+					...(remainder ? { remainderInvoiceNumber: remainder.number } : {}),
+					message: remainder
+						? 'Contrat d\'engagement déjà en cours : réglez l\'acompte 10 % ci-dessous. Le solde sera facturé séparément.'
+						: 'Facture d\'acompte en cours — finalisez le contrat d\'engagement ou contactez votre prestataire.',
+				};
+			}
+			const sent = await this.sendInvoiceForPublicPayment(linked.id, linked, orgId);
+			return {
+				status: 'accepted',
+				invoiceToken: sent.publicToken,
+				invoiceNumber: sent.number,
+			};
+		}
+
+		if (!quote.lines?.length) {
+			throw new BadRequestException(
+				'Ce devis ne contient aucune ligne — impossible de générer la facture.',
+			);
+		}
+
+		const invoice = await this.convertQuoteToInvoice(quote.id, orgId);
+		const sent = await this.sendInvoiceForPublicPayment(invoice.id, invoice, orgId);
+		return {
+			status: 'accepted',
+			invoiceToken: sent.publicToken,
+			invoiceNumber: sent.number,
+		};
 	}
 
 	/**
@@ -275,6 +546,9 @@ export class QuotesService {
 				{ client: { name: { contains: q.search } } },
 			];
 		}
+		if (q.clientId?.trim()) {
+			where.clientId = q.clientId.trim();
+		}
 
 		const [items, total] = await this.prisma.$transaction([
 			this.prisma.quote.findMany({
@@ -368,7 +642,11 @@ export class QuotesService {
 		if (organizationId != null) where.organizationId = organizationId;
 		const quote = await this.prisma.quote.findFirst({
 			where,
-			include: { lines: true, client: true }
+			include: {
+				lines: true,
+				client: true,
+				convertedInvoice: { select: { id: true, number: true } },
+			},
 		});
 		if (!quote) throw new NotFoundException('Devis non trouve');
 		return quote;
@@ -537,7 +815,37 @@ export class QuotesService {
 		});
 		if (!quote) throw new NotFoundException('Devis introuvable');
 		await this.prisma.quoteView.create({ data: { quoteId: quote.id, ip: ip || null, userAgent: userAgent || null } });
-		return quote;
+
+		// Infos minimales pour guider l'UX publique (sans exposer d'éléments sensibles).
+		const orgId = quote.organizationId;
+		if (!orgId) return quote;
+
+		const depositTag = this.quoteDepositTag(quote.id);
+		const remainderTag = this.quoteRemainderTag(quote.id);
+		const [deposit, remainder] = await Promise.all([
+			this.prisma.invoice.findFirst({
+				where: { organizationId: orgId, tags: { contains: `"${depositTag}"` } },
+				select: { id: true, status: true, balance: true },
+			}),
+			this.prisma.invoice.findFirst({
+				where: { organizationId: orgId, tags: { contains: `"${remainderTag}"` } },
+				select: { id: true, status: true, balance: true },
+			}),
+		]);
+
+		const depositPaid = (() => {
+			if (!deposit) return false;
+			const bal = Number((deposit.balance as any)?.toNumber?.() ?? deposit.balance ?? 0);
+			return deposit.status === 'PAID' || bal <= 0;
+		})();
+
+		return {
+			...quote,
+			publicPaymentHints: {
+				hasDepositSplit: Boolean(deposit && remainder),
+				depositPaid,
+			},
+		};
 	}
 
 	/**
@@ -562,7 +870,22 @@ export class QuotesService {
 		}
 
 		const accepted = await this.markQuoteAccepted(quote.id, ip);
-		const invoice = await this.convertQuoteToInvoice(quote.id, quote.organizationId ?? undefined);
+		const orgId = quote.organizationId;
+		if (!orgId) {
+			throw new BadRequestException('Organisation manquante pour ce devis');
+		}
+		await this.assertInvoiceStripeConfigured(orgId);
+
+		let invoice = await this.prisma.invoice.findUnique({
+			where: { sourceQuoteId: quote.id },
+		});
+		if (!invoice) {
+			invoice = await this.convertQuoteToInvoice(quote.id, orgId);
+		}
+		if (!invoice) {
+			throw new BadRequestException('Impossible de créer la facture depuis ce devis');
+		}
+		const sent = await this.sendInvoiceForPublicPayment(invoice.id, invoice, orgId);
 		this.notifyQuote(quote.organizationId ?? undefined, 'updated', quote.id, {
 			number: quote.number,
 			status: 'ACCEPTED',
@@ -573,6 +896,276 @@ export class QuotesService {
 			id: accepted.id,
 			invoiceId: invoice.id,
 			invoiceNumber: invoice.number,
+			invoiceToken: sent.publicToken,
+		};
+	}
+
+	/**
+	 * Acceptation publique avec option acompte.
+	 * Crée la/les facture(s), les "envoie" (publicToken + sentAt) pour permettre le paiement en ligne,
+	 * et renvoie les tokens côté frontend.
+	 */
+	async publicAcceptWithDeposit(token: string, dto: PublicAcceptDepositDto | undefined, ip?: string) {
+		const body = dto ?? { mode: 'FULL' as const };
+		const mode = body.mode;
+		if (mode !== 'FULL' && mode !== 'DEPOSIT') {
+			throw new BadRequestException('mode doit être FULL ou DEPOSIT');
+		}
+
+		const quote = await this.prisma.quote.findUnique({
+			where: { publicToken: token },
+			include: { lines: true },
+		});
+		if (!quote) throw new NotFoundException('Devis introuvable');
+		if (quote.status === QuoteStatus.REJECTED) {
+			throw new BadRequestException('Ce devis a été refusé');
+		}
+		if (quote.status === QuoteStatus.EXPIRED) {
+			throw new BadRequestException('Ce devis a expiré');
+		}
+		if (!quote.organizationId) {
+			throw new BadRequestException('Organisation manquante pour ce devis');
+		}
+
+		await this.assertInvoiceStripeConfigured(quote.organizationId);
+
+		// Accepte le devis (idempotent)
+		await this.markQuoteAccepted(quote.id, ip);
+		// Realtime plateforme : mettre à jour la ligne de devis après acceptation publique.
+		this.notifyQuote(quote.organizationId ?? undefined, 'updated', quote.id, {
+			number: quote.number,
+			status: 'ACCEPTED',
+		});
+
+		const orgId = quote.organizationId;
+
+		if (mode === 'FULL') {
+			// Si un split acompte/solde existe déjà pour ce devis, on interdit le paiement 100%
+			// pour éviter les doubles paiements (le client doit payer le solde).
+			const depositTag = this.quoteDepositTag(quote.id);
+			const remainderTag = this.quoteRemainderTag(quote.id);
+			const existingSplit = await this.prisma.invoice.findFirst({
+				where: {
+					organizationId: orgId,
+					OR: [
+						{ tags: { contains: `"${depositTag}"` } },
+						{ tags: { contains: `"${remainderTag}"` } },
+					],
+				},
+			});
+			if (existingSplit) {
+				throw new BadRequestException(
+					'Un acompte a déjà été créé pour ce devis. Vous ne pouvez plus payer 100% : veuillez régler le solde.',
+				);
+			}
+			return this.publicAcceptFullPayment(quote, orgId);
+		}
+
+		const depositRate = body.depositRate ?? 0.1;
+		if (depositRate <= 0 || depositRate >= 1) {
+			throw new BadRequestException('depositRate doit être compris entre 0 et 1 (ex: 0.1)');
+		}
+
+		const depositTag = this.quoteDepositTag(quote.id);
+		const remainderTag = this.quoteRemainderTag(quote.id);
+
+		// Cas DEPOSIT : on tente d’abord de réutiliser un split existant.
+		const existingDeposit =
+			(await this.prisma.invoice.findFirst({
+				where: {
+					organizationId: orgId,
+					sourceQuoteId: quote.id,
+					tags: { contains: `"${depositTag}"` },
+				},
+			})) ??
+			(await this.prisma.invoice.findUnique({ where: { sourceQuoteId: quote.id } }));
+		const existingRemainder = await this.prisma.invoice.findFirst({
+			where: {
+				organizationId: orgId,
+				tags: { contains: `"${remainderTag}"` },
+			},
+		});
+
+		if (existingDeposit && existingRemainder && this.isQuoteDepositInvoice(existingDeposit, quote.id)) {
+			const depositSent = await this.sendInvoiceForPublicPayment(existingDeposit.id, existingDeposit, orgId);
+			const depositFull = await this.prisma.invoice.findUnique({
+				where: { id: existingDeposit.id },
+				include: { payments: true },
+			});
+			const depositPaid =
+				(depositFull?.status === 'PAID') ||
+				Number((depositFull?.balance as any)?.toNumber?.() ?? depositFull?.balance ?? 0) <= 0 ||
+				(depositFull?.payments?.length ?? 0) > 0;
+
+			// Si l'acompte est déjà réglé, on permet de payer le solde (envoi public du SOL)
+			if (depositPaid) {
+				const remainderLink = await this.ensureRemainderPublicPaymentLink(
+					existingRemainder.id,
+					existingRemainder,
+					orgId,
+				);
+				return {
+					status: 'accepted',
+					depositInvoiceToken: depositSent.publicToken,
+					depositInvoiceNumber: depositSent.number,
+					remainderInvoiceToken: remainderLink.publicToken,
+					remainderInvoiceNumber: existingRemainder.number,
+					message: "Acompte déjà réglé. Vous pouvez maintenant payer le solde.",
+				};
+			}
+			return {
+				status: 'accepted',
+				depositInvoiceToken: depositSent.publicToken,
+				depositInvoiceNumber: depositSent.number,
+				remainderInvoiceNumber: existingRemainder.number,
+			};
+		}
+
+		let depositInvoice =
+			existingDeposit && this.isQuoteDepositInvoice(existingDeposit, quote.id)
+				? existingDeposit
+				: null;
+		let remainderInvoice = existingRemainder;
+
+		// Si une facture pleine existe déjà (sourceQuoteId unique) et n'est pas un split acompte,
+		// on renvoie cette facture plutôt que de tenter de recréer un split (sinon contrainte unique).
+		const existingFullInvoice = await this.prisma.invoice.findUnique({
+			where: { sourceQuoteId: quote.id },
+		});
+		if (existingFullInvoice && !this.isQuoteDepositInvoice(existingFullInvoice, quote.id)) {
+			const sent = await this.sendInvoiceForPublicPayment(existingFullInvoice.id, existingFullInvoice, orgId);
+			return {
+				status: 'accepted',
+				invoiceToken: sent.publicToken,
+				invoiceNumber: sent.number,
+			};
+		}
+
+		// Calcul des lignes deposit / remainder (prorata sur unitPrice)
+		const linesDeposit = quote.lines.map((l) => ({
+			productId: null,
+			description: l.description,
+			quantity: Number(l.quantity),
+			unitPrice: Number(l.unitPrice) * depositRate,
+			taxRate: Number(l.taxRate),
+		}));
+		const linesRemainderRaw = quote.lines.map((l) => ({
+			productId: null,
+			description: l.description,
+			quantity: Number(l.quantity),
+			unitPrice: Number(l.unitPrice) * (1 - depositRate),
+			taxRate: Number(l.taxRate),
+		}));
+
+		// Ajustement rapide du dernier montant pour coller à quote.total (arrondi)
+		const quoteTotal = Number(quote.total);
+		const depositTotal = Number((quoteTotal * depositRate).toFixed(2));
+		const remainderTarget = Number((quoteTotal - depositTotal).toFixed(2));
+		const remainderComputed = linesRemainderRaw.reduce((sum, l) => sum + l.quantity * l.unitPrice * (1 + l.taxRate), 0);
+		const remainderDiff = Number((remainderTarget - remainderComputed).toFixed(2));
+		const last = linesRemainderRaw[linesRemainderRaw.length - 1];
+		if (last && Math.abs(remainderDiff) > 0.0001) {
+			const denom = last.quantity * (1 + last.taxRate);
+			if (denom !== 0) {
+				last.unitPrice = Number((last.unitPrice + remainderDiff / denom).toFixed(4));
+			}
+		}
+
+		const defaultDue =
+			quote.expiryDate ??
+			new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+		const dueDateFr = new Date(defaultDue).toLocaleDateString('fr-FR');
+		const depositMention = buildDepositCommitmentParagraph(dueDateFr);
+		const remainderMention = buildRemainderCommitmentParagraph(dueDateFr);
+
+		if (!depositInvoice) {
+			depositInvoice = await this.invoices.create(
+				{
+					clientId: quote.clientId,
+					sourceQuoteId: quote.id,
+					status: 'DRAFT',
+					number: await this.invoices.allocateInvoiceNumber('deposit'),
+					dueDate: defaultDue,
+					legalMention: depositMention,
+					lines: linesDeposit.map((l) => ({
+						productId: undefined,
+						description: l.description,
+						quantity: l.quantity,
+						unitPrice: l.unitPrice,
+						taxRate: l.taxRate,
+					})),
+				},
+				orgId,
+			);
+		}
+
+		if (!remainderInvoice) {
+			remainderInvoice = await this.invoices.create(
+				{
+					clientId: quote.clientId,
+					status: 'DRAFT',
+					number: await this.invoices.allocateInvoiceNumber('remainder'),
+					dueDate: defaultDue,
+					legalMention: remainderMention,
+					lines: linesRemainderRaw.map((l) => ({
+						productId: undefined,
+						description: l.description,
+						quantity: l.quantity,
+						unitPrice: l.unitPrice,
+						taxRate: l.taxRate,
+					})),
+				},
+				orgId,
+			);
+		}
+
+		if (!depositInvoice || !remainderInvoice) {
+			throw new BadRequestException('Impossible de créer les factures d\'acompte pour ce devis');
+		}
+
+		// Marquage tags pour le PDF + idempotence split
+		const depositTags = serializeTagsJson([
+			...parseTagsJson(depositInvoice.tags),
+			depositTag,
+			'ACOMPTE_10',
+		]);
+		const remainderTags = serializeTagsJson([
+			...parseTagsJson(remainderInvoice.tags),
+			remainderTag,
+			'SOLDE_APRES_ACOMPTE',
+			'PENDING_EMIT',
+		]);
+
+		await this.prisma.invoice.update({
+			where: { id: depositInvoice.id },
+			data: {
+				tags: depositTags,
+				legalMention:
+					depositInvoice.legalMention?.includes('Contrat d\'engagement') ||
+					depositInvoice.legalMention?.includes("Contrat d'engagement")
+						? depositInvoice.legalMention
+						: depositMention,
+			},
+		});
+		await this.prisma.invoice.update({
+			where: { id: remainderInvoice.id },
+			data: {
+				tags: remainderTags,
+				legalMention:
+					remainderInvoice.legalMention?.includes('contrat d\'engagement') ||
+					remainderInvoice.legalMention?.includes("contrat d'engagement")
+						? remainderInvoice.legalMention
+						: remainderMention,
+			},
+		});
+
+		const depositSent = await this.sendInvoiceForPublicPayment(depositInvoice.id, depositInvoice, orgId);
+
+		return {
+			status: 'accepted',
+			depositInvoiceToken: depositSent.publicToken,
+			depositInvoiceNumber: depositSent.number,
+			remainderInvoiceNumber: remainderInvoice.number,
 		};
 	}
 
@@ -639,10 +1232,26 @@ export class QuotesService {
 		}
 
 		const orgId = organizationId ?? quote.organizationId ?? undefined;
+		if (orgId) {
+			const linked = await this.resolveInvoiceLinkedToQuote(
+				{ id: quote.id, clientId: quote.clientId, total: quote.total },
+				orgId,
+			);
+			if (linked) {
+				const full = await this.prisma.invoice.findUnique({
+					where: { id: linked.id },
+					include: { lines: true, client: true },
+				});
+				if (full) return full;
+			}
+		}
+
 		return this.invoices.create(
 			{
 				clientId: quote.clientId,
 				sourceQuoteId: quote.id,
+				// À l'acceptation, on considère la “vente” comme émise (compta à l'émission).
+				status: 'SENT',
 				lines: quote.lines.map((l) => ({
 					productId: l.productId ?? undefined,
 					description: l.description,
@@ -653,6 +1262,82 @@ export class QuotesService {
 			},
 			orgId,
 		);
+	}
+
+	/**
+	 * Paye un devis (FULL ou DEPOSIT).
+	 * - Accepte le devis si nécessaire
+	 * - Convertit en facture (statut SENT)
+	 * - Ajoute le paiement sur la facture et réduit la balance
+	 */
+	async payQuote(
+		id: string,
+		dto: PayQuoteDto,
+		organizationId?: number,
+	) {
+		const quote = await this.findOne(id, organizationId);
+		if (quote.status === QuoteStatus.REJECTED) throw new BadRequestException('Ce devis a été refusé');
+		if (quote.status === QuoteStatus.EXPIRED) throw new BadRequestException('Ce devis a expiré');
+		if (quote.status === QuoteStatus.DRAFT) throw new BadRequestException('Envoyez le devis avant de le payer');
+
+		// Accepter & convertir si nécessaire.
+		let acceptedQuote: any = quote;
+		if (quote.status !== QuoteStatus.ACCEPTED) {
+			acceptedQuote = await this.acceptQuote(id, organizationId);
+		}
+
+		const orgId = organizationId ?? quote.organizationId ?? undefined;
+
+		const paymentAmount = (() => {
+			const total = Number(quote.total ?? 0);
+			if (dto.mode === 'FULL') return Number(total.toFixed(2));
+			const rate = dto.depositRate ?? 0.1;
+			if (rate <= 0 || rate >= 1) throw new BadRequestException('depositRate doit être compris entre 0 et 1 (ex: 0.1)');
+			return Number((total * rate).toFixed(2));
+		})();
+
+		// Vérifier solde restant pour éviter de dépasser.
+		const invoice = await this.prisma.invoice.findUnique({
+			where: { sourceQuoteId: id },
+			include: { payments: true, client: true, lines: true }
+		});
+		if (!invoice) throw new BadRequestException('Facture introuvable pour le devis');
+
+		// Sécurité : certaines factures anciennes peuvent ne pas avoir d'écriture VE si elles étaient en DRAFT.
+		// La méthode est idempotente via la référence.
+		try {
+			await this.accounting.postInvoiceSale({ invoiceId: invoice.id, date: invoice.date });
+		} catch (_) {}
+
+		const alreadyPaid = (invoice.payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+		const remaining = Number((Number(invoice.total) - alreadyPaid).toFixed(2));
+		if (paymentAmount > remaining + 0.0001) {
+			throw new BadRequestException(
+				`Le paiement (${paymentAmount}) dépasse le solde restant (${remaining})`,
+			);
+		}
+
+		const date = dto.date ? new Date(dto.date) : undefined;
+		const payment = await this.invoices.addPayment(
+			invoice.id,
+			paymentAmount,
+			date,
+			dto.method,
+			dto.notes,
+			orgId,
+		);
+
+		// Normaliser la réponse côté UI (quote + invoice + paiement)
+		const quoteOut = { ...acceptedQuote, invoiceId: invoice.id, invoiceNumber: invoice.number };
+
+		return {
+			quote: quoteOut,
+			invoiceId: invoice.id,
+			invoiceNumber: invoice.number,
+			paymentId: payment.id,
+			paymentAmount,
+			remaining: Number((remaining - paymentAmount).toFixed(2)),
+		};
 	}
 
 	private async markQuoteAccepted(quoteId: string, ip?: string) {
@@ -678,6 +1363,41 @@ export class QuotesService {
 	async publicReject(token: string) {
 		const quote = await this.prisma.quote.findUnique({ where: { publicToken: token } });
 		if (!quote) throw new NotFoundException('Devis introuvable');
+		if (quote.status === QuoteStatus.ACCEPTED) {
+			throw new BadRequestException('Ce devis est déjà accepté. Vous ne pouvez plus le refuser.');
+		}
+
+		// Si un acompte (ou une facture liée) a déjà été payé, on ne permet plus le refus.
+		const orgId = quote.organizationId;
+		if (orgId) {
+			const depositTag = this.quoteDepositTag(quote.id);
+			const remainderTag = this.quoteRemainderTag(quote.id);
+			const linkedInvoices = await this.prisma.invoice.findMany({
+				where: {
+					organizationId: orgId,
+					OR: [
+						{ sourceQuoteId: quote.id },
+						{ tags: { contains: `"${depositTag}"` } },
+						{ tags: { contains: `"${remainderTag}"` } },
+					],
+				},
+				select: { id: true, status: true, balance: true },
+			});
+			if (linkedInvoices.length) {
+				const ids = linkedInvoices.map((i) => i.id);
+				const paidCount = await this.prisma.payment.count({ where: { invoiceId: { in: ids } } });
+				const anySettled = linkedInvoices.some((i) => {
+					const bal = Number((i.balance as any)?.toNumber?.() ?? i.balance ?? 0);
+					return i.status === 'PAID' || bal <= 0;
+				});
+				if (paidCount > 0 || anySettled) {
+					throw new BadRequestException(
+						"Ce devis a déjà été réglé (acompte). Vous ne pouvez plus le refuser.",
+					);
+				}
+			}
+		}
+
 		await this.prisma.quote.update({ where: { id: quote.id }, data: { status: QuoteStatus.REJECTED } });
 		try { await this.contraOffBalanceForQuote(quote.number); } catch (_) {}
 		this.notifyQuote(quote.organizationId ?? undefined, 'updated', quote.id, {
@@ -690,6 +1410,12 @@ export class QuotesService {
 	async sendQuote(id: string, organizationId?: number) {
 		const quote = await this.findOne(id, organizationId);
 		if (!quote) throw new NotFoundException('Quote not found');
+
+		const orgId = quote.organizationId ?? organizationId;
+		if (!orgId) {
+			throw new BadRequestException('Organisation manquante pour ce devis');
+		}
+		await this.assertInvoiceStripeConfigured(orgId);
 
 		const publicToken = crypto.randomBytes(32).toString('hex');
 		const publicUrl = buildPublicQuoteUrl(publicToken);

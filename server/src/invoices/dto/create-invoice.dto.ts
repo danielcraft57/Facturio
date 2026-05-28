@@ -70,6 +70,11 @@ export class CreateInvoiceDto {
 	@IsOptional()
 	@IsString()
 	clientName?: string;
+
+	/** Impute automatiquement les crédits client (avoirs non liés) sur la nouvelle facture. */
+	@IsOptional()
+	@IsBoolean()
+	applyClientCredits?: boolean;
 }
 
 

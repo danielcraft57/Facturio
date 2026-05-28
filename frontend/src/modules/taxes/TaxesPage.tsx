@@ -1,4 +1,5 @@
-import { Box, Button, Card, CardContent, Stack, Typography, alpha, useTheme } from '@mui/material'
+import { useEffect, useState } from 'react'
+import { Box, Button, Card, CardContent, Grid, Stack, Typography, alpha, useTheme } from '@mui/material'
 import LocalAtmIcon from '@mui/icons-material/LocalAtm'
 import GavelIcon from '@mui/icons-material/Gavel'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
@@ -6,6 +7,9 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Link as RouterLink } from 'react-router-dom'
 import { PageHeader } from '../../components/finance/PageHeader'
 import { financeCardSx, financeKpiGradients, financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles'
+import { accountingService, type FinanceSummary } from '../../services/accounting'
+import { unwrapApiPayload } from '../../services/clients'
+import { formatCurrency } from '../../utils/formatters'
 
 const shortcuts = [
   {
@@ -27,6 +31,16 @@ const shortcuts = [
 export function TaxesPage() {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
+  const [summary, setSummary] = useState<FinanceSummary | null>(null)
+
+  useEffect(() => {
+    const start = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
+    const end = new Date().toISOString().split('T')[0]
+    accountingService
+      .getSummary(start, end)
+      .then((res) => setSummary(unwrapApiPayload(res)))
+      .catch(() => setSummary(null))
+  }, [])
 
   return (
     <Box sx={{ p: financePagePadding }}>
@@ -62,9 +76,37 @@ export function TaxesPage() {
               Centre fiscal
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2, maxWidth: 560 }}>
-              Cette section regroupe vos obligations TVA et les raccourcis vers la comptabilité et les
-              déclarations. Les calculs automatiques seront branchés sur vos factures et écritures.
+              Indicateurs issus de vos factures payées sur l&apos;année en cours. La TVA collectée
+              (compte 44571) alimente vos déclarations et la comptabilité.
             </Typography>
+            {summary && (
+              <Grid container spacing={1.5} sx={{ mb: 2, maxWidth: 640 }}>
+                <Grid size={{ xs: 6, sm: 4 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    CA HT payé
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    {formatCurrency(summary.revenueHt)}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 6, sm: 4 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    TVA collectée
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    {formatCurrency(summary.vatCollected)}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Factures payées
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    {summary.paidInvoicesCount}
+                  </Typography>
+                </Grid>
+              </Grid>
+            )}
             <Button
               component={RouterLink}
               to="/declarations"

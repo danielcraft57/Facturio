@@ -41,6 +41,9 @@ type QuoteFolderMobileListProps = {
   onAccept: (q: Quote) => void
   onReject: (q: Quote) => void
   onConvert: (q: Quote) => void
+  onPayFull?: (q: Quote) => void
+  onPayDeposit?: (q: Quote) => void
+  onRemindDeposit?: (q: Quote) => void
   onArchive: (q: Quote) => void
 }
 
@@ -55,6 +58,9 @@ export function QuoteFolderMobileList({
   onAccept,
   onReject,
   onConvert,
+  onPayFull,
+  onPayDeposit,
+  onRemindDeposit,
   onArchive,
 }: QuoteFolderMobileListProps) {
   return (
@@ -132,6 +138,9 @@ export function QuoteFolderMobileList({
                 onAccept={() => onAccept(quote)}
                 onReject={() => onReject(quote)}
                 onConvert={() => onConvert(quote)}
+                onPayFull={onPayFull ? () => onPayFull(quote) : undefined}
+                onPayDeposit={onPayDeposit ? () => onPayDeposit(quote) : undefined}
+                onRemindDeposit={onRemindDeposit ? () => onRemindDeposit(quote) : undefined}
                 onArchive={() => onArchive(quote)}
               />
             </Stack>

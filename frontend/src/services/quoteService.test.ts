@@ -51,6 +51,6 @@ describe('quoteService', () => {
     expect(mockClient.post).toHaveBeenCalledWith('/devis/1/archive', {})
 
     await quoteService.sendQuote('1')
-    expect(mockClient.post).toHaveBeenCalledWith('/quotes/1/send')
+    expect(mockClient.post).toHaveBeenCalledWith('/quotes/1/send', {})
   })
 })

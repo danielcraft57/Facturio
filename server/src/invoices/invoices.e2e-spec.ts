@@ -40,6 +40,7 @@ describe('Invoices e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Quote');
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
+		await prisma.$executeRawUnsafe('DELETE FROM Refund');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
 	});

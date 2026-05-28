@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -47,19 +47,25 @@ interface CreateCreditNoteDialogProps {
 }
 
 export function CreateCreditNoteDialog({ open, onClose, invoice, onSubmit }: CreateCreditNoteDialogProps) {
-  const [items, setItems] = useState<CreditNoteItem[]>(() => {
-    return invoice.items.map((item, index) => ({
-      itemId: item.id,
-      itemIndex: index,
-      description: item.description,
-      quantity: 0,
-      maxQuantity: item.quantity,
-      unitPrice: item.unitPrice,
-      taxRate: item.taxRate,
-      reason: '',
-      selected: false
-    }))
-  })
+  const [items, setItems] = useState<CreditNoteItem[]>([])
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setItems(
+      invoice.items.map((item, index) => ({
+        itemId: item.id,
+        itemIndex: index,
+        description: item.description,
+        quantity: 0,
+        maxQuantity: item.quantity,
+        unitPrice: item.unitPrice,
+        taxRate: item.taxRate,
+        reason: '',
+        selected: false
+      }))
+    )
+  }, [invoice, open])
 
   const handleQuantityChange = (index: number, quantity: number) => {
     const updatedItems = [...items]
@@ -96,8 +102,13 @@ export function CreateCreditNoteDialog({ open, onClose, invoice, onSubmit }: Cre
       return
     }
 
-    await onSubmit(selectedItems)
-    onClose()
+    try {
+      setSubmitting(true)
+      await onSubmit(selectedItems)
+      onClose()
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const totalAmount = items
@@ -108,11 +119,19 @@ export function CreateCreditNoteDialog({ open, onClose, invoice, onSubmit }: Cre
     }, 0)
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={(_, reason) => {
+        if (submitting) return
+        onClose()
+      }}
+      maxWidth="md"
+      fullWidth
+    >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="h6">Créer un avoir pour {invoice.number}</Typography>
-          <IconButton onClick={onClose} size="small">
+          <IconButton onClick={onClose} size="small" disabled={submitting}>
             <Close />
           </IconButton>
         </Box>
@@ -144,6 +163,7 @@ export function CreateCreditNoteDialog({ open, onClose, invoice, onSubmit }: Cre
                       <Checkbox
                         checked={item.selected}
                         onChange={() => handleToggleSelect(index)}
+                        disabled={submitting}
                       />
                     </TableCell>
                     <TableCell>{item.description}</TableCell>
@@ -154,7 +174,7 @@ export function CreateCreditNoteDialog({ open, onClose, invoice, onSubmit }: Cre
                         size="small"
                         value={item.quantity}
                         onChange={(e) => handleQuantityChange(index, Number(e.target.value))}
-                        disabled={!item.selected}
+                        disabled={!item.selected || submitting}
                         inputProps={{ min: 0, max: item.maxQuantity }}
                         sx={{ width: 80 }}
                       />
@@ -169,7 +189,7 @@ export function CreateCreditNoteDialog({ open, onClose, invoice, onSubmit }: Cre
                         placeholder="Raison (optionnel)"
                         value={item.reason}
                         onChange={(e) => handleReasonChange(index, e.target.value)}
-                        disabled={!item.selected}
+                        disabled={!item.selected || submitting}
                         fullWidth
                       />
                     </TableCell>
@@ -192,9 +212,9 @@ export function CreateCreditNoteDialog({ open, onClose, invoice, onSubmit }: Cre
       </DialogContent>
       
       <DialogActions>
-        <Button onClick={onClose}>Annuler</Button>
-        <Button variant="contained" onClick={handleSubmit}>
-          Créer l'avoir
+        <Button onClick={onClose} disabled={submitting}>Annuler</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? 'Création en cours...' : "Créer l'avoir"}
         </Button>
       </DialogActions>
     </Dialog>

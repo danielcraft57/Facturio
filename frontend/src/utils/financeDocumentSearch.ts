@@ -223,7 +223,7 @@ export function buildInvoiceSearchEntry(
     id: inv.id,
     label: inv.number,
     sublabel: `${inv.client.name} · ${statusLabel} · ${formatAmountFr(inv.total)}`,
-    href: `/factures/${inv.id}`,
+    href: `/factures/voir/${inv.id}`,
     searchText,
     amount: inv.total,
   }

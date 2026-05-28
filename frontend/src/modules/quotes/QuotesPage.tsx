@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Box,
+  Button,
   Typography,
   Chip,
   IconButton,
@@ -22,6 +23,7 @@ import { DocumentFolderPageShell } from '../../components/finance/DocumentFolder
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CreateQuoteDialog } from './components/CreateQuoteDialog';
+import { SendQuoteDialog, type SendQuotePayload } from './components/SendQuoteDialog';
 import { QuoteFolderMobileList } from './components/QuoteFolderMobileList';
 import { QuoteRowActionsMenu } from './components/QuoteRowActionsMenu';
 import { DocumentTagsEditor } from '../../components/finance/DocumentTagsEditor';
@@ -60,8 +62,12 @@ import {
   filterItemsByDocumentSearch,
 } from '../../utils/financeDocumentSearch';
 import { quoteService } from '../../services/quoteService';
+import { openInvoiceView } from '../../utils/openDocumentView';
 import { useQuotesFolderList } from '../../hooks/useQuotesFolderList';
 import { DocumentFolderLoadMore } from '../../components/finance/DocumentFolderLoadMore';
+import { useToast } from '../../components/useToast';
+import { organizationService, type OrganizationProfile } from '../../services/organizationService';
+import { unwrapApiPayload } from '../../services/clients';
 
 const QUOTE_STATUS_COLORS = {
   DRAFT: 'default',
@@ -89,6 +95,10 @@ export function QuotesPage() {
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'));
   const isWideActions = useMediaQuery(theme.breakpoints.up('lg'));
   const quotesStore = useQuotes();
+  const toast = useToast();
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [quoteToSend, setQuoteToSend] = useState<Quote | null>(null);
+  const [sendingQuoteEmail, setSendingQuoteEmail] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebouncedValue(searchTerm, 320);
   const {
@@ -160,16 +170,83 @@ export function QuotesPage() {
     }
   };
 
-  const handleSendQuote = async (quote: Quote) => {
-    await quotesStore.sendQuote(quote.id);
-    await refresh();
+  const openSendQuoteDialog = (quote: Quote) => {
+    setQuoteToSend(quote);
+    setSendDialogOpen(true);
+  };
+
+  const handleSendQuote = async (payload: SendQuotePayload) => {
+    if (!quoteToSend) return;
+    try {
+      setSendingQuoteEmail(true);
+      const res = await quoteService.sendQuote(quoteToSend.id, payload);
+      const body = unwrapApiPayload<{ copiesSent?: string[] }>(res);
+      const copies = body?.copiesSent ?? [];
+      let msg = `Devis ${quoteToSend.number} envoyé à ${payload.to}`;
+      if (copies.length > 0) {
+        msg += ` — copie(s) : ${copies.join(', ')}`;
+      }
+      toast.success(msg);
+      setSendDialogOpen(false);
+      setQuoteToSend(null);
+      await refresh();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi du devis", {
+        autoHide: false,
+        duration: 14000,
+        action: (
+          <Button
+            component={RouterLink}
+            to="/parametres/paiements"
+            variant="contained"
+            color="warning"
+            size="small"
+            sx={{ ml: 1 }}
+          >
+            Ouvrir Paiements
+          </Button>
+        ),
+      });
+    } finally {
+      setSendingQuoteEmail(false);
+    }
   };
 
   const handleAcceptQuote = async (quote: Quote) => {
     const result = await quotesStore.acceptQuote(quote.id);
     await refresh();
     if (result?.invoiceId) {
-      navigate(`/factures/${result.invoiceId}`);
+      openInvoiceView(result.invoiceId);
+    }
+  };
+
+  const handlePayQuoteFull = async (quote: Quote) => {
+    const result = await quotesStore.payQuote(quote.id, { mode: 'FULL' });
+    await refresh();
+    if (result?.invoiceId) {
+      openInvoiceView(result.invoiceId);
+    }
+  };
+
+  const handlePayQuoteDeposit = async (quote: Quote) => {
+    const result = await quotesStore.payQuote(quote.id, { mode: 'DEPOSIT', depositRate: 0.1 });
+    await refresh();
+    if (result?.invoiceId) {
+      openInvoiceView(result.invoiceId);
+    }
+  };
+
+  const handleRemindDeposit = async (quote: Quote) => {
+    try {
+      const ok = await quotesStore.remindDepositQuote(quote.id);
+      if (!ok) {
+        toast.error("Impossible de relancer l'acompte (facture introuvable ou déjà payée).");
+        return;
+      }
+      toast.success('Relance de l’acompte envoyée');
+      await refresh();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de la relance");
     }
   };
 
@@ -178,11 +255,15 @@ export function QuotesPage() {
     await refresh();
   };
 
-  const handleConvertToInvoice = async (quote: Quote) => {
+  const handleViewOrConvertInvoice = async (quote: Quote) => {
+    if (quote.invoiceId) {
+      openInvoiceView(quote.invoiceId);
+      return;
+    }
     const invoiceId = await quotesStore.convertToInvoice(quote.id);
     await refresh();
     if (invoiceId) {
-      navigate(`/factures/${invoiceId}`);
+      openInvoiceView(invoiceId);
     }
   };
 
@@ -191,6 +272,13 @@ export function QuotesPage() {
     if (quote) {
       setCreateDialogOpen(false);
       await refresh();
+      try {
+        const full = await quoteService.getQuote(quote.id);
+        setQuoteToSend(full);
+      } catch {
+        setQuoteToSend(quote);
+      }
+      setSendDialogOpen(true);
     }
   };
 
@@ -260,14 +348,17 @@ export function QuotesPage() {
                 formatDate={formatDate}
                 onPatchFlags={patchDocumentFlags}
                 onEdit={(q) => navigate(`/devis/${q.id}/edit`)}
-                onSend={handleSendQuote}
+                onSend={openSendQuoteDialog}
                 onAccept={handleAcceptQuote}
                 onReject={handleRejectQuote}
-                onConvert={handleConvertToInvoice}
+                onConvert={(q) => void handleViewOrConvertInvoice(q)}
+                onPayFull={handlePayQuoteFull}
+                onPayDeposit={handlePayQuoteDeposit}
                 onArchive={(q) => {
                   setQuoteToArchive(q);
                   setArchiveDialogOpen(true);
                 }}
+                onRemindDeposit={(q) => void handleRemindDeposit(q)}
               />
             ) : (
               <TableContainer sx={{ ...documentFolderTableContainerSx, maxHeight: 600 }}>
@@ -356,10 +447,13 @@ export function QuotesPage() {
                               quote={quote}
                               expanded={isWideActions}
                               onEdit={() => navigate(`/devis/${quote.id}/edit`)}
-                              onSend={() => handleSendQuote(quote)}
+                              onSend={() => openSendQuoteDialog(quote)}
                               onAccept={() => handleAcceptQuote(quote)}
                               onReject={() => handleRejectQuote(quote)}
-                              onConvert={() => handleConvertToInvoice(quote)}
+                              onConvert={() => void handleViewOrConvertInvoice(quote)}
+                              onPayFull={() => handlePayQuoteFull(quote)}
+                              onPayDeposit={() => handlePayQuoteDeposit(quote)}
+                              onRemindDeposit={() => void handleRemindDeposit(quote)}
                               onArchive={() => {
                                 setQuoteToArchive(quote);
                                 setArchiveDialogOpen(true);
@@ -412,6 +506,17 @@ export function QuotesPage() {
         onClose={() => setCreateDialogOpen(false)}
         onSubmit={handleCreateQuote}
         defaultClientId={defaultClientId}
+      />
+
+      <SendQuoteDialog
+        open={sendDialogOpen}
+        quote={quoteToSend}
+        sending={sendingQuoteEmail}
+        onClose={() => {
+          setSendDialogOpen(false);
+          setQuoteToSend(null);
+        }}
+        onSend={handleSendQuote}
       />
     </DocumentFolderPageShell>
   );

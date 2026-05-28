@@ -25,6 +25,7 @@ type InvoiceFolderMobileListProps = {
   canRemind: (status: Invoice['status']) => boolean
   onPatchFlags: (id: string, patch: DocumentFlags) => void
   onNavigate: (id: string) => void
+  onEditNavigate?: (id: string) => void
   onSend: (invoice: Invoice) => void
   onRemind: (invoice: Invoice) => void
   onArchive: (invoice: Invoice) => void
@@ -41,6 +42,7 @@ export function InvoiceFolderMobileList({
   canRemind,
   onPatchFlags,
   onNavigate,
+  onEditNavigate,
   onSend,
   onRemind,
   onArchive,
@@ -137,7 +139,7 @@ export function InvoiceFolderMobileList({
                 canSend={canSend}
                 canRemind={canRemind(invoice.status)}
                 onView={() => onNavigate(invoice.id)}
-                onEdit={() => onNavigate(invoice.id)}
+                onEdit={() => (onEditNavigate ?? onNavigate)(invoice.id)}
                 onSend={() => onSend(invoice)}
                 onRemind={() => onRemind(invoice)}
                 onArchive={() => onArchive(invoice)}

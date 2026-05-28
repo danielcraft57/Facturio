@@ -7,6 +7,7 @@ import { TrackController } from './track.controller';
 import { CleanupUnverifiedUsersService } from './cleanup-unverified-users.service';
 import { UnverifiedAccountService } from './unverified-account.service';
 import { RateLimitService } from './rate-limit.middleware';
+import { DocumentEmailCopiesService } from './document-email-copies.service';
 
 @Global()
 @Module({
@@ -19,8 +20,16 @@ import { RateLimitService } from './rate-limit.middleware';
 		CleanupUnverifiedUsersService,
 		UnverifiedAccountService,
 		RateLimitService,
+		DocumentEmailCopiesService,
 	],
-	exports: [PdfService, EmailService, OrganizationMiddleware, RateLimitService, UnverifiedAccountService],
+	exports: [
+		PdfService,
+		EmailService,
+		OrganizationMiddleware,
+		RateLimitService,
+		UnverifiedAccountService,
+		DocumentEmailCopiesService,
+	],
 })
 export class CommonModule implements NestModule {
 	configure(consumer: MiddlewareConsumer) {

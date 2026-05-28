@@ -109,7 +109,11 @@ export function InvoicesArchivePage() {
         <ArchiveGroupedView
           groups={groups}
           emptyMessage="Aucune facture archivée."
-          onView={(row) => navigate(`/factures/${row.id}`)}
+          onView={(row) => {
+            void import('../../utils/openDocumentView').then(({ openInvoiceView }) =>
+              openInvoiceView(String(row.id)),
+            )
+          }}
           onRestore={handleRestore}
           restoringId={restoringId}
         />

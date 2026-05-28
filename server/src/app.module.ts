@@ -24,6 +24,7 @@ import { ProspectsModule } from './prospects/prospects.module';
 import { ProspectionModule } from './prospection/prospection.module';
 import { PacksModule } from './packs/packs.module';
 import { AvoirsModule } from './avoirs/avoirs.module';
+import { RefundsModule } from './refunds/refunds.module';
 import { UsersModule } from './users/users.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { UrssafModule } from './urssaf/urssaf.module';
@@ -63,6 +64,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
 		ProspectionModule,
 		PacksModule,
 		AvoirsModule,
+		RefundsModule,
 		AuthModule,
 		UsersModule,
 		OrganizationsModule,

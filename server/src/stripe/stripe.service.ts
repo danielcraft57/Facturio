@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnav
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { assertValidPublicToken } from '../invoices/public-token.util';
+import { canAccessInvoiceByPublicToken } from '../invoices/invoice-public-access.util';
 import { decryptOrgStripeSecrets } from '../crypto/organization-stripe-secrets.util';
 import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
 import { createStripeClient, type StripeClient } from './stripe-client';
@@ -80,7 +81,7 @@ export class StripeService {
 				},
 			},
 		});
-		if (!invoice || !invoice.sentAt) {
+		if (!invoice || !canAccessInvoiceByPublicToken(invoice)) {
 			throw new NotFoundException('Facture introuvable');
 		}
 		if (!invoice.organization) {
@@ -235,5 +236,31 @@ export class StripeService {
 			method: 'STRIPE',
 			notes: stripeRef,
 		});
+	}
+
+	/** Remboursement Stripe (clés organisation) sur un PaymentIntent encaissé. */
+	async refundPaymentIntent(
+		organizationId: number,
+		paymentIntentId: string,
+		amountEur: number,
+	): Promise<string> {
+		const org = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: {
+				invoiceStripeSecretKey: true,
+				invoiceStripePublishableKey: true,
+			},
+		});
+		if (!org) throw new NotFoundException('Organisation introuvable');
+		const stripe = this.getOrgStripeClient(org);
+		const amountCents = Math.round(amountEur * 100);
+		if (amountCents <= 0) {
+			throw new BadRequestException('Montant de remboursement invalide');
+		}
+		const refund = await stripe.refunds.create({
+			payment_intent: paymentIntentId,
+			amount: amountCents,
+		});
+		return refund.id;
 	}
 }

@@ -41,6 +41,7 @@ describe('Avoirs e2e', () => {
 		await prisma.avoirApplication.deleteMany({});
 		await prisma.avoirLine.deleteMany({});
 		await prisma.avoir.deleteMany({});
+		await prisma.refund.deleteMany({});
 		await prisma.payment.deleteMany({});
 		await prisma.invoiceLine.deleteMany({});
 		await prisma.invoice.deleteMany({});
@@ -125,6 +126,46 @@ describe('Avoirs e2e', () => {
 					]
 				})
 				.expect(404);
+		});
+
+		it('devrait annuler la facture quand l\'avoir lié couvre le total', async () => {
+			const invoice = await prisma.invoice.create({
+				data: {
+					id: generateEntityId(),
+					number: `FAC-${Date.now()}`,
+					clientId,
+					organizationId: testUser.organizationId,
+					date: new Date(),
+					status: 'SENT',
+					subtotal: 100,
+					tax: 20,
+					total: 120,
+					balance: 120,
+					currency: 'EUR',
+				},
+			});
+
+			await authenticatedRequest(app, testUser.cookies)
+				.post('/api/avoirs')
+				.send({
+					clientId,
+					invoiceId: invoice.id,
+					status: 'SENT',
+					lines: [
+						{
+							description: 'Annulation totale',
+							quantity: 1,
+							unitPrice: 100,
+							taxRate: 0.2,
+						},
+					],
+				})
+				.expect(201);
+
+			const updatedInvoice = await prisma.invoice.findUnique({ where: { id: invoice.id } });
+			expect(updatedInvoice).toBeTruthy();
+			expect(updatedInvoice!.status).toBe('CANCELLED');
+			expect(Number(updatedInvoice!.balance)).toBe(0);
 		});
 	});
 

@@ -3,6 +3,7 @@ import { AvoirsService } from './avoirs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { ConfigService } from '../config/config.service';
+import { EmailService } from '../common/email.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateAvoirDto } from './dto/create-avoir.dto';
 
@@ -20,7 +21,14 @@ describe('AvoirsService', () => {
 			count: jest.fn()
 		},
 		avoirApplication: {
-			create: jest.fn()
+			create: jest.fn(),
+			aggregate: jest.fn()
+		},
+		payment: {
+			findMany: jest.fn()
+		},
+		refund: {
+			findMany: jest.fn()
 		},
 		invoice: {
 			findUnique: jest.fn(),
@@ -45,6 +53,10 @@ describe('AvoirsService', () => {
 		defaultVatRate: 0.2
 	};
 
+	const mockEmailService = {
+		sendInvoiceCreditedToClient: jest.fn().mockResolvedValue(undefined)
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -60,6 +72,10 @@ describe('AvoirsService', () => {
 				{
 					provide: ConfigService,
 					useValue: mockConfigService
+				},
+				{
+					provide: EmailService,
+					useValue: mockEmailService
 				}
 			]
 		}).compile();
@@ -68,6 +84,11 @@ describe('AvoirsService', () => {
 		prisma = module.get<PrismaService>(PrismaService);
 
 		jest.clearAllMocks();
+		mockPrismaService.payment.findMany.mockResolvedValue([]);
+		mockPrismaService.refund.findMany.mockResolvedValue([]);
+		mockPrismaService.avoirApplication.aggregate.mockResolvedValue({
+			_sum: { amount: 0 },
+		});
 	});
 
 	describe('create', () => {
@@ -151,6 +172,62 @@ describe('AvoirsService', () => {
 
 			await expect(service.create(dto)).rejects.toThrow(BadRequestException);
 		});
+
+		it('devrait annuler la facture si avoir lié couvre 100%', async () => {
+			const dto: CreateAvoirDto = {
+				clientId: '1',
+				invoiceId: 'fac-1',
+				status: 'SENT',
+				lines: [
+					{
+						description: 'Annulation facture',
+						quantity: 1,
+						unitPrice: 100,
+						taxRate: 0.2
+					}
+				]
+			};
+
+			mockPrismaService.client.findUnique.mockResolvedValue({ id: '1', name: 'Test Client', organizationId: 1 });
+			mockPrismaService.invoice.findUnique.mockResolvedValue({
+				id: 'fac-1',
+				clientId: '1',
+				total: 120,
+				status: 'SENT'
+			});
+			mockPrismaService.counter.upsert.mockResolvedValue({ scope: 'avoir-2024', current: 1 });
+			mockPrismaService.taxRate.findFirst.mockResolvedValue({ rate: 0.2 });
+			mockPrismaService.avoir.create.mockResolvedValue({
+				id: 1,
+				number: 'AVO-2024-0001',
+				clientId: '1',
+				invoiceId: 'fac-1',
+				date: new Date(),
+				status: 'SENT',
+				currency: 'EUR',
+				legalMention: null,
+				subtotal: 100,
+				tax: 20,
+				total: 120,
+				appliedAmount: 0,
+				lines: [],
+				client: { id: '1', name: 'Test Client' },
+				invoice: { id: 'fac-1' },
+				applications: []
+			});
+			mockPrismaService.avoir.update.mockResolvedValue({ id: 1, accountingEntryId: 1 });
+			mockPrismaService.invoice.update.mockResolvedValue({ id: 'fac-1', status: 'CANCELLED', balance: 0 });
+
+			await service.create(dto);
+
+			expect(mockPrismaService.invoice.update).toHaveBeenCalledWith({
+				where: { id: 'fac-1' },
+				data: expect.objectContaining({
+					status: 'CANCELLED',
+					balance: 0
+				})
+			});
+		});
 	});
 
 	describe('findOne', () => {
@@ -200,10 +277,11 @@ describe('AvoirsService', () => {
 			};
 
 			const mockInvoice = {
-				id: 1,
+				id: '1',
 				clientId: '1',
+				total: 200,
 				balance: 200,
-				status: 'SENT'
+				status: 'SENT',
 			};
 
 			// Mock pour findOne (qui inclut client)
@@ -215,6 +293,9 @@ describe('AvoirsService', () => {
 			});
 			mockPrismaService.invoice.findUnique.mockResolvedValue(mockInvoice);
 			mockPrismaService.avoirApplication.create.mockResolvedValue({});
+			mockPrismaService.avoirApplication.aggregate.mockResolvedValue({
+				_sum: { amount: 50 },
+			});
 			mockPrismaService.avoir.update.mockResolvedValue({ ...mockAvoir, status: 'SENT', appliedAmount: 50, accountingEntryId: null });
 			mockPrismaService.invoice.update.mockResolvedValue({ ...mockInvoice, balance: 150 });
 
@@ -245,6 +326,56 @@ describe('AvoirsService', () => {
 			mockPrismaService.invoice.findUnique.mockResolvedValue(mockInvoice);
 
 			await expect(service.apply(1, { invoiceId: '1', amount: 50 })).rejects.toThrow(BadRequestException);
+		});
+
+		it('devrait écrêter l’imputation au solde de la facture (pas de solde négatif)', async () => {
+			const mockAvoir = {
+				id: 1,
+				number: 'AVO-2024-0001',
+				clientId: '1',
+				total: 120,
+				appliedAmount: 0,
+				status: 'SENT',
+				applications: [],
+				client: { id: 1, name: 'Test Client' },
+				lines: []
+			};
+
+			const mockInvoice = {
+				id: '1',
+				clientId: '1',
+				total: 40,
+				balance: 40,
+				status: 'SENT',
+			};
+
+			mockPrismaService.avoir.findFirst.mockResolvedValue(mockAvoir);
+			mockPrismaService.invoice.findUnique.mockResolvedValue(mockInvoice);
+			mockPrismaService.avoirApplication.create.mockResolvedValue({});
+			mockPrismaService.avoirApplication.aggregate.mockResolvedValue({
+				_sum: { amount: 40 },
+			});
+			mockPrismaService.avoir.update.mockResolvedValue({
+				...mockAvoir,
+				appliedAmount: 40,
+				status: 'SENT',
+				accountingEntryId: null
+			});
+			mockPrismaService.invoice.update.mockResolvedValue({
+				...mockInvoice,
+				balance: 0,
+				status: 'PAID'
+			});
+
+			await service.apply(1, { invoiceId: '1', amount: 100 });
+
+			expect(mockPrismaService.avoirApplication.create).toHaveBeenCalledWith({
+				data: expect.objectContaining({ amount: 40 })
+			});
+			expect(mockPrismaService.invoice.update).toHaveBeenCalledWith({
+				where: { id: '1' },
+				data: expect.objectContaining({ balance: 0, status: 'PAID' })
+			});
 		});
 	});
 

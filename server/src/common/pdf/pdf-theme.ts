@@ -49,4 +49,8 @@ export interface PdfTotals {
 	subtotal: number;
 	tax: number;
 	total: number;
+	/** Avoirs client imputés (TTC), affichés en déduction. */
+	creditApplied?: number;
+	/** Solde restant après avoirs (TTC). */
+	netDue?: number;
 }

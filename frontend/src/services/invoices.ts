@@ -43,6 +43,10 @@ export interface Invoice {
   snoozedUntil?: string
   seenAt?: string
   tags?: string[]
+  appliedCreditTotal?: number
+  /** Solde restant TTC (après paiements et avoirs). */
+  balance?: number
+  settlement?: 'A_PAYER' | 'SOLDEE_CB' | 'SOLDEE_AVOIR' | 'SOLDEE_MIXTE' | 'ANNULEE'
 }
 
 export interface CreateInvoiceData {
@@ -62,6 +66,7 @@ export interface CreateInvoiceData {
   /** Envoyer par email juste après la création */
   sendByEmailAfterCreate?: boolean
   sendToEmail?: string
+  applyClientCredits?: boolean
 }
 
 export interface UpdateInvoiceData extends Partial<CreateInvoiceData> {
@@ -168,6 +173,20 @@ export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
     snoozedUntil: raw.snoozedUntil ? String(raw.snoozedUntil) : undefined,
     seenAt: raw.seenAt ? String(raw.seenAt) : undefined,
     tags: parseTagsField(raw.tags),
+    appliedCreditTotal: Number(
+      raw.appliedCreditTotal ??
+        ((raw.appliedAvoirs as Array<{ amount?: number | string }> | undefined) ?? []).reduce(
+          (sum, a) => sum + Number(a?.amount ?? 0),
+          0,
+        ),
+    ),
+    balance:
+      raw.balance != null
+        ? Number(raw.balance)
+        : (raw.settlementDetails as { balance?: number } | undefined)?.balance != null
+          ? Number((raw.settlementDetails as { balance: number }).balance)
+          : undefined,
+    settlement: raw.settlement as Invoice['settlement'] | undefined,
   }
 }
 
@@ -221,9 +240,10 @@ export function toCreateInvoiceApiBody(data: CreateInvoiceData): Record<string, 
     if (data.externalPaymentDate) body.externalPaymentDate = data.externalPaymentDate
     if (data.externalPaymentMethod) body.externalPaymentMethod = data.externalPaymentMethod
   }
-  if (data.clientId) body.clientId = Number(data.clientId)
+  if (data.clientId) body.clientId = data.clientId
   if (data.clientEmail?.trim()) body.clientEmail = data.clientEmail.trim()
   if (data.newClientName?.trim()) body.clientName = data.newClientName.trim()
+  if (data.applyClientCredits !== undefined) body.applyClientCredits = data.applyClientCredits
   return body
 }
 
@@ -231,7 +251,7 @@ export function toUpdateInvoiceApiBody(
   data: Omit<UpdateInvoiceData, 'id'>,
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {}
-  if (data.clientId) body.clientId = Number(data.clientId)
+  if (data.clientId) body.clientId = data.clientId
   if (data.dueDate) body.dueDate = data.dueDate
   if (data.currency) body.currency = data.currency
   if (data.status) {
@@ -283,8 +303,13 @@ export class InvoiceService {
   }
 
   // Récupérer une facture par ID
-  async getInvoice(id: string): Promise<ApiResponse<Invoice>> {
-    return apiClient.getCached<Invoice>(`${this.baseUrl}/${id}`, 5 * 60 * 1000) // Cache 5 minutes
+  async getInvoice(id: string): Promise<Invoice> {
+    const response = await apiClient.get<Record<string, unknown>>(`/factures/${id}`)
+    const raw = unwrapApiPayload<Record<string, unknown>>(response)
+    if (!raw?.id) {
+      throw new Error('Facture introuvable')
+    }
+    return normalizeInvoiceFromApi(raw)
   }
 
   // Créer une nouvelle facture (corps API NestJS)
@@ -344,7 +369,12 @@ export class InvoiceService {
   // Envoyer une facture par email
   async sendInvoice(
     id: string,
-    emailData?: { to?: string; updateClientEmail?: boolean },
+    emailData?: {
+      to?: string
+      updateClientEmail?: boolean
+      copyToSelf?: boolean
+      additionalRecipients?: string
+    },
   ): Promise<ApiResponse<unknown>> {
     const response = await apiClient.post<unknown>(`${this.baseUrl}/${id}/send`, emailData ?? {})
     
@@ -376,14 +406,81 @@ export class InvoiceService {
     return response
   }
 
-  // Créer un avoir
-  async createCreditNote(invoiceId: string, items: Array<{ itemId: string; quantity: number; reason?: string }>): Promise<ApiResponse<Invoice>> {
-    const response = await apiClient.post<Invoice>(`${this.baseUrl}/${invoiceId}/credit-note`, { items })
-    
-    // Invalider les caches
+  // Créer un avoir (API /avoirs)
+  async createCreditNote(
+    invoice: Invoice,
+    items: Array<{ itemId: string; quantity: number; reason?: string }>,
+  ): Promise<ApiResponse<{ id: number; number: string }>> {
+    const lines = items
+      .map((sel) => {
+        const line = invoice.items.find((i) => i.id === sel.itemId)
+        if (!line || sel.quantity <= 0) return null
+        return {
+          description: sel.reason
+            ? `${line.description} — ${sel.reason}`
+            : line.description,
+          quantity: sel.quantity,
+          unitPrice: line.unitPrice,
+          taxRate: line.taxRate > 1 ? line.taxRate / 100 : line.taxRate,
+        }
+      })
+      .filter(Boolean) as Array<{
+      description: string
+      quantity: number
+      unitPrice: number
+      taxRate: number
+    }>
+
+    const response = await apiClient.post<{ id: number; number: string }>('/avoirs', {
+      clientId: invoice.clientId,
+      invoiceId: invoice.id,
+      status: 'SENT',
+      lines,
+    })
+
     apiClient.invalidateCache('/invoices')
-    apiClient.invalidateCache(`/invoices/${invoiceId}`)
-    
+    apiClient.invalidateCache(`/invoices/${invoice.id}`)
+
+    return response
+  }
+
+  /**
+   * Crée un avoir NON imputé (crédit client) — non lié à une facture.
+   * Permet de déduire le crédit sur une future facture via "Imputer" dans Comptabilité → Avoirs.
+   */
+  async createClientCreditNote(
+    invoice: Invoice,
+    items: Array<{ itemId: string; quantity: number; reason?: string }>,
+  ): Promise<ApiResponse<{ id: number; number: string }>> {
+    const lines = items
+      .map((sel) => {
+        const line = invoice.items.find((i) => i.id === sel.itemId)
+        if (!line || sel.quantity <= 0) return null
+        return {
+          description: sel.reason
+            ? `${line.description} — ${sel.reason}`
+            : line.description,
+          quantity: sel.quantity,
+          unitPrice: line.unitPrice,
+          taxRate: line.taxRate > 1 ? line.taxRate / 100 : line.taxRate,
+        }
+      })
+      .filter(Boolean) as Array<{
+      description: string
+      quantity: number
+      unitPrice: number
+      taxRate: number
+    }>
+
+    const response = await apiClient.post<{ id: number; number: string }>('/avoirs', {
+      clientId: invoice.clientId,
+      status: 'SENT',
+      lines,
+    })
+
+    apiClient.invalidateCache('/invoices')
+    apiClient.invalidateCache(`/invoices/${invoice.id}`)
+
     return response
   }
 

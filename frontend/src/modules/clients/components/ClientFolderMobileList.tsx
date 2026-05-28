@@ -49,7 +49,23 @@ export function ClientFolderMobileList({
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Stack direction="row" justifyContent="space-between" spacing={1}>
                   <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography variant="body2" fontWeight={700} noWrap>
+                    <Typography
+                      variant="body2"
+                      fontWeight={700}
+                      noWrap
+                      component="button"
+                      type="button"
+                      onClick={() => onView(client)}
+                      sx={{
+                        border: 0,
+                        p: 0,
+                        bgcolor: 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        font: 'inherit',
+                        color: 'primary.main',
+                      }}
+                    >
                       {client.name}
                     </Typography>
                     {client.company?.name && (

@@ -184,6 +184,7 @@ model Organization {
   quotes         Quote[]
   subscriptions  Subscription[]
   avoirs    Avoir[]
+  refunds        Refund[]
   prospects      Prospect[]
   documents      OrganizationDocument[]
   taxDeductions  TaxDeduction[]
@@ -387,6 +388,7 @@ model Invoice {
   currency           String                  @default("EUR")
   legalMention       String?
   payments           Payment[]
+  refunds            Refund[]
   emailEvents        EmailEvent[]
   avoirs        Avoir[]            @relation("InvoiceAvoirs")
   appliedAvoirs AvoirApplication[] @relation("AppliedAvoirs")
@@ -776,6 +778,36 @@ model Payment {
   method    String?
   notes     String?
   createdAt DateTime @default(now())
+  refunds   Refund[]
+}
+
+enum RefundStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+/// Remboursement client (encaissement inversé) — lié à une facture et optionnellement à un paiement.
+model Refund {
+  id             Int          @id @default(autoincrement())
+  invoiceId      String
+  paymentId      Int?
+  organizationId Int
+  amount         Decimal      @default(0)
+  date           DateTime     @default(now())
+  method         String?
+  reason         String?
+  notes          String?
+  stripeRefundId String?
+  status         RefundStatus @default(COMPLETED)
+  createdAt      DateTime     @default(now())
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id])
+  payment        Payment?     @relation(fields: [paymentId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([invoiceId])
+  @@index([paymentId])
+  @@index([organizationId])
 }
 
 model Counter {

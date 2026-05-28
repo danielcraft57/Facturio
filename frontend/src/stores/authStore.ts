@@ -65,6 +65,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isLoading: false,
         error: null,
       })
+      const { warmAppDataAfterLogin } = await import('../utils/warmAppData')
+      void warmAppDataAfterLogin()
     } catch (error: any) {
       set({
         user: null,
@@ -140,6 +142,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isLoading: false,
         error: null,
       })
+      const { warmAppDataAfterLogin } = await import('../utils/warmAppData')
+      void warmAppDataAfterLogin()
     } catch (error: any) {
       authService.clearLocalSession()
       set({

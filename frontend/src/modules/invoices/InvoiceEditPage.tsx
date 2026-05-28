@@ -95,12 +95,10 @@ export function InvoiceEditPage() {
       setLoading(true)
       setError(null)
       apiClient.invalidateCache(`/invoices/${invoiceId}`)
-      const [invRes, clientsRes] = await Promise.all([
+      const [inv, clientsRes] = await Promise.all([
         invoiceService.getInvoice(invoiceId),
         clientService.getClients({ page: 1, limit: 100 }),
       ])
-      const raw = unwrapApiPayload<Record<string, unknown>>(invRes)
-      const inv = normalizeInvoiceFromApi(raw)
       if (inv.status !== 'draft') {
         setError('Seules les factures en brouillon peuvent être modifiées.')
         setInvoice(inv)
