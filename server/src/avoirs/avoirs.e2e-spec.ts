@@ -41,6 +41,7 @@ describe('Avoirs e2e', () => {
 		await prisma.avoirApplication.deleteMany({});
 		await prisma.avoirLine.deleteMany({});
 		await prisma.avoir.deleteMany({});
+		await prisma.refund.deleteMany({});
 		await prisma.payment.deleteMany({});
 		await prisma.invoiceLine.deleteMany({});
 		await prisma.invoice.deleteMany({});

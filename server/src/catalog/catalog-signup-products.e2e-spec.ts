@@ -40,6 +40,7 @@ describe('Onboarding installation + produits (e2e)', () => {
 	beforeEach(async () => {
 		await prisma.clientCatalogItem.deleteMany({});
 		await prisma.organizationCatalogItem.deleteMany({});
+		await prisma.refund.deleteMany({});
 		await prisma.payment.deleteMany({});
 		await prisma.invoiceLine.deleteMany({});
 		await prisma.invoice.deleteMany({});

@@ -399,21 +399,6 @@ export class RefundsService {
 			});
 			const remRefunded = Number(remRefundedAgg._sum.amount ?? 0);
 			remainderNetPaid = remPaid - remRefunded;
-
-			if (remainder.status !== 'CANCELLED') {
-				const remTags = serializeTagsJson([
-					...parseTagsJson(remainder.tags),
-					'ENGAGEMENT_CANCELLED',
-				]);
-				await this.prisma.invoice.update({
-					where: { id: remainder.id },
-					data: {
-						status: 'CANCELLED',
-						tags: remTags,
-						balance: 0,
-					},
-				});
-			}
 		}
 
 		const payments = deposit.payments;
@@ -544,6 +529,21 @@ export class RefundsService {
 			// on la marque comme contrat annulé + crédit émis.
 			data: { tags: depositTags, ...(options?.creditOnly ? {} : { status: 'CANCELLED' }) },
 		});
+
+		if (remainder && remainder.status !== 'CANCELLED') {
+			const remTags = serializeTagsJson([
+				...parseTagsJson(remainder.tags),
+				'ENGAGEMENT_CANCELLED',
+			]);
+			await this.prisma.invoice.update({
+				where: { id: remainder.id },
+				data: {
+					status: 'CANCELLED',
+					tags: remTags,
+					balance: 0,
+				},
+			});
+		}
 
 		this.realtime.emit(organizationId, 'invoices', 'updated', deposit.id, {
 			number: deposit.number,

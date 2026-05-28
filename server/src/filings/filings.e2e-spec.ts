@@ -38,6 +38,7 @@ describe('Filings e2e', () => {
 		await prisma.quoteLine.deleteMany({});
 		await prisma.quote.deleteMany({});
 		await prisma.invoiceLine.deleteMany({});
+		await prisma.refund.deleteMany({});
 		await prisma.payment.deleteMany({});
 		await prisma.filingLine.deleteMany({});
 		await prisma.authorityPayment.deleteMany({});

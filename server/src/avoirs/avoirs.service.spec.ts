@@ -21,7 +21,14 @@ describe('AvoirsService', () => {
 			count: jest.fn()
 		},
 		avoirApplication: {
-			create: jest.fn()
+			create: jest.fn(),
+			aggregate: jest.fn()
+		},
+		payment: {
+			findMany: jest.fn()
+		},
+		refund: {
+			findMany: jest.fn()
 		},
 		invoice: {
 			findUnique: jest.fn(),
@@ -77,6 +84,11 @@ describe('AvoirsService', () => {
 		prisma = module.get<PrismaService>(PrismaService);
 
 		jest.clearAllMocks();
+		mockPrismaService.payment.findMany.mockResolvedValue([]);
+		mockPrismaService.refund.findMany.mockResolvedValue([]);
+		mockPrismaService.avoirApplication.aggregate.mockResolvedValue({
+			_sum: { amount: 0 },
+		});
 	});
 
 	describe('create', () => {
@@ -265,10 +277,11 @@ describe('AvoirsService', () => {
 			};
 
 			const mockInvoice = {
-				id: 1,
+				id: '1',
 				clientId: '1',
+				total: 200,
 				balance: 200,
-				status: 'SENT'
+				status: 'SENT',
 			};
 
 			// Mock pour findOne (qui inclut client)
@@ -280,6 +293,9 @@ describe('AvoirsService', () => {
 			});
 			mockPrismaService.invoice.findUnique.mockResolvedValue(mockInvoice);
 			mockPrismaService.avoirApplication.create.mockResolvedValue({});
+			mockPrismaService.avoirApplication.aggregate.mockResolvedValue({
+				_sum: { amount: 50 },
+			});
 			mockPrismaService.avoir.update.mockResolvedValue({ ...mockAvoir, status: 'SENT', appliedAmount: 50, accountingEntryId: null });
 			mockPrismaService.invoice.update.mockResolvedValue({ ...mockInvoice, balance: 150 });
 
@@ -326,15 +342,19 @@ describe('AvoirsService', () => {
 			};
 
 			const mockInvoice = {
-				id: 1,
+				id: '1',
 				clientId: '1',
+				total: 40,
 				balance: 40,
-				status: 'SENT'
+				status: 'SENT',
 			};
 
 			mockPrismaService.avoir.findFirst.mockResolvedValue(mockAvoir);
 			mockPrismaService.invoice.findUnique.mockResolvedValue(mockInvoice);
 			mockPrismaService.avoirApplication.create.mockResolvedValue({});
+			mockPrismaService.avoirApplication.aggregate.mockResolvedValue({
+				_sum: { amount: 40 },
+			});
 			mockPrismaService.avoir.update.mockResolvedValue({
 				...mockAvoir,
 				appliedAmount: 40,
