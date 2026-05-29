@@ -65,7 +65,7 @@ describe('Catalog packs e2e', () => {
 		const res = await request(app.getHttpServer())
 			.post('/api/catalog/packs/agence-web/install')
 			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
+			.expect(201);
 		expect(res.body.clonedCount).toBeGreaterThan(0);
 		const after = await prisma.product.count({ where: { organizationId } });
 		expect(after).toBeGreaterThan(before);
@@ -73,7 +73,7 @@ describe('Catalog packs e2e', () => {
 		const again = await request(app.getHttpServer())
 			.post('/api/catalog/packs/agence-web/install')
 			.set('Authorization', `Bearer ${token}`)
-			.expect(200);
+			.expect(201);
 		expect(again.body.skippedCount).toBeGreaterThan(0);
 		expect(again.body.clonedCount).toBe(0);
 	});
