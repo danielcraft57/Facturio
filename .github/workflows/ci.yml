@@ -37,7 +37,7 @@ jobs:
         run: npm run test:unit
         env:
           NODE_ENV: test
-          DATABASE_URL: file:./prisma/prisma/test.db
+          DATABASE_URL: file:./test.db
 
       - name: Build
         run: npm run build
@@ -65,13 +65,13 @@ jobs:
         run: npm run pretest:e2e
         env:
           NODE_ENV: test
-          DATABASE_URL: file:./prisma/prisma/test.db
+          DATABASE_URL: file:./test.db
 
       - name: E2E tests
         run: npm run test:e2e
         env:
           NODE_ENV: test
-          DATABASE_URL: file:./prisma/prisma/test.db
+          DATABASE_URL: file:./test.db
 
   frontend:
     name: frontend (lint/test/build)

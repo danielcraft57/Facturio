@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Put } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ChangePasswordDto } from '../auth/dto/change-password.dto';
@@ -10,6 +10,21 @@ export class UsersController {
 	@Get('me')
 	getProfile(@CurrentUser() user: any) {
 		return this.usersService.getProfile(user.id);
+	}
+
+	@Get('me/document-tags')
+	getDocumentTags(@CurrentUser() user: any) {
+		return this.usersService.getDocumentTagLibrary(user.id);
+	}
+
+	@Put('me/document-tags')
+	updateDocumentTags(@CurrentUser() user: any, @Body() body: { tags: string[] }) {
+		return this.usersService.updateDocumentTagLibrary(user.id, body.tags ?? []);
+	}
+
+	@Patch('me/document-tags')
+	addDocumentTag(@CurrentUser() user: any, @Body() body: { tag: string }) {
+		return this.usersService.addDocumentTagToLibrary(user.id, body.tag ?? '');
 	}
 
 	@Patch('me')

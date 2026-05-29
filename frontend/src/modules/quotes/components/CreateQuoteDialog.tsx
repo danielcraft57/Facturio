@@ -2,18 +2,14 @@ import { useState, useEffect } from 'react'
 import {
   Button,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Box,
   Stack,
-  InputAdornment,
   CircularProgress,
 } from '@mui/material'
-import { Description, CalendarMonth } from '@mui/icons-material'
+import { Description } from '@mui/icons-material'
 import { apiClient } from '../../../services/api'
-import { clientService, parseClientsListResponse } from '../../../services/clients'
+import { clientService, mapApiClientToClient, parseClientsListResponse, toCreateClientPayload } from '../../../services/clients'
+import type { Client } from '../../../services/clients'
 import { useProductsStore } from '../../../stores/productsStore'
 import { productService } from '../../../services/productService'
 import type { CreateQuoteLineData } from '../../../types/quote'
@@ -25,10 +21,24 @@ import {
   financeFieldSx,
 } from '../../../components/finance/FinanceFormDialog'
 import { EditableProductLinesTable } from '../../../components/finance/EditableProductLinesTable'
+import {
+  applyProductLineFieldChange,
+  ensureTrailingEmptyLine,
+  filterProductLinesForSubmit,
+  removeProductLine,
+} from '../../../components/finance/editableProductLinesUtils'
+import { FinanceClientAutocomplete, type FinanceClientOption } from '../../../components/finance/FinanceClientAutocomplete'
+import {
+  clientQueryDraft,
+  guessClientNameFromQuery,
+  isClientEmail,
+} from '../../../components/finance/financeClientQuery'
 
 interface CreateQuoteFormData {
   clientId: string
   expiryDate: string
+  newClientName?: string
+  newClientEmail?: string
   lines: (CreateQuoteLineData & { taxRate: number })[]
 }
 
@@ -43,6 +53,7 @@ interface CreateQuoteDialogProps {
 interface ClientOption {
   id: string
   name: string
+  email?: string
 }
 
 export function CreateQuoteDialog({
@@ -55,9 +66,15 @@ export function CreateQuoteDialog({
   const productsStore = useProductsStore()
   const [clients, setClients] = useState<ClientOption[]>([])
   const [loading, setLoading] = useState(false)
+  const [clientQuery, setClientQuery] = useState('')
+  const [willCreateClient, setWillCreateClient] = useState(false)
+  const [createClientError, setCreateClientError] = useState<string | null>(null)
+  const [clientFormSaving, setClientFormSaving] = useState(false)
   const [formData, setFormData] = useState<CreateQuoteFormData>({
     clientId: '',
     expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    newClientName: '',
+    newClientEmail: '',
     lines: [{ description: '', quantity: 1, unitPrice: 0, taxRate: 0.2 }],
   })
 
@@ -66,12 +83,15 @@ export function CreateQuoteDialog({
       setFormData({
         clientId: defaultClientId ?? '',
         expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        newClientName: '',
+        newClientEmail: '',
         lines: [{ description: '', quantity: 1, unitPrice: 0, taxRate: 0.2 }],
       })
+      setClientQuery('')
+      setWillCreateClient(false)
+      setCreateClientError(null)
       loadClients()
-      if (productsStore.isStale || productsStore.products.length === 0) {
-        productsStore.fetchProducts()
-      }
+      productsStore.fetchProducts()
     }
   }, [open, defaultClientId])
 
@@ -93,6 +113,7 @@ export function CreateQuoteDialog({
         list.map((c) => ({
           id: String(c.id),
           name: c.name,
+          email: (c as Client).email,
         })),
       )
     } catch (error) {
@@ -103,18 +124,17 @@ export function CreateQuoteDialog({
     }
   }
 
-  const handleAddLine = () => {
-    setFormData((prev) => ({
-      ...prev,
-      lines: [...prev.lines, { description: '', quantity: 1, unitPrice: 0, taxRate: 0.2 }],
-    }))
-  }
+  const createEmptyQuoteLine = (): CreateQuoteFormData['lines'][number] => ({
+    description: '',
+    quantity: 1,
+    unitPrice: 0,
+    taxRate: 0.2,
+  })
 
   const handleRemoveLine = (index: number) => {
-    if (formData.lines.length <= 1) return
     setFormData((prev) => ({
       ...prev,
-      lines: prev.lines.filter((_, i) => i !== index),
+      lines: removeProductLine(prev.lines, index, createEmptyQuoteLine),
     }))
   }
 
@@ -123,58 +143,121 @@ export function CreateQuoteDialog({
     field: keyof CreateQuoteLineData | 'taxRate',
     value: string | number,
   ) => {
-    setFormData((prev) => {
-      const next = [...prev.lines]
-      const line = { ...next[index] }
-      if (field === 'quantity') {
-        line.quantity = 1
-      } else if (field === 'unitPrice') {
-        line.unitPrice = Math.round(Number(value) || 0)
-      } else if (field === 'taxRate') {
-        line.taxRate = Number(value)
-      } else if (field === 'description') {
-        line.description = String(value)
-      } else if (field === 'productId') {
-        line.productId = Number(value)
+    setFormData((prev) => ({
+      ...prev,
+      lines: applyProductLineFieldChange(
+        prev.lines,
+        index,
+        (line) => {
+          if (field === 'quantity') {
+            line.quantity = 1
+          } else if (field === 'unitPrice') {
+            line.unitPrice = Math.round(Number(value) || 0)
+          } else if (field === 'taxRate') {
+            line.taxRate = Number(value)
+          } else if (field === 'description') {
+            line.description = String(value)
+            line.productId = undefined
+          } else if (field === 'productId') {
+            line.productId = Number(value)
+          }
+          return line
+        },
+        createEmptyQuoteLine,
+      ),
+    }))
+  }
+
+  const ensureProductsLinked = async (linesToLink: typeof formData.lines) => {
+    const existingByName = new Map(
+      productsStore.products.map((p) => [((p.description ?? p.name ?? '').trim().toLowerCase()), p]),
+    )
+    const nextLines = [...linesToLink]
+    for (let i = 0; i < nextLines.length; i += 1) {
+      const line = nextLines[i]
+      const key = line.description.trim().toLowerCase()
+      if (!key) continue
+      const known = existingByName.get(key)
+      if (known) {
+        nextLines[i] = {
+          ...line,
+          productId: Number(known.id),
+          unitPrice: Math.round(Number(known.unitPrice ?? line.unitPrice ?? 0)),
+        }
+        continue
       }
-      next[index] = line
-      return { ...prev, lines: next }
-    })
+      try {
+        const created = await productService.createProduct({
+          name: line.description.trim(),
+          description: line.description.trim(),
+          unitPrice: Number(line.unitPrice) > 0 ? Number(line.unitPrice) : undefined,
+        })
+        const createdProduct = created.data
+        if (createdProduct) {
+          existingByName.set(key, createdProduct)
+          nextLines[i] = {
+            ...line,
+            productId: Number(createdProduct.id),
+            unitPrice: Math.round(Number(createdProduct.unitPrice ?? line.unitPrice ?? 0)),
+          }
+        }
+      } catch {
+        // On n'interrompt pas la création du devis si la création produit échoue.
+      }
+    }
+    await productsStore.fetchProducts()
+    return nextLines
+  }
+
+  const resolveClientId = async (): Promise<string | null> => {
+    if (formData.clientId) return formData.clientId
+    if (!willCreateClient) return null
+    const name = formData.newClientName?.trim() ?? ''
+    const email = formData.newClientEmail?.trim() ?? ''
+    if (!name) {
+      setCreateClientError('Le nom du client est obligatoire.')
+      return null
+    }
+    if (!email || !isClientEmail(email)) {
+      setCreateClientError('Email invalide.')
+      return null
+    }
+    try {
+      setClientFormSaving(true)
+      setCreateClientError(null)
+      const payload = toCreateClientPayload({ name, email, status: 'prospect' })
+      const res = await apiClient.post('/clients', payload)
+      const raw = ((res as { data?: { data?: Record<string, unknown> } })?.data?.data ??
+        (res as { data?: Record<string, unknown> })?.data ??
+        {}) as Record<string, unknown>
+      const created = mapApiClientToClient(raw)
+      if (!created?.id) return null
+      const id = String(created.id)
+      setClients((prev) => [{ id, name: created.name, email: created.email }, ...prev])
+      setFormData((prev) => ({ ...prev, clientId: id, newClientName: '', newClientEmail: '' }))
+      setClientQuery(created.email ? `${created.name} — ${created.email}` : created.name)
+      setWillCreateClient(false)
+      return id
+    } catch (e: unknown) {
+      setCreateClientError(e instanceof Error ? e.message : 'Création impossible')
+      return null
+    } finally {
+      setClientFormSaving(false)
+    }
   }
 
   const handleSubmit = async () => {
-    if (
-      formData.clientId === '' ||
-      formData.lines.some((l) => !l.description.trim() || Number(l.unitPrice) < 0)
-    ) {
+    const clientId = (await resolveClientId()) ?? formData.clientId
+    const filledLines = filterProductLinesForSubmit(formData.lines)
+    if (!clientId || filledLines.length === 0 || filledLines.some((l) => Number(l.unitPrice) < 0)) {
       return
     }
-    const existingNames = new Set(
-      productsStore.products.map((p) => (p.description ?? p.name ?? '').trim().toLowerCase()),
-    )
-    const productCandidates = formData.lines
-      .map((line) => ({
-        name: line.description.trim(),
-        unitPrice: Number(line.unitPrice),
-      }))
-      .filter((line) => line.name.length > 0 && !existingNames.has(line.name.toLowerCase()))
 
-    for (const candidate of productCandidates) {
-      try {
-        await productService.createProduct({
-          name: candidate.name,
-          description: candidate.name,
-          unitPrice: candidate.unitPrice > 0 ? candidate.unitPrice : undefined,
-        })
-        existingNames.add(candidate.name.toLowerCase())
-      } catch {
-        // On laisse la création du devis continuer même si la création produit échoue.
-      }
-    }
+    const lines = await ensureProductsLinked(filledLines)
     onSubmit({
-      clientId: formData.clientId,
+      clientId,
       expiryDate: formData.expiryDate || undefined,
-      lines: formData.lines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
+      lines: lines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
         productId: productId ?? undefined,
         description: description.trim(),
         quantity: 1,
@@ -185,22 +268,86 @@ export function CreateQuoteDialog({
     onClose()
   }
 
-  const subtotal = formData.lines.reduce(
-    (s, l) => s + 1 * Number(l.unitPrice),
-    0,
-  )
-  const tax = formData.lines.reduce(
-    (s, l) => s + 1 * Number(l.unitPrice) * Number(l.taxRate ?? 0),
-    0,
-  )
+  const clientOptions: FinanceClientOption[] = clients.map((c) => ({
+    id: c.id,
+    name: c.name,
+    email: c.email,
+  }))
+
+  const openCreateClient = () => {
+    const q = clientQuery.trim()
+    setWillCreateClient(true)
+    setCreateClientError(null)
+    setFormData((prev) => ({
+      ...prev,
+      clientId: '',
+      newClientName: prev.newClientName?.trim() ? prev.newClientName : guessClientNameFromQuery(q),
+      newClientEmail: isClientEmail(q) ? q.toLowerCase() : prev.newClientEmail ?? '',
+    }))
+  }
+
+  const submitCreateClient = async () => {
+    const name = formData.newClientName?.trim() ?? ''
+    const email = formData.newClientEmail?.trim() ?? ''
+    if (!name) {
+      setCreateClientError('Le nom du client est obligatoire.')
+      return
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setCreateClientError('Email invalide.')
+      return
+    }
+    try {
+      setClientFormSaving(true)
+      setCreateClientError(null)
+      const payload = toCreateClientPayload({
+        name,
+        email,
+        status: 'prospect',
+      })
+      const res = await apiClient.post('/clients', payload)
+      const raw = ((res as any)?.data?.data ?? (res as any)?.data ?? {}) as Record<string, unknown>
+      const created = mapApiClientToClient(raw)
+      if (created?.id) {
+        setClients((prev) => [
+          { id: String(created.id), name: created.name, email: created.email },
+          ...prev,
+        ])
+        setFormData((prev) => ({
+          ...prev,
+          clientId: String(created.id),
+          newClientName: '',
+          newClientEmail: '',
+        }))
+        setClientQuery(created.email ? `${created.name} — ${created.email}` : created.name)
+        setWillCreateClient(false)
+      }
+    } catch (e: unknown) {
+      setCreateClientError(e instanceof Error ? e.message : 'Création impossible')
+    } finally {
+      setClientFormSaving(false)
+    }
+  }
+
+  const linesForTotals = filterProductLinesForSubmit(formData.lines)
+  const subtotal = linesForTotals.reduce((s, l) => s + 1 * Number(l.unitPrice), 0)
+  const tax = linesForTotals.reduce((s, l) => s + 1 * Number(l.unitPrice) * Number(l.taxRate ?? 0), 0)
   const total = subtotal + tax
+
+  const clientReady =
+    formData.clientId !== '' ||
+    (willCreateClient &&
+      Boolean(formData.newClientName?.trim()) &&
+      isClientEmail(formData.newClientEmail ?? ''))
 
   const submitDisabled =
     submitting ||
-    formData.clientId === '' ||
-    formData.lines.some((l) => !l.description.trim())
+    clientFormSaving ||
+    !clientReady ||
+    filterProductLinesForSubmit(formData.lines).length === 0
 
   return (
+    <>
     <FinanceFormDialogShell
       open={open}
       onClose={onClose}
@@ -230,23 +377,63 @@ export function CreateQuoteDialog({
       <Stack spacing={2.5}>
         <Box>
           <FinanceFormSectionTitle>Client</FinanceFormSectionTitle>
-          <FormControl fullWidth sx={financeFieldSx} required>
-            <InputLabel>Client</InputLabel>
-            <Select
-              value={formData.clientId}
+          <Box sx={{ ...financeFieldSx }}>
+            <FinanceClientAutocomplete
               label="Client"
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, clientId: e.target.value as string }))
-              }
-              disabled={loading}
-            >
-              {clients.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              placeholder="Nom ou email…"
+              options={clientOptions}
+              loading={loading}
+              valueId={formData.clientId}
+              query={clientQuery}
+              onQueryChange={(v) => {
+                setClientQuery(v)
+                setCreateClientError(null)
+                const draft = clientQueryDraft(v, clientOptions)
+                if (!v.trim()) {
+                  setWillCreateClient(false)
+                  setFormData((p) => ({ ...p, clientId: '', newClientName: '', newClientEmail: '' }))
+                  return
+                }
+                if (draft.matched) {
+                  setWillCreateClient(false)
+                  setFormData((p) => ({
+                    ...p,
+                    clientId: draft.matched!.id,
+                    newClientName: '',
+                    newClientEmail: draft.matched!.email?.trim() ?? '',
+                  }))
+                  return
+                }
+                setWillCreateClient(true)
+                setFormData((p) => ({
+                  ...p,
+                  clientId: '',
+                  newClientName: draft.suggestedName,
+                  newClientEmail: draft.suggestedEmail || p.newClientEmail,
+                }))
+              }}
+              onSelectClientId={(id) => {
+                const picked = clientOptions.find((c) => c.id === id)
+                setWillCreateClient(false)
+                setFormData((p) => ({ ...p, clientId: id, newClientName: '', newClientEmail: '' }))
+                if (picked) setClientQuery(picked.email ? `${picked.name} — ${picked.email}` : picked.name)
+              }}
+              onCreateRequested={openCreateClient}
+              helperText="Tapez pour rechercher. Si le client n’existe pas, créez-le directement ici."
+              creatingInline={willCreateClient}
+              createName={formData.newClientName ?? ''}
+              createEmail={formData.newClientEmail ?? ''}
+              createError={createClientError}
+              createBusy={clientFormSaving}
+              onCreateNameChange={(v) => setFormData((p) => ({ ...p, newClientName: v }))}
+              onCreateEmailChange={(v) => setFormData((p) => ({ ...p, newClientEmail: v }))}
+              onCreateConfirm={() => void submitCreateClient()}
+              onCreateCancel={() => {
+                setWillCreateClient(false)
+                setCreateClientError(null)
+              }}
+            />
+          </Box>
         </Box>
 
         <Box>
@@ -259,21 +446,11 @@ export function CreateQuoteDialog({
             InputLabelProps={{ shrink: true }}
             fullWidth
             sx={financeFieldSx}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <CalendarMonth fontSize="small" color="action" />
-                  </InputAdornment>
-                ),
-              },
-            }}
           />
         </Box>
 
         <EditableProductLinesTable
           title="Lignes du devis"
-          addLabel="Ligne vide"
           lines={formData.lines.map((line) => ({
             description: line.description,
             quantity: 1,
@@ -283,11 +460,27 @@ export function CreateQuoteDialog({
           products={productsStore.products}
           taxHeader="TVA (0-1)"
           taxInputProps={{ min: 0, max: 1, step: 0.01 }}
-          unitPriceWidth={100}
+          unitPriceWidth={96}
           taxWidth={80}
-          onAddLine={handleAddLine}
+          descriptionWidth="64%"
           onRemoveLine={handleRemoveLine}
           onLineChange={(index, field, value) => handleLineChange(index, field, value)}
+          onProductPicked={(index, product) => {
+            const label = (product.description ?? product.name ?? '').trim()
+            setFormData((prev) => {
+              const next = [...prev.lines]
+              next[index] = {
+                ...next[index],
+                description: label,
+                productId: Number(product.id),
+                unitPrice: Math.round(Number(product.unitPrice ?? next[index].unitPrice ?? 0)),
+              }
+              return {
+                ...prev,
+                lines: ensureTrailingEmptyLine(next, createEmptyQuoteLine),
+              }
+            })
+          }}
         />
 
         <FinanceFormTotalsBox
@@ -300,5 +493,6 @@ export function CreateQuoteDialog({
         />
       </Stack>
     </FinanceFormDialogShell>
+    </>
   )
 }

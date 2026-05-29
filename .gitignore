@@ -32,6 +32,10 @@
 !**/env.prod.example
 !**/.env.example
 
+# Marketing — captures temporaires (PII possible)
+docs/marketing/screenshots-temp/raw/
+docs/marketing/screenshots-temp/captures/
+
 # Logs applicatifs
 **/logs/
 !**/logs/.gitkeep

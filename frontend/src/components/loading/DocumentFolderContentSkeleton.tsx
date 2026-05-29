@@ -101,7 +101,7 @@ export function DocumentFolderContentSkeleton({
         )}
 
         {variant === 'table' ? (
-          <TableContainer sx={{ ...documentFolderTableContainerSx, maxHeight: 560 }}>
+          <TableContainer sx={documentFolderTableContainerSx}>
             <Table size="small" sx={documentFolderTableSx}>
               <TableHead sx={financeTableHeadSx}>
                 <TableRow>

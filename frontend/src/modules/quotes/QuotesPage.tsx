@@ -64,8 +64,10 @@ import {
 import { quoteService } from '../../services/quoteService';
 import { openInvoiceView } from '../../utils/openDocumentView';
 import { useQuotesFolderList } from '../../hooks/useQuotesFolderList';
+import { useOptimisticDocumentFlagsPatch } from '../../hooks/useOptimisticDocumentFlagsPatch';
 import { DocumentFolderLoadMore } from '../../components/finance/DocumentFolderLoadMore';
 import { useToast } from '../../components/useToast';
+import { useUserDocumentTags } from '../../services/userDocumentTags';
 import { organizationService, type OrganizationProfile } from '../../services/organizationService';
 import { unwrapApiPayload } from '../../services/clients';
 
@@ -96,6 +98,7 @@ export function QuotesPage() {
   const isWideActions = useMediaQuery(theme.breakpoints.up('lg'));
   const quotesStore = useQuotes();
   const toast = useToast();
+  const { savedTags, rememberTag, removeFromLibrary } = useUserDocumentTags();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [quoteToSend, setQuoteToSend] = useState<Quote | null>(null);
   const [sendingQuoteEmail, setSendingQuoteEmail] = useState(false);
@@ -111,6 +114,7 @@ export function QuotesPage() {
     hasMore,
     loadMore,
     refresh,
+    setItems,
   } = useQuotesFolderList(activeFolder, debouncedSearch);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [quoteToArchive, setQuoteToArchive] = useState<Quote | null>(null);
@@ -154,10 +158,11 @@ export function QuotesPage() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const patchDocumentFlags = async (id: string, patch: Parameters<typeof quoteService.updateDocumentFlags>[1]) => {
-    await quoteService.updateDocumentFlags(id, patch);
-    await refresh();
-  };
+  const patchDocumentFlags = useOptimisticDocumentFlagsPatch<Quote>(
+    setItems,
+    (id, patch) => quoteService.updateDocumentFlags(id, patch),
+    (message) => toast.error(message),
+  );
 
   const handleArchiveQuote = async () => {
     if (quoteToArchive) {
@@ -361,7 +366,7 @@ export function QuotesPage() {
                 onRemindDeposit={(q) => void handleRemindDeposit(q)}
               />
             ) : (
-              <TableContainer sx={{ ...documentFolderTableContainerSx, maxHeight: 600 }}>
+              <TableContainer sx={documentFolderTableContainerSx}>
                 <Table
                   size="small"
                   sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}
@@ -406,9 +411,13 @@ export function QuotesPage() {
                           </TableCell>
                           <TableCell sx={folderColHideBelowLg}>
                             <DocumentTagsEditor
-                              compact
+                              layout="inline"
                               tags={quote.tags ?? []}
                               onChange={(tags) => patchDocumentFlags(quote.id, { tags })}
+                              maxVisible={2}
+                              savedTags={savedTags}
+                              onRememberTag={rememberTag}
+                              onRemoveSavedTag={removeFromLibrary}
                             />
                           </TableCell>
                           <TableCell>

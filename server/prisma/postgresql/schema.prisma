@@ -253,6 +253,8 @@ model User {
   twoFactorEnabled Boolean @default(false)
   twoFactorSecret  String?
 
+  documentTagLibrary Json?
+
   organizationId Int
   organization   Organization @relation(fields: [organizationId], references: [id])
   sessions       UserSession[]

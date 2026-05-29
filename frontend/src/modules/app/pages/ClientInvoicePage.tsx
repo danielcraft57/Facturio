@@ -468,22 +468,14 @@ export function ClientInvoicePage() {
             )}
 
             {stripeMissing && (
-              <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
                 <Typography fontWeight={800} sx={{ mb: 0.5 }}>
-                  Paiement en ligne non disponible
+                  Règlement en ligne indisponible
                 </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Votre organisation n’a pas configuré les clés Stripe prestataire. Le bouton de paiement n’apparaît donc pas.
+                <Typography variant="body2">
+                  Le paiement par carte n’est pas proposé pour cette facture. Merci de régler selon les modalités
+                  indiquées par votre prestataire (virement, chèque, etc.).
                 </Typography>
-                <Button
-                  component={RouterLink}
-                  to="/parametres/paiements"
-                  variant="contained"
-                  color="warning"
-                  size="small"
-                >
-                  Configurer Stripe
-                </Button>
               </Alert>
             )}
 

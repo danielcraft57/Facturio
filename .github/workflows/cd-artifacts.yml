@@ -35,7 +35,7 @@ jobs:
         working-directory: server
         env:
           NODE_ENV: test
-          DATABASE_URL: file:./prisma/prisma/test.db
+          DATABASE_URL: file:./test.db
 
       - name: Build (server)
         run: npm run build:prod

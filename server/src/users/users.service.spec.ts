@@ -91,5 +91,37 @@ describe('UsersService', () => {
 			);
 		});
 	});
+
+	describe('documentTagLibrary', () => {
+		it('retourne une bibliothèque vide par défaut', async () => {
+			mockPrismaService.user.findUnique.mockResolvedValue({ documentTagLibrary: null });
+
+			const result = await service.getDocumentTagLibrary(1);
+
+			expect(result.tags).toEqual([]);
+		});
+
+		it('normalise et enregistre les tags utilisateur', async () => {
+			mockPrismaService.user.update.mockResolvedValue({
+				documentTagLibrary: ['vip', 'relance'],
+			});
+
+			const result = await service.updateDocumentTagLibrary(1, [' vip ', 'relance', 'vip', '']);
+
+			expect(result.tags).toEqual(['vip', 'relance']);
+			expect(mockPrismaService.user.update).toHaveBeenCalled();
+		});
+
+		it('ajoute un tag sans doublon', async () => {
+			mockPrismaService.user.findUnique.mockResolvedValue({ documentTagLibrary: ['ok'] });
+			mockPrismaService.user.update.mockResolvedValue({
+				documentTagLibrary: ['ok', 'pop'],
+			});
+
+			const result = await service.addDocumentTagToLibrary(1, 'pop');
+
+			expect(result.tags).toEqual(['ok', 'pop']);
+		});
+	});
 });
 

@@ -35,6 +35,12 @@ import {
   financeFieldSx,
 } from '../../components/finance/FinanceFormDialog'
 import { EditableProductLinesTable } from '../../components/finance/EditableProductLinesTable'
+import {
+  applyProductLineFieldChange,
+  ensureTrailingEmptyLine,
+  filterProductLinesForSubmit,
+  removeProductLine,
+} from '../../components/finance/editableProductLinesUtils'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
 type LineForm = {
@@ -42,6 +48,7 @@ type LineForm = {
   quantity: number
   unitPrice: number
   taxRate: number
+  productId?: number | null
 }
 
 type InvoiceEditForm = {
@@ -104,17 +111,26 @@ export function InvoiceEditPage() {
       }
       setInvoice(inv)
       setClients(parseClientsListResponse(clientsRes))
+      const createEmptyItem = (): LineForm => ({
+        description: '',
+        quantity: 1,
+        unitPrice: 0,
+        taxRate: 20,
+      })
       setForm({
         clientId: inv.clientId,
         dueDate: toDateInput(inv.dueDate),
         currency: inv.currency || 'EUR',
         status: inv.status,
-        items: inv.items.map((it) => ({
-          description: it.description,
-          quantity: it.quantity,
-          unitPrice: it.unitPrice,
-          taxRate: it.taxRate,
-        })),
+        items: ensureTrailingEmptyLine(
+          inv.items.map((it) => ({
+            description: it.description,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            taxRate: it.taxRate,
+          })),
+          createEmptyItem,
+        ),
       })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Impossible de charger la facture')
@@ -123,10 +139,18 @@ export function InvoiceEditPage() {
     }
   }
 
+  const createEmptyItem = (): LineForm => ({
+    description: '',
+    quantity: 1,
+    unitPrice: 0,
+    taxRate: 20,
+  })
+
   const totals = useMemo(() => {
     if (!form) return { subtotal: 0, taxTotal: 0, total: 0 }
-    const subtotal = form.items.reduce((s, it) => s + 1 * it.unitPrice, 0)
-    const taxTotal = form.items.reduce((s, it) => {
+    const active = filterProductLinesForSubmit(form.items)
+    const subtotal = active.reduce((s, it) => s + 1 * it.unitPrice, 0)
+    const taxTotal = active.reduce((s, it) => {
       const base = 1 * it.unitPrice
       return s + base * (it.taxRate / 100)
     }, 0)
@@ -136,43 +160,41 @@ export function InvoiceEditPage() {
   const currencySymbol =
     form?.currency === 'USD' ? '$' : form?.currency === 'GBP' ? '£' : '€'
 
-  const handleAddItem = () => {
-    setForm((prev) =>
-      prev
-        ? {
-            ...prev,
-            items: [...prev.items, { description: '', quantity: 1, unitPrice: 0, taxRate: 20 }],
-          }
-        : prev,
-    )
-  }
-
   const handleRemoveItem = (index: number) => {
-    setForm((prev) => {
-      if (!prev || prev.items.length <= 1) return prev
-      return { ...prev, items: prev.items.filter((_, i) => i !== index) }
-    })
+    setForm((prev) =>
+      prev ? { ...prev, items: removeProductLine(prev.items, index, createEmptyItem) } : prev,
+    )
   }
 
   const handleItemChange = (index: number, field: keyof LineForm, value: string | number) => {
     setForm((prev) => {
       if (!prev) return prev
-      const items = [...prev.items]
-      if (field === 'quantity') {
-        items[index] = { ...items[index], quantity: 1 }
-      } else if (field === 'unitPrice') {
-        items[index] = { ...items[index], unitPrice: Math.round(Number(value) || 0) }
-      } else {
-        items[index] = { ...items[index], [field]: value }
+      return {
+        ...prev,
+        items: applyProductLineFieldChange(
+          prev.items,
+          index,
+          (item) => {
+            if (field === 'quantity') {
+              item.quantity = 1
+            } else if (field === 'unitPrice') {
+              item.unitPrice = Math.round(Number(value) || 0)
+            } else {
+              item[field] = value as never
+            }
+            return item
+          },
+          createEmptyItem,
+        ),
       }
-      return { ...prev, items }
     })
   }
 
   const handleSave = async () => {
     if (!id || !form) return
-    if (!form.clientId || form.items.some((it) => !it.description.trim() || it.unitPrice < 0)) {
-      toast.error('Client, descriptions et prix unitaires sont obligatoires.')
+    const filledItems = filterProductLinesForSubmit(form.items)
+    if (!form.clientId || filledItems.length === 0 || filledItems.some((it) => it.unitPrice < 0)) {
+      toast.error('Client, au moins une ligne et prix unitaires valides sont obligatoires.')
       return
     }
     try {
@@ -180,7 +202,7 @@ export function InvoiceEditPage() {
       const existingNames = new Set(
         productsStore.products.map((p) => (p.description ?? p.name ?? '').trim().toLowerCase()),
       )
-      const productCandidates = form.items
+      const productCandidates = filledItems
         .map((line) => ({
           name: line.description.trim(),
           unitPrice: Number(line.unitPrice),
@@ -206,7 +228,7 @@ export function InvoiceEditPage() {
         dueDate: form.dueDate,
         currency: form.currency,
         status: form.status,
-        items: form.items.map((it) => ({
+        items: filledItems.map((it) => ({
           ...it,
           quantity: 1,
           unitPrice: Math.round(Number(it.unitPrice) || 0),
@@ -353,8 +375,6 @@ export function InvoiceEditPage() {
           lines={form.items}
           products={productsStore.products}
           taxHeader="TVA (%)"
-          addLabel="Ajouter une ligne"
-          onAddLine={handleAddItem}
           onRemoveLine={handleRemoveItem}
           onLineChange={(index, field, value) => {
             if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {

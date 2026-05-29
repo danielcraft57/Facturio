@@ -1,6 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import type { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+
+function parseDocumentTagLibrary(raw: unknown): string[] {
+	if (!Array.isArray(raw)) return [];
+	return [...new Set(raw.map((t) => String(t).trim()).filter(Boolean))];
+}
+
+function normalizeDocumentTags(tags: string[]): string[] {
+	return [...new Set(tags.map((t) => t.trim()).filter(Boolean))].slice(0, 100);
+}
 
 /**
  * Service de gestion des utilisateurs
@@ -91,6 +101,33 @@ export class UsersService {
 		});
 
 		return { success: true };
+	}
+
+	async getDocumentTagLibrary(userId: number): Promise<{ tags: string[] }> {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+			select: { documentTagLibrary: true },
+		});
+		if (!user) throw new NotFoundException('Utilisateur introuvable');
+		return { tags: parseDocumentTagLibrary(user.documentTagLibrary) };
+	}
+
+	async updateDocumentTagLibrary(userId: number, tags: string[]): Promise<{ tags: string[] }> {
+		const normalized = normalizeDocumentTags(tags);
+		const updated = await this.prisma.user.update({
+			where: { id: userId },
+			data: { documentTagLibrary: normalized as unknown as Prisma.JsonArray },
+			select: { documentTagLibrary: true },
+		});
+		return { tags: parseDocumentTagLibrary(updated.documentTagLibrary) };
+	}
+
+	async addDocumentTagToLibrary(userId: number, tag: string): Promise<{ tags: string[] }> {
+		const current = (await this.getDocumentTagLibrary(userId)).tags;
+		const t = tag.trim();
+		if (!t) return { tags: current };
+		if (current.includes(t)) return { tags: current };
+		return this.updateDocumentTagLibrary(userId, [...current, t]);
 	}
 }
 

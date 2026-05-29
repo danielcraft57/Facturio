@@ -162,7 +162,9 @@ export class EmailService {
 					: ''
 				: options.paymentUrl
 					? `\n\nConsulter et payer en ligne :\n${options.paymentUrl}\n`
-					: '';
+					: options.invoiceViewUrl
+						? `\n\nConsulter la facture en ligne :\n${options.invoiceViewUrl}\n(Règlement par carte non disponible.)\n`
+						: '';
 
 		const paidNote =
 			!copy && options.alreadyPaid
@@ -571,7 +573,19 @@ export class EmailService {
 				</tr>
 			</table>
 			<p style="font-size: 12px; color: #6b7280; margin-top: 12px;">Paiement sécurisé par carte bancaire.</p>`
-					: ''}
+					: !data.informativeCopy && data.invoiceViewUrl
+						? `
+			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 24px;">
+				<tr>
+					<td>
+						<a href="${data.invoiceViewUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+							Voir la facture en ligne
+						</a>
+					</td>
+				</tr>
+			</table>
+			<p style="font-size: 12px; color: #6b7280; margin-top: 12px;">Le règlement en ligne par carte n’est pas disponible pour cette facture.</p>`
+						: ''}
 		</div>
 		<div class="footer">
 			<p>${legal}</p>

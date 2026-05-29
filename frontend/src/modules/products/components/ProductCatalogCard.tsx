@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import {
   Card,
   CardContent,
@@ -23,12 +23,21 @@ type Props = {
   product: Product;
   onMenu: (event: MouseEvent<HTMLElement>, product: Product) => void;
   onClick?: (product: Product) => void;
+  mode?: 'catalog' | 'compact' | 'list';
 };
 
-export function ProductCatalogCard({ product, onMenu, onClick }: Props) {
+export function ProductCatalogCard({ product, onMenu, onClick, mode = 'catalog' }: Props) {
   const imageUrl = resolveProductImageUrl(product);
+  const [imageBroken, setImageBroken] = useState(false);
   const price = Number(product.unitPrice ?? 0);
-  const details = (product.details || []).slice(0, 3);
+  const details = (product.details || []).slice(0, mode === 'catalog' ? 3 : mode === 'compact' ? 1 : 2);
+  const showVisualImage = Boolean(imageUrl && !imageBroken);
+  const isList = mode === 'list';
+  const isCompact = mode === 'compact';
+
+  useEffect(() => {
+    setImageBroken(false);
+  }, [product.id, imageUrl]);
 
   const handleDownload = (e: MouseEvent) => {
     e.stopPropagation();
@@ -42,7 +51,7 @@ export function ProductCatalogCard({ product, onMenu, onClick }: Props) {
       sx={{
         height: '100%',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: isList ? 'row' : 'column',
         cursor: onClick ? 'pointer' : 'default',
         border: '1px solid',
         borderColor: 'divider',
@@ -59,19 +68,34 @@ export function ProductCatalogCard({ product, onMenu, onClick }: Props) {
       <Box
         sx={{
           position: 'relative',
-          height: 140,
+          width: isList ? 180 : '100%',
+          minWidth: isList ? 180 : undefined,
+          height: isList ? 128 : isCompact ? 92 : 140,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: imageUrl ? 'transparent' : 'primary.main',
-          backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          borderRadius: '12px 12px 0 0',
+          bgcolor: showVisualImage ? 'transparent' : 'primary.main',
+          borderRadius: isList ? '12px 0 0 12px' : '12px 12px 0 0',
+          overflow: 'hidden',
         }}
       >
-        {!imageUrl && (
-          <ProductAvatar product={product} size={72} />
+        {showVisualImage && (
+          <Box
+            component="img"
+            src={imageUrl}
+            alt={product.name}
+            onError={() => setImageBroken(true)}
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        )}
+        {!showVisualImage && (
+          <ProductAvatar product={product} size={isCompact ? 52 : 72} />
         )}
         <IconButton
           size="small"
@@ -90,7 +114,7 @@ export function ProductCatalogCard({ product, onMenu, onClick }: Props) {
         >
           <MoreVertIcon fontSize="small" />
         </IconButton>
-        {imageUrl && (
+        {showVisualImage && (
           <Tooltip title="Télécharger l'image">
             <IconButton
               size="small"
@@ -109,8 +133,8 @@ export function ProductCatalogCard({ product, onMenu, onClick }: Props) {
         )}
       </Box>
 
-      <CardContent sx={{ flex: 1, pt: 1.5, pb: 1 }}>
-        <Typography variant="subtitle1" fontWeight={700} noWrap title={product.name}>
+      <CardContent sx={{ flex: 1, pt: isCompact ? 1 : 1.5, pb: isCompact ? 0.6 : 1 }}>
+        <Typography variant={isCompact ? 'body1' : 'subtitle1'} fontWeight={700} noWrap title={product.name}>
           {product.name}
         </Typography>
         {product.sku && (
@@ -118,23 +142,23 @@ export function ProductCatalogCard({ product, onMenu, onClick }: Props) {
             {product.sku}
           </Typography>
         )}
-        <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: 1 }}>
+        <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: isCompact ? 0.6 : 1 }}>
           <Chip size="small" label={KIND_LABELS[product.kind]} />
-          {product.purpose && (
+          {!isCompact && product.purpose && (
             <Chip size="small" color="primary" variant="outlined" label={PURPOSE_LABELS[product.purpose]} />
           )}
-          {product.category && (
+          {!isCompact && product.category && (
             <Chip size="small" variant="outlined" label={CATEGORY_LABELS[product.category]} />
           )}
         </Stack>
         {product.description && (
           <Typography
-            variant="body2"
+            variant={isCompact ? 'caption' : 'body2'}
             color="text.secondary"
             sx={{
-              mt: 1,
+              mt: isCompact ? 0.6 : 1,
               display: '-webkit-box',
-              WebkitLineClamp: 2,
+              WebkitLineClamp: isList ? 3 : isCompact ? 1 : 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
             }}
@@ -142,7 +166,7 @@ export function ProductCatalogCard({ product, onMenu, onClick }: Props) {
             {product.description}
           </Typography>
         )}
-        {details.length > 0 && (
+        {details.length > 0 && !isCompact && (
           <Box component="ul" sx={{ m: 0, mt: 1, pl: 2.5, color: 'text.secondary' }}>
             {details.map((d, i) => (
               <Typography key={i} component="li" variant="caption">
@@ -151,18 +175,18 @@ export function ProductCatalogCard({ product, onMenu, onClick }: Props) {
             ))}
           </Box>
         )}
-        {product.languages && product.languages.length > 0 && (
-          <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: 1 }}>
-            {product.languages.slice(0, 4).map(lang => (
+        {product.languages && product.languages.length > 0 && !isCompact && (
+          <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: isList ? 0.75 : 1 }}>
+            {product.languages.slice(0, isList ? 6 : 4).map(lang => (
               <Chip key={lang} label={lang} size="small" variant="outlined" sx={{ height: 22 }} />
             ))}
           </Stack>
         )}
       </CardContent>
 
-      <CardActions sx={{ px: 2, pb: 2, pt: 0, justifyContent: 'space-between' }}>
-        <Typography variant="h6" color="primary.main" fontWeight={800}>
-          {price.toFixed(2)} €
+      <CardActions sx={{ px: isCompact ? 1.2 : 2, pb: isCompact ? 1.1 : 2, pt: 0, justifyContent: 'space-between' }}>
+        <Typography variant={isCompact ? 'subtitle1' : 'h6'} color="primary.main" fontWeight={800}>
+          {Math.round(price)} €
         </Typography>
         {Number(product.estimatedHours) > 0 && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>

@@ -35,13 +35,47 @@ export const documentFolderSecondaryFiltersSx: SxProps<Theme> = {
   },
 }
 
-export const documentFolderPageMainSx: SxProps<Theme> = {
+/** Scrollbar discrète (zone liste factures / devis / clients). */
+export const documentFolderScrollbarSx: SxProps<Theme> = (theme) => {
+  const thumb = alpha(FOLDER_NAVY, theme.palette.mode === 'dark' ? 0.38 : 0.2)
+  const thumbHover = alpha(FOLDER_NAVY, theme.palette.mode === 'dark' ? 0.52 : 0.32)
+  return {
+    scrollbarWidth: 'thin',
+    scrollbarColor: `${thumb} transparent`,
+    '&::-webkit-scrollbar': {
+      width: 8,
+      height: 8,
+    },
+    '&::-webkit-scrollbar-track': {
+      background: 'transparent',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: thumb,
+      borderRadius: 8,
+      border: '2px solid transparent',
+      backgroundClip: 'padding-box',
+    },
+    '&::-webkit-scrollbar-thumb:hover': {
+      backgroundColor: thumbHover,
+    },
+    '&::-webkit-scrollbar-corner': {
+      background: 'transparent',
+    },
+  }
+}
+
+export const documentFolderPageMainSx: SxProps<Theme> = (theme) => ({
   flex: 1,
   minWidth: 0,
   overflow: 'auto',
+  overflowX: 'hidden',
+  scrollbarGutter: 'stable',
   p: { xs: 1.5, sm: 2, md: 3 },
-  bgcolor: (t) => (t.palette.mode === 'dark' ? 'background.default' : alpha(FOLDER_NAVY, 0.02)),
-}
+  bgcolor: theme.palette.mode === 'dark' ? 'background.default' : alpha(FOLDER_NAVY, 0.02),
+  ...(typeof documentFolderScrollbarSx === 'function'
+    ? documentFolderScrollbarSx(theme)
+    : documentFolderScrollbarSx),
+})
 
 export const documentFolderSidebarSx: SxProps<Theme> = {
   width: 232,
@@ -97,21 +131,47 @@ export const documentFolderTableCardWrapSx: SxProps<Theme> = {
   minWidth: 0,
 }
 
-export const documentFolderTableContainerSx: SxProps<Theme> = {
-  width: '100%',
-  maxWidth: '100%',
-  overflowX: 'auto',
-  WebkitOverflowScrolling: 'touch',
+/** Défilement horizontal uniquement (colonnes masquées sur petit écran) — pas de hauteur max. */
+export const documentFolderTableContainerSx: SxProps<Theme> = (theme) => {
+  const thumb = alpha(FOLDER_NAVY, theme.palette.mode === 'dark' ? 0.38 : 0.2)
+  return {
+    width: '100%',
+    maxWidth: '100%',
+    overflowX: 'auto',
+    overflowY: 'visible',
+    WebkitOverflowScrolling: 'touch',
+    scrollbarWidth: 'thin',
+    scrollbarColor: `${thumb} transparent`,
+    '&::-webkit-scrollbar': { height: 6 },
+    '&::-webkit-scrollbar-track': { background: 'transparent' },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: thumb,
+      borderRadius: 6,
+      border: '2px solid transparent',
+      backgroundClip: 'padding-box',
+    },
+  }
 }
+
+export const documentFolderBulkCellClass = 'doc-folder-bulk-cell'
 
 export const documentFolderTableSx: SxProps<Theme> = {
   width: '100%',
   tableLayout: 'fixed',
   '& .MuiTableCell-root': {
-    px: { md: 1, lg: 1.5 },
+    px: { md: 1, lg: 1.25 },
     py: { md: 1, lg: 1.25 },
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+  },
+  [`& .MuiTableCell-root.${documentFolderBulkCellClass}`]: {
+    px: 0,
+    py: { md: 1, lg: 1.25 },
+    overflow: 'visible',
+  },
+  '& .doc-folder-col-amount': {
+    overflow: 'visible',
+    textOverflow: 'clip',
   },
 }
 
@@ -124,6 +184,55 @@ export const folderColHideBelowXl: SxProps<Theme> = {
   display: { xs: 'none', xl: 'table-cell' },
 }
 
+export const documentFolderBulkCheckboxClass = 'doc-folder-bulk-cb'
+
+export const documentFolderBulkCheckboxSx: SxProps<Theme> = {
+  p: 0.35,
+  transition: 'opacity 0.15s ease',
+}
+
+export const documentFolderTableHeadSx: SxProps<Theme> = {
+  [`&:hover .${documentFolderBulkCheckboxClass}`]: {
+    opacity: 1,
+    pointerEvents: 'auto',
+  },
+}
+
+export const documentFolderColInvoiceSx: SxProps<Theme> = {
+  width: '15%',
+  minWidth: 120,
+  pl: { md: 0.75, lg: 1 },
+}
+
+export const documentFolderColClientSx: SxProps<Theme> = {
+  width: '28%',
+  minWidth: 140,
+}
+
+export const documentFolderColStatusSx: SxProps<Theme> = {
+  width: '10%',
+  minWidth: 92,
+}
+
+export const documentFolderColAmountSx: SxProps<Theme> = {
+  width: '13%',
+  minWidth: 112,
+  whiteSpace: 'nowrap',
+}
+
+export const documentFolderColDueSx: SxProps<Theme> = {
+  ...folderColHideBelowXl,
+  width: '10%',
+  minWidth: 96,
+}
+
+export const documentFolderColActionsSx = (expanded: boolean): SxProps<Theme> => ({
+  width: expanded ? 188 : 52,
+  minWidth: expanded ? 188 : 52,
+  maxWidth: expanded ? 188 : 52,
+  px: { md: 0.5, lg: 0.75 },
+})
+
 export const documentFolderPageSubtitle = (resource: 'factures' | 'devis') =>
   resource === 'factures'
     ? 'Documents émis — les plus récents en premier'
@@ -133,3 +242,54 @@ export const documentFolderUnreadRowSx: SxProps<Theme> = {
   bgcolor: alpha('#3b82f6', 0.04),
   borderLeft: `3px solid ${alpha('#3b82f6', 0.55)}`,
 }
+
+/** Desktop : case + suivi / important — colonne fixe étroite. */
+export const documentFolderBulkLeadCellSx: SxProps<Theme> = {
+  width: 76,
+  maxWidth: 76,
+  minWidth: 76,
+  pl: 0.5,
+  pr: 0,
+  whiteSpace: 'nowrap',
+  verticalAlign: 'middle',
+  '&.MuiTableCell-paddingCheckbox': {
+    width: 76,
+    paddingLeft: 4,
+    paddingRight: 0,
+  },
+  '& .MuiIconButton-root': {
+    p: 0.35,
+    ml: -0.35,
+  },
+  '& .doc-folder-bulk-cb': {
+    mr: -0.25,
+  },
+}
+
+/** Liste mobile : cases visibles au survol de la liste. */
+export const documentFolderMobileListSx: SxProps<Theme> = {
+  [`&:hover .${documentFolderBulkCheckboxClass}`]: { opacity: 1 },
+}
+
+export const documentFolderBulkRowSx = (
+  selected: boolean,
+  selectionActive: boolean,
+): SxProps<Theme> => ({
+  [`&:hover .${documentFolderBulkCheckboxClass}`]: {
+    opacity: 1,
+    pointerEvents: 'auto',
+  },
+  ...(selected || selectionActive
+    ? {
+        [`& .${documentFolderBulkCheckboxClass}`]: {
+          opacity: 1,
+          pointerEvents: 'auto',
+        },
+      }
+    : {}),
+  ...(selected
+    ? {
+        bgcolor: alpha('#3b82f6', 0.06),
+      }
+    : {}),
+})

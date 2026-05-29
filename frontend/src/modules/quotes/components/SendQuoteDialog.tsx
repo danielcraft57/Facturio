@@ -86,8 +86,6 @@ export function SendQuoteDialog({ open, quote, onClose, onSend, sending = false 
     })
   }
 
-  const blockSend = false
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Envoyer le devis par email</DialogTitle>
@@ -98,24 +96,22 @@ export function SendQuoteDialog({ open, quote, onClose, onSend, sending = false 
               Devis <strong>{quote.number}</strong>
             </Typography>
 
-            {stripeConfigured !== true && (
-              <Alert severity={stripeConfigured === false ? 'info' : 'warning'} sx={{ mb: 2, borderRadius: 2 }}>
+            {stripeConfigured === false && (
+              <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
                 <Typography fontWeight={800} sx={{ mb: 0.5 }}>
-                  Paiement en ligne Stripe non configuré
+                  Facturation et paiement en ligne indisponibles
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>
-                  {stripeConfigured === null
-                    ? 'Vérification de la configuration Stripe…'
-                    : 'Le devis peut être envoyé sans paiement en ligne. Le client ne pourra simplement pas payer en ligne.'}
+                  Vous pouvez envoyer ce devis par email. Sans paiement en ligne configuré, le client ne pourra pas
+                  l’accepter pour générer une facture ni le régler en ligne.
                 </Typography>
                 <Button
                   component={RouterLink}
                   to="/parametres/paiements"
-                  variant="contained"
-                  color="warning"
+                  variant="outlined"
                   size="small"
                 >
-                  Configurer Stripe (optionnel)
+                  Configurer les paiements en ligne
                 </Button>
               </Alert>
             )}
@@ -186,7 +182,7 @@ export function SendQuoteDialog({ open, quote, onClose, onSend, sending = false 
           variant="contained"
           startIcon={<SendIcon />}
           onClick={() => void handleSubmit()}
-          disabled={sending || !email.trim() || blockSend}
+          disabled={sending || !email.trim()}
         >
           {sending ? 'Envoi…' : 'Envoyer'}
         </Button>

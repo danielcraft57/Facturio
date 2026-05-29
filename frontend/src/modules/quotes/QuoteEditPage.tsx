@@ -31,6 +31,12 @@ import {
   financeFieldSx,
 } from '../../components/finance/FinanceFormDialog'
 import { EditableProductLinesTable } from '../../components/finance/EditableProductLinesTable'
+import {
+  applyProductLineFieldChange,
+  ensureTrailingEmptyLine,
+  filterProductLinesForSubmit,
+  removeProductLine,
+} from '../../components/finance/editableProductLinesUtils'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { isEntityCuid } from '../../utils/entityId'
 
@@ -103,17 +109,26 @@ export function QuoteEditPage() {
           name: c.name,
         })),
       )
+      const createEmptyLine = (): LineForm => ({
+        description: '',
+        quantity: 1,
+        unitPrice: 0,
+        taxRate: 0.2,
+      })
       setForm({
         clientId: q.clientId,
         expiryDate: toDateInput(q.expiryDate),
         status: q.status,
-        lines: q.lines.map((ln) => ({
-          productId: (ln as LineForm).productId,
-          description: ln.description,
-          quantity: ln.quantity,
-          unitPrice: ln.unitPrice,
-          taxRate: Number(ln.taxRate ?? 0.2),
-        })),
+        lines: ensureTrailingEmptyLine(
+          q.lines.map((ln) => ({
+            productId: (ln as LineForm).productId,
+            description: ln.description,
+            quantity: ln.quantity,
+            unitPrice: ln.unitPrice,
+            taxRate: Number(ln.taxRate ?? 0.2),
+          })),
+          createEmptyLine,
+        ),
       })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Impossible de charger le devis')
@@ -122,32 +137,25 @@ export function QuoteEditPage() {
     }
   }
 
+  const createEmptyLine = (): LineForm => ({
+    description: '',
+    quantity: 1,
+    unitPrice: 0,
+    taxRate: 0.2,
+  })
+
   const totals = useMemo(() => {
     if (!form) return { subtotal: 0, tax: 0, total: 0 }
-    const subtotal = form.lines.reduce((s, l) => s + 1 * Number(l.unitPrice), 0)
-    const tax = form.lines.reduce(
-      (s, l) => s + 1 * Number(l.unitPrice) * Number(l.taxRate ?? 0),
-      0,
-    )
+    const active = filterProductLinesForSubmit(form.lines)
+    const subtotal = active.reduce((s, l) => s + 1 * Number(l.unitPrice), 0)
+    const tax = active.reduce((s, l) => s + 1 * Number(l.unitPrice) * Number(l.taxRate ?? 0), 0)
     return { subtotal, tax, total: subtotal + tax }
   }, [form])
 
-  const handleAddLine = () => {
-    setForm((prev) =>
-      prev
-        ? {
-            ...prev,
-            lines: [...prev.lines, { description: '', quantity: 1, unitPrice: 0, taxRate: 0.2 }],
-          }
-        : prev,
-    )
-  }
-
   const handleRemoveLine = (index: number) => {
-    setForm((prev) => {
-      if (!prev || prev.lines.length <= 1) return prev
-      return { ...prev, lines: prev.lines.filter((_, i) => i !== index) }
-    })
+    setForm((prev) =>
+      prev ? { ...prev, lines: removeProductLine(prev.lines, index, createEmptyLine) } : prev,
+    )
   }
 
   const handleLineChange = (
@@ -157,26 +165,34 @@ export function QuoteEditPage() {
   ) => {
     setForm((prev) => {
       if (!prev) return prev
-      const lines = [...prev.lines]
-      const line = { ...lines[index] }
-      if (field === 'quantity') {
-        line.quantity = 1
-      } else if (field === 'unitPrice' || field === 'taxRate') {
-        line[field] = Number(value)
-      } else if (field === 'description') {
-        line.description = String(value)
-      } else if (field === 'productId') {
-        line.productId = Number(value)
+      return {
+        ...prev,
+        lines: applyProductLineFieldChange(
+          prev.lines,
+          index,
+          (line) => {
+            if (field === 'quantity') {
+              line.quantity = 1
+            } else if (field === 'unitPrice' || field === 'taxRate') {
+              line[field] = Number(value)
+            } else if (field === 'description') {
+              line.description = String(value)
+            } else if (field === 'productId') {
+              line.productId = Number(value)
+            }
+            return line
+          },
+          createEmptyLine,
+        ),
       }
-      lines[index] = line
-      return { ...prev, lines }
     })
   }
 
   const handleSave = async () => {
     if (!isEntityCuid(quoteId) || !form) return
-    if (form.clientId === '' || form.lines.some((l) => !l.description.trim())) {
-      toast.error('Client et descriptions des lignes sont obligatoires.')
+    const filledLines = filterProductLinesForSubmit(form.lines)
+    if (form.clientId === '' || filledLines.length === 0) {
+      toast.error('Client et au moins une ligne avec description sont obligatoires.')
       return
     }
     try {
@@ -184,7 +200,7 @@ export function QuoteEditPage() {
       const existingNames = new Set(
         productsStore.products.map((p) => (p.description ?? p.name ?? '').trim().toLowerCase()),
       )
-      const productCandidates = form.lines
+      const productCandidates = filledLines
         .map((line) => ({
           name: line.description.trim(),
           unitPrice: Number(line.unitPrice),
@@ -208,7 +224,7 @@ export function QuoteEditPage() {
         clientId: form.clientId,
         expiryDate: form.expiryDate || undefined,
         status: form.status,
-        lines: form.lines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
+        lines: filledLines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
           productId: productId ?? undefined,
           description: description.trim(),
           quantity: 1,
@@ -354,7 +370,6 @@ export function QuoteEditPage() {
 
         <EditableProductLinesTable
           title="Lignes"
-          addLabel="Ligne vide"
           lines={form.lines.map((line) => ({
             description: line.description,
             quantity: 1,
@@ -366,7 +381,6 @@ export function QuoteEditPage() {
           taxInputProps={{ min: 0, max: 1, step: 0.01 }}
           unitPriceWidth={100}
           taxWidth={80}
-          onAddLine={handleAddLine}
           onRemoveLine={handleRemoveLine}
           onLineChange={handleLineChange}
         />

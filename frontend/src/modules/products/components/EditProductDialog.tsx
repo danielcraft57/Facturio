@@ -53,6 +53,8 @@ import {
 import { SelectionCard } from './SelectionCard';
 import { ProductVisualPicker } from './ProductVisualPicker';
 import { ProductAvatar } from './ProductAvatar';
+import { PRODUCT_VISUAL_LIBRARY } from '../constants/productVisualLibrary';
+import { PRODUCT_ICON_OPTIONS } from '../constants/productIconOptions';
 
 const STEP_ICONS = [faTag, faLayerGroup, faEuroSign, faCode, faImage, faAlignLeft, faCheck];
 
@@ -110,6 +112,8 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       setIconName(product.iconName || 'box');
       setImageData(product.imageData);
     } else {
+      const randomVisual = PRODUCT_VISUAL_LIBRARY[Math.floor(Math.random() * PRODUCT_VISUAL_LIBRARY.length)];
+      const randomIcon = PRODUCT_ICON_OPTIONS[Math.floor(Math.random() * PRODUCT_ICON_OPTIONS.length)];
       setName('');
       setSku('');
       setKind('SERVICE');
@@ -120,9 +124,9 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       setLanguages('');
       setDescription('');
       setDetailsText('');
-      setVisualType('icon');
-      setIconName('box');
-      setImageData(undefined);
+      setVisualType('library');
+      setIconName(randomIcon?.name || 'box');
+      setImageData(randomVisual?.id || PRODUCT_VISUAL_LIBRARY[0]?.id);
     }
     setErrors({});
   }, [open, product]);

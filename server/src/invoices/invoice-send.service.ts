@@ -72,6 +72,20 @@ export class InvoiceSendService {
 		const publicViewUrl = result.publicToken
 			? InvoicesService.buildPublicPaymentUrl(result.publicToken)
 			: undefined;
+		const orgProfile = organization as
+			| {
+					invoiceStripeSecretKeySet?: boolean;
+					invoiceStripePublishableKeyPreview?: string | null;
+					invoiceStripePublishableKey?: string | null;
+			  }
+			| undefined;
+		const canPayOnline =
+			!isPaid &&
+			Boolean(
+				orgProfile?.invoiceStripeSecretKeySet === true &&
+					((orgProfile?.invoiceStripePublishableKeyPreview ?? '').trim() ||
+						(orgProfile?.invoiceStripePublishableKey ?? '').trim()),
+			);
 
 		const clientName =
 			(invoice.client as { name?: string; companyName?: string })?.name ||
@@ -87,9 +101,9 @@ export class InvoiceSendService {
 			pdfBuffer: pdf,
 			extraAttachments,
 			trackOpenUrl,
-			paymentUrl: isPaid ? undefined : publicViewUrl,
+			paymentUrl: canPayOnline ? publicViewUrl : undefined,
 			alreadyPaid: isPaid,
-			invoiceViewUrl: isPaid ? publicViewUrl : undefined,
+			invoiceViewUrl: !isPaid && !canPayOnline ? publicViewUrl : isPaid ? publicViewUrl : undefined,
 		});
 
 		const copyRecipients = this.documentCopies.buildCopyRecipients(dto, to, senderEmail);
