@@ -7,10 +7,15 @@ import LabelImportantOutlinedIcon from '@mui/icons-material/LabelImportantOutlin
 import ScheduleIcon from '@mui/icons-material/Schedule'
 import type { DocumentFlags } from '../../types/documentFolders'
 
+/** Couleur « Suivi » (étoile). */
+export const DOCUMENT_FLAG_STAR_COLOR = '#f59e0b'
+/** Couleur « Important » (drapeau). */
+export const DOCUMENT_FLAG_IMPORTANT_COLOR = '#dc2626'
+
 type DocumentFolderRowActionsProps = {
   starred: boolean
   important: boolean
-  onUpdate: (patch: DocumentFlags) => void
+  onUpdate: (patch: DocumentFlags) => void | Promise<void>
   compact?: boolean
 }
 
@@ -21,51 +26,87 @@ export function DocumentFolderRowActions({
   compact,
 }: DocumentFolderRowActionsProps) {
   const [snoozeAnchor, setSnoozeAnchor] = useState<null | HTMLElement>(null)
+  const [pending, setPending] = useState<'star' | 'important' | 'snooze' | null>(null)
+
+  const runUpdate = async (patch: DocumentFlags, key: typeof pending) => {
+    if (pending) return
+    setPending(key)
+    try {
+      await onUpdate(patch)
+    } finally {
+      setPending(null)
+    }
+  }
 
   const snooze = (days: number) => {
     const d = new Date()
     d.setDate(d.getDate() + days)
-    onUpdate({ snoozedUntil: d.toISOString() })
+    void runUpdate({ snoozedUntil: d.toISOString() }, 'snooze')
     setSnoozeAnchor(null)
   }
 
   return (
     <>
       <Tooltip title={starred ? 'Retirer du suivi' : 'Suivi'}>
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation()
-            onUpdate({ starred: !starred })
-          }}
-        >
-          {starred ? (
-            <StarIcon fontSize="small" sx={{ color: '#f59e0b' }} />
-          ) : (
-            <StarBorderIcon fontSize="small" />
-          )}
-        </IconButton>
+        <span>
+          <IconButton
+            size="small"
+            disabled={pending === 'star'}
+            onClick={(e) => {
+              e.stopPropagation()
+              void runUpdate({ starred: !starred }, 'star')
+            }}
+            sx={{
+              '&:hover .star-icon': {
+                color: DOCUMENT_FLAG_STAR_COLOR,
+              },
+            }}
+          >
+            {starred ? (
+              <StarIcon
+                className="star-icon"
+                fontSize="small"
+                sx={{ color: DOCUMENT_FLAG_STAR_COLOR }}
+              />
+            ) : (
+              <StarBorderIcon className="star-icon" fontSize="small" />
+            )}
+          </IconButton>
+        </span>
       </Tooltip>
       <Tooltip title={important ? 'Retirer important' : 'Marquer important'}>
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation()
-            onUpdate({ important: !important })
-          }}
-        >
-          {important ? (
-            <LabelImportantIcon fontSize="small" sx={{ color: '#eab308' }} />
-          ) : (
-            <LabelImportantOutlinedIcon fontSize="small" />
-          )}
-        </IconButton>
+        <span>
+          <IconButton
+            size="small"
+            disabled={pending === 'important'}
+            onClick={(e) => {
+              e.stopPropagation()
+              void runUpdate({ important: !important }, 'important')
+            }}
+            sx={{
+              '&:hover .important-icon': {
+                color: DOCUMENT_FLAG_IMPORTANT_COLOR,
+              },
+            }}
+          >
+            {important ? (
+              <LabelImportantIcon
+                className="important-icon"
+                fontSize="small"
+                sx={{ color: DOCUMENT_FLAG_IMPORTANT_COLOR }}
+              />
+            ) : (
+              <LabelImportantOutlinedIcon className="important-icon" fontSize="small" />
+            )}
+          </IconButton>
+        </span>
       </Tooltip>
       {!compact && (
         <>
           <Tooltip title="Reporter">
             <IconButton
               size="small"
+              disabled={pending === 'snooze'}
               onClick={(e) => {
                 e.stopPropagation()
                 setSnoozeAnchor(e.currentTarget)
@@ -81,7 +122,9 @@ export function DocumentFolderRowActions({
           >
             <MenuItem onClick={() => snooze(1)}>Demain</MenuItem>
             <MenuItem onClick={() => snooze(7)}>Dans 7 jours</MenuItem>
-            <MenuItem onClick={() => onUpdate({ snoozedUntil: null })}>Réactiver</MenuItem>
+            <MenuItem onClick={() => void runUpdate({ snoozedUntil: null }, 'snooze')}>
+              Réactiver
+            </MenuItem>
           </Menu>
         </>
       )}

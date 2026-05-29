@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "packs": [
+    {
+      "id": "agence-web",
+      "name": "Pack Agence web",
+      "description": "Sites vitrine, refontes, pages et SEO pour agences et freelances web.",
+      "priceHint": "19",
+      "skus": [
+        "SITE-VITRINE",
+        "REFONTE-LEGERE",
+        "PAGE-SUPP",
+        "FORM-AVANCE",
+        "SEO-BASIQUE",
+        "PACK-SEO-GOOGLE-CHATGPT",
+        "IDENTITE-MULTI",
+        "FORMATION-DEMI",
+        "MAJ-CONTENU-5H",
+        "DEV-VUE-SPA"
+      ]
+    },
+    {
+      "id": "automation",
+      "name": "Pack Automatisation",
+      "description": "Intégrations API, CRM, migrations et scripts d'automatisation.",
+      "priceHint": "15",
+      "skus": [
+        "INTEG-API",
+        "INTEG-CRM",
+        "MIGRATION-DONNEES",
+        "AUTO-METIER",
+        "IA-AUTOMATISATION-TACHES",
+        "DEV-API-REST",
+        "DEV-GRAPHQL",
+        "AUDIT-OPTIM"
+      ]
+    },
+    {
+      "id": "maintenance",
+      "name": "Pack Maintenance & SLA",
+      "description": "Contrats récurrents, hébergement, sauvegardes et support.",
+      "priceHint": "12",
+      "skus": [
+        "MAINT-MENSUEL",
+        "HEBERG-DOMAIN",
+        "BACKUP-SECU",
+        "SSL-CONFIG",
+        "SUPPORT-ABO",
+        "DEPANNAGE-2H",
+        "SUPPORT-H",
+        "IA-MAINTENANCE-MENSUEL"
+      ]
+    }
+  ]
+}

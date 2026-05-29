@@ -71,6 +71,26 @@ export class ConfigService {
 	}
 
 	// ========================================
+	// FACTURATION ÉLECTRONIQUE — PA PARTENAIRE
+	// ========================================
+
+	get paPartnerProvider(): string {
+		return process.env.PA_PARTNER_PROVIDER?.trim() || 'generic-pa';
+	}
+
+	get paPartnerBaseUrl(): string {
+		return process.env.PA_PARTNER_BASE_URL?.trim() || '';
+	}
+
+	get paPartnerApiKey(): string {
+		return process.env.PA_PARTNER_API_KEY?.trim() || '';
+	}
+
+	get paPartnerConfigured(): boolean {
+		return !!this.paPartnerBaseUrl && !!this.paPartnerApiKey;
+	}
+
+	// ========================================
 	// TAXES ET IMPÔTS
 	// ========================================
 

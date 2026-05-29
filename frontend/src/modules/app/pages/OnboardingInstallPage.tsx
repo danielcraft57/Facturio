@@ -22,6 +22,7 @@ import {
   onboardingService,
   type OnboardingPreviewProduct,
 } from '../../../services/onboardingService'
+import { catalogService, type CatalogPack } from '../../../services/catalogService'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 
 const INSTALL_STEPS = [
@@ -32,6 +33,12 @@ const INSTALL_STEPS = [
 ] as const
 
 const WIZARD_STEPS = ['Bienvenue', 'Profil', 'Stack', 'Validation', 'Installation'] as const
+
+const PACK_LABELS: Record<string, string> = {
+  'agence-web': 'Agence web',
+  automation: 'Automatisation',
+  maintenance: 'Maintenance & SLA',
+}
 
 const STEP_TITLES: Record<number, { title: string; subtitle?: string }> = {
   0: {
@@ -76,6 +83,12 @@ export function OnboardingInstallPage() {
   const [installing, setInstalling] = useState(false)
   const [installStepIndex, setInstallStepIndex] = useState(0)
   const [installProgress, setInstallProgress] = useState(0)
+  const [catalogPacks, setCatalogPacks] = useState<CatalogPack[]>([])
+  const [selectedPackIds, setSelectedPackIds] = useState<string[]>([])
+
+  useEffect(() => {
+    void catalogService.listPacks().then(setCatalogPacks).catch(() => {})
+  }, [])
 
   useEffect(() => {
     onboardingService.getStatus().then((s) => {
@@ -148,10 +161,25 @@ export function OnboardingInstallPage() {
     }
   }
 
+  const togglePack = (packId: string) => {
+    setSelectedPackIds((ids) =>
+      ids.includes(packId) ? ids.filter((id) => id !== packId) : [...ids, packId],
+    )
+  }
+
   const handleInstall = () => {
     void runInstallAnimation(async () => {
       const res = await onboardingService.install(technologyIds)
-      return res.clonedCount
+      let extra = 0
+      for (const packId of selectedPackIds) {
+        try {
+          const installed = await catalogService.installPack(packId)
+          extra += installed.clonedCount
+        } catch {
+          /* pack optionnel — ne bloque pas l'onboarding */
+        }
+      }
+      return res.clonedCount + extra
     })
   }
 
@@ -232,6 +260,24 @@ export function OnboardingInstallPage() {
               </ListItem>
             ))}
           </List>
+          {catalogPacks.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                Packs optionnels (en plus de la stack)
+              </Typography>
+              <Stack direction="row" flexWrap="wrap" gap={1}>
+                {catalogPacks.map((pack) => (
+                  <Chip
+                    key={pack.id}
+                    label={`${PACK_LABELS[pack.id] ?? pack.name} · ${pack.priceHint} €`}
+                    onClick={() => togglePack(pack.id)}
+                    color={selectedPackIds.includes(pack.id) ? 'primary' : 'default'}
+                    variant={selectedPackIds.includes(pack.id) ? 'filled' : 'outlined'}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          )}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <Button variant="outlined" onClick={() => setWizardStep(2)} disabled={installing}>
               Modifier la stack

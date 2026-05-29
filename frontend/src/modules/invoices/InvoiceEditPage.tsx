@@ -8,30 +8,22 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  IconButton,
-  Paper,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
   alpha,
 } from '@mui/material'
-import { Add, Delete, Edit, ReceiptLong } from '@mui/icons-material'
+import { Edit, ReceiptLong } from '@mui/icons-material'
 import {
   invoiceService,
-  normalizeInvoiceFromApi,
-  unwrapApiPayload,
   type Invoice,
   type UpdateInvoiceData,
 } from '../../services/invoices'
 import { clientService, parseClientsListResponse } from '../../services/clients'
 import type { Client } from '../../services/clients'
+import { useProductsStore } from '../../stores/productsStore'
+import { productService } from '../../services/productService'
 import { useToast } from '../../components/useToast'
 import { apiClient } from '../../services/api'
 import { formatDate } from '../../utils/formatters'
@@ -42,6 +34,13 @@ import {
   FinanceFormTotalsBox,
   financeFieldSx,
 } from '../../components/finance/FinanceFormDialog'
+import { EditableProductLinesTable } from '../../components/finance/EditableProductLinesTable'
+import {
+  applyProductLineFieldChange,
+  ensureTrailingEmptyLine,
+  filterProductLinesForSubmit,
+  removeProductLine,
+} from '../../components/finance/editableProductLinesUtils'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
 type LineForm = {
@@ -49,6 +48,7 @@ type LineForm = {
   quantity: number
   unitPrice: number
   taxRate: number
+  productId?: number | null
 }
 
 type InvoiceEditForm = {
@@ -78,6 +78,7 @@ export function InvoiceEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const toast = useToast()
+  const productsStore = useProductsStore()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [clients, setClients] = useState<Client[]>([])
   const [form, setForm] = useState<InvoiceEditForm | null>(null)
@@ -88,6 +89,9 @@ export function InvoiceEditPage() {
   useEffect(() => {
     if (!id) return
     void load(id)
+    if (productsStore.isStale || productsStore.products.length === 0) {
+      productsStore.fetchProducts()
+    }
   }, [id])
 
   const load = async (invoiceId: string) => {
@@ -107,17 +111,26 @@ export function InvoiceEditPage() {
       }
       setInvoice(inv)
       setClients(parseClientsListResponse(clientsRes))
+      const createEmptyItem = (): LineForm => ({
+        description: '',
+        quantity: 1,
+        unitPrice: 0,
+        taxRate: 20,
+      })
       setForm({
         clientId: inv.clientId,
         dueDate: toDateInput(inv.dueDate),
         currency: inv.currency || 'EUR',
         status: inv.status,
-        items: inv.items.map((it) => ({
-          description: it.description,
-          quantity: it.quantity,
-          unitPrice: it.unitPrice,
-          taxRate: it.taxRate,
-        })),
+        items: ensureTrailingEmptyLine(
+          inv.items.map((it) => ({
+            description: it.description,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            taxRate: it.taxRate,
+          })),
+          createEmptyItem,
+        ),
       })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Impossible de charger la facture')
@@ -126,11 +139,19 @@ export function InvoiceEditPage() {
     }
   }
 
+  const createEmptyItem = (): LineForm => ({
+    description: '',
+    quantity: 1,
+    unitPrice: 0,
+    taxRate: 20,
+  })
+
   const totals = useMemo(() => {
     if (!form) return { subtotal: 0, taxTotal: 0, total: 0 }
-    const subtotal = form.items.reduce((s, it) => s + it.quantity * it.unitPrice, 0)
-    const taxTotal = form.items.reduce((s, it) => {
-      const base = it.quantity * it.unitPrice
+    const active = filterProductLinesForSubmit(form.items)
+    const subtotal = active.reduce((s, it) => s + 1 * it.unitPrice, 0)
+    const taxTotal = active.reduce((s, it) => {
+      const base = 1 * it.unitPrice
       return s + base * (it.taxRate / 100)
     }, 0)
     return { subtotal, taxTotal, total: subtotal + taxTotal }
@@ -139,48 +160,79 @@ export function InvoiceEditPage() {
   const currencySymbol =
     form?.currency === 'USD' ? '$' : form?.currency === 'GBP' ? '£' : '€'
 
-  const handleAddItem = () => {
-    setForm((prev) =>
-      prev
-        ? {
-            ...prev,
-            items: [...prev.items, { description: '', quantity: 1, unitPrice: 0, taxRate: 20 }],
-          }
-        : prev,
-    )
-  }
-
   const handleRemoveItem = (index: number) => {
-    setForm((prev) => {
-      if (!prev || prev.items.length <= 1) return prev
-      return { ...prev, items: prev.items.filter((_, i) => i !== index) }
-    })
+    setForm((prev) =>
+      prev ? { ...prev, items: removeProductLine(prev.items, index, createEmptyItem) } : prev,
+    )
   }
 
   const handleItemChange = (index: number, field: keyof LineForm, value: string | number) => {
     setForm((prev) => {
       if (!prev) return prev
-      const items = [...prev.items]
-      items[index] = { ...items[index], [field]: value }
-      return { ...prev, items }
+      return {
+        ...prev,
+        items: applyProductLineFieldChange(
+          prev.items,
+          index,
+          (item) => {
+            if (field === 'quantity') {
+              item.quantity = 1
+            } else if (field === 'unitPrice') {
+              item.unitPrice = Math.round(Number(value) || 0)
+            } else {
+              item[field] = value as never
+            }
+            return item
+          },
+          createEmptyItem,
+        ),
+      }
     })
   }
 
   const handleSave = async () => {
     if (!id || !form) return
-    if (!form.clientId || form.items.some((it) => !it.description.trim() || it.unitPrice <= 0)) {
-      toast.error('Client, descriptions et prix unitaires sont obligatoires.')
+    const filledItems = filterProductLinesForSubmit(form.items)
+    if (!form.clientId || filledItems.length === 0 || filledItems.some((it) => it.unitPrice < 0)) {
+      toast.error('Client, au moins une ligne et prix unitaires valides sont obligatoires.')
       return
     }
     try {
       setSaving(true)
+      const existingNames = new Set(
+        productsStore.products.map((p) => (p.description ?? p.name ?? '').trim().toLowerCase()),
+      )
+      const productCandidates = filledItems
+        .map((line) => ({
+          name: line.description.trim(),
+          unitPrice: Number(line.unitPrice),
+        }))
+        .filter((line) => line.name.length > 0 && !existingNames.has(line.name.toLowerCase()))
+
+      for (const candidate of productCandidates) {
+        try {
+          await productService.createProduct({
+            name: candidate.name,
+            description: candidate.name,
+            unitPrice: candidate.unitPrice > 0 ? candidate.unitPrice : undefined,
+          })
+          existingNames.add(candidate.name.toLowerCase())
+        } catch {
+          // On laisse la sauvegarde de la facture continuer même si la création produit échoue.
+        }
+      }
+
       const payload: UpdateInvoiceData = {
         id,
         clientId: form.clientId,
         dueDate: form.dueDate,
         currency: form.currency,
         status: form.status,
-        items: form.items,
+        items: filledItems.map((it) => ({
+          ...it,
+          quantity: 1,
+          unitPrice: Math.round(Number(it.unitPrice) || 0),
+        })),
       }
       await invoiceService.updateInvoice(payload)
       toast.success('Facture mise à jour')
@@ -319,97 +371,27 @@ export function InvoiceEditPage() {
           </Box>
         </Box>
 
-        <Box>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-            <FinanceFormSectionTitle sx={{ mb: 0 }}>Lignes</FinanceFormSectionTitle>
-            <Button size="small" startIcon={<Add />} onClick={handleAddItem} sx={financeOutlinedButtonSx}>
-              Ajouter une ligne
-            </Button>
-          </Stack>
-          <TableContainer
-            component={Paper}
-            variant="outlined"
-            sx={{ borderRadius: 2, borderColor: (t) => alpha('#0f172a', t.palette.mode === 'dark' ? 0.2 : 0.1) }}
-          >
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Description</TableCell>
-                  <TableCell align="right">Qté</TableCell>
-                  <TableCell align="right">Prix unit.</TableCell>
-                  <TableCell align="right">TVA (%)</TableCell>
-                  <TableCell width={48} />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {form.items.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        sx={financeFieldSx}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        sx={{ width: 72, ...financeFieldSx }}
-                        value={item.quantity}
-                        onChange={(e) =>
-                          handleItemChange(index, 'quantity', parseInt(e.target.value, 10) || 0)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        sx={{ width: 96, ...financeFieldSx }}
-                        value={item.unitPrice}
-                        onChange={(e) =>
-                          handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        sx={{ width: 72, ...financeFieldSx }}
-                        value={item.taxRate}
-                        onChange={(e) =>
-                          handleItemChange(index, 'taxRate', parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        disabled={form.items.length <= 1}
-                        onClick={() => handleRemoveItem(index)}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
+        <EditableProductLinesTable
+          lines={form.items}
+          products={productsStore.products}
+          taxHeader="TVA (%)"
+          onRemoveLine={handleRemoveItem}
+          onLineChange={(index, field, value) => {
+            if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
+              handleItemChange(index, field, Number(value) || 0)
+              return
+            }
+            handleItemChange(index, field, value)
+          }}
+        />
 
         <FinanceFormTotalsBox
           rows={[
-            { label: 'Sous-total HT', value: `${totals.subtotal.toFixed(2)} ${currencySymbol}` },
-            { label: 'TVA', value: `${totals.taxTotal.toFixed(2)} ${currencySymbol}` },
+            { label: 'Sous-total HT', value: `${Math.round(totals.subtotal).toFixed(0)} ${currencySymbol}` },
+            { label: 'TVA', value: `${Math.round(totals.taxTotal).toFixed(0)} ${currencySymbol}` },
           ]}
           totalLabel="Total TTC"
-          totalValue={`${totals.total.toFixed(2)} ${currencySymbol}`}
+          totalValue={`${Math.round(totals.total).toFixed(0)} ${currencySymbol}`}
         />
       </Stack>
     </FinanceFormPageShell>

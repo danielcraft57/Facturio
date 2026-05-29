@@ -57,6 +57,12 @@ export interface CreateInvoiceInput {
 	clientId?: string;
 	/** Date d'échéance */
 	dueDate?: string | Date | null;
+	/** Catégorie d'opération réforme (GOODS, SERVICE, MIXED) */
+	operationCategory?: 'GOODS' | 'SERVICE' | 'MIXED';
+	/** Option TVA sur les débits */
+	vatOnDebits?: boolean;
+	/** Adresse de livraison si différente */
+	deliveryAddress?: string | null;
 	/** Statut de la facture */
 	status?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 	/** Lignes de facture */
@@ -87,6 +93,12 @@ export interface UpdateInvoiceInput {
 	clientId?: string;
 	/** Date d'échéance */
 	dueDate?: string | Date | null;
+	/** Catégorie d'opération réforme (GOODS, SERVICE, MIXED) */
+	operationCategory?: 'GOODS' | 'SERVICE' | 'MIXED';
+	/** Option TVA sur les débits */
+	vatOnDebits?: boolean;
+	/** Adresse de livraison si différente */
+	deliveryAddress?: string | null;
 	/** Statut de la facture */
 	status?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 	/** Lignes de facture */
@@ -552,6 +564,12 @@ export class InvoicesService {
 						clientId,
 						organizationId: orgId,
 						dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+						operationCategory: data.operationCategory,
+						vatOnDebits: data.vatOnDebits,
+						deliveryAddress:
+							data.deliveryAddress === undefined || data.deliveryAddress === null
+								? undefined
+								: data.deliveryAddress.trim() || null,
 						status: invoiceStatus,
 						currency: data.currency ?? 'EUR',
 						subtotal: totals.subtotal,
@@ -831,6 +849,12 @@ export class InvoicesService {
 				number: data.number,
 				clientId: data.clientId,
 				dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+				operationCategory: data.operationCategory,
+				vatOnDebits: data.vatOnDebits,
+				deliveryAddress:
+					data.deliveryAddress === undefined || data.deliveryAddress === null
+						? undefined
+						: data.deliveryAddress.trim() || null,
 				status: data.status,
 				currency: data.currency,
 				subtotal: totals.subtotal,
@@ -938,7 +962,7 @@ export class InvoicesService {
 		const count = (extra: Record<string, unknown>) =>
 			this.prisma.invoice.count({ where: { ...base, ...extra } });
 
-		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons] =
+		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives] =
 			await Promise.all([
 				count(buildDocumentFolderWhere('inbox', now, 'invoice')),
 				count(buildDocumentFolderWhere('nouveau', now, 'invoice')),
@@ -947,9 +971,15 @@ export class InvoicesService {
 				count(buildDocumentFolderWhere('important', now, 'invoice')),
 				count(buildDocumentFolderWhere('envoyes', now, 'invoice')),
 				count(buildDocumentFolderWhere('brouillons', now, 'invoice')),
+				this.prisma.invoice.count({
+					where: {
+						archivedAt: { not: null },
+						...(organizationId ? { organizationId } : {}),
+					},
+				}),
 			]);
 
-		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons };
+		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives };
 	}
 
 	async getFolderCounts(organizationId?: number) {
@@ -1329,28 +1359,6 @@ export class InvoicesService {
 	 */
 	async sendInvoice(id: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
-
-		// Verrou global : tant que Stripe prestataire n’est pas configuré,
-		// on bloque l’envoi (le client ne pourra pas payer en ligne).
-		const isPaid = invoice.status === 'PAID' || Number(invoice.balance) <= 0;
-		if (!isPaid) {
-			const orgId = invoice.organizationId ?? organizationId;
-			if (!orgId) {
-				throw new BadRequestException('Organisation introuvable pour cette facture');
-			}
-			const org = await this.prisma.organization.findUnique({
-				where: { id: orgId },
-				select: { invoiceStripeSecretKey: true, invoiceStripePublishableKey: true },
-			});
-			const stripeOk = Boolean(
-				org?.invoiceStripeSecretKey?.trim() && org?.invoiceStripePublishableKey?.trim(),
-			);
-			if (!stripeOk) {
-				throw new BadRequestException(
-					"Paiement en ligne Stripe non configuré. Allez dans Paramètres → Paiements : /parametres/paiements",
-				);
-			}
-		}
 
 		const token = invoice.publicToken ?? randomBytes(32).toString('hex');
 		const keepPaid =

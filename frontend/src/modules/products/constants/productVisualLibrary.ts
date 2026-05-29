@@ -18,6 +18,16 @@ export const PRODUCT_VISUAL_LIBRARY: LibraryVisual[] = [
   { id: 'library:support', label: 'Support', gradient: ['#b45309', '#fbbf24'], emoji: '🎧' },
   { id: 'library:security', label: 'Sécurité', gradient: ['#991b1b', '#ef4444'], emoji: '🔒' },
   { id: 'library:analytics', label: 'Analytics', gradient: ['#0f766e', '#2dd4bf'], emoji: '📊' },
+  { id: 'library:ai-assistant', label: 'Assistant IA', gradient: ['#4c1d95', '#8b5cf6'], emoji: '🤖' },
+  { id: 'library:automation', label: 'Automatisation', gradient: ['#1f2937', '#334155'], emoji: '⚙️' },
+  { id: 'library:crm', label: 'CRM', gradient: ['#0f766e', '#14b8a6'], emoji: '🧩' },
+  { id: 'library:newsletter', label: 'Newsletter', gradient: ['#1d4ed8', '#38bdf8'], emoji: '✉️' },
+  { id: 'library:booking', label: 'Réservation', gradient: ['#be123c', '#fb7185'], emoji: '📅' },
+  { id: 'library:monitoring', label: 'Monitoring', gradient: ['#7f1d1d', '#ef4444'], emoji: '📡' },
+  { id: 'library:migration', label: 'Migration', gradient: ['#0f172a', '#1d4ed8'], emoji: '🔁' },
+  { id: 'library:dashboard', label: 'Dashboard', gradient: ['#0369a1', '#22d3ee'], emoji: '📉' },
+  { id: 'library:forms', label: 'Formulaires', gradient: ['#166534', '#4ade80'], emoji: '📝' },
+  { id: 'library:marketplace', label: 'Marketplace', gradient: ['#854d0e', '#facc15'], emoji: '🏬' },
 ];
 
 function buildLibrarySvg(item: LibraryVisual): string {

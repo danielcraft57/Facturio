@@ -1,5 +1,6 @@
 import { apiClient, type ApiResponse } from './api'
 import type { DocumentFolder, DocumentFlags, DocumentFolderCounts } from '../types/documentFolders'
+import { normalizeDocumentFolderCounts } from '../types/documentFolders'
 
 // Types pour les factures
 export interface InvoiceItem {
@@ -63,9 +64,6 @@ export interface CreateInvoiceData {
   externalPaymentDate?: string
   externalPaymentMethod?: string
   clientEmail?: string
-  /** Envoyer par email juste après la création */
-  sendByEmailAfterCreate?: boolean
-  sendToEmail?: string
   applyClientCredits?: boolean
 }
 
@@ -214,7 +212,9 @@ export function parseInvoicesListPage(response: unknown): InvoicesListPageResult
     total: Number(payload?.total ?? list.length),
     page: Number(payload?.page ?? 1),
     pageSize: Number(payload?.pageSize ?? payload?.limit ?? list.length),
-    folderCounts: payload?.folderCounts,
+    folderCounts: payload?.folderCounts
+      ? normalizeDocumentFolderCounts(payload.folderCounts)
+      : undefined,
   }
 }
 

@@ -98,9 +98,6 @@ export function SendInvoiceDialog({
     })
   }
 
-  const blockSendBecauseStripeMissing =
-    !isPaid && stripeConfigured === false
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Envoyer la facture par email</DialogTitle>
@@ -118,24 +115,21 @@ export function SendInvoiceDialog({
             )}
 
             {!isPaid && stripeConfigured === false && (
-              <Alert
-                severity="error"
-                sx={{ mb: 2, borderRadius: 2 }}
-              >
+              <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
                 <Typography fontWeight={800} sx={{ mb: 0.5 }}>
-                  Paiement en ligne Stripe non configuré
+                  Paiement en ligne indisponible
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>
-                  Tant que Stripe prestataire n’est pas configuré, l’envoi est bloqué (le client ne pourra pas payer en ligne).
+                  Vous pouvez envoyer cette facture par email. Sans paiement en ligne configuré, le client ne pourra pas
+                  la régler en ligne.
                 </Typography>
                 <Button
                   component={RouterLink}
                   to="/parametres/paiements"
-                  variant="contained"
-                  color="warning"
+                  variant="outlined"
                   size="small"
                 >
-                  Configurer Stripe dans Paramètres
+                  Configurer les paiements en ligne
                 </Button>
               </Alert>
             )}
@@ -206,7 +200,7 @@ export function SendInvoiceDialog({
           variant="contained"
           startIcon={<SendIcon />}
           onClick={() => void handleSubmit()}
-          disabled={sending || !email.trim() || blockSendBecauseStripeMissing}
+          disabled={sending || !email.trim()}
         >
           {sending ? 'Envoi…' : 'Envoyer'}
         </Button>

@@ -1,6 +1,4 @@
 import { Box, Typography, Divider } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGlobe } from '@fortawesome/free-solid-svg-icons';
 import type { MouseEvent } from 'react';
 import type { Product } from '../../../types/product';
 import { groupProductsBySection } from '../constants/danielCraftCatalog';
@@ -11,63 +9,33 @@ type Props = {
   loading?: boolean;
   onMenu: (event: MouseEvent<HTMLElement>, product: Product) => void;
   onCardClick?: (product: Product) => void;
+  mode?: 'catalog' | 'compact' | 'list';
 };
 
-export function ProductCatalogSections({ products, loading, onMenu, onCardClick }: Props) {
+export function ProductCatalogSections({ products, loading, onMenu, onCardClick, mode = 'catalog' }: Props) {
   if (loading) {
-    return <ProductCatalogGrid products={[]} loading onMenu={onMenu} onCardClick={onCardClick} />;
+    return <ProductCatalogGrid products={[]} loading onMenu={onMenu} onCardClick={onCardClick} mode={mode} />;
   }
 
   const sections = groupProductsBySection(products);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          p: 2,
-          borderRadius: 2,
-          bgcolor: 'action.hover',
-          border: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <FontAwesomeIcon icon={faGlobe} style={{ opacity: 0.7 }} />
-        <Box>
-          <Typography variant="body2" fontWeight={600}>
-            Catalogue DanielCraft
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Tarifs indicatifs alignés sur{' '}
-            <Box
-              component="a"
-              href="https://danielcraft.fr/autres-prestations"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ color: 'primary.main' }}
-            >
-              danielcraft.fr/autres-prestations
-            </Box>
-          </Typography>
-        </Box>
-      </Box>
-
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: mode === 'compact' ? 2.5 : 4 }}>
       {sections.map(({ section, products: sectionProducts }, index) => (
-        <Box key={section.id}>
-          <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
+        <Box key={`${section.id}-${index}`}>
+          <Typography variant={mode === 'compact' ? 'subtitle1' : 'h6'} fontWeight={700} sx={{ mb: 0.5 }}>
             {section.label}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: mode === 'compact' ? 1.2 : 2 }}>
             {section.subtitle}
           </Typography>
           <ProductCatalogGrid
             products={sectionProducts}
             onMenu={onMenu}
             onCardClick={onCardClick}
+            mode={mode}
           />
-          {index < sections.length - 1 && <Divider sx={{ mt: 4 }} />}
+          {index < sections.length - 1 && <Divider sx={{ mt: mode === 'compact' ? 2.5 : 4 }} />}
         </Box>
       ))}
     </Box>

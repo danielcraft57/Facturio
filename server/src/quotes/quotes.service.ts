@@ -126,19 +126,21 @@ export class QuotesService {
 		private readonly realtime: RealtimeEventsService,
 	) {}
 
-	private async assertInvoiceStripeConfigured(organizationId: number) {
+	private async isInvoiceStripeConfigured(organizationId: number): Promise<boolean> {
 		const org = await this.prisma.organization.findUnique({
 			where: { id: organizationId },
 			select: { invoiceStripeSecretKey: true, invoiceStripePublishableKey: true },
 		});
-		const stripeOk = Boolean(
+		return Boolean(
 			org?.invoiceStripeSecretKey?.trim() && org?.invoiceStripePublishableKey?.trim(),
 		);
-		if (!stripeOk) {
-			throw new BadRequestException(
-				"Paiement en ligne Stripe non configuré. Allez dans Paramètres → Paiements : /parametres/paiements",
-			);
-		}
+	}
+
+	private async assertInvoiceStripeConfigured(organizationId: number) {
+		if (await this.isInvoiceStripeConfigured(organizationId)) return;
+		throw new BadRequestException(
+			'Paiement en ligne non configuré : ce devis ne pourra pas être facturé ni réglé en ligne par le client. Paramètres → Paiements : /parametres/paiements',
+		);
 	}
 
 	private notifyQuote(
@@ -585,7 +587,7 @@ export class QuotesService {
 		const count = (extra: Record<string, unknown>) =>
 			this.prisma.quote.count({ where: { ...base, ...extra } });
 
-		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons] =
+		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives] =
 			await Promise.all([
 				count(buildDocumentFolderWhere('inbox', now, 'quote')),
 				count(buildDocumentFolderWhere('nouveau', now, 'quote')),
@@ -594,9 +596,15 @@ export class QuotesService {
 				count(buildDocumentFolderWhere('important', now, 'quote')),
 				count(buildDocumentFolderWhere('envoyes', now, 'quote')),
 				count(buildDocumentFolderWhere('brouillons', now, 'quote')),
+				this.prisma.quote.count({
+					where: {
+						archivedAt: { not: null },
+						...(organizationId ? { organizationId } : {}),
+					},
+				}),
 			]);
 
-		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons };
+		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives };
 	}
 
 	async getFolderCounts(organizationId?: number) {
@@ -839,11 +847,14 @@ export class QuotesService {
 			return deposit.status === 'PAID' || bal <= 0;
 		})();
 
+		const onlinePaymentAvailable = await this.isInvoiceStripeConfigured(orgId);
+
 		return {
 			...quote,
 			publicPaymentHints: {
 				hasDepositSplit: Boolean(deposit && remainder),
 				depositPaid,
+				onlinePaymentAvailable,
 			},
 		};
 	}
@@ -874,7 +885,6 @@ export class QuotesService {
 		if (!orgId) {
 			throw new BadRequestException('Organisation manquante pour ce devis');
 		}
-		await this.assertInvoiceStripeConfigured(orgId);
 
 		let invoice = await this.prisma.invoice.findUnique({
 			where: { sourceQuoteId: quote.id },
@@ -891,12 +901,18 @@ export class QuotesService {
 			status: 'ACCEPTED',
 		});
 
+		const onlinePaymentAvailable = await this.isInvoiceStripeConfigured(orgId);
+
 		return {
 			status: 'accepted',
 			id: accepted.id,
 			invoiceId: invoice.id,
 			invoiceNumber: invoice.number,
 			invoiceToken: sent.publicToken,
+			onlinePaymentAvailable,
+			message: onlinePaymentAvailable
+				? undefined
+				: 'Devis accepté. Le règlement en ligne n’est pas disponible : merci de régler selon les modalités convenues avec votre prestataire.',
 		};
 	}
 
@@ -927,7 +943,15 @@ export class QuotesService {
 			throw new BadRequestException('Organisation manquante pour ce devis');
 		}
 
-		await this.assertInvoiceStripeConfigured(quote.organizationId);
+		const onlinePaymentAvailable = await this.isInvoiceStripeConfigured(quote.organizationId);
+		if (!onlinePaymentAvailable) {
+			if (mode === 'DEPOSIT') {
+				throw new BadRequestException(
+					'Le paiement acompte en ligne n’est pas disponible. Contactez votre prestataire pour régler ce devis.',
+				);
+			}
+			return this.publicAccept(token, ip);
+		}
 
 		// Accepte le devis (idempotent)
 		await this.markQuoteAccepted(quote.id, ip);
@@ -1415,7 +1439,6 @@ export class QuotesService {
 		if (!orgId) {
 			throw new BadRequestException('Organisation manquante pour ce devis');
 		}
-		await this.assertInvoiceStripeConfigured(orgId);
 
 		const publicToken = crypto.randomBytes(32).toString('hex');
 		const publicUrl = buildPublicQuoteUrl(publicToken);

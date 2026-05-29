@@ -8,26 +8,19 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  IconButton,
-  Paper,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
   alpha,
 } from '@mui/material'
-import { Add, Delete, Description, Edit, ShoppingCart } from '@mui/icons-material'
+import { Description, Edit } from '@mui/icons-material'
 import { quoteService } from '../../services/quoteService'
 import { clientService, parseClientsListResponse } from '../../services/clients'
 import type { CreateQuoteLineData } from '../../types/quote'
 import type { Quote, QuoteStatus } from '../../types/quote'
 import { useProductsStore } from '../../stores/productsStore'
+import { productService } from '../../services/productService'
 import { useToast } from '../../components/useToast'
 import { formatDate } from '../../utils/formatters'
 import { financePrimaryButtonSx, financeOutlinedButtonSx } from '../../components/finance/financeStyles'
@@ -37,6 +30,13 @@ import {
   FinanceFormTotalsBox,
   financeFieldSx,
 } from '../../components/finance/FinanceFormDialog'
+import { EditableProductLinesTable } from '../../components/finance/EditableProductLinesTable'
+import {
+  applyProductLineFieldChange,
+  ensureTrailingEmptyLine,
+  filterProductLinesForSubmit,
+  removeProductLine,
+} from '../../components/finance/editableProductLinesUtils'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { isEntityCuid } from '../../utils/entityId'
 
@@ -74,7 +74,6 @@ export function QuoteEditPage() {
   const [quote, setQuote] = useState<Quote | null>(null)
   const [clients, setClients] = useState<{ id: string; name: string }[]>([])
   const [form, setForm] = useState<QuoteEditForm | null>(null)
-  const [selectedProductId, setSelectedProductId] = useState<number | ''>('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -110,17 +109,26 @@ export function QuoteEditPage() {
           name: c.name,
         })),
       )
+      const createEmptyLine = (): LineForm => ({
+        description: '',
+        quantity: 1,
+        unitPrice: 0,
+        taxRate: 0.2,
+      })
       setForm({
         clientId: q.clientId,
         expiryDate: toDateInput(q.expiryDate),
         status: q.status,
-        lines: q.lines.map((ln) => ({
-          productId: (ln as LineForm).productId,
-          description: ln.description,
-          quantity: ln.quantity,
-          unitPrice: ln.unitPrice,
-          taxRate: Number(ln.taxRate ?? 0.2),
-        })),
+        lines: ensureTrailingEmptyLine(
+          q.lines.map((ln) => ({
+            productId: (ln as LineForm).productId,
+            description: ln.description,
+            quantity: ln.quantity,
+            unitPrice: ln.unitPrice,
+            taxRate: Number(ln.taxRate ?? 0.2),
+          })),
+          createEmptyLine,
+        ),
       })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Impossible de charger le devis')
@@ -129,68 +137,25 @@ export function QuoteEditPage() {
     }
   }
 
+  const createEmptyLine = (): LineForm => ({
+    description: '',
+    quantity: 1,
+    unitPrice: 0,
+    taxRate: 0.2,
+  })
+
   const totals = useMemo(() => {
-    if (!form) return { subtotal: 0, tax: 0, total: 0, qty: 0 }
-    const subtotal = form.lines.reduce((s, l) => s + Number(l.quantity) * Number(l.unitPrice), 0)
-    const tax = form.lines.reduce(
-      (s, l) => s + Number(l.quantity) * Number(l.unitPrice) * Number(l.taxRate ?? 0),
-      0,
-    )
-    const qty = form.lines.reduce((s, l) => s + Number(l.quantity ?? 0), 0)
-    return { subtotal, tax, total: subtotal + tax, qty }
+    if (!form) return { subtotal: 0, tax: 0, total: 0 }
+    const active = filterProductLinesForSubmit(form.lines)
+    const subtotal = active.reduce((s, l) => s + 1 * Number(l.unitPrice), 0)
+    const tax = active.reduce((s, l) => s + 1 * Number(l.unitPrice) * Number(l.taxRate ?? 0), 0)
+    return { subtotal, tax, total: subtotal + tax }
   }, [form])
 
-  const handleAddLine = () => {
-    setForm((prev) =>
-      prev
-        ? {
-            ...prev,
-            lines: [...prev.lines, { description: '', quantity: 1, unitPrice: 0, taxRate: 0.2 }],
-          }
-        : prev,
-    )
-  }
-
-  const handleAddProductAsLine = () => {
-    if (selectedProductId === '') return
-    const product = productsStore.products.find(
-      (p: { id: number | string }) => Number(p.id) === Number(selectedProductId),
-    )
-    if (!product) return
-    const unitPrice = Number(
-      (product as { unitPrice?: number; unit_price?: number }).unitPrice ??
-        (product as { unit_price?: number }).unit_price ??
-        0,
-    )
-    const description =
-      String(
-        (product as { description?: string; name?: string }).description ??
-          (product as { name?: string }).name ??
-          '',
-      ).trim() || (product as { name?: string }).name
-    const newLine: LineForm = {
-      productId: Number((product as { id: number | string }).id),
-      description: description ?? '',
-      quantity: 1,
-      unitPrice,
-      taxRate: 0.2,
-    }
-    setForm((prev) => {
-      if (!prev) return prev
-      const isSingleEmptyLine =
-        prev.lines.length === 1 &&
-        !String(prev.lines[0].description ?? '').trim() &&
-        Number(prev.lines[0].unitPrice ?? 0) === 0
-      if (isSingleEmptyLine) return { ...prev, lines: [newLine] }
-      return { ...prev, lines: [...prev.lines, newLine] }
-    })
-  }
-
   const handleRemoveLine = (index: number) => {
-    setForm((prev) => {
-      if (!prev || prev.lines.length <= 1) return prev
-      return { ...prev, lines: prev.lines.filter((_, i) => i !== index) }
-    })
+    setForm((prev) =>
+      prev ? { ...prev, lines: removeProductLine(prev.lines, index, createEmptyLine) } : prev,
+    )
   }
 
   const handleLineChange = (
@@ -200,37 +165,70 @@ export function QuoteEditPage() {
   ) => {
     setForm((prev) => {
       if (!prev) return prev
-      const lines = [...prev.lines]
-      const line = { ...lines[index] }
-      if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
-        line[field] = Number(value)
-      } else if (field === 'description') {
-        line.description = String(value)
-      } else if (field === 'productId') {
-        line.productId = Number(value)
+      return {
+        ...prev,
+        lines: applyProductLineFieldChange(
+          prev.lines,
+          index,
+          (line) => {
+            if (field === 'quantity') {
+              line.quantity = 1
+            } else if (field === 'unitPrice' || field === 'taxRate') {
+              line[field] = Number(value)
+            } else if (field === 'description') {
+              line.description = String(value)
+            } else if (field === 'productId') {
+              line.productId = Number(value)
+            }
+            return line
+          },
+          createEmptyLine,
+        ),
       }
-      lines[index] = line
-      return { ...prev, lines }
     })
   }
 
   const handleSave = async () => {
     if (!isEntityCuid(quoteId) || !form) return
-    if (form.clientId === '' || form.lines.some((l) => !l.description.trim())) {
-      toast.error('Client et descriptions des lignes sont obligatoires.')
+    const filledLines = filterProductLinesForSubmit(form.lines)
+    if (form.clientId === '' || filledLines.length === 0) {
+      toast.error('Client et au moins une ligne avec description sont obligatoires.')
       return
     }
     try {
       setSaving(true)
+      const existingNames = new Set(
+        productsStore.products.map((p) => (p.description ?? p.name ?? '').trim().toLowerCase()),
+      )
+      const productCandidates = filledLines
+        .map((line) => ({
+          name: line.description.trim(),
+          unitPrice: Number(line.unitPrice),
+        }))
+        .filter((line) => line.name.length > 0 && !existingNames.has(line.name.toLowerCase()))
+
+      for (const candidate of productCandidates) {
+        try {
+          await productService.createProduct({
+            name: candidate.name,
+            description: candidate.name,
+            unitPrice: candidate.unitPrice > 0 ? candidate.unitPrice : undefined,
+          })
+          existingNames.add(candidate.name.toLowerCase())
+        } catch {
+          // On laisse la sauvegarde du devis continuer même si la création produit échoue.
+        }
+      }
+
       await quoteService.updateQuote(quoteId, {
         clientId: form.clientId,
         expiryDate: form.expiryDate || undefined,
         status: form.status,
-        lines: form.lines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
+        lines: filledLines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
           productId: productId ?? undefined,
           description: description.trim(),
-          quantity: Number(quantity),
-          unitPrice: Number(unitPrice),
+          quantity: 1,
+          unitPrice: Math.round(Number(unitPrice)),
           taxRate: Number(taxRate),
         })),
       })
@@ -370,124 +368,30 @@ export function QuoteEditPage() {
           />
         </Box>
 
-        <Box>
-          <FinanceFormSectionTitle>Catalogue produits</FinanceFormSectionTitle>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <FormControl size="small" sx={{ minWidth: 260, flex: 1, ...financeFieldSx }}>
-              <InputLabel>Produit</InputLabel>
-              <Select
-                label="Produit"
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value as number | '')}
-              >
-                <MenuItem value="">Sélectionner…</MenuItem>
-                {productsStore.products.map((p: { id: number | string; name: string; unitPrice?: number }) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name} – {Number(p.unitPrice ?? 0).toFixed(2)} € HT
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<ShoppingCart />}
-              onClick={handleAddProductAsLine}
-              disabled={selectedProductId === ''}
-              sx={financePrimaryButtonSx}
-            >
-              Ajouter cette ligne
-            </Button>
-          </Box>
-        </Box>
-
-        <Box>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-            <FinanceFormSectionTitle sx={{ mb: 0 }}>Lignes</FinanceFormSectionTitle>
-            <Button size="small" startIcon={<Add />} onClick={handleAddLine} sx={financeOutlinedButtonSx}>
-              Ligne vide
-            </Button>
-          </Stack>
-          <TableContainer
-            component={Paper}
-            variant="outlined"
-            sx={{ borderRadius: 2, borderColor: (t) => alpha('#0f172a', t.palette.mode === 'dark' ? 0.2 : 0.1) }}
-          >
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Description</TableCell>
-                  <TableCell align="right">Qté</TableCell>
-                  <TableCell align="right">Prix unit. HT</TableCell>
-                  <TableCell align="right">TVA (0–1)</TableCell>
-                  <TableCell width={48} />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {form.lines.map((line, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        fullWidth
-                        value={line.description}
-                        onChange={(e) => handleLineChange(i, 'description', e.target.value)}
-                        sx={financeFieldSx}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        sx={{ width: 70, ...financeFieldSx }}
-                        value={line.quantity}
-                        onChange={(e) => handleLineChange(i, 'quantity', e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        sx={{ width: 100, ...financeFieldSx }}
-                        value={line.unitPrice}
-                        onChange={(e) => handleLineChange(i, 'unitPrice', e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <TextField
-                        size="small"
-                        type="number"
-                        inputProps={{ min: 0, max: 1, step: 0.01 }}
-                        sx={{ width: 80, ...financeFieldSx }}
-                        value={line.taxRate ?? 0.2}
-                        onChange={(e) => handleLineChange(i, 'taxRate', e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        disabled={form.lines.length <= 1}
-                        onClick={() => handleRemoveLine(i)}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
+        <EditableProductLinesTable
+          title="Lignes"
+          lines={form.lines.map((line) => ({
+            description: line.description,
+            quantity: 1,
+            unitPrice: Math.round(Number(line.unitPrice)),
+            taxRate: line.taxRate ?? 0.2,
+          }))}
+          products={productsStore.products}
+          taxHeader="TVA (0-1)"
+          taxInputProps={{ min: 0, max: 1, step: 0.01 }}
+          unitPriceWidth={100}
+          taxWidth={80}
+          onRemoveLine={handleRemoveLine}
+          onLineChange={handleLineChange}
+        />
 
         <FinanceFormTotalsBox
           rows={[
-            { label: 'Total qté / heures', value: String(totals.qty) },
-            { label: 'Total HT', value: `${totals.subtotal.toFixed(2)} €` },
-            { label: 'TVA', value: `${totals.tax.toFixed(2)} €` },
+            { label: 'Total HT', value: `${Math.round(totals.subtotal).toFixed(0)} €` },
+            { label: 'TVA', value: `${Math.round(totals.tax).toFixed(0)} €` },
           ]}
           totalLabel="Total TTC"
-          totalValue={`${totals.total.toFixed(2)} €`}
+          totalValue={`${Math.round(totals.total).toFixed(0)} €`}
         />
       </Stack>
     </FinanceFormPageShell>

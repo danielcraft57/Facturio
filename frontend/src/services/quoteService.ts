@@ -10,6 +10,7 @@ import type {
 } from '../types/quote';
 import type { ApiResponse } from '../types/api';
 import type { DocumentFolderCounts, DocumentFlags } from '../types/documentFolders';
+import { normalizeDocumentFolderCounts } from '../types/documentFolders';
 import { unwrapApiPayload } from './invoices';
 
 export type QuotesListPageResult = {
@@ -105,7 +106,9 @@ export function parseQuotesListPage(response: unknown): QuotesListPageResult {
     total: Number(payload?.total ?? list.length),
     page: Number(payload?.page ?? 1),
     pageSize: Number(payload?.limit ?? list.length),
-    folderCounts: payload?.folderCounts,
+    folderCounts: payload?.folderCounts
+      ? normalizeDocumentFolderCounts(payload.folderCounts)
+      : undefined,
   };
 }
 

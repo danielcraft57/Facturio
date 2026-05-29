@@ -136,6 +136,7 @@ model User {
   twoFactorSecret          String?
   privacyConsentAt         DateTime?
   termsAcceptedAt          DateTime?
+  documentTagLibrary       Json?
   organization             Organization  @relation(fields: [organizationId], references: [id])
   sessions                 UserSession[]
 
@@ -249,6 +250,9 @@ model Invoice {
   number              String             @unique
   date                DateTime           @default(now())
   dueDate             DateTime?
+  operationCategory   String?
+  vatOnDebits         Boolean?
+  deliveryAddress     String?
   status              InvoiceStatus      @default(DRAFT)
   clientId            String
   subscriptionId      Int?

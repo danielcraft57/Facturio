@@ -1,8 +1,7 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   Box,
   Button,
-  Divider,
   List,
   ListItemButton,
   ListItemIcon,
@@ -27,6 +26,7 @@ import AddIcon from '@mui/icons-material/Add'
 import {
   DOCUMENT_FOLDER_LABELS,
   DOCUMENT_FOLDERS,
+  formatDocumentFolderCount,
   type DocumentFolder,
   type DocumentFolderCounts,
 } from '../../types/documentFolders'
@@ -55,8 +55,35 @@ type DocumentFolderSidebarProps = {
   newLabel: string
   mobileOpen?: boolean
   onMobileClose?: () => void
-  /** Compteurs dossiers encore en chargement. */
   countsLoading?: boolean
+}
+
+function FolderCountBadge({
+  count,
+  highlight,
+  loading,
+}: {
+  count: number
+  highlight?: boolean
+  loading?: boolean
+}) {
+  if (loading) {
+    return <Skeleton variant="rounded" width={28} height={18} animation="wave" />
+  }
+  if (count <= 0) return null
+  return (
+    <Typography
+      variant="caption"
+      fontWeight={700}
+      sx={{
+        minWidth: 24,
+        textAlign: 'right',
+        color: highlight ? 'primary.main' : 'text.secondary',
+      }}
+    >
+      {formatDocumentFolderCount(count)}
+    </Typography>
+  )
 }
 
 function SidebarContent({
@@ -69,6 +96,9 @@ function SidebarContent({
   countsLoading = false,
 }: DocumentFolderSidebarProps & { onNavigate?: () => void }) {
   const base = `/${resource}`
+  const location = useLocation()
+  const archivesActive = location.pathname.endsWith('/archives')
+  const archiveCount = counts.archives ?? 0
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -90,7 +120,7 @@ function SidebarContent({
       <List dense sx={{ flex: 1, px: 0.75, py: 0.5 }}>
         {DOCUMENT_FOLDERS.map((folder) => {
           const count = counts[folder] ?? 0
-          const selected = activeFolder === folder
+          const selected = activeFolder === folder && !archivesActive
           return (
             <ListItemButton
               key={folder}
@@ -116,41 +146,39 @@ function SidebarContent({
                   color: selected ? FOLDER_NAVY : 'text.primary',
                 }}
               />
-              {countsLoading ? (
-                <Skeleton variant="rounded" width={22} height={18} animation="wave" />
-              ) : count > 0 ? (
-                <Typography
-                  variant="caption"
-                  fontWeight={700}
-                  sx={{
-                    minWidth: 20,
-                    textAlign: 'right',
-                    color: folder === 'nouveau' ? 'primary.main' : 'text.secondary',
-                  }}
-                >
-                  {count}
-                </Typography>
-              ) : null}
+              <FolderCountBadge
+                count={count}
+                highlight={folder === 'nouveau'}
+                loading={countsLoading}
+              />
             </ListItemButton>
           )
         })}
-      </List>
 
-      <Divider sx={{ mx: 1 }} />
-      <List dense sx={{ px: 0.75, py: 0.5 }}>
         <ListItemButton
           component={Link}
           to={`${base}/archives`}
+          selected={archivesActive}
           onClick={onNavigate}
-          sx={{ borderRadius: 2, py: 0.75 }}
+          sx={documentFolderItemSx(archivesActive)}
         >
-          <ListItemIcon sx={{ minWidth: 34, color: 'text.secondary' }}>
+          <ListItemIcon
+            sx={{
+              minWidth: 34,
+              color: archivesActive ? FOLDER_NAVY : 'text.secondary',
+            }}
+          >
             <ArchiveIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText
             primary="Archives"
-            primaryTypographyProps={{ fontSize: '0.8125rem', fontWeight: 500 }}
+            primaryTypographyProps={{
+              fontSize: '0.8125rem',
+              fontWeight: archivesActive ? 700 : 500,
+              color: archivesActive ? FOLDER_NAVY : 'text.primary',
+            }}
           />
+          <FolderCountBadge count={archiveCount} loading={countsLoading} />
         </ListItemButton>
       </List>
     </Box>

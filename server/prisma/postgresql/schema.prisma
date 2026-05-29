@@ -253,6 +253,8 @@ model User {
   twoFactorEnabled Boolean @default(false)
   twoFactorSecret  String?
 
+  documentTagLibrary Json?
+
   organizationId Int
   organization   Organization @relation(fields: [organizationId], references: [id])
   sessions       UserSession[]
@@ -373,6 +375,9 @@ model Invoice {
   number             String                  @unique
   date               DateTime                @default(now())
   dueDate            DateTime?
+  operationCategory  String?
+  vatOnDebits        Boolean?
+  deliveryAddress    String?
   status             InvoiceStatus           @default(DRAFT)
   clientId           String
   client             Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)

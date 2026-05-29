@@ -1,47 +1,79 @@
-import { Box, Container, Typography, Alert } from '@mui/material'
+import { Box, Button, Container, Typography, Alert, Grid, Card, CardContent, alpha } from '@mui/material'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import { Link as RouterLink } from 'react-router-dom'
 import { MarketingHero } from '../components/MarketingHero'
 import { PricingSection } from '../components/PricingCards'
 import { CtaSection } from '../components/CtaSection'
 import { ScrollReveal } from '../components/ScrollReveal'
 import { MarketingImage } from '../components/MarketingImage'
-
-const FAQ = [
-  {
-    q: 'Comment limiter l’accès sur le plan Free ?',
-    a: 'Dès maintenant : maximum 10 factures créées par mois et calendrier. Au-delà, l’API renvoie une erreur et l’app affiche une invitation à passer Pro.',
-  },
-  {
-    q: 'Pourquoi un palier « Pro + e-facture » ?',
-    a: 'La réforme impose le passage par une Plateforme Agréée. Ce palier réservera l’accès au connecteur PA et à Factur-X dès leur mise en production (module en développement).',
-  },
-  {
-    q: 'Facturio remplace ma compta ?',
-    a: 'Non. Facturation verticale + bases comptables. Export FEC vers votre expert-comptable.',
-  },
-] as const
+import { CTA, PRICING_FAQ, REFORM_DATES } from '../constants/siteContent'
 
 export function PricingPage() {
   return (
     <Box>
       <MarketingHero
         compact
-        title="Tarifs transparents"
-        subtitle="Freemium pour acquérir, Pro pour le métier (prospection incluse). Le palier e-facture réserve le module PA (en développement)."
-        primaryCta={{ label: 'Commencer gratuitement', to: '/signup' }}
-        secondaryCta={{ label: 'Se connecter', to: '/login' }}
+        badge="Free · Pro · Pro + e-facture · Agence"
+        title="Tarifs transparents, pensés pour l'inscription"
+        subtitle="Gratuit pour tester. Pro pour le quotidien. Pro + e-facture pour anticiper la réception obligatoire du 1er septembre 2026 — sans payer une compta complète."
+        primaryCta={CTA.signupFree}
+        secondaryCta={CTA.reserveEfacture}
         visual={<MarketingImage src="/images/facturio-pricing.png" alt="Paliers tarifaires Facturio" float={false} />}
       />
 
       <Container maxWidth="lg" sx={{ py: 3 }}>
-        <ScrollReveal>
-          <Alert severity="success" sx={{ borderRadius: 2 }}>
-            <strong>Dogfooding DanielCraft</strong> — Facturio facture les prestations du site. Plan Free : 10 factures /
-            mois ; Pro : illimité (champ <code>saasPlan</code> sur l&apos;organisation).
-          </Alert>
-        </ScrollReveal>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <ScrollReveal>
+              <Alert severity="success" sx={{ borderRadius: 2, height: '100%' }}>
+                <strong>Dogfooding DanielCraft</strong> — Facturio facture les prestations du site. Plan Free : 10
+                factures/mois ; Pro : illimité.
+              </Alert>
+            </ScrollReveal>
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <ScrollReveal delayMs={60}>
+              <Alert severity="warning" sx={{ borderRadius: 2, height: '100%' }}>
+                <strong>Rappel réforme</strong> — Réception e-factures pour toutes les structures TVA dès le{' '}
+                {REFORM_DATES.reception}. Émission micro/PME : {REFORM_DATES.emissionPme}.
+              </Alert>
+            </ScrollReveal>
+          </Grid>
+        </Grid>
       </Container>
 
       <PricingSection showTitle={false} />
+
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <ScrollReveal>
+          <Card
+            sx={{
+              borderRadius: 3,
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.06),
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="h6" fontWeight={700} gutterBottom>
+                Pas sûr de votre échéance ?
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 480, mx: 'auto' }}>
+                Consultez la feuille de route facturation électronique : calendrier, score de conformité et palier
+                Pro + e-facture.
+              </Typography>
+              <Button
+                component={RouterLink}
+                to={CTA.efacture2026.to}
+                variant="contained"
+                endIcon={<ArrowForwardIcon />}
+              >
+                {CTA.efacture2026.label}
+              </Button>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
+      </Container>
 
       <Container maxWidth="md" sx={{ py: 8 }}>
         <ScrollReveal>
@@ -49,7 +81,7 @@ export function PricingPage() {
             Questions fréquentes
           </Typography>
         </ScrollReveal>
-        {FAQ.map((item, i) => (
+        {PRICING_FAQ.map((item, i) => (
           <ScrollReveal key={item.q} delayMs={i * 50}>
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
@@ -63,7 +95,14 @@ export function PricingPage() {
         ))}
       </Container>
 
-      <CtaSection />
+      <CtaSection
+        title="Commencez gratuit — montez en gamme quand vous scalez"
+        subtitle="10 factures/mois suffisent pour valider le produit. Pro dès que vous prospectez ou dépassez le quota."
+        primaryLabel={CTA.signupFree.label}
+        primaryTo={CTA.signupFree.to}
+        secondaryLabel={CTA.reserveEfacture.label}
+        secondaryTo={CTA.reserveEfacture.to}
+      />
     </Box>
   )
 }

@@ -2,23 +2,10 @@ import { useState, useEffect } from 'react'
 import {
   Button,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Box,
-  Typography,
   FormControlLabel,
   Checkbox,
   Alert,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   Stack,
 
   InputAdornment,
@@ -28,10 +15,7 @@ import {
   CircularProgress,
 } from '@mui/material'
 import {
-  Add,
-  Delete,
   ReceiptLong,
-  Email,
   CalendarMonth,
   Payments,
 } from '@mui/icons-material'
@@ -42,12 +26,24 @@ import {
   FinanceFormTotalsBox,
   financeFieldSx,
 } from '../../../components/finance/FinanceFormDialog'
+import { EditableProductLinesTable } from '../../../components/finance/EditableProductLinesTable'
+import {
+  applyProductLineFieldChange,
+  ensureTrailingEmptyLine,
+  filterProductLinesForSubmit,
+  removeProductLine,
+} from '../../../components/finance/editableProductLinesUtils'
+import { FinanceClientAutocomplete, type FinanceClientOption } from '../../../components/finance/FinanceClientAutocomplete'
+import { clientQueryDraft, guessClientNameFromQuery, isClientEmail } from '../../../components/finance/financeClientQuery'
 import { apiClient } from '../../../services/api'
 import { clientService, parseClientsListResponse } from '../../../services/clients'
 import type { Client } from '../../../services/clients'
+import { useProductsStore } from '../../../stores/productsStore'
+import { productService } from '../../../services/productService'
 
 interface InvoiceItem {
   id: string
+  productId?: number
   description: string
   quantity: number
   unitPrice: number
@@ -69,8 +65,6 @@ interface CreateInvoiceData {
   externalPaymentDate?: string
   externalPaymentMethod?: string
   clientEmail?: string
-  sendByEmailAfterCreate?: boolean
-  sendToEmail?: string
   applyClientCredits?: boolean
 }
 
@@ -104,16 +98,14 @@ export function CreateInvoiceDialog({
 }: CreateInvoiceDialogProps) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const productsStore = useProductsStore()
   
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<CreateInvoiceData>(createEmptyInvoiceForm)
   const [willCreateClient, setWillCreateClient] = useState(false)
-
-  const emailNorm = (formData.clientEmail ?? '').trim().toLowerCase()
-  const matchedClient = emailNorm
-    ? clients.find((c) => c.email?.trim().toLowerCase() === emailNorm)
-    : undefined
+  const [clientQuery, setClientQuery] = useState('')
+  const [createClientError, setCreateClientError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -121,37 +113,18 @@ export function CreateInvoiceDialog({
         ...createEmptyInvoiceForm(),
         ...(defaultClientId ? { clientId: defaultClientId } : {}),
       })
+      setClientQuery('')
+      setCreateClientError(null)
       loadClients()
+      productsStore.fetchProducts()
     }
   }, [open, defaultClientId])
 
-  useEffect(() => {
-    if (!emailNorm) {
-      setWillCreateClient(false)
-      return
-    }
-    if (matchedClient) {
-      setWillCreateClient(false)
-      setFormData((prev) =>
-        prev.clientId === matchedClient.id
-          ? prev
-          : { ...prev, clientId: matchedClient.id, newClientName: undefined },
-      )
-      return
-    }
-    setWillCreateClient(true)
-    setFormData((prev) => ({
-      ...prev,
-      clientId: '',
-      newClientName:
-        prev.newClientName ||
-        emailNorm
-          .split('@')[0]
-          ?.replace(/[._+-]+/g, ' ')
-          .replace(/\b\w/g, (c) => c.toUpperCase()) ||
-        'Client',
-    }))
-  }, [emailNorm, clients])
+  const clientOptions: FinanceClientOption[] = clients.map((c) => ({
+    id: c.id,
+    name: c.name,
+    email: c.email,
+  }))
 
   const loadClients = async () => {
     try {
@@ -187,51 +160,52 @@ export function CreateInvoiceDialog({
       clientEmail: c.email?.trim() || prev.clientEmail,
       newClientName: undefined,
     }))
+    setClientQuery(c.email ? `${c.name} — ${c.email}` : c.name)
   }, [open, defaultClientId, clients])
 
-  const handleAddItem = () => {
-    setFormData(prev => ({
+  const createEmptyInvoiceItem = (): CreateInvoiceData['items'][number] => ({
+    description: '',
+    quantity: 1,
+    unitPrice: 0,
+    taxRate: 20,
+  })
+
+  const handleRemoveItem = (index: number) => {
+    setFormData((prev) => ({
       ...prev,
-      items: [
-        ...prev.items,
-        {
-          description: '',
-          quantity: 1,
-          unitPrice: 0,
-          taxRate: 20
-        }
-      ]
+      items: removeProductLine(prev.items, index, createEmptyInvoiceItem),
     }))
   }
 
-  const handleRemoveItem = (index: number) => {
-    if (formData.items.length > 1) {
-      setFormData(prev => ({
-        ...prev,
-        items: prev.items.filter((_, i) => i !== index)
-      }))
-    }
-  }
-
-  const handleItemChange = (index: number, field: keyof InvoiceItem, value: any) => {
-    setFormData(prev => {
-      const newItems = [...prev.items]
-      newItems[index] = { ...newItems[index], [field]: value }
-      
-      // Recalculer les totaux
-      if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
-        // Note: total et totalWithTax ne sont pas stockés dans formData.items
-        // mais calculés dynamiquement dans calculateTotals()
-      }
-      
-      return { ...prev, items: newItems }
-    })
+  const handleItemChange = (index: number, field: keyof InvoiceItem, value: string | number) => {
+    setFormData((prev) => ({
+      ...prev,
+      items: applyProductLineFieldChange(
+        prev.items,
+        index,
+        (item) => {
+          if (field === 'quantity') {
+            item.quantity = 1
+          } else if (field === 'unitPrice') {
+            item.unitPrice = Math.round(Number(value) || 0)
+          } else if (field === 'description') {
+            item.description = String(value)
+            item.productId = undefined
+          } else {
+            return { ...item, [field]: value }
+          }
+          return item
+        },
+        createEmptyInvoiceItem,
+      ),
+    }))
   }
 
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0)
-    const taxTotal = formData.items.reduce((sum, item) => {
-      const itemTotal = item.quantity * item.unitPrice
+    const activeItems = filterProductLinesForSubmit(formData.items)
+    const subtotal = activeItems.reduce((sum, item) => sum + 1 * item.unitPrice, 0)
+    const taxTotal = activeItems.reduce((sum, item) => {
+      const itemTotal = 1 * item.unitPrice
       return sum + (itemTotal * item.taxRate / 100)
     }, 0)
     const total = subtotal + taxTotal
@@ -239,35 +213,79 @@ export function CreateInvoiceDialog({
     return { subtotal, taxTotal, total }
   }
 
+  const ensureProductsLinked = async (itemsToLink: typeof formData.items) => {
+    const existingByName = new Map(
+      productsStore.products.map((p) => [((p.description ?? p.name ?? '').trim().toLowerCase()), p]),
+    )
+    const nextItems = [...itemsToLink]
+    for (let i = 0; i < nextItems.length; i += 1) {
+      const item = nextItems[i]
+      const key = String(item.description ?? '').trim().toLowerCase()
+      if (!key) continue
+      const known = existingByName.get(key)
+      if (known) {
+        nextItems[i] = {
+          ...item,
+          productId: Number(known.id),
+          unitPrice: Math.round(Number(known.unitPrice ?? item.unitPrice ?? 0)),
+        }
+        continue
+      }
+      try {
+        const created = await productService.createProduct({
+          name: String(item.description ?? '').trim(),
+          description: String(item.description ?? '').trim(),
+          unitPrice: Number(item.unitPrice) > 0 ? Number(item.unitPrice) : undefined,
+        })
+        const createdProduct = created.data
+        if (createdProduct) {
+          existingByName.set(key, createdProduct)
+          nextItems[i] = {
+            ...item,
+            productId: Number(createdProduct.id),
+            unitPrice: Math.round(Number(createdProduct.unitPrice ?? item.unitPrice ?? 0)),
+          }
+        }
+      } catch {
+        // On continue la création facture même si la création produit échoue.
+      }
+    }
+    await productsStore.fetchProducts()
+    return nextItems
+  }
+
   const handleSubmit = async () => {
-    const selected = formData.clientId
-      ? clients.find((c) => c.id === formData.clientId)
-      : undefined
-    const email =
-      formData.clientEmail?.trim() ||
-      matchedClient?.email ||
-      selected?.email?.trim()
-    if (!email || formData.items.some((item) => !item.description || item.unitPrice <= 0)) {
+    const email = formData.clientEmail?.trim()
+    const filledItems = filterProductLinesForSubmit(formData.items)
+    if (
+      !email ||
+      filledItems.length === 0 ||
+      filledItems.some((item) => item.unitPrice < 0)
+    ) {
       return
     }
     if (willCreateClient && !formData.newClientName?.trim()) {
       return
     }
-    if (formData.sendByEmailAfterCreate && !(formData.sendToEmail || email)?.trim()) {
-      return
-    }
+    const items = await ensureProductsLinked(filledItems)
+
     const payload: CreateInvoiceData = {
       ...formData,
       clientEmail: email,
-      clientId: matchedClient?.id || formData.clientId || undefined,
-      sendToEmail: formData.sendToEmail?.trim() || email,
+      clientId: formData.clientId || undefined,
+      items: items.map((it) => ({
+        ...it,
+        quantity: 1,
+        unitPrice: Math.round(Number(it.unitPrice) || 0),
+      })),
+      currency: 'EUR',
     }
     await onSubmit(payload)
   }
 
   const { subtotal, taxTotal, total } = calculateTotals()
 
-  const currencySymbol = formData.currency === 'USD' ? '$' : formData.currency === 'GBP' ? '£' : '€'
+  const currencySymbol = '€'
 
   return (
     <FinanceFormDialogShell
@@ -276,7 +294,7 @@ export function CreateInvoiceDialog({
       closeDisabled={submitting}
       fullScreen={isMobile}
       title="Nouvelle facture"
-      subtitle="Client, lignes, échéances et options d’envoi ou de règlement externe."
+      subtitle="Client, lignes, échéances et options de règlement."
       icon={<ReceiptLong />}
       actions={
         <>
@@ -290,9 +308,8 @@ export function CreateInvoiceDialog({
               submitting ||
               !(formData.clientEmail?.trim() || formData.clientId) ||
               (willCreateClient && !formData.newClientName?.trim()) ||
-              formData.items.some((item) => !item.description || item.unitPrice <= 0) ||
-              (formData.sendByEmailAfterCreate &&
-                !(formData.sendToEmail || formData.clientEmail)?.trim())
+              filterProductLinesForSubmit(formData.items).length === 0 ||
+              filterProductLinesForSubmit(formData.items).some((item) => item.unitPrice <= 0)
             }
             sx={financePrimaryButtonSx}
             startIcon={
@@ -306,240 +323,150 @@ export function CreateInvoiceDialog({
     >
         <Stack spacing={2.5}>
           <Box>
-            <FinanceFormSectionTitle>Client &amp; devise</FinanceFormSectionTitle>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-            <TextField
-              fullWidth
-              required
-              type="email"
-              label="Email du client"
-              value={formData.clientEmail ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  clientEmail: e.target.value,
-                  sendToEmail: prev.sendByEmailAfterCreate ? e.target.value : prev.sendToEmail,
-                }))
-              }
-              placeholder="client@exemple.com"
-              sx={financeFieldSx}
-              helperText={
-                willCreateClient
-                  ? 'Nouvelle fiche client sera créée automatiquement'
-                  : matchedClient
-                    ? `Client existant : ${matchedClient.name}`
-                    : 'Saisissez l’email du payeur'
-              }
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Email fontSize="small" color="action" />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-
-            {willCreateClient && (
-              <TextField
-                fullWidth
-                required
-                label="Nom du nouveau client"
-                value={formData.newClientName ?? ''}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, newClientName: e.target.value }))
-                }
-                sx={financeFieldSx}
-              />
-            )}
-
-            <FormControl fullWidth sx={{ gridColumn: { sm: '1 / -1' }, ...financeFieldSx }}>
-              <InputLabel>Client existant (optionnel)</InputLabel>
-              <Select
-                value={formData.clientId ?? ''}
-                label="Client existant (optionnel)"
-                onChange={(e) => {
-                  const id = e.target.value
-                  const c = clients.find((cl) => cl.id === id)
-                  setFormData((prev) => ({
-                    ...prev,
-                    clientId: id,
-                    clientEmail: c?.email || prev.clientEmail,
-                    newClientName: undefined,
+            <FinanceFormSectionTitle>Client</FinanceFormSectionTitle>
+            <Box sx={financeFieldSx}>
+              <FinanceClientAutocomplete
+                label="Client"
+                placeholder="Nom ou email…"
+                options={clientOptions}
+                loading={loading}
+                valueId={formData.clientId ?? ''}
+                query={clientQuery}
+                onQueryChange={(v) => {
+                  setClientQuery(v)
+                  setCreateClientError(null)
+                  const draft = clientQueryDraft(
+                    v,
+                    clients.map((c) => ({ id: c.id, name: c.name, email: c.email })),
+                  )
+                  if (!v.trim()) {
+                    setWillCreateClient(false)
+                    setFormData((p) => ({ ...p, clientId: '', clientEmail: '', newClientName: undefined }))
+                    return
+                  }
+                  if (draft.matched) {
+                    setWillCreateClient(false)
+                    setFormData((p) => ({
+                      ...p,
+                      clientId: draft.matched!.id,
+                      clientEmail: draft.matched!.email?.trim() ?? p.clientEmail,
+                      newClientName: undefined,
+                    }))
+                    return
+                  }
+                  setWillCreateClient(true)
+                  setFormData((p) => ({
+                    ...p,
+                    clientId: '',
+                    clientEmail: draft.suggestedEmail || p.clientEmail,
+                    newClientName: draft.suggestedName,
                   }))
                 }}
-                disabled={loading}
-              >
-                <MenuItem value="">
-                  <em>Aucun — utiliser l’email ci-dessus</em>
-                </MenuItem>
-                {clients.map((client) => (
-                  <MenuItem key={client.id} value={client.id}>
-                    {client.name}
-                    {client.email ? ` — ${client.email}` : ''}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              fullWidth
-              label="Devise"
-              value={formData.currency}
-              onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
-              select
-              sx={financeFieldSx}
-            >
-              <MenuItem value="EUR">EUR (€)</MenuItem>
-              <MenuItem value="USD">USD ($)</MenuItem>
-              <MenuItem value="GBP">GBP (£)</MenuItem>
-            </TextField>
+                onCreateRequested={() => {
+                  const seed = clientQuery.trim()
+                  setWillCreateClient(true)
+                  setCreateClientError(null)
+                  setFormData((p) => ({
+                    ...p,
+                    clientId: '',
+                    clientEmail: isClientEmail(seed) ? seed.toLowerCase() : p.clientEmail,
+                    newClientName: p.newClientName?.trim() ? p.newClientName : guessClientNameFromQuery(seed),
+                  }))
+                }}
+                onSelectClientId={(id) => {
+                  const c = clients.find((cl) => cl.id === id)
+                  if (!c) return
+                  setWillCreateClient(false)
+                  setFormData((p) => ({
+                    ...p,
+                    clientId: c.id,
+                    clientEmail: c.email?.trim() || p.clientEmail,
+                    newClientName: undefined,
+                  }))
+                  setClientQuery(c.email ? `${c.name} — ${c.email}` : c.name)
+                }}
+                helperText="Tapez pour rechercher. Si le client n’existe pas, créez-le ici."
+                creatingInline={willCreateClient}
+                createName={formData.newClientName ?? ''}
+                createEmail={formData.clientEmail ?? ''}
+                createError={createClientError}
+                onCreateNameChange={(v) => setFormData((p) => ({ ...p, newClientName: v }))}
+                onCreateEmailChange={(v) => setFormData((p) => ({ ...p, clientEmail: v }))}
+                onCreateCancel={() => {
+                  setWillCreateClient(false)
+                  setCreateClientError(null)
+                }}
+              />
             </Box>
           </Box>
 
-          <Box>
-            <FinanceFormSectionTitle>Échéances</FinanceFormSectionTitle>
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, 
-            gap: 2 
-          }}>
-            <TextField
-              fullWidth
-              label="Date d'émission"
-              type="date"
-              value={formData.issueDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, issueDate: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
-              sx={financeFieldSx}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <CalendarMonth fontSize="small" color="action" />
-                    </InputAdornment>
-                  ),
-                },
+          <EditableProductLinesTable
+              title="Lignes de facturation"
+              lines={formData.items.map((it) => ({
+                description: it.description,
+                quantity: 1,
+                unitPrice: Math.round(Number(it.unitPrice) || 0),
+                taxRate: it.taxRate,
+              }))}
+              products={productsStore.products}
+              taxHeader="TVA (%)"
+              taxInputProps={{ min: 0, max: 100, step: 0.1 }}
+              unitPriceWidth={96}
+              taxWidth={80}
+              descriptionWidth="64%"
+              onRemoveLine={handleRemoveItem}
+              onLineChange={(index, field, value) => {
+                if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
+                  handleItemChange(index, field, Number(value) || 0)
+                  return
+                }
+                handleItemChange(index, field, value)
+              }}
+              onProductPicked={(index, product) => {
+                setFormData((prev) => {
+                  const next = [...prev.items]
+                  next[index] = {
+                    ...next[index],
+                    description: (product.description ?? product.name ?? '').trim(),
+                    productId: Number(product.id),
+                    unitPrice: Math.round(Number(product.unitPrice ?? next[index].unitPrice ?? 0)),
+                  }
+                  return {
+                    ...prev,
+                    items: ensureTrailingEmptyLine(next, createEmptyInvoiceItem),
+                  }
+                })
               }}
             />
-            
-            <TextField
-              fullWidth
-              label="Date d'échéance"
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
-              sx={financeFieldSx}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <CalendarMonth fontSize="small" color="action" />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-          </Box>
-          </Box>
 
           <Box>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-              <FinanceFormSectionTitle>Lignes de facturation</FinanceFormSectionTitle>
-              <Button
-                startIcon={<Add />}
-                onClick={handleAddItem}
-                variant="outlined"
-                size="small"
-                sx={financeOutlinedButtonSx}
-              >
-                Ajouter une ligne
-              </Button>
-            </Stack>
-            
-            <TableContainer
-              component={Paper}
-              variant="outlined"
-              sx={{ borderRadius: 2, borderColor: (t) => alpha('#0f172a', t.palette.mode === 'dark' ? 0.2 : 0.1) }}
+            <FinanceFormSectionTitle>Échéances</FinanceFormSectionTitle>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: '1fr',
+                gap: 2,
+              }}
             >
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ width: '40%' }}>Description</TableCell>
-                    <TableCell align="right" sx={{ width: '15%' }}>Quantité</TableCell>
-                    <TableCell align="right" sx={{ width: '20%' }}>Prix unitaire</TableCell>
-                    <TableCell align="right" sx={{ width: '15%' }}>TVA (%)</TableCell>
-                    <TableCell align="right" sx={{ width: '10%' }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {formData.items.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          placeholder="Description de l'article"
-                          value={item.description}
-                          onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
-                          inputProps={{ min: 1, style: { textAlign: 'right' } }}
-                          sx={{ width: 80 }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.unitPrice}
-                          onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                          inputProps={{ min: 0, step: 0.01, style: { textAlign: 'right' } }}
-                          sx={{ width: 100 }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.taxRate}
-                          onChange={(e) => handleItemChange(index, 'taxRate', parseFloat(e.target.value) || 0)}
-                          inputProps={{ min: 0, max: 100, step: 0.1, style: { textAlign: 'right' } }}
-                          sx={{ width: 80 }}
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleRemoveItem(index)}
-                          disabled={formData.items.length === 1}
-                          color="error"
-                        >
-                          <Delete />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+              <TextField
+                fullWidth
+                label="Date d'échéance"
+                type="date"
+                value={formData.dueDate}
+                onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                sx={financeFieldSx}
+              />
+            </Box>
           </Box>
 
           <FinanceFormTotalsBox
             rows={[
-              { label: 'Sous-total HT', value: `${subtotal.toFixed(2)} ${currencySymbol}` },
-              { label: 'TVA', value: `${taxTotal.toFixed(2)} ${currencySymbol}` },
+              { label: 'Sous-total HT', value: `${Math.round(subtotal).toFixed(0)} ${currencySymbol}` },
+              { label: 'TVA', value: `${Math.round(taxTotal).toFixed(0)} ${currencySymbol}` },
             ]}
             totalLabel="Total TTC"
-            totalValue={`${total.toFixed(2)} ${currencySymbol}`}
+            totalValue={`${Math.round(total).toFixed(0)} ${currencySymbol}`}
           />
 
           <Box>
@@ -620,24 +547,6 @@ export function CreateInvoiceDialog({
           <FormControlLabel
             control={
               <Checkbox
-                checked={!!formData.sendByEmailAfterCreate}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    sendByEmailAfterCreate: e.target.checked,
-                    sendToEmail: e.target.checked
-                      ? prev.sendToEmail || prev.clientEmail || ''
-                      : undefined,
-                  }))
-                }
-              />
-            }
-            label="Envoyer par email au client après création"
-          />
-
-          <FormControlLabel
-            control={
-              <Checkbox
                 checked={formData.applyClientCredits !== false}
                 onChange={(e) =>
                   setFormData((prev) => ({
@@ -650,19 +559,6 @@ export function CreateInvoiceDialog({
             label="Imputer automatiquement les avoirs client disponibles"
           />
 
-          {formData.sendByEmailAfterCreate && (
-            <TextField
-              fullWidth
-              required
-              type="email"
-              label="Email d’envoi"
-              value={formData.sendToEmail ?? formData.clientEmail ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, sendToEmail: e.target.value }))
-              }
-              sx={financeFieldSx}
-            />
-          )}
           </Box>
 
           <Box>

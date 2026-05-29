@@ -1,8 +1,15 @@
 import { Box, Button, Card, CardContent, Chip, Container, Typography, alpha } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
 import { Link as RouterLink } from 'react-router-dom'
-import { PRICING_PLANS } from '../constants/siteContent'
+import { CATALOG_PACKS, PRICING_ADDONS_INTRO, PRICING_PLANS } from '../constants/siteContent'
 import { EfactureRoadmapAlert } from './EfactureRoadmapAlert'
+import { ScrollReveal } from './ScrollReveal'
+
+function planCtaTo(planId: string): string {
+  if (planId === 'pro' || planId === 'pro-efacture') return '/parametres/abonnement'
+  if (planId === 'agency') return '/signup?plan=agency'
+  return '/signup'
+}
 
 export function PricingCards() {
   return (
@@ -24,8 +31,18 @@ export function PricingCards() {
             flexDirection: 'column',
             position: 'relative',
             border: plan.highlighted ? 2 : 1,
-            borderColor: plan.highlighted ? 'primary.main' : 'divider',
-            bgcolor: plan.highlighted ? (t) => alpha(t.palette.primary.main, 0.04) : 'background.paper',
+            borderColor:
+              plan.id === 'pro-efacture'
+                ? 'warning.main'
+                : plan.highlighted
+                  ? 'primary.main'
+                  : 'divider',
+            bgcolor:
+              plan.id === 'pro-efacture'
+                ? (t) => alpha(t.palette.warning.main, 0.06)
+                : plan.highlighted
+                  ? (t) => alpha(t.palette.primary.main, 0.04)
+                  : 'background.paper',
             transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease',
             '&:hover': {
               transform: plan.highlighted ? 'translateY(-8px) scale(1.02)' : 'translateY(-6px)',
@@ -36,7 +53,7 @@ export function PricingCards() {
           {plan.badge && (
             <Chip
               label={plan.badge}
-              color="warning"
+              color={plan.id === 'pro-efacture' ? 'warning' : plan.highlighted ? 'primary' : 'default'}
               size="small"
               sx={{ position: 'absolute', top: 16, right: 16, fontWeight: 700 }}
             />
@@ -53,7 +70,7 @@ export function PricingCards() {
                 {plan.period}
               </Typography>
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 40 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 48 }}>
               {plan.description}
             </Typography>
             <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', flexGrow: 1, mb: 3 }}>
@@ -70,8 +87,9 @@ export function PricingCards() {
             </Box>
             <Button
               component={RouterLink}
-              to={plan.id === 'pro' || plan.id === 'pro-efacture' ? '/parametres/abonnement' : '/signup'}
-              variant={plan.highlighted ? 'contained' : 'outlined'}
+              to={planCtaTo(plan.id)}
+              variant={plan.highlighted || plan.id === 'pro-efacture' ? 'contained' : 'outlined'}
+              color={plan.id === 'pro-efacture' ? 'warning' : 'primary'}
               fullWidth
               size="large"
             >
@@ -80,6 +98,54 @@ export function PricingCards() {
           </CardContent>
         </Card>
       ))}
+    </Box>
+  )
+}
+
+export function PricingAddonsSection() {
+  return (
+    <Box sx={{ mt: { xs: 8, md: 10 } }}>
+      <ScrollReveal>
+        <Typography variant="h2" sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 700, mb: 1, textAlign: 'center' }}>
+          Options catalogue
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', maxWidth: 560, mx: 'auto', mb: 4 }}>
+          {PRICING_ADDONS_INTRO}
+        </Typography>
+      </ScrollReveal>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+          gap: 3,
+        }}
+      >
+        {CATALOG_PACKS.map((pack, i) => (
+          <ScrollReveal key={pack.id} delayMs={i * 60}>
+            <Card variant="outlined" sx={{ height: '100%', borderRadius: 3 }}>
+              <CardContent sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
+                  {pack.name}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1 }}>
+                  <Typography variant="h4" fontWeight={800} color="primary.main">
+                    {pack.price}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {pack.priceNote}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1, mb: 2 }}>
+                  {pack.description}
+                </Typography>
+                <Button component={RouterLink} to="/signup" variant="outlined" fullWidth>
+                  {pack.cta}
+                </Button>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+        ))}
+      </Box>
     </Box>
   )
 }
@@ -93,13 +159,14 @@ export function PricingSection({ showTitle = true }: { showTitle?: boolean }) {
             <Typography variant="h2" sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, mb: 1.5 }}>
               Tarifs simples, sans surprise
             </Typography>
-            <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 520, mx: 'auto' }}>
-              Freemium pour les prestataires du numérique. Prospection et factures illimitées dès le plan Pro.
+            <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 600, mx: 'auto' }}>
+              Gratuit pour tester. Pro pour facturer au quotidien. Pro + e-facture pour anticiper septembre 2026.
             </Typography>
           </Box>
         )}
         <EfactureRoadmapAlert sx={{ mb: 4, maxWidth: 720, mx: 'auto' }} />
         <PricingCards />
+        <PricingAddonsSection />
       </Container>
     </Box>
   )

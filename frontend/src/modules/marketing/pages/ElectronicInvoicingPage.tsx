@@ -4,8 +4,9 @@ import { ReformTimeline } from '../components/ReformTimeline'
 import { CtaSection } from '../components/CtaSection'
 import { ScrollReveal } from '../components/ScrollReveal'
 import { MarketingImage } from '../components/MarketingImage'
-import { REFORM_DATES } from '../constants/siteContent'
+import { CTA, REFORM_DATES } from '../constants/siteContent'
 import { EfactureRoadmapAlert } from '../components/EfactureRoadmapAlert'
+import { ReformScheduleSimulator } from '../components/ReformScheduleSimulator'
 
 const APPROACH = [
   {
@@ -34,8 +35,8 @@ export function ElectronicInvoicingPage() {
         badge={`Échéance ${REFORM_DATES.reception}`}
         title="Facturation électronique : anticipez sans stress"
         subtitle="La réforme B2B française concerne vos factures clients entreprises. Facturio prépare la conformité tout en restant votre outil métier vertical."
-        primaryCta={{ label: 'Plan Pro + e-facture', to: '/tarifs' }}
-        secondaryCta={{ label: 'Créer un compte', to: '/signup' }}
+        primaryCta={CTA.reserveEfacture}
+        secondaryCta={CTA.signupFree}
         visual={<MarketingImage src="/images/facturio-efacture.png" alt="Schéma facturation électronique 2026" float={false} />}
       />
 
@@ -54,13 +55,27 @@ export function ElectronicInvoicingPage() {
       </Container>
 
       <Container maxWidth="lg" sx={{ pb: 2 }}>
-        <ScrollReveal>
-          <Typography variant="h2" sx={{ fontWeight: 700, mb: 4, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-            Calendrier
-          </Typography>
-        </ScrollReveal>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+            gap: 3,
+            alignItems: 'start',
+          }}
+        >
+          <Box>
+            <ScrollReveal>
+              <Typography variant="h2" sx={{ fontWeight: 700, mb: 4, fontSize: { xs: '1.5rem', md: '2rem' } }}>
+                Calendrier officiel
+              </Typography>
+            </ScrollReveal>
+            <ReformTimeline />
+          </Box>
+          <ScrollReveal delayMs={80}>
+            <ReformScheduleSimulator />
+          </ScrollReveal>
+        </Box>
       </Container>
-      <ReformTimeline />
 
       <Container maxWidth="lg" sx={{ py: 8 }}>
         <ScrollReveal>

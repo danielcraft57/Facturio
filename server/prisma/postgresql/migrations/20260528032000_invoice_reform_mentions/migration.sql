@@ -1,0 +1,3 @@
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "operationCategory" TEXT;
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "vatOnDebits" BOOLEAN;
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "deliveryAddress" TEXT;

@@ -4,6 +4,7 @@ import { EInvoicingService } from './e-invoicing.service';
 import { EInvoicingComplianceService } from './e-invoicing-compliance.service';
 import { FacturXGeneratorService } from './factur-x-generator.service';
 import { BillingService } from '../billing/billing.service';
+import { PaPartnerClient } from './pa-partner.client';
 
 describe('EInvoicingService', () => {
 	const prisma = {
@@ -15,6 +16,11 @@ describe('EInvoicingService', () => {
 		getOrganizationPlan: jest.fn(),
 		hasFeature: jest.fn(),
 		assertCanUseEInvoicing: jest.fn(),
+	};
+	const paPartner = {
+		getStatus: jest.fn(),
+		testConnection: jest.fn(),
+		submitInvoice: jest.fn(),
 	};
 
 	let service: EInvoicingService;
@@ -47,7 +53,19 @@ describe('EInvoicingService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		service = new EInvoicingService(prisma as any, compliance, facturX, billing as unknown as BillingService);
+		paPartner.getStatus.mockReturnValue({
+			configured: false,
+			baseUrl: null,
+			provider: 'generic-pa',
+			mode: 'mock',
+		});
+		service = new EInvoicingService(
+			prisma as any,
+			compliance,
+			facturX,
+			billing as unknown as BillingService,
+			paPartner as unknown as PaPartnerClient,
+		);
 	});
 
 	describe('getOrganizationReadiness', () => {

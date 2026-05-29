@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import { useAuthStore } from '../../../stores/authStore'
 import { authService } from '../../../services/authService'
 import { MarketingHero } from '../components/MarketingHero'
@@ -33,7 +34,10 @@ import {
   REFORM_HIGHLIGHTS,
   VERTICAL_SEGMENTS,
   FEATURES,
+  VALUE_PROPOSITIONS,
+  CTA,
 } from '../constants/siteContent'
+
 export function LandingPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -52,7 +56,6 @@ export function LandingPage() {
         await checkAuth()
         const user = useAuthStore.getState().user
         if (cancelled) return
-        // Accueil public : redirection uniquement si l’email est déjà confirmé
         if (user?.emailVerified === true) {
           navigate('/dashboard', { replace: true })
           return
@@ -79,15 +82,37 @@ export function LandingPage() {
       )}
 
       <MarketingHero
-        badge="Devis · Factures · Comptabilité"
+        badge="Réforme sept. 2026 · Devis · Factures · Pré-compta"
         title={SITE_TAGLINE}
         subtitle={SITE_DESCRIPTION}
-        primaryCta={{ label: 'Commencer gratuitement', to: '/signup' }}
-        secondaryCta={{ label: 'Découvrir les fonctionnalités', to: '/fonctionnalites' }}
+        primaryCta={CTA.signupFree}
+        secondaryCta={CTA.efacture2026}
         visual={<HeroDashboardMock />}
       />
 
       <StatsBar />
+
+      <Container maxWidth="lg" sx={{ py: { xs: 5, md: 6 } }}>
+        <Grid container spacing={2}>
+          {VALUE_PROPOSITIONS.map((item, i) => (
+            <Grid key={item.title} size={{ xs: 12, md: 4 }}>
+              <ScrollReveal delayMs={i * 50}>
+                <Card variant="outlined" sx={{ height: '100%', borderRadius: 3, textAlign: 'center' }}>
+                  <CardContent>
+                    <RocketLaunchIcon color="primary" sx={{ mb: 1 }} />
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      {item.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.description}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </ScrollReveal>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
 
       <Box
         sx={{
@@ -106,27 +131,28 @@ export function LandingPage() {
                   fontWeight={700}
                   sx={{ letterSpacing: 1.2 }}
                 >
-                  Conformité 2026
+                  Levier n°1 — Conformité 2026
                 </Typography>
                 <Typography variant="h3" fontWeight={800} sx={{ mt: 1, mb: 2, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
-                  Anticipez la facturation électronique obligatoire
+                  Réception obligatoire dès le {REFORM_DATES.reception}
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3, lineHeight: 1.75 }}>
-                  Dès le <strong>{REFORM_DATES.reception}</strong>, vos factures B2B devront transiter par
-                  le réseau officiel (Plateforme Agréée). Facturio vous aide à vérifier vos données et à
-                  générer du Factur-X avant l’envoi PA.
+                  Même si vous n’émettez qu’en 2027, vous devez <strong>recevoir</strong> des factures
+                  électroniques B2B via une Plateforme Agréée. Facturio vérifie vos données, génère du
+                  Factur-X et réserve le connecteur PA sur le palier dédié.
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                   <Button
                     component={RouterLink}
-                    to="/signup"
+                    to={CTA.reserveEfacture.to}
                     variant="contained"
+                    color="warning"
                     endIcon={<ArrowForwardIcon />}
                   >
-                    Créer un compte
+                    {CTA.reserveEfacture.label}
                   </Button>
-                  <Button component={RouterLink} to="/tarifs" variant="outlined">
-                    Voir les paliers
+                  <Button component={RouterLink} to={CTA.efacture2026.to} variant="outlined">
+                    Comprendre la réforme
                   </Button>
                 </Box>
               </ScrollReveal>
@@ -137,7 +163,7 @@ export function LandingPage() {
                 <Card variant="outlined" sx={{ mt: 2, borderRadius: 3 }}>
                   <CardContent>
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                      Exemple de score de préparation
+                      Score de préparation (exemple)
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                       <LinearProgress
@@ -150,8 +176,7 @@ export function LandingPage() {
                       </Typography>
                     </Box>
                     <Typography variant="caption" color="text.secondary">
-                      SIRET émetteur · SIREN client · lignes · mentions — visible dans l’app sur chaque
-                      facture.
+                      SIRET · SIREN client · lignes · mentions — visible sur chaque facture dans l’app.
                     </Typography>
                   </CardContent>
                 </Card>
@@ -164,7 +189,7 @@ export function LandingPage() {
       <Container maxWidth="lg" sx={{ py: { xs: 6, md: 8 } }}>
         <ScrollReveal>
           <Typography variant="h2" align="center" sx={{ fontWeight: 700, mb: 4, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-            Ce que Facturio fait pour la réforme
+            Préparez la réforme sans quitter Facturio
           </Typography>
         </ScrollReveal>
         <Grid container spacing={3}>
@@ -193,12 +218,20 @@ export function LandingPage() {
           <ScrollReveal>
             <Box sx={{ textAlign: 'center', mb: 6 }}>
               <Typography variant="h2" sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, mb: 1.5 }}>
-                Conçu pour votre métier
+                Levier n°2 — Pensé pour votre métier
               </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 600, mx: 'auto' }}>
-                Un outil vertical pour facturer dev web, logiciel, automatisation et maintenance — pas une
-                compta généraliste.
+              <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 640, mx: 'auto' }}>
+                Indy ou Pennylane couvrent la compta générale. Facturio couvre{' '}
+                <strong>comment vous facturez</strong> : forfaits, régie, maintenance et packs IA.
               </Typography>
+              <Button
+                component={RouterLink}
+                to={CTA.prestations.to}
+                sx={{ mt: 2 }}
+                endIcon={<ArrowForwardIcon />}
+              >
+                {CTA.prestations.label}
+              </Button>
             </Box>
           </ScrollReveal>
           <Grid container spacing={4} alignItems="center">
@@ -232,8 +265,8 @@ export function LandingPage() {
       </Box>
 
       <FeatureGrid
-        title="L'essentiel pour facturer vos missions"
-        subtitle="Du devis à l'encaissement, avec une couche conformité 2026 intégrée."
+        title="Du devis à l'encaissement"
+        subtitle="Cycle commercial complet avec conformité 2026 intégrée — pas une usine à gaz comptable."
         features={FEATURES}
       />
 
@@ -243,11 +276,22 @@ export function LandingPage() {
             <Typography variant="h2" align="center" sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, mb: 1 }}>
               Calendrier réforme 2026–2027
             </Typography>
+            <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 3, maxWidth: 520, mx: 'auto' }}>
+              Micro-entreprise : émission en 2027 — mais réception dès 2026. Anticipez maintenant.
+            </Typography>
           </ScrollReveal>
           <ReformTimeline />
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <Button component={RouterLink} to="/facturation-electronique" variant="contained" endIcon={<ArrowForwardIcon />}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 2, mt: 4 }}>
+            <Button
+              component={RouterLink}
+              to={CTA.efacture2026.to}
+              variant="contained"
+              endIcon={<ArrowForwardIcon />}
+            >
               Feuille de route détaillée
+            </Button>
+            <Button component={RouterLink} to={CTA.signupFree.to} variant="outlined">
+              {CTA.signupFree.label}
             </Button>
           </Box>
         </Container>
@@ -255,12 +299,12 @@ export function LandingPage() {
 
       <PricingSection />
       <CtaSection
-        title="Facturez vos missions sans tableur"
-        subtitle="Créez votre compte, importez votre catalogue de prestations et émettez votre premier devis en quelques minutes."
-        primaryLabel="Commencer gratuitement"
-        primaryTo="/signup"
-        secondaryLabel="Comparer les offres"
-        secondaryTo="/tarifs"
+        title="Votre premier devis en 10 minutes"
+        subtitle="Compte gratuit, catalogue seed inclus. Passez Pro quand vous dépassez 10 factures/mois ou activez la prospection."
+        primaryLabel={CTA.signupFree.label}
+        primaryTo={CTA.signupFree.to}
+        secondaryLabel={CTA.pricing.label}
+        secondaryTo={CTA.pricing.to}
       />
     </Box>
   )

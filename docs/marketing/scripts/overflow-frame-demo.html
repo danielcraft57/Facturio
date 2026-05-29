@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Facturio — démo cadre overflow</title>
+  <style>
+    :root {
+      --frame-w: min(92vw, 420px);
+      --frame-h: 280px;
+      --radius: 16px;
+      --shadow: 0 24px 48px rgba(13, 27, 42, 0.18);
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: linear-gradient(160deg, #f0f4f8 0%, #e8eef5 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 2rem 1rem;
+    }
+    h1 { font-size: 1.1rem; font-weight: 600; color: #0d1b2a; margin: 0; }
+    p.hint { margin: 0; font-size: 0.85rem; color: #5c6b7a; max-width: 420px; text-align: center; }
+
+    .overflow-frame {
+      width: var(--frame-w);
+      height: var(--frame-h);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(13, 27, 42, 0.08);
+      background: #fff;
+      position: relative;
+    }
+    .overflow-frame::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 48px;
+      background: linear-gradient(transparent, rgba(255,255,255,0.95));
+      pointer-events: none;
+      z-index: 2;
+    }
+    .overflow-frame__viewport {
+      width: 100%;
+      will-change: transform;
+    }
+    .overflow-frame__viewport img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+  </style>
+</head>
+<body>
+  <h1>Cadre overflow — Facturio</h1>
+  <p class="hint">
+    Remplacez le <code>src</code> par vos captures Playwright (full-page).
+    Enregistrez cette page en 60 fps pour la pub.
+  </p>
+
+  <div class="overflow-frame" data-overflow-frame data-duration="14" data-distance="0.55">
+    <div class="overflow-frame__viewport">
+      <img src="../screenshots-temp/raw/05-dashboard.png" alt="Tableau de bord Facturio" />
+    </div>
+  </div>
+
+  <div class="overflow-frame" data-overflow-frame data-duration="12" data-distance="0.65" data-delay="0.5">
+    <div class="overflow-frame__viewport">
+      <img src="../screenshots-temp/raw/01-factures-liste.png" alt="Liste des factures" />
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Anime un défilement vertical dans un masque (effet « overflow » landing / pub).
+     * @param {HTMLElement} root
+     */
+    function initOverflowFrame(root) {
+      const viewport = root.querySelector('.overflow-frame__viewport')
+      const img = viewport?.querySelector('img')
+      if (!viewport || !img) return
+
+      const duration = Number(root.dataset.duration || 12) * 1000
+      const distanceRatio = Number(root.dataset.distance || 0.6)
+      const delayMs = Number(root.dataset.delay || 0) * 1000
+      const pauseRatio = Number(root.dataset.pause || 0.12)
+
+      const run = () => {
+        const frameH = root.clientHeight
+        const imgH = img.naturalHeight * (root.clientWidth / img.naturalWidth)
+        const maxScroll = Math.max(0, imgH - frameH)
+        const travel = maxScroll * distanceRatio
+        if (travel < 8) return
+
+        const pause = duration * pauseRatio
+        const move = duration - pause * 2
+
+        let start = null
+        const from = 0
+        const to = -travel
+
+        function easeInOut(t) {
+          return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+        }
+
+        function frame(ts) {
+          if (!start) start = ts
+          const elapsed = ts - start
+          let y = from
+          if (elapsed < pause) {
+            y = from
+          } else if (elapsed < pause + move) {
+            const t = (elapsed - pause) / move
+            y = from + (to - from) * easeInOut(t)
+          } else if (elapsed < duration) {
+            y = to
+          } else {
+            start = ts
+            y = from
+          }
+          viewport.style.transform = `translate3d(0, ${y}px, 0)`
+          requestAnimationFrame(frame)
+        }
+        requestAnimationFrame(frame)
+      }
+
+      if (img.complete) run()
+      else img.addEventListener('load', run, { once: true })
+    }
+
+    document.querySelectorAll('[data-overflow-frame]').forEach(initOverflowFrame)
+  </script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import {
 	resolveMatchTagsFromOptionIds,
 	validateTechnologyIds,
 } from './catalog-data';
+import { getCatalogPackById } from './catalog-packs';
 
 type ProductRow = {
 	id: number;
@@ -272,5 +273,94 @@ export class CatalogPersonalizationService {
 			select: { productId: true },
 		});
 		return items.map((i) => i.productId);
+	}
+
+	/**
+	 * Ajoute les prestations d'un pack métier au catalogue org (sans supprimer l'existant).
+	 */
+	async installCatalogPack(
+		organizationId: number,
+		packId: string,
+	): Promise<{
+		packId: string;
+		clonedCount: number;
+		skippedCount: number;
+		skus: string[];
+		missingSkus: string[];
+	}> {
+		const pack = getCatalogPackById(packId);
+		if (!pack) {
+			throw new BadRequestException(`Pack catalogue inconnu : ${packId}`);
+		}
+
+		const existing = await this.prisma.product.findMany({
+			where: { organizationId },
+			select: { sku: true },
+		});
+		const existingSkus = new Set(existing.map((p) => p.sku).filter((s): s is string => !!s));
+
+		const templates = await this.prisma.product.findMany({
+			where: { organizationId: null, sku: { in: pack.skus } },
+		});
+
+		const agg = await this.prisma.organizationCatalogItem.aggregate({
+			where: { organizationId },
+			_max: { sortOrder: true },
+		});
+		let sortOrder = (agg._max.sortOrder ?? -1) + 1;
+
+		const installedSkus: string[] = [];
+		let clonedCount = 0;
+		let skippedCount = 0;
+
+		for (const t of templates) {
+			if (t.sku && existingSkus.has(t.sku)) {
+				skippedCount++;
+				continue;
+			}
+			const clone = await this.prisma.product.create({
+				data: {
+					organizationId,
+					templateProductId: t.id,
+					name: t.name,
+					sku: t.sku,
+					kind: t.kind,
+					unitPrice: t.unitPrice,
+					defaultTaxRateId: t.defaultTaxRateId,
+					purpose: t.purpose,
+					category: t.category,
+					languages: t.languages ?? [],
+					details: t.details ?? [],
+					estimatedHours: t.estimatedHours,
+					description: t.description,
+					visualType: t.visualType,
+					iconName: t.iconName,
+					imageData: t.imageData,
+				},
+			});
+			if (t.sku) {
+				existingSkus.add(t.sku);
+				installedSkus.push(t.sku);
+			}
+			await this.prisma.organizationCatalogItem.create({
+				data: {
+					organizationId,
+					productId: clone.id,
+					matchScore: 0,
+					source: `pack:${packId}`,
+					sortOrder: sortOrder++,
+				},
+			});
+			clonedCount++;
+		}
+
+		const missingSkus = pack.skus.filter((sku) => !templates.some((t) => t.sku === sku));
+		if (clonedCount === 0 && skippedCount === 0 && missingSkus.length === pack.skus.length) {
+			throw new BadRequestException(
+				`Aucune prestation du pack trouvée. Exécutez le seed prestations (${pack.skus.join(', ')}).`,
+			);
+		}
+
+		return { packId, clonedCount, skippedCount, skus: installedSkus, missingSkus };
 	}
 }

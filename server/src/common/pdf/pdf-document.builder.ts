@@ -350,22 +350,19 @@ export class PdfDocumentBuilder {
 			tableCellPadX,
 			tableCellPadY
 		} = PDF_LAYOUT;
-		const colDescW = 228;
-		const colUnitW = 92;
-		const colQtyW = 48;
-		const colTotalW = contentWidth - colDescW - colUnitW - colQtyW - tableCellPadX * 2;
+		const colDescW = 268;
+		const colUnitW = 106;
+		const colTotalW = contentWidth - colDescW - colUnitW - tableCellPadX * 2;
 		const cols = {
 			desc: marginX + tableCellPadX,
 			unit: marginX + tableCellPadX + colDescW,
-			qty: marginX + tableCellPadX + colDescW + colUnitW,
-			total: marginX + tableCellPadX + colDescW + colUnitW + colQtyW,
+			total: marginX + tableCellPadX + colDescW + colUnitW,
 		};
 
 		let tableTop = doc.y;
 		let rowY = this.drawTableHeader(doc, tableTop, cols, {
 			colDescW,
 			colUnitW,
-			colQtyW,
 			colTotalW,
 			tableHeaderHeight,
 			tableCellPadY,
@@ -391,7 +388,6 @@ export class PdfDocumentBuilder {
 				rowY = this.drawTableHeader(doc, tableTop, cols, {
 					colDescW,
 					colUnitW,
-					colQtyW,
 					colTotalW,
 					tableHeaderHeight,
 					tableCellPadY,
@@ -406,7 +402,7 @@ export class PdfDocumentBuilder {
 			}
 			const cellY = rowY + tableCellPadY;
 			const unitPrice = this.toNumber(line.unitPrice);
-			const quantity = this.toNumber(line.quantity);
+			const quantity = 1;
 			const lineTotalHtFromFields = unitPrice * quantity;
 			const lineTotalHtFromTotalField = this.toNumber(line.total);
 			const lineTotalHt = Number.isFinite(lineTotalHtFromFields)
@@ -419,7 +415,6 @@ export class PdfDocumentBuilder {
 					align: 'right',
 					lineBreak: false,
 				})
-				.text(String(quantity), cols.qty, cellY, { width: colQtyW, align: 'center' })
 				.text(
 					this.formatCurrency(lineTotalHt),
 					cols.total,
@@ -449,11 +444,10 @@ export class PdfDocumentBuilder {
 	private drawTableHeader(
 		doc: PdfDoc,
 		tableTop: number,
-		cols: { desc: number; unit: number; qty: number; total: number },
+		cols: { desc: number; unit: number; total: number },
 		layout: {
 			colDescW: number;
 			colUnitW: number;
-			colQtyW: number;
 			colTotalW: number;
 			tableHeaderHeight: number;
 			tableCellPadY: number;
@@ -474,7 +468,6 @@ export class PdfDocumentBuilder {
 			.font('Helvetica-Bold')
 			.text('Description', cols.desc, headerTextY, { width: layout.colDescW })
 			.text('Prix unit. HT', cols.unit, headerTextY, { width: layout.colUnitW, align: 'right' })
-			.text('Qté', cols.qty, headerTextY, { width: layout.colQtyW, align: 'center' })
 			.text('Total HT', cols.total, headerTextY, {
 				width: layout.colTotalW,
 				align: 'right',

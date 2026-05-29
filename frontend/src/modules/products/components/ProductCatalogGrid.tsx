@@ -10,9 +10,10 @@ type Props = {
   loading?: boolean;
   onMenu: (event: MouseEvent<HTMLElement>, product: Product) => void;
   onCardClick?: (product: Product) => void;
+  mode?: 'catalog' | 'compact' | 'list';
 };
 
-export function ProductCatalogGrid({ products, loading, onMenu, onCardClick }: Props) {
+export function ProductCatalogGrid({ products, loading, onMenu, onCardClick, mode = 'catalog' }: Props) {
   if (loading) {
     return (
       <Grid container spacing={2}>
@@ -39,10 +40,19 @@ export function ProductCatalogGrid({ products, loading, onMenu, onCardClick }: P
   }
 
   return (
-    <Grid container spacing={2}>
+    <Grid container spacing={mode === 'compact' ? 1.2 : 2}>
       {products.map(product => (
-        <Grid key={product.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-          <ProductCatalogCard product={product} onMenu={onMenu} onClick={onCardClick} />
+        <Grid
+          key={product.id}
+          size={
+            mode === 'list'
+              ? { xs: 12 }
+              : mode === 'compact'
+                ? { xs: 12, sm: 6, md: 4, lg: 2 }
+                : { xs: 12, sm: 6, md: 4, lg: 3 }
+          }
+        >
+          <ProductCatalogCard product={product} onMenu={onMenu} onClick={onCardClick} mode={mode} />
         </Grid>
       ))}
     </Grid>

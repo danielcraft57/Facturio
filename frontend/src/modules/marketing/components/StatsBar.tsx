@@ -3,9 +3,9 @@ import { AnimatedCounter } from './AnimatedCounter'
 import { ScrollReveal } from './ScrollReveal'
 
 const STATS = [
-  { value: 10, suffix: '+', label: 'prestations types dans le catalogue' },
-  { value: 2026, suffix: '', label: 'échéance réforme B2B' },
-  { value: 4, suffix: '', label: 'paliers tarifaires simples' },
+  { value: 10, suffix: ' min', label: 'pour votre premier devis' },
+  { value: 2026, suffix: '', label: 'réception e-facture obligatoire' },
+  { value: 0, suffix: ' €', label: 'pour démarrer (plan Free)' },
   { value: 100, suffix: '%', label: 'vertical prestations numériques' },
 ] as const
 

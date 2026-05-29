@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DocumentFolder, DocumentFolderCounts } from '../types/documentFolders'
+import { normalizeDocumentFolderCounts } from '../types/documentFolders'
 
 export const FINANCE_DOCUMENT_PAGE_SIZE = 30
 
-const EMPTY_COUNTS: DocumentFolderCounts = {
-  inbox: 0,
-  nouveau: 0,
-  suivi: 0,
-  attente: 0,
-  important: 0,
-  envoyes: 0,
-  brouillons: 0,
-}
+const EMPTY_COUNTS: DocumentFolderCounts = normalizeDocumentFolderCounts()
 
 export type FinanceFolderListFetchOpts = {
   page: number
@@ -82,7 +75,7 @@ export function useFinanceDocumentFolderList<T>(
         setItems((prev) => (opts.append ? [...prev, ...parsed.items] : parsed.items))
 
         if (parsed.folderCounts) {
-          setFolderCounts({ ...EMPTY_COUNTS, ...parsed.folderCounts })
+          setFolderCounts(normalizeDocumentFolderCounts(parsed.folderCounts))
           setCountsReady(true)
         } else if (opts.withCounts) {
           setCountsReady(true)
@@ -137,6 +130,7 @@ export function useFinanceDocumentFolderList<T>(
 
   return {
     items,
+    setItems,
     total,
     loading,
     loadingMore,

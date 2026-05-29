@@ -397,7 +397,7 @@ export function ClientsPage() {
                 onNewInvoice={(c) => openCreateInvoiceForClient(c.id)}
               />
             ) : (
-              <TableContainer sx={{ ...documentFolderTableContainerSx, maxHeight: 600 }}>
+              <TableContainer sx={documentFolderTableContainerSx}>
                 <Table size="small" sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}>
                   <TableHead sx={financeTableHeadSx}>
                     <TableRow>

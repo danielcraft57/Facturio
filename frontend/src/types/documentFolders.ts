@@ -8,7 +8,29 @@ export type DocumentFolder =
   | 'envoyes'
   | 'brouillons'
 
-export type DocumentFolderCounts = Record<DocumentFolder, number>
+export type DocumentFolderCounts = Record<DocumentFolder, number> & {
+  archives: number
+}
+
+export function formatDocumentFolderCount(count: number, cap = 100): string {
+  if (count > cap) return `${cap}+`
+  return String(count)
+}
+
+export function normalizeDocumentFolderCounts(
+  raw?: Partial<DocumentFolderCounts> | null,
+): DocumentFolderCounts {
+  return {
+    inbox: raw?.inbox ?? 0,
+    nouveau: raw?.nouveau ?? 0,
+    suivi: raw?.suivi ?? 0,
+    attente: raw?.attente ?? 0,
+    important: raw?.important ?? 0,
+    envoyes: raw?.envoyes ?? 0,
+    brouillons: raw?.brouillons ?? 0,
+    archives: raw?.archives ?? 0,
+  }
+}
 
 export const DOCUMENT_FOLDER_LABELS: Record<DocumentFolder, string> = {
   inbox: 'Tous',
