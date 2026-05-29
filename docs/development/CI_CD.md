@@ -7,7 +7,7 @@ Documentation sur l'intégration continue (GitHub Actions).
 | Fichier | Déclencheur | Rôle |
 |---------|-------------|------|
 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | push/PR sur `main`, tag `v*`, manuel | Tests + build |
-| [`.github/workflows/cd-artifacts.yml`](../../.github/workflows/cd-artifacts.yml) | **push** du tag `v*` sur `origin`, manuel | Artefacts de build |
+| [`.github/workflows/cd-artifacts.yml`](../../.github/workflows/cd-artifacts.yml) | **push** du tag `v*` sur `origin`, manuel | Artefacts de build (`facturio-build-v1.3.x` ; `/` remplacé si lancé depuis une branche) |
 | (CI `frontend` job) | push `main` | Artefact `frontend-dist-<sha>` pour déploiement Pi |
 
 ## Job `server-unit`
