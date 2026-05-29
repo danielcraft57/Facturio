@@ -25,7 +25,8 @@ Doc détaillée : `scripts/deploy/README.md`, `docs/deployment/POSTGRESQL_PRODUC
 | Symptôme | Cause probable | Action |
 |----------|----------------|--------|
 | 502 sur `/api` | Nginx ne joint pas node10 | `proxy_pass` → `node10.lan:3000`, `systemctl status facturio` |
-| 500 colonne Prisma | Migration non appliquée | `cd server && npm run migrate:prod` |
+| 500 colonne Prisma | Migration non appliquée | `pre-migrate-facturio-ownership.sql` (postgres) puis `migrate:prod` |
+| P3018 enum `must be owner of type` | Migrations lancées sans propriété des types | `pre-migrate-facturio-ownership.sql` puis `migrate resolve --rolled-back` + `migrate:prod` |
 | 500 après « Login success » | `permission denied for table UserSession` | `grant-facturio-role.sql` en postgres |
 | ERR_NAME_NOT_RESOLVED `your_domain` | Ancien build frontend | Redéployer artefact CI, vider cache navigateur |
 

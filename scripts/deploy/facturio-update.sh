@@ -70,9 +70,17 @@ run_prisma_migrate_prod() {
 		sha256_file package-lock.json > "$LOCK_HASH_FILE" 2>/dev/null || true
 	fi
 	recover_failed_prisma_migrations
+	run_pg_pre_migrate_ownership
 	echo "[facturio-update] prisma migrate deploy (prisma/postgresql/migrations)..."
 	npm run migrate:prod
 	run_pg_grant_facturio_role
+}
+
+run_pg_pre_migrate_ownership() {
+	local pre="$APP_DIR/scripts/deploy/postgresql/pre-migrate-facturio-ownership.sql"
+	[ -f "$pre" ] || return 0
+	echo "[facturio-update] propriété Postgres (enums/tables → facturio, colonnes critiques)..."
+	sudo -u postgres psql -d facturio -v ON_ERROR_STOP=1 -q -f "$pre"
 }
 
 run_pg_grant_facturio_role() {

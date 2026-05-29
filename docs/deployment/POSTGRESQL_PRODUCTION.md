@@ -46,7 +46,7 @@ npm run migrate:prod
 npm run build:prod
 ```
 
-`facturio-update.sh` exécute automatiquement **`migrate:prod`** puis **`grant-facturio-role.sql`** (droits sur tables créées par `postgres`).
+`facturio-update.sh` exécute **`pre-migrate-facturio-ownership.sql`** (postgres : propriété enums/tables + `documentTagLibrary` si absent), puis **`migrate:prod`**, puis **`grant-facturio-role.sql`**.
 
 Nouvelle migration en dev :
 
@@ -73,6 +73,31 @@ sudo -u postgres psql -d facturio -f /opt/facturio/scripts/deploy/postgresql/mai
 ```
 
 Le script `facturio-update.sh` exécute `ANALYZE` après chaque mise à jour.
+
+## Migration en échec (P3018 — enum / propriétaire)
+
+Si `migrate deploy` échoue avec **`must be owner of type "EInvoiceStatus"`** (code `42501`) :
+
+```bash
+cd /opt/facturio
+git pull origin main
+
+# 1) Propriété des enums/tables pour le rôle facturio + colonne login si besoin
+sudo -u postgres psql -d facturio -f scripts/deploy/postgresql/pre-migrate-facturio-ownership.sql
+
+cd server
+# 2) Débloquer la migration marquée failed (ex. fix_einvoice_status_enum)
+npx prisma migrate resolve --rolled-back 20260528050000_fix_einvoice_status_enum \
+  --schema=prisma/postgresql/schema.prisma
+
+# 3) Relancer les migrations
+npm run migrate:prod
+
+sudo -u postgres psql -d facturio -f /opt/facturio/scripts/deploy/postgresql/grant-facturio-role.sql
+sudo systemctl restart facturio
+```
+
+Ou relancer tout le script : `sudo -u pi bash /usr/local/bin/facturio-update.sh` (après `git pull` contenant les scripts ci-dessus).
 
 ## Migration en échec (P3009)
 
