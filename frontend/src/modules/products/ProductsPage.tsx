@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import {
   Box,
   TextField,
@@ -11,10 +11,16 @@ import {
   Typography,
   ToggleButton,
   ToggleButtonGroup,
+  LinearProgress,
+  Stack,
+  Tooltip,
+  Alert,
 } from '@mui/material';
 import { PageHeader } from '../../components/finance/PageHeader';
 import { financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles';
 import { useProducts } from '../../hooks/useStores';
+import { useProductsCatalogList } from '../../hooks/useProductsCatalogList';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import type { Product } from '../../types/product';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -25,9 +31,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { EditProductDialog } from './components/EditProductDialog';
 import { ProductCatalogSections } from './components/ProductCatalogSections';
+import { ProductCatalogInitialLoader } from '../../components/loading/ProductCatalogInitialLoader';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/useToast';
+import type { CreateProductData, UpdateProductData } from '../../types/product';
 
 const PRODUCT_DISPLAY_MODE_KEY = 'facturio-products-display-mode';
 
@@ -40,38 +50,65 @@ function loadDisplayMode(): 'catalog' | 'list' | 'compact' {
   }
 }
 
+function scoreProduct(p: Product, qTokens: string[]): number {
+  const name = (p.name ?? '').toLowerCase();
+  const sku = (p.sku ?? '').toLowerCase();
+  const desc = (p.description ?? '').toLowerCase();
+  const details = (p.details ?? []).join(' ').toLowerCase();
+  const cat = (p.category ?? '').toLowerCase();
+  const pur = (p.purpose ?? '').toLowerCase();
+  const langs = (p.languages ?? []).join(' ').toLowerCase();
+  const hay = `${name} ${sku} ${desc} ${details} ${cat} ${pur} ${langs}`;
+
+  let s = 0;
+  for (const t of qTokens) {
+    if (name === t) s += 120;
+    else if (name.startsWith(t)) s += 80;
+    else if (name.includes(t)) s += 45;
+    if (sku.startsWith(t)) s += 60;
+    else if (sku.includes(t)) s += 30;
+    if (desc.includes(t)) s += 25;
+    if (details.includes(t)) s += 15;
+    if (langs.includes(t)) s += 12;
+    if (cat.includes(t) || pur.includes(t)) s += 10;
+    if (!hay.includes(t)) s -= 100;
+  }
+  return s;
+}
+
 export function ProductsPage() {
   const productsStore = useProducts();
+  const toast = useToast();
 
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim().toLowerCase(), 280);
   const [searchFocused, setSearchFocused] = useState(false);
   const [displayMode, setDisplayMode] = useState<'catalog' | 'list' | 'compact'>(loadDisplayMode);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [productMenuAnchor, setProductMenuAnchor] = useState<null | HTMLElement>(null);
   const [productMenuRow, setProductMenuRow] = useState<Product | null>(null);
+  const [highlightProductId, setHighlightProductId] = useState<number | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [createProductOpen, setCreateProductOpen] = useState(false);
   const [deleteProductOpen, setDeleteProductOpen] = useState(false);
 
-  useEffect(() => {
-    productsStore.fetchProducts();
-  }, []);
+  const {
+    products,
+    total,
+    loading,
+    initialLoading,
+    error,
+    refresh,
+    listEpoch,
+    prependProduct,
+    patchProduct,
+    removeProduct,
+  } = useProductsCatalogList(debouncedSearch);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim().toLowerCase()), 180);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(PRODUCT_DISPLAY_MODE_KEY, displayMode);
-    } catch {
-      // ignore storage failures
-    }
-  }, [displayMode]);
+  const contentKey = `${listEpoch}-${debouncedSearch}-${displayMode}`;
+  const showProgress = loading && !initialLoading;
 
   const openProductMenu = (e: MouseEvent<HTMLElement>, product: Product) => {
     setProductMenuAnchor(e.currentTarget);
@@ -81,40 +118,83 @@ export function ProductsPage() {
   const filteredProducts = useMemo(() => {
     const q = debouncedSearch;
     const qTokens = q.split(/\s+/).filter(Boolean);
-    if (!q) return productsStore.products;
+    if (!qTokens.length) return products;
 
-    const score = (p: Product): number => {
-      const name = (p.name ?? '').toLowerCase();
-      const sku = (p.sku ?? '').toLowerCase();
-      const desc = (p.description ?? '').toLowerCase();
-      const details = (p.details ?? []).join(' ').toLowerCase();
-      const cat = (p.category ?? '').toLowerCase();
-      const pur = (p.purpose ?? '').toLowerCase();
-      const langs = (p.languages ?? []).join(' ').toLowerCase();
-      const hay = `${name} ${sku} ${desc} ${details} ${cat} ${pur} ${langs}`;
-
-      let s = 0;
-      for (const t of qTokens) {
-        if (name === t) s += 120;
-        else if (name.startsWith(t)) s += 80;
-        else if (name.includes(t)) s += 45;
-        if (sku.startsWith(t)) s += 60;
-        else if (sku.includes(t)) s += 30;
-        if (desc.includes(t)) s += 25;
-        if (details.includes(t)) s += 15;
-        if (langs.includes(t)) s += 12;
-        if (cat.includes(t) || pur.includes(t)) s += 10;
-        if (!hay.includes(t)) s -= 100;
-      }
-      return s;
-    };
-
-    return productsStore.products
-      .map((p) => ({ p, s: score(p) }))
+    return products
+      .map((p) => ({ p, s: scoreProduct(p, qTokens) }))
       .filter((x) => x.s > 0)
       .sort((a, b) => b.s - a.s || a.p.name.localeCompare(b.p.name))
       .map((x) => x.p);
-  }, [productsStore.products, debouncedSearch]);
+  }, [products, debouncedSearch]);
+
+  const flashHighlight = (productId: number) => {
+    setHighlightProductId(productId);
+    window.setTimeout(() => setHighlightProductId(null), 2600);
+  };
+
+  const syncStoreCache = () => {
+    productsStore.markAsStale();
+  };
+
+  const handleCreateProduct = async (data: CreateProductData | UpdateProductData) => {
+    setSaving(true);
+    try {
+      const created = await productsStore.createProduct(data as CreateProductData);
+      if (!created) {
+        toast.error('Impossible de créer le produit. Vérifiez les champs et réessayez.');
+        return;
+      }
+      if (search.trim()) setSearch('');
+      prependProduct(created);
+      setCreateProductOpen(false);
+      flashHighlight(created.id);
+      toast.success(`Produit « ${created.name} » ajouté au catalogue`);
+      await refresh();
+      syncStoreCache();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la création');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateProduct = async (data: UpdateProductData) => {
+    if (!editingProduct) return;
+    setSaving(true);
+    try {
+      const updated = await productsStore.updateProduct(editingProduct.id, data);
+      if (!updated) {
+        toast.error('Impossible d’enregistrer les modifications.');
+        return;
+      }
+      patchProduct(updated);
+      setEditingProduct(null);
+      flashHighlight(updated.id);
+      toast.success(`Produit « ${updated.name} » mis à jour`);
+      await refresh();
+      syncStoreCache();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
+    const { id, name } = productToDelete;
+    const ok = await productsStore.deleteProduct(id);
+    if (!ok) {
+      toast.error('Suppression impossible.');
+      return;
+    }
+    removeProduct(id);
+    toast.success(`Produit « ${name} » supprimé`);
+    setProductToDelete(null);
+    setDeleteProductOpen(false);
+    await refresh();
+    syncStoreCache();
+  };
 
   const productMenu = (
     <Menu
@@ -230,68 +310,108 @@ export function ProductsPage() {
             }}
           />
         </Box>
-      </Box>
-      <Fade in timeout={180}>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5, mb: 2, display: 'block', px: 0.5 }}>
-          {filteredProducts.length} resultat{filteredProducts.length > 1 ? 's' : ''} sur {productsStore.products.length}
-        </Typography>
-      </Fade>
 
-      <Box sx={{ mt: 1 }}>
-        <ProductCatalogSections
-          products={filteredProducts}
-          loading={productsStore.isLoading}
-          onMenu={openProductMenu}
-          onCardClick={setEditingProduct}
-          mode={displayMode}
-        />
+        <Tooltip title="Actualiser le catalogue">
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => void refresh().catch(() => toast.error('Actualisation impossible'))}
+              disabled={loading}
+              sx={{ border: 1, borderColor: 'divider', borderRadius: 2, flexShrink: 0 }}
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
+
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: -1.5, mb: 2, px: 0.5 }}>
+        {!initialLoading && !error && (
+          <Typography variant="caption" color="text.secondary">
+            {filteredProducts.length} resultat{filteredProducts.length > 1 ? 's' : ''} sur {total || products.length}
+          </Typography>
+        )}
+      </Stack>
+
+      <Box sx={{ position: 'relative', mt: 1 }}>
+        {error ? (
+          <Alert
+            severity="error"
+            sx={{ borderRadius: 2 }}
+            action={
+              <Button color="inherit" size="small" onClick={() => void refresh().catch(() => toast.error('Actualisation impossible'))}>
+                Réessayer
+              </Button>
+            }
+          >
+            {error}
+          </Alert>
+        ) : initialLoading ? (
+          <ProductCatalogInitialLoader initial />
+        ) : (
+          <>
+            {showProgress && (
+              <LinearProgress
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  zIndex: 2,
+                  borderRadius: '0 0 2px 2px',
+                }}
+              />
+            )}
+
+            <Fade key={contentKey} in timeout={{ enter: 280, exit: 160 }}>
+              <Box
+                sx={{
+                  opacity: showProgress ? 0.72 : 1,
+                  transition: 'opacity 0.22s ease',
+                  pointerEvents: loading ? 'none' : 'auto',
+                  pt: showProgress ? 0.5 : 0,
+                }}
+              >
+                <ProductCatalogSections
+                  products={filteredProducts}
+                  onMenu={openProductMenu}
+                  onCardClick={setEditingProduct}
+                  mode={displayMode}
+                  highlightProductId={highlightProductId}
+                />
+              </Box>
+            </Fade>
+          </>
+        )}
         {productMenu}
       </Box>
 
       <EditProductDialog
         open={createProductOpen}
         product={null}
-        onClose={() => setCreateProductOpen(false)}
+        onClose={() => !saving && setCreateProductOpen(false)}
         isSaving={saving}
-        onSave={async data => {
-          setSaving(true);
-          await productsStore.createProduct(data as never);
-          setSaving(false);
-          setCreateProductOpen(false);
-        }}
+        onSave={handleCreateProduct}
       />
 
       <EditProductDialog
         open={!!editingProduct}
         product={editingProduct}
-        onClose={() => setEditingProduct(null)}
+        onClose={() => !saving && setEditingProduct(null)}
         isSaving={saving}
-        onSave={async data => {
-          if (!editingProduct) return;
-          setSaving(true);
-          await productsStore.updateProduct(editingProduct.id, data);
-          setSaving(false);
-          setEditingProduct(null);
-        }}
+        onSave={handleUpdateProduct}
       />
 
       <ConfirmDialog
         open={deleteProductOpen}
         title="Supprimer le produit"
         message={`Êtes-vous sûr de vouloir supprimer « ${productToDelete?.name} » ?`}
-        onConfirm={async () => {
-          if (productToDelete) {
-            await productsStore.deleteProduct(productToDelete.id);
-            setProductToDelete(null);
-          }
-          setDeleteProductOpen(false);
-        }}
+        onConfirm={handleDeleteProduct}
         onClose={() => {
           setDeleteProductOpen(false);
           setProductToDelete(null);
         }}
       />
-
     </Box>
   );
 }

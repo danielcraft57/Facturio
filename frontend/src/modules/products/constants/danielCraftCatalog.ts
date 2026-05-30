@@ -82,19 +82,32 @@ const OTHER_SECTION = {
 export function groupProductsBySection<T extends { sku?: string }>(
   products: T[]
 ): { section: (typeof CATALOG_SECTIONS)[number]; products: T[] }[] {
-  const usedSkus = new Set<string>();
+  const usedIds = new Set<number | string>();
   const grouped: { section: (typeof CATALOG_SECTIONS)[number]; products: T[] }[] = [];
 
+  const markUsed = (items: T[]) => {
+    for (const p of items) {
+      const key = (p as { id?: number }).id ?? (p as { sku?: string }).sku;
+      if (key != null) usedIds.add(key);
+    }
+  };
+
   for (const section of CATALOG_SECTIONS) {
-    const items = products.filter(p => {
+    const items = products.filter((p) => {
       if (!p.sku || !section.skus.includes(p.sku)) return false;
-      usedSkus.add(p.sku);
-      return true;
+      const key = (p as { id?: number }).id ?? p.sku;
+      return key != null && !usedIds.has(key);
     });
-    if (items.length > 0) grouped.push({ section, products: items });
+    if (items.length > 0) {
+      markUsed(items);
+      grouped.push({ section, products: items });
+    }
   }
 
-  const unassigned = products.filter(p => p.sku && !usedSkus.has(p.sku));
+  const unassigned = products.filter((p) => {
+    const key = (p as { id?: number }).id ?? p.sku;
+    return key == null || !usedIds.has(key);
+  });
   if (unassigned.length > 0) {
     grouped.push({ section: OTHER_SECTION, products: unassigned });
   }

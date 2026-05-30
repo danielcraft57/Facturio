@@ -11,9 +11,10 @@ type Props = {
   onMenu: (event: MouseEvent<HTMLElement>, product: Product) => void;
   onCardClick?: (product: Product) => void;
   mode?: 'catalog' | 'compact' | 'list';
+  highlightProductId?: number | null;
 };
 
-export function ProductCatalogGrid({ products, loading, onMenu, onCardClick, mode = 'catalog' }: Props) {
+export function ProductCatalogGrid({ products, loading, onMenu, onCardClick, mode = 'catalog', highlightProductId }: Props) {
   if (loading) {
     return (
       <Grid container spacing={2}>
@@ -52,7 +53,13 @@ export function ProductCatalogGrid({ products, loading, onMenu, onCardClick, mod
                 : { xs: 12, sm: 6, md: 4, lg: 3 }
           }
         >
-          <ProductCatalogCard product={product} onMenu={onMenu} onClick={onCardClick} mode={mode} />
+          <ProductCatalogCard
+            product={product}
+            onMenu={onMenu}
+            onClick={onCardClick}
+            mode={mode}
+            highlight={highlightProductId === product.id}
+          />
         </Grid>
       ))}
     </Grid>

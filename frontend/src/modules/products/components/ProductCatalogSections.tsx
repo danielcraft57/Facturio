@@ -10,9 +10,10 @@ type Props = {
   onMenu: (event: MouseEvent<HTMLElement>, product: Product) => void;
   onCardClick?: (product: Product) => void;
   mode?: 'catalog' | 'compact' | 'list';
+  highlightProductId?: number | null;
 };
 
-export function ProductCatalogSections({ products, loading, onMenu, onCardClick, mode = 'catalog' }: Props) {
+export function ProductCatalogSections({ products, loading, onMenu, onCardClick, mode = 'catalog', highlightProductId }: Props) {
   if (loading) {
     return <ProductCatalogGrid products={[]} loading onMenu={onMenu} onCardClick={onCardClick} mode={mode} />;
   }
@@ -34,6 +35,7 @@ export function ProductCatalogSections({ products, loading, onMenu, onCardClick,
             onMenu={onMenu}
             onCardClick={onCardClick}
             mode={mode}
+            highlightProductId={highlightProductId}
           />
           {index < sections.length - 1 && <Divider sx={{ mt: mode === 'compact' ? 2.5 : 4 }} />}
         </Box>

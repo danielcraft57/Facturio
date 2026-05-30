@@ -10,6 +10,7 @@ import { ThemeSettingsDrawer } from './components/ThemeSettingsDrawer'
 import { ToastProvider } from '../../components/useToast'
 import { TopRouteProgress } from '../../components/TopRouteProgress'
 import { DocumentFolderRouteFallback } from '../../components/loading/DocumentFolderRouteFallback'
+import { ProductCatalogRouteFallback } from '../../components/loading/ProductCatalogRouteFallback'
 import { ProtectedRoute } from '../../components/ProtectedRoute'
 import { FinanceRealtimeBridge } from '../../components/FinanceRealtimeBridge'
 const LandingPage = lazy(() =>
@@ -429,7 +430,9 @@ export function App() {
                 path="/produits"
                 element={
                   <PrivateRouteWrapper>
-                    <ProductsPage />
+                    <Suspense fallback={<ProductCatalogRouteFallback />}>
+                      <ProductsPage />
+                    </Suspense>
                   </PrivateRouteWrapper>
                 }
               />
