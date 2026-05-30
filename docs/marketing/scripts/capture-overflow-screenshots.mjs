@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /**
+ * @deprecated Utiliser capture-marketing-screenshots.mjs (viewport + modales UX).
  * Capture full-page screenshots de Facturio pour cadres overflow marketing.
  *
  * Prérequis :

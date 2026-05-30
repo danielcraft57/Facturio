@@ -39,6 +39,7 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 	const year = getYear();
 	let quoteCounter = 1;
 	const taxRate = 0.2;
+	const organizationId: number | undefined = clients?.[0]?.organizationId ?? undefined;
 
 	// Devis 1: DRAFT - Site Vitrine 600€ (V6), client ACME
 	const q1Number = `DEV-${year}-${String(quoteCounter++).padStart(4, '0')}`;
@@ -50,6 +51,7 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 		update: q1Mb,
 		create: {
 			number: q1Number,
+			organizationId,
 			clientId: clients[0].id,
 			status: QuoteStatus.DRAFT,
 			...q1Mb,
@@ -88,6 +90,7 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 		update: q2Mb,
 		create: {
 			number: q2Number,
+			organizationId,
 			clientId: clients[3].id,
 			status: QuoteStatus.SENT,
 			publicToken,
@@ -140,6 +143,7 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 		update: q3Mb,
 		create: {
 			number: q3Number,
+			organizationId,
 			clientId: clients[4].id,
 			status: QuoteStatus.ACCEPTED,
 			acceptedAt: new Date(year, 1, 20),
@@ -174,6 +178,7 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 		update: q4Mb,
 		create: {
 			number: q4Number,
+			organizationId,
 			clientId: clients[5].id,
 			status: QuoteStatus.REJECTED,
 			...q4Mb,
@@ -211,6 +216,7 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 		update: q5Mb,
 		create: {
 			number: q5Number,
+			organizationId,
 			clientId: clients[6].id,
 			status: QuoteStatus.EXPIRED,
 			expiryDate: new Date(year, 0, 31),
@@ -250,6 +256,7 @@ export async function seedQuotes(prisma: PrismaClient, clients: any[], products?
 			update: q6Mb,
 			create: {
 				number: q6Number,
+				organizationId,
 				clientId: clients[8].id,
 				status: QuoteStatus.DRAFT,
 				...q6Mb,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type SyntheticEvent } from 'react'
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
 import {
   Alert,
@@ -11,6 +11,8 @@ import {
   Typography,
   alpha,
   LinearProgress,
+  Tab,
+  Tabs,
 } from '@mui/material'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
@@ -18,7 +20,10 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import { useAuthStore } from '../../../stores/authStore'
 import { authService } from '../../../services/authService'
 import { MarketingHero } from '../components/MarketingHero'
-import { HeroDashboardMock } from '../components/HeroDashboardMock'
+import { OverflowScreenshotFrame } from '../components/OverflowScreenshotFrame'
+import { MarketingScreensShowcase } from '../components/MarketingScreensShowcase'
+import { MarketingWorkflowDemo } from '../components/MarketingWorkflowDemo'
+import { INVOICE_WORKFLOW_STEPS, QUOTE_WORKFLOW_STEPS } from '../constants/workflowDemoSteps'
 import { FeatureGrid } from '../components/FeatureGrid'
 import { PricingSection } from '../components/PricingCards'
 import { CtaSection } from '../components/CtaSection'
@@ -44,6 +49,11 @@ export function LandingPage() {
   const accessMessage = (location.state as { message?: string } | null)?.message
   const checkAuth = useAuthStore((s) => s.checkAuth)
   const [resolvingSession, setResolvingSession] = useState(() => authService.hasSessionToken())
+  const [workflowTab, setWorkflowTab] = useState<'quote' | 'invoice'>('quote')
+
+  const handleWorkflowTab = (_: SyntheticEvent, value: 'quote' | 'invoice') => {
+    setWorkflowTab(value)
+  }
 
   useEffect(() => {
     if (!authService.hasSessionToken()) {
@@ -87,10 +97,69 @@ export function LandingPage() {
         subtitle={SITE_DESCRIPTION}
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.efacture2026}
-        visual={<HeroDashboardMock />}
+        visual={
+          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+            <OverflowScreenshotFrame
+              src="/images/marketing/overflow/hero-dashboard.png"
+              alt="Aperçu Facturio: tableau de bord et indicateurs"
+              frameHeight={300}
+              durationSec={14}
+              distanceRatio={0.65}
+              maxWidth={{ xs: 320, md: 440 }}
+            />
+          </Box>
+        }
       />
 
       <StatsBar />
+
+      <MarketingScreensShowcase />
+
+      <Box sx={{ py: { xs: 6, md: 8 } }}>
+        <Container maxWidth="lg">
+          <ScrollReveal>
+            <Typography
+              variant="h2"
+              align="center"
+              sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, mb: 1 }}
+            >
+              Devis ou facture en quelques clics
+            </Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              align="center"
+              sx={{ mb: 3, maxWidth: 560, mx: 'auto' }}
+            >
+              Parcours réel enregistré sur l’app — création, lignes, envoi email.
+            </Typography>
+            <Tabs
+              value={workflowTab}
+              onChange={handleWorkflowTab}
+              centered
+              sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Tab value="quote" label="Devis" />
+              <Tab value="invoice" label="Facture" />
+            </Tabs>
+          </ScrollReveal>
+          <ScrollReveal delayMs={80}>
+            {workflowTab === 'quote' ? (
+              <MarketingWorkflowDemo
+                title="Créer et envoyer un devis"
+                subtitle="Client, prestations du catalogue, totaux TTC, puis envoi au client."
+                steps={QUOTE_WORKFLOW_STEPS}
+              />
+            ) : (
+              <MarketingWorkflowDemo
+                title="Émettre et envoyer une facture"
+                subtitle="Même interface que vos devis — échéance, PDF et relance intégrés."
+                steps={INVOICE_WORKFLOW_STEPS}
+              />
+            )}
+          </ScrollReveal>
+        </Container>
+      </Box>
 
       <Container maxWidth="lg" sx={{ py: { xs: 5, md: 6 } }}>
         <Grid container spacing={2}>

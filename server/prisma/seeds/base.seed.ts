@@ -158,6 +158,12 @@ export async function seedApiAccessToken(prisma: PrismaClient, organizationId: n
  */
 export async function purgeAll(prisma: PrismaClient): Promise<void> {
 	await prisma.apiAccessToken.deleteMany();
+	// D'abord les tables liées aux factures (FK Invoice) et paiements
+	await prisma.refund.deleteMany();
+	await prisma.taxDeduction.deleteMany();
+	await prisma.avoirApplication.deleteMany();
+	await prisma.avoirLine.deleteMany();
+	await prisma.avoir.deleteMany();
 	await prisma.quoteView.deleteMany();
 	await prisma.emailEvent.deleteMany();
 	await prisma.quoteLine.deleteMany();
@@ -165,6 +171,9 @@ export async function purgeAll(prisma: PrismaClient): Promise<void> {
 	await prisma.invoiceLine.deleteMany();
 	await prisma.payment.deleteMany();
 	await prisma.invoice.deleteMany();
+	// Journal comptable (peut référencer des avoirs, etc.)
+	await prisma.journalLine.deleteMany();
+	await prisma.journalEntry.deleteMany();
 	await prisma.filingLine.deleteMany();
 	await prisma.authorityPayment.deleteMany();
 	await prisma.filing.deleteMany();

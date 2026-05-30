@@ -19,7 +19,9 @@
 |-------|--------|
 | Archiver 13 screenshots session dans `docs/marketing/screenshots-temp/raw/` | ✅ |
 | Manifeste scènes + visuels générés maquette | ✅ |
-| Script capture full-page Playwright | ✅ `scripts/capture-overflow-screenshots.mjs` |
+| Script captures UX Playwright | ✅ `scripts/capture-marketing-screenshots.mjs` |
+| Démo animée création/envoi | ✅ `scripts/record-workflow-demo.mjs` + `MarketingWorkflowDemo` |
+| Grille écrans landing | ✅ `MarketingScreensShowcase` |
 | Démo cadre overflow JS | ✅ `scripts/overflow-frame-demo.html` |
 | Script pub TTS | ✅ `scripts/PUBLICITE_TTS_SCRIPT.md` |
 | Branche Git dédiée | ✅ `feature/marketing-landing-ad-2026` |
@@ -30,7 +32,7 @@
 
 - [ ] Installer Playwright en dev : `cd frontend && npm i -D playwright && npx playwright install chromium`
 - [ ] Variables : `FACTURIO_BASE_URL`, `FACTURIO_TEST_EMAIL`, `FACTURIO_TEST_PASSWORD`
-- [ ] Lancer `node docs/marketing/scripts/capture-overflow-screenshots.mjs`
+- [ ] Lancer `npm run marketing:capture` puis `npm run marketing:workflow`
 - [ ] Retoucher / flouter emails et noms clients si export public
 - [ ] Copier sélection finale → `frontend/public/images/marketing/overflow/`
 - [ ] Exporter 3–5 loops MP4/WebM (OBS ou `ffmpeg` sur démo HTML) pour pub
@@ -43,7 +45,8 @@
 
 - [ ] Créer `OverflowScreenshotFrame.tsx` dans `marketing/components/` (port depuis démo HTML)
 - [ ] Remplacer `HeroDashboardMock` sur `LandingPage` par overflow réel + fallback mock
-- [ ] Section « Du devis à l’encaissement » : carrousel 3 cadres (liste → modal devis → détail acompte)
+- [x] Section showcase 8 écrans + démo animée devis/facture (onglets)
+- [ ] Affiner hero avec capture `dashboard` après `marketing:capture`
 - [ ] Page `/fonctionnalites` : 2 colonnes texte + overflow factures / clients
 - [ ] Page `/facturation-electronique` : capture paramètres + score conformité dashboard
 - [ ] Mettre à jour `siteContent.ts` si nouveaux accroches validées en pub

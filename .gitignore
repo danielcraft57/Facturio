@@ -35,6 +35,8 @@
 # Marketing — captures temporaires (PII possible)
 docs/marketing/screenshots-temp/raw/
 docs/marketing/screenshots-temp/captures/
+docs/marketing/screenshots-temp/workflow/
+docs/marketing/screenshots-temp/videos/
 
 # Logs applicatifs
 **/logs/
