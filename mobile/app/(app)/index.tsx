@@ -140,7 +140,7 @@ export default function DashboardScreen() {
         label="Créer facture"
         onPress={async () => {
           await impactLight()
-          router.push('/(app)/invoices' as never)
+          router.push('/(app)/factures' as never)
         }}
       />
     </ScrollView>

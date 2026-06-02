@@ -7,8 +7,8 @@ import { useTheme } from '../../hooks/useTheme'
 
 const TABS = [
   { href: '/(app)', label: 'Accueil', icon: 'home' as const },
-  { href: '/(app)/invoices', label: 'Factures', icon: 'file-text' as const },
-  { href: '/(app)/quotes', label: 'Devis', icon: 'clipboard' as const },
+  { href: '/(app)/factures', label: 'Factures', icon: 'file-text' as const },
+  { href: '/(app)/devis', label: 'Devis', icon: 'clipboard' as const },
   { href: '/(app)/more', label: 'Plus', icon: 'menu' as const },
 ]
 

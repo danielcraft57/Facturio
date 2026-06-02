@@ -27,8 +27,8 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
     pathname === '/' ||
     pathname === '/(app)' ||
     pathname.endsWith('/index') ||
-    (!pathname.includes('invoices') &&
-      !pathname.includes('quotes') &&
+    (!pathname.includes('factures') &&
+      !pathname.includes('devis') &&
       !pathname.includes('clients') &&
       !pathname.includes('activity') &&
       !pathname.includes('more'))

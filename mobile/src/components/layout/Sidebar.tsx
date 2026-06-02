@@ -6,8 +6,8 @@ import { colors, layout, radius, spacing, typography } from '../../theme'
 
 const NAV_ITEMS = [
   { href: '/(app)', label: 'Tableau de bord', icon: 'grid' as const },
-  { href: '/(app)/invoices', label: 'Factures', icon: 'file-text' as const },
-  { href: '/(app)/quotes', label: 'Devis', icon: 'clipboard' as const },
+  { href: '/(app)/factures', label: 'Factures', icon: 'file-text' as const },
+  { href: '/(app)/devis', label: 'Devis', icon: 'clipboard' as const },
   { href: '/(app)/activity', label: 'Activité', icon: 'activity' as const },
   { href: '/(app)/clients', label: 'Clients', icon: 'users' as const },
   { href: '/(app)/products', label: 'Produits', icon: 'package' as const },

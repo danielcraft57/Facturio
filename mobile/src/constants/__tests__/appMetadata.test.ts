@@ -7,7 +7,18 @@ describe('titleForPath', () => {
   })
 
   it('retourne le titre factures', () => {
-    expect(titleForPath('/invoices')).toBe('Factures')
+    expect(titleForPath('/factures')).toBe('Factures')
+    expect(titleForPath('/(app)/factures')).toBe('Factures')
+  })
+
+  it('retourne le titre detail facture', () => {
+    expect(titleForPath('/factures/abc-123')).toBe('Facture')
+    expect(titleForPath('/(app)/factures/abc-123')).toBe('Facture')
+  })
+
+  it('retourne le titre devis', () => {
+    expect(titleForPath('/devis')).toBe('Devis')
+    expect(titleForPath('/(app)/devis/xyz')).toBe('Devis')
   })
 
   it('retombe sur Facturio', () => {

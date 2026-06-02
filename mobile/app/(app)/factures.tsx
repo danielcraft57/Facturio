@@ -155,7 +155,7 @@ export default function InvoicesScreen() {
             <InvoiceListItem
               invoice={item}
               unread={!item.seenAt}
-              onPress={() => router.push(`/(app)/invoices/${item.id}` as never)}
+              onPress={() => router.push(`/(app)/factures/${item.id}` as never)}
               onSend={() => sendInvoice(item)}
               onArchive={() => archiveInvoice(item)}
             />

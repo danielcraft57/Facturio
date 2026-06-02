@@ -151,7 +151,7 @@ export default function QuotesScreen() {
             <InvoiceListItem
               invoice={item}
               unread={!item.seenAt}
-              onPress={() => router.push(`/(app)/quotes/${item.id}` as never)}
+              onPress={() => router.push(`/(app)/devis/${item.id}` as never)}
               onSend={() => sendQuote(item)}
               onArchive={() => archiveQuote(item)}
             />
