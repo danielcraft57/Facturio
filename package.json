@@ -18,7 +18,9 @@
     "marketing:tts": "python scripts/marketing/generate_facturio_marketing_tts.py --variant all --concat-full",
     "marketing:video": "python scripts/marketing/build_pub_video.py --variant 30s-main",
     "marketing:clean": "node docs/marketing/scripts/clean-marketing-legacy.mjs",
-    "email:preview": "npm run preview:emails --prefix server"
+    "email:preview": "npm run preview:emails --prefix server",
+    "start:mobile": "npm run start --prefix mobile",
+    "test:mobile": "npm test --prefix mobile"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
