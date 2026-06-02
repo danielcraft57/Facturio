@@ -7,8 +7,9 @@ export function formatPercent(value: number, digits = 1): string {
   return `${sign}${value.toFixed(digits)} %`
 }
 
-export function formatShortDate(iso: string): string {
-  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }).format(
-    new Date(iso),
-  )
+export function formatShortDate(iso?: string | null): string {
+  if (!iso?.trim()) return '—'
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
 }

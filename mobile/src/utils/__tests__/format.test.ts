@@ -23,4 +23,9 @@ describe('formatShortDate', () => {
     expect(out).toMatch(/15/)
     expect(out).toMatch(/2024/)
   })
+
+  it('retourne un tiret si la date est invalide', () => {
+    expect(formatShortDate(undefined)).toBe('—')
+    expect(formatShortDate('not-a-date')).toBe('—')
+  })
 })

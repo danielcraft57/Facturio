@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { colors, radius, spacing, typography } from '../../theme'
+import { useTheme } from '../../hooks/useTheme'
 
 export interface AutocompleteOption {
   id: string
@@ -22,21 +23,26 @@ export function AutocompleteInput({
   options,
   onSelect,
 }: AutocompleteInputProps) {
+  const { colors: themeColors } = useTheme()
   return (
     <View>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        style={styles.input}
+        placeholderTextColor={themeColors.textMuted}
+        style={[styles.input, { color: themeColors.text, borderColor: themeColors.border, backgroundColor: themeColors.background }]}
       />
       {options.length > 0 ? (
-        <View style={styles.list}>
+        <View style={[styles.list, { borderColor: themeColors.border, backgroundColor: themeColors.surface }]}>
           {options.map((option) => (
-            <Pressable key={option.id} style={styles.option} onPress={() => onSelect(option)}>
-              <Text style={styles.optionLabel}>{option.label}</Text>
-              {option.hint ? <Text style={styles.optionHint}>{option.hint}</Text> : null}
+            <Pressable
+              key={option.id}
+              style={[styles.option, { borderBottomColor: themeColors.border }]}
+              onPress={() => onSelect(option)}
+            >
+              <Text style={[styles.optionLabel, { color: themeColors.text }]}>{option.label}</Text>
+              {option.hint ? <Text style={[styles.optionHint, { color: themeColors.textMuted }]}>{option.hint}</Text> : null}
             </Pressable>
           ))}
         </View>

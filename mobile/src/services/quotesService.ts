@@ -1,13 +1,24 @@
 import { apiClient } from './apiClient'
-import type { QuoteFilters, QuoteListResult } from '../types/quote'
+import type { Quote, QuoteFilters, QuoteListResult } from '../types/quote'
+import { normalizeQuoteFromApi } from '../utils/documentMappers'
+
+function normalizeListResult(raw: QuoteListResult): QuoteListResult {
+  const list = raw.quotes ?? (raw as unknown as { items?: Record<string, unknown>[] }).items ?? []
+  return {
+    ...raw,
+    quotes: list.map((item) => normalizeQuoteFromApi(item as unknown as Record<string, unknown>)),
+  }
+}
 
 export const quotesService = {
-  list(filters: QuoteFilters = {}): Promise<QuoteListResult> {
-    return apiClient.get<QuoteListResult>('/quotes', filters as Record<string, unknown>)
+  async list(filters: QuoteFilters = {}): Promise<QuoteListResult> {
+    const raw = await apiClient.get<QuoteListResult>('/quotes', filters as Record<string, unknown>)
+    return normalizeListResult(raw)
   },
 
-  getById(id: string): Promise<import('../types/quote').Quote> {
-    return apiClient.get(`/quotes/${id}`)
+  async getById(id: string): Promise<Quote> {
+    const raw = await apiClient.get<Record<string, unknown>>(`/quotes/${id}`)
+    return normalizeQuoteFromApi(raw)
   },
 
   sendByEmail(id: string, to?: string): Promise<{ success?: boolean; message?: string }> {

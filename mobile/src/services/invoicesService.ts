@@ -1,13 +1,24 @@
 import { apiClient } from './apiClient'
-import type { InvoiceFilters, InvoiceListResult } from '../types/invoice'
+import type { Invoice, InvoiceFilters, InvoiceListResult } from '../types/invoice'
+import { normalizeInvoiceFromApi } from '../utils/documentMappers'
+
+function normalizeListResult(raw: InvoiceListResult): InvoiceListResult {
+  const list = raw.invoices ?? (raw as unknown as { items?: Record<string, unknown>[] }).items ?? []
+  return {
+    ...raw,
+    invoices: list.map((item) => normalizeInvoiceFromApi(item as unknown as Record<string, unknown>)),
+  }
+}
 
 export const invoicesService = {
-  list(filters: InvoiceFilters = {}): Promise<InvoiceListResult> {
-    return apiClient.get<InvoiceListResult>('/invoices', filters as Record<string, unknown>)
+  async list(filters: InvoiceFilters = {}): Promise<InvoiceListResult> {
+    const raw = await apiClient.get<InvoiceListResult>('/invoices', filters as Record<string, unknown>)
+    return normalizeListResult(raw)
   },
 
-  getById(id: string): Promise<import('../types/invoice').Invoice> {
-    return apiClient.get(`/invoices/${id}`)
+  async getById(id: string): Promise<Invoice> {
+    const raw = await apiClient.get<Record<string, unknown>>(`/invoices/${id}`)
+    return normalizeInvoiceFromApi(raw)
   },
 
   sendByEmail(id: string, to?: string): Promise<{ success?: boolean; message?: string }> {
