@@ -28,6 +28,7 @@ import {
   removeProductLine,
 } from '../../../components/finance/editableProductLinesUtils'
 import { FinanceClientAutocomplete, type FinanceClientOption } from '../../../components/finance/FinanceClientAutocomplete'
+import { useToast } from '../../../components/useToast'
 import {
   clientQueryDraft,
   guessClientNameFromQuery,
@@ -64,6 +65,7 @@ export function CreateQuoteDialog({
   submitting = false,
 }: CreateQuoteDialogProps) {
   const productsStore = useProductsStore()
+  const toast = useToast()
   const [clients, setClients] = useState<ClientOption[]>([])
   const [loading, setLoading] = useState(false)
   const [clientQuery, setClientQuery] = useState('')
@@ -201,8 +203,11 @@ export function CreateQuoteDialog({
             unitPrice: Math.round(Number(createdProduct.unitPrice ?? line.unitPrice ?? 0)),
           }
         }
-      } catch {
-        // On n'interrompt pas la création du devis si la création produit échoue.
+      } catch (err) {
+        console.error('Création automatique du produit catalogue', err)
+        toast.warning(
+          `Impossible d'enregistrer « ${line.description.trim()} » dans le catalogue — le devis sera créé sans lien produit.`,
+        )
       }
     }
     await productsStore.fetchProducts()

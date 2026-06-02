@@ -40,6 +40,7 @@ import { clientService, parseClientsListResponse } from '../../../services/clien
 import type { Client } from '../../../services/clients'
 import { useProductsStore } from '../../../stores/productsStore'
 import { productService } from '../../../services/productService'
+import { useToast } from '../../../components/useToast'
 
 interface InvoiceItem {
   id: string
@@ -99,7 +100,8 @@ export function CreateInvoiceDialog({
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const productsStore = useProductsStore()
-  
+  const toast = useToast()
+
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<CreateInvoiceData>(createEmptyInvoiceForm)
@@ -246,8 +248,11 @@ export function CreateInvoiceDialog({
             unitPrice: Math.round(Number(createdProduct.unitPrice ?? item.unitPrice ?? 0)),
           }
         }
-      } catch {
-        // On continue la création facture même si la création produit échoue.
+      } catch (err) {
+        console.error('Création automatique du produit catalogue', err)
+        toast.warning(
+          `Impossible d'enregistrer « ${String(item.description ?? '').trim()} » dans le catalogue — la facture sera créée sans lien produit.`,
+        )
       }
     }
     await productsStore.fetchProducts()
