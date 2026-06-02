@@ -1,8 +1,10 @@
 import { StyleSheet, View, type ViewProps } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout'
+import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { Sidebar } from './Sidebar'
 import { BottomTabs } from './BottomTabs'
+import { AppHeader } from './AppHeader'
 import { colors, spacing } from '../../theme'
 
 interface AppShellProps extends ViewProps {
@@ -11,13 +13,17 @@ interface AppShellProps extends ViewProps {
 
 export function AppShell({ children }: AppShellProps) {
   const { isTablet } = useResponsiveLayout()
+  useDocumentTitle()
 
   if (isTablet) {
     return (
       <View style={styles.tabletRoot}>
         <Sidebar />
         <SafeAreaView style={styles.tabletContent} edges={['top', 'right', 'bottom']}>
-          <View style={styles.inner}>{children}</View>
+          <View style={styles.inner}>
+            <AppHeader />
+            {children}
+          </View>
         </SafeAreaView>
       </View>
     )
@@ -25,7 +31,10 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <SafeAreaView style={styles.phoneRoot} edges={['top']}>
-      <View style={styles.phoneContent}>{children}</View>
+      <View style={styles.phoneContent}>
+        <AppHeader />
+        {children}
+      </View>
       <BottomTabs />
     </SafeAreaView>
   )
@@ -52,6 +61,6 @@ const styles = StyleSheet.create({
   phoneContent: {
     flex: 1,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs,
   },
 })

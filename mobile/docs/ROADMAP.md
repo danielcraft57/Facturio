@@ -24,6 +24,13 @@ Application React Native (Expo) pour **tablette et mobile**, alignée sur la cha
 
 **Livrables :** données réelles, pull-to-refresh, gestion erreurs réseau, états vides.
 
+### Avancement temps réel / offline (implémenté)
+
+- [x] Écoute SSE `GET /realtime/stream` (invoices + quotes)
+- [x] Notifications locales sur événements client (ouverture, clic, paiement, acceptation, refus via `status`)
+- [x] Détection réseau (`@react-native-community/netinfo`)
+- [x] File d’actions hors-ligne (envoi facture/devis) + flush auto à la reconnexion
+
 ## Phase 2 — Actions métier
 
 - Création / édition facture (formulaire adapté mobile)

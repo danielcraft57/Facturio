@@ -29,6 +29,9 @@ export const invoiceStatusColors = {
   sent: { bg: '#DBEAFE', text: '#1D4ED8', label: 'Envoyée' },
   overdue: { bg: '#FEE2E2', text: '#B91C1C', label: 'En retard' },
   draft: { bg: '#F3F4F6', text: '#4B5563', label: 'Brouillon' },
+  accepted: { bg: '#D1FAE5', text: '#047857', label: 'Accepté' },
+  rejected: { bg: '#FEE2E2', text: '#B91C1C', label: 'Refusé' },
+  expired: { bg: '#FEF3C7', text: '#92400E', label: 'Expiré' },
   cancelled: { bg: '#F3F4F6', text: '#6B7280', label: 'Annulée' },
 } as const
 

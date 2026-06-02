@@ -2,10 +2,12 @@ import { Slot, Redirect } from 'expo-router'
 import { ActivityIndicator, View, StyleSheet } from 'react-native'
 import { AppShell } from '../../src/components/layout/AppShell'
 import { useAuth } from '../../src/hooks/useAuth'
+import { useLiveSync } from '../../src/hooks/useLiveSync'
 import { colors } from '../../src/theme'
 
 export default function AppLayout() {
   const { isAuthenticated, isLoading } = useAuth()
+  useLiveSync(isAuthenticated)
 
   if (isLoading) {
     return (

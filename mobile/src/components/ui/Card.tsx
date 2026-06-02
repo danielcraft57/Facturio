@@ -1,4 +1,4 @@
-import { StyleSheet, View, type ViewProps } from 'react-native'
+import { Platform, StyleSheet, View, type ViewProps } from 'react-native'
 import { colors, radius, spacing } from '../../theme'
 
 interface CardProps extends ViewProps {
@@ -19,11 +19,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 12px rgba(15, 23, 42, 0.06)' },
+      default: {
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 2,
+      },
+    }),
   },
   padded: {
     padding: spacing.md,

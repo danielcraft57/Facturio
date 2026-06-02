@@ -11,17 +11,21 @@ import {
 } from 'react-native'
 import { Redirect, useRouter } from 'expo-router'
 import { Feather } from '@expo/vector-icons'
+import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Button } from '../../src/components/ui/Button'
 import { Logo } from '../../src/components/ui/Logo'
 import { useAuth } from '../../src/hooks/useAuth'
 import { useResponsiveLayout } from '../../src/hooks/useResponsiveLayout'
+import { useDocumentTitle } from '../../src/hooks/useDocumentTitle'
 import { isDeviceVerification } from '../../src/types/auth'
+import { APP_NAME, APP_TAGLINE } from '../../src/constants/appMetadata'
 import { colors, radius, spacing, typography } from '../../src/theme'
 
 export default function LoginScreen() {
   const { login, isAuthenticated, isLoading, error, clearError } = useAuth()
   const { isTablet } = useResponsiveLayout()
+  useDocumentTitle('Connexion')
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -74,6 +78,8 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         secureTextEntry
         autoComplete="password"
+        autoCapitalize="none"
+        autoCorrect={false}
         style={styles.input}
         placeholder="••••••••"
         placeholderTextColor={colors.textMuted}
@@ -181,6 +187,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navy,
     borderRadius: radius.lg,
     padding: spacing.lg,
+    alignItems: 'flex-start',
+  },
+  mobileAppName: {
+    ...typography.title,
+    color: colors.textOnDark,
+    marginTop: spacing.md,
+  },
+  mobileTagline: {
+    ...typography.body,
+    color: 'rgba(248,250,252,0.85)',
+    marginTop: spacing.xs,
   },
   form: {
     backgroundColor: colors.surface,

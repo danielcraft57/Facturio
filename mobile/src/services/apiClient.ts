@@ -59,6 +59,22 @@ class ApiClient {
     const res = await this.client.post(url, body)
     return unwrapApi<T>(res)
   }
+
+  async patch<T>(url: string, body?: unknown): Promise<T> {
+    const res = await this.client.patch(url, body)
+    return unwrapApi<T>(res)
+  }
+
+  async delete<T>(url: string): Promise<T> {
+    const res = await this.client.delete(url)
+    return unwrapApi<T>(res)
+  }
+
+  async request<T>(method: 'POST' | 'PATCH' | 'DELETE', url: string, body?: unknown): Promise<T> {
+    if (method === 'POST') return this.post<T>(url, body)
+    if (method === 'PATCH') return this.patch<T>(url, body)
+    return this.delete<T>(url)
+  }
 }
 
 export const apiClient = new ApiClient()

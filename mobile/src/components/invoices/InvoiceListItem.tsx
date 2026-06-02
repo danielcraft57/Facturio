@@ -5,14 +5,18 @@ import { StatusBadge } from '../ui/StatusBadge'
 import { colors, spacing, typography } from '../../theme'
 import { formatCurrency, formatShortDate } from '../../utils/format'
 import type { Invoice } from '../../types/invoice'
+import type { Quote } from '../../types/quote'
+
+type DocumentListItem = Invoice | Quote
 
 interface InvoiceListItemProps {
-  invoice: Invoice
+  invoice: DocumentListItem
   unread?: boolean
   onPress?: () => void
+  onSend?: () => void
 }
 
-export function InvoiceListItem({ invoice, unread, onPress }: InvoiceListItemProps) {
+export function InvoiceListItem({ invoice, unread, onPress, onSend }: InvoiceListItemProps) {
   return (
     <Pressable onPress={onPress}>
       <Card style={styles.card}>
@@ -27,7 +31,13 @@ export function InvoiceListItem({ invoice, unread, onPress }: InvoiceListItemPro
         <View style={styles.metaRow}>
           <Text style={styles.meta}>{formatShortDate(invoice.issueDate)}</Text>
           <Text style={styles.amount}>{formatCurrency(invoice.total, invoice.currency)}</Text>
-          <Feather name="download" size={16} color={colors.textMuted} />
+          {onSend ? (
+            <Pressable onPress={onSend} style={styles.sendBtn}>
+              <Feather name="send" size={14} color={colors.primary} />
+            </Pressable>
+          ) : (
+            <Feather name="download" size={16} color={colors.textMuted} />
+          )}
         </View>
       </Card>
     </Pressable>
@@ -72,5 +82,13 @@ const styles = StyleSheet.create({
     ...typography.subtitle,
     color: colors.text,
     marginRight: spacing.sm,
+  },
+  sendBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.infoBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 })

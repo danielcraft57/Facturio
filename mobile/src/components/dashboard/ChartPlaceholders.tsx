@@ -62,8 +62,7 @@ export function DonutChart({ title, segments }: DonutChartProps) {
                   fill="none"
                   strokeDasharray={`${dash} 251`}
                   strokeDashoffset={-acc.offset}
-                  rotation="-90"
-                  origin="50, 50"
+                  transform="rotate(-90 50 50)"
                 />,
               )
               acc.offset += dash

@@ -2,6 +2,11 @@
 
 Application **React Native (Expo)** pour tablette et smartphone — tableau de bord, factures, connexion à l’API Facturio existante.
 
+Inclut désormais :
+- synchro temps réel (SSE) sur devis/factures,
+- notifications locales sur engagement client (vu, cliqué, payé, accepté/refusé),
+- file d’actions hors-ligne (envoi différé quand internet revient).
+
 ## Prérequis
 
 - Node.js ≥ 18
@@ -19,7 +24,38 @@ npm install
 npm start
 ```
 
-Puis `a` (Android), `i` (iOS), ou scanner le QR code avec Expo Go.
+Puis `a` (Android), `i` (iOS), **`w` (Web)** pour itérer sur le design, ou scanner le QR code avec Expo Go.
+
+### Travailler sur le design dans le navigateur
+
+Oui — Expo cible le **web** avec le même code React Native :
+
+```bash
+cd mobile
+npm run web
+# ou : npx expo start --web
+```
+
+- Ouvrir l’URL affichée (souvent `http://localhost:8081`)
+- Redimensionner la fenêtre : **&lt; 768 px** ≈ mobile, **≥ 768 px** ≈ tablette (sidebar)
+- Titre d’onglet dynamique : `Tableau de bord · Facturio`, etc.
+- `app/+html.tsx` : meta `theme-color`, description, favicon
+
+Limites du web : `expo-secure-store` utilise AsyncStorage (OK en dev) ; certaines APIs natives (push, biométrie) ne s’y exécutent pas.
+
+### Icônes et splash (marque Facturio)
+
+Source vectorielle : `assets/source/icon.svg` (navy + teal + « F »).
+
+```bash
+cd mobile
+npm install sharp --save-dev
+node scripts/generate-brand-assets.mjs
+```
+
+Régénère `icon.png`, `splash-icon.png`, `favicon.png`, `android-icon-foreground.png`.
+
+Métadonnées app : `app.json` (nom **Facturio**, splash `#002D3D`, adaptive icon Android).
 
 ## Structure
 

@@ -7,11 +7,9 @@ import {
   Text,
   View,
 } from 'react-native'
-import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
 import { MetricCard } from '../../src/components/ui/MetricCard'
 import { DonutChart, SimpleLineChart } from '../../src/components/dashboard/ChartPlaceholders'
 import { Card } from '../../src/components/ui/Card'
-import { useAuth } from '../../src/hooks/useAuth'
 import { useResponsiveLayout } from '../../src/hooks/useResponsiveLayout'
 import { dashboardService } from '../../src/services/dashboardService'
 import type { DashboardStats } from '../../src/types/dashboard'
@@ -19,7 +17,6 @@ import { colors, spacing, typography } from '../../src/theme'
 import { formatCurrency } from '../../src/utils/format'
 
 export default function DashboardScreen() {
-  const { user } = useAuth()
   const { isTablet } = useResponsiveLayout()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,8 +40,6 @@ export default function DashboardScreen() {
     load()
   }, [load])
 
-  const greeting = user?.firstName ? `Bonjour ${user.firstName} 👋` : 'Bonjour 👋'
-
   if (loading) {
     return (
       <View style={styles.center}>
@@ -65,8 +60,6 @@ export default function DashboardScreen() {
       contentContainerStyle={styles.scroll}
       showsVerticalScrollIndicator={false}
     >
-      <ScreenHeader title="Tableau de bord" subtitle={greeting} />
-
       {error && <Text style={styles.error}>{error}</Text>}
 
       <View style={[styles.kpiGrid, isTablet && styles.kpiGridTablet]}>

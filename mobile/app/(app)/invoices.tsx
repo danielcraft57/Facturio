@@ -2,23 +2,29 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
+import { useNetInfo } from '@react-native-community/netinfo'
 import { Feather } from '@expo/vector-icons'
-import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
+import { useRouter } from 'expo-router'
 import { SearchInput } from '../../src/components/ui/SearchInput'
 import { InvoiceListItem } from '../../src/components/invoices/InvoiceListItem'
 import { invoicesService } from '../../src/services/invoicesService'
 import type { Invoice } from '../../src/types/invoice'
 import { colors, radius, spacing, typography } from '../../src/theme'
+import { queueOrRunAction } from '../../src/hooks/useLiveSync'
+import { useLiveSyncStore } from '../../src/stores/liveSyncStore'
 
 type TabKey = 'all' | 'unread'
 
 export default function InvoicesScreen() {
+  const router = useRouter()
+  const netInfo = useNetInfo()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -26,6 +32,9 @@ export default function InvoicesScreen() {
   const [tab, setTab] = useState<TabKey>('all')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [feedback, setFeedback] = useState<string | null>(null)
+  const invoicesVersion = useLiveSyncStore((s) => s.invoicesVersion)
+  const online = !!netInfo.isConnected && (netInfo.isInternetReachable ?? true)
 
   const load = useCallback(async (pageNum = 1, query = search) => {
     try {
@@ -45,6 +54,11 @@ export default function InvoicesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (invoicesVersion === 0) return
+    load(1)
+  }, [invoicesVersion, load])
+
   const filtered = useMemo(() => {
     if (tab === 'unread') return invoices.filter((inv) => !inv.seenAt)
     return invoices
@@ -52,17 +66,45 @@ export default function InvoicesScreen() {
 
   const unreadCount = invoices.filter((inv) => !inv.seenAt).length
 
+  const sendInvoice = async (invoice: Invoice) => {
+    try {
+      const result = await queueOrRunAction(
+        {
+          method: 'POST',
+          url: `/invoices/${invoice.id}/send`,
+          body: {},
+          description: `Envoi facture ${invoice.number}`,
+        },
+        online,
+      )
+      if (result.queued) {
+        setFeedback(`Hors ligne : envoi de ${invoice.number} mis en file d'attente.`)
+      } else {
+        setFeedback(`Facture ${invoice.number} envoyée.`)
+        await load(1)
+      }
+      if (Platform.OS === 'web') setTimeout(() => setFeedback(null), 3500)
+    } catch (e) {
+      setFeedback(e instanceof Error ? e.message : "Impossible d'envoyer la facture")
+    }
+  }
+
   return (
     <View style={styles.root}>
-      <ScreenHeader
-        title="Factures"
-        right={
-          <Pressable style={styles.newBtn}>
-            <Feather name="plus" size={18} color={colors.surface} />
-            <Text style={styles.newBtnText}>Nouvelle</Text>
-          </Pressable>
-        }
-      />
+      <View style={[styles.networkBanner, online ? styles.bannerOnline : styles.bannerOffline]}>
+        <Text style={styles.networkText}>
+          {online ? 'En ligne — synchro temps réel active' : 'Hors ligne — les envois seront synchronisés'}
+        </Text>
+      </View>
+
+      {feedback && <Text style={styles.feedback}>{feedback}</Text>}
+
+      <View style={styles.topActions}>
+        <Pressable style={styles.newBtn}>
+          <Feather name="plus" size={18} color={colors.surface} />
+          <Text style={styles.newBtnText}>Nouvelle facture</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.tabs}>
         <Pressable onPress={() => setTab('all')} style={[styles.tab, tab === 'all' && styles.tabActive]}>
@@ -92,7 +134,12 @@ export default function InvoicesScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <InvoiceListItem invoice={item} unread={!item.seenAt} />
+            <InvoiceListItem
+              invoice={item}
+              unread={!item.seenAt}
+              onPress={() => router.push(`/(app)/invoices/${item.id}` as never)}
+              onSend={() => sendInvoice(item)}
+            />
           )}
           refreshControl={
             <RefreshControl
@@ -119,6 +166,21 @@ export default function InvoicesScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  networkBanner: {
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  bannerOnline: { backgroundColor: colors.successBg },
+  bannerOffline: { backgroundColor: colors.warningBg },
+  networkText: { ...typography.caption, color: colors.text, fontWeight: '600' },
+  feedback: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
+  topActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: spacing.sm,
+  },
   tabs: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   tab: {
     paddingVertical: spacing.sm,
