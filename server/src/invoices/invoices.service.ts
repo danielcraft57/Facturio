@@ -785,6 +785,11 @@ export class InvoicesService {
 			return invoice;
 		}
 
+		// Émission explicite (envoi email) : ne pas repasser en brouillon
+		if (invoice.status === 'SENT' && invoice.sentAt && !tags.includes('PENDING_EMIT')) {
+			return invoice;
+		}
+
 		if (tags.includes('PENDING_EMIT')) {
 			if (invoice.status === 'SENT' || invoice.sentAt) {
 				await this.prisma.invoice.update({
@@ -805,12 +810,7 @@ export class InvoicesService {
 			return { ...invoice, tags: withTag };
 		}
 
-		const nextTags = serializeTagsJson([...tags, 'PENDING_EMIT']);
-		await this.prisma.invoice.update({
-			where: { id: invoice.id },
-			data: { status: 'DRAFT', sentAt: null, tags: nextTags },
-		});
-		return { ...invoice, status: 'DRAFT', sentAt: null, tags: nextTags };
+		return invoice;
 	}
 
 	/**

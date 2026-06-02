@@ -1,3 +1,4 @@
+import type { EmailEngagement } from '../modules/documents/documentEmailEngagement';
 import type { DocumentFolder } from './documentFolders';
 
 export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';

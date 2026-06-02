@@ -1,6 +1,12 @@
 import { summarizeEmailEvents } from './email-engagement.util';
 
 describe('email-engagement.util', () => {
+	it('ne marque pas emailSent sans événement SMTP sent', () => {
+		const summary = summarizeEmailEvents([]);
+		expect(summary.emailSent).toBe(false);
+		expect(summary.sentAt).toBeNull();
+	});
+
 	it('agrège ouverture et clic', () => {
 		const sentAt = new Date('2026-06-01T10:00:00Z');
 		const summary = summarizeEmailEvents([
