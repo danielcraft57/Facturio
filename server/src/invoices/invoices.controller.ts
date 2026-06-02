@@ -5,6 +5,7 @@ import { InvoiceSendService } from './invoice-send.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { SendInvoiceDto } from './dto/send-invoice.dto';
+import { buildEmailClickTrackUrl, buildEmailOpenTrackUrl } from '../common/email-track.util';
 import { InvoiceListQueryDto, UpdateInvoiceDocumentFlagsDto } from './dto/invoice-document-folder.dto';
 import { Response } from 'express';
 import { PdfService } from '../common/pdf.service';
@@ -147,6 +148,11 @@ export class InvoicesController {
 		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
 		const pdf = await this.pdfService.generateInvoicePdf(invoice, organization);
 		const client = invoice.client as { email?: string; name?: string; companyName?: string };
+		const token = invoice.publicToken;
+		const trackOpenUrl = token ? buildEmailOpenTrackUrl('invoice', token) : undefined;
+		const paymentUrl = token
+			? buildEmailClickTrackUrl('invoice', token, 'pay')
+			: publicUrl;
 		await this.email.sendReminder({
 			to: client.email!,
 			invoiceNumber: invoice.number,
@@ -154,8 +160,10 @@ export class InvoicesController {
 			clientName: client.name || client.companyName || '',
 			amount: Number(invoice.total),
 			daysOverdue,
-			paymentUrl: publicUrl,
-			pdfBuffer: pdf
+			paymentUrl,
+			trackOpenUrl,
+			pdfBuffer: pdf,
+			organization,
 		});
 		return { success: true, invoiceId: id, daysOverdue: daysOverdue ?? null };
 	}

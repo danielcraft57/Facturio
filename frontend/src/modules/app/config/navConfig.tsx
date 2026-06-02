@@ -154,6 +154,7 @@ export function isNavActive(pathname: string, to: string): boolean {
   if (to === '/parametres') return pathname === '/parametres' || pathname.startsWith('/parametres/')
   if (to.startsWith('/factures')) return pathname.startsWith('/factures')
   if (to.startsWith('/devis')) return pathname.startsWith('/devis')
+  if (to.startsWith('/clients')) return pathname.startsWith('/clients')
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 

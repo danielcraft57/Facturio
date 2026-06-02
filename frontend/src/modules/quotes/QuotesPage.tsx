@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -62,6 +62,7 @@ import {
   filterItemsByDocumentSearch,
 } from '../../utils/financeDocumentSearch';
 import { quoteService } from '../../services/quoteService';
+import { resolveQuoteDisplayStatus } from './quoteDisplayStatus';
 import { openInvoiceView } from '../../utils/openDocumentView';
 import { useQuotesFolderList } from '../../hooks/useQuotesFolderList';
 import { useOptimisticDocumentFlagsPatch } from '../../hooks/useOptimisticDocumentFlagsPatch';
@@ -70,22 +71,6 @@ import { useToast } from '../../components/useToast';
 import { useUserDocumentTags } from '../../services/userDocumentTags';
 import { organizationService, type OrganizationProfile } from '../../services/organizationService';
 import { unwrapApiPayload } from '../../services/clients';
-
-const QUOTE_STATUS_COLORS = {
-  DRAFT: 'default',
-  SENT: 'primary',
-  ACCEPTED: 'success',
-  REJECTED: 'error',
-  EXPIRED: 'warning'
-} as const;
-
-const QUOTE_STATUS_LABELS = {
-  DRAFT: 'Brouillon',
-  SENT: 'Envoyé',
-  ACCEPTED: 'Accepté',
-  REJECTED: 'Rejeté',
-  EXPIRED: 'Expiré'
-} as const;
 
 export function QuotesPage() {
   const { folder: folderParam } = useParams<{ folder?: string }>();
@@ -121,11 +106,21 @@ export function QuotesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const highlightRows = useRealtimeRowHighlight('quotes');
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+
+  useEffect(() => {
+    const onRealtime = () => {
+      void refreshRef.current();
+    };
+    window.addEventListener('facturio:quote-realtime', onRealtime);
+    return () => window.removeEventListener('facturio:quote-realtime', onRealtime);
+  }, []);
 
   const searchOptions = useMemo(
     () =>
       quotes.map((q) =>
-        buildQuoteSearchEntry(q, QUOTE_STATUS_LABELS[q.status]).option,
+        buildQuoteSearchEntry(q, resolveQuoteDisplayStatus(q).label).option,
       ),
     [quotes],
   );
@@ -133,7 +128,7 @@ export function QuotesPage() {
   const displayedQuotes = useMemo(() => {
     const sorted = sortOutgoingNewestFirst(quotes);
     return filterItemsByDocumentSearch(sorted, debouncedSearch, (q) =>
-      buildQuoteSearchEntry(q, QUOTE_STATUS_LABELS[q.status]).searchable,
+      buildQuoteSearchEntry(q, resolveQuoteDisplayStatus(q).label).searchable,
     );
   }, [quotes, debouncedSearch]);
 
@@ -434,12 +429,17 @@ export function QuotesPage() {
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Chip
-                              label={QUOTE_STATUS_LABELS[quote.status]}
-                              color={QUOTE_STATUS_COLORS[quote.status]}
-                              size="small"
-                              sx={{ fontWeight: 600, borderRadius: 1.5, maxWidth: '100%' }}
-                            />
+                            {(() => {
+                              const display = resolveQuoteDisplayStatus(quote);
+                              return (
+                                <Chip
+                                  label={display.label}
+                                  color={display.color}
+                                  size="small"
+                                  sx={{ fontWeight: 600, borderRadius: 1.5, maxWidth: '100%' }}
+                                />
+                              );
+                            })()}
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" fontWeight="medium" noWrap>

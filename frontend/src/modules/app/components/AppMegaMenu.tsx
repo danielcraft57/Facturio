@@ -16,6 +16,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import type { NavGroup, NavItem } from '../config/navConfig'
 import { isGroupActive, isNavActive } from '../config/navConfig'
+import { topNavItemSx } from './topNavItemStyles'
 
 const ACCENT: Record<string, { bg: string; fg: string; glow: string }> = {
   navy: {
@@ -123,6 +124,7 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
   const anchorRef = useRef<HTMLButtonElement>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const active = isGroupActive(location.pathname, group)
+  const highlighted = open || active
   const accent = ACCENT[group.featured.accent] ?? ACCENT.navy
 
   const handleEnter = useCallback(() => {
@@ -141,32 +143,18 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
       <Button
         ref={anchorRef}
         onClick={() => setOpen((v) => !v)}
+        disableRipple
         endIcon={
           <KeyboardArrowDownIcon
             sx={{
               fontSize: 18,
               transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
               transform: open ? 'rotate(180deg)' : 'none',
-              opacity: 0.7,
+              opacity: highlighted ? 1 : 0.7,
             }}
           />
         }
-        sx={{
-          color: 'inherit',
-          fontWeight: active ? 600 : 500,
-          fontSize: '0.9375rem',
-          textTransform: 'none',
-          px: 1.25,
-          py: 0.75,
-          minHeight: 40,
-          borderRadius: 1.5,
-          letterSpacing: '-0.01em',
-          bgcolor: open || active ? alpha(theme.palette.primary.main, isDark ? 0.12 : 0.06) : 'transparent',
-          boxShadow: open ? `inset 0 -2px 0 ${theme.palette.primary.main}` : 'none',
-          '&:hover': {
-            bgcolor: alpha(theme.palette.primary.main, isDark ? 0.1 : 0.05),
-          },
-        }}
+        sx={topNavItemSx(theme, highlighted)}
       >
         {group.label}
       </Button>

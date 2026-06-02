@@ -19,6 +19,7 @@ import {
 import { getRealtimeRowSx } from '../../../utils/realtimeRowHighlight'
 import type { RealtimeHighlightTone } from '../../../types/realtime'
 import { InvoiceRowActionsMenu } from './InvoiceRowActionsMenu'
+import { resolveInvoiceDisplayStatus } from '../invoiceDisplayStatus'
 import type { useDocumentFolderSelection } from '../../../hooks/useDocumentFolderSelection'
 
 type SelectionApi = ReturnType<typeof useDocumentFolderSelection<Invoice>>
@@ -28,8 +29,6 @@ type InvoiceFolderMobileListProps = {
   highlightRows: Record<string, RealtimeHighlightTone>
   actionLoadingId: string | null
   formatCurrency: (n: number) => string
-  getStatusLabel: (s: string) => string
-  getStatusColor: (s: string) => string
   canRemind: (status: Invoice['status']) => boolean
   onPatchFlags: (id: string, patch: DocumentFlags) => void
   onNavigate: (id: string) => void
@@ -46,8 +45,6 @@ export function InvoiceFolderMobileList({
   highlightRows,
   actionLoadingId,
   formatCurrency,
-  getStatusLabel,
-  getStatusColor,
   canRemind,
   onPatchFlags,
   onNavigate,
@@ -138,19 +135,17 @@ export function InvoiceFolderMobileList({
                             </Typography>
                           </Box>
                           <Stack alignItems="flex-end" spacing={0.5} flexShrink={0}>
-                            <Chip
-                              label={getStatusLabel(invoice.status)}
-                              color={
-                                getStatusColor(invoice.status) as
-                                  | 'success'
-                                  | 'info'
-                                  | 'error'
-                                  | 'warning'
-                                  | 'default'
-                              }
-                              size="small"
-                              sx={{ fontWeight: 600, height: 22, fontSize: '0.7rem' }}
-                            />
+                            {(() => {
+                              const display = resolveInvoiceDisplayStatus(invoice)
+                              return (
+                                <Chip
+                                  label={display.label}
+                                  color={display.color}
+                                  size="small"
+                                  sx={{ fontWeight: 600, height: 22, fontSize: '0.7rem' }}
+                                />
+                              )
+                            })()}
                             <Typography variant="body2" fontWeight={700}>
                               {formatCurrency(invoice.total)}
                             </Typography>

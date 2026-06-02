@@ -7,6 +7,8 @@ import { ApplyAvoirDto } from './dto/apply-avoir.dto';
 import { AccountingService } from '../accounting/accounting.service';
 import { ConfigService } from '../config/config.service';
 import { EmailService } from '../common/email.service';
+import { resolveEmailIssuerDisplayName } from '../common/email-legal-footer';
+import { OrganizationsService } from '../organizations/organizations.service';
 
 /**
  * Ligne d'avoir
@@ -43,6 +45,7 @@ export class AvoirsService {
 		private readonly accounting: AccountingService,
 		private readonly config: ConfigService,
 		private readonly email: EmailService,
+		private readonly organizations: OrganizationsService,
 	) {}
 
 	/**
@@ -215,6 +218,7 @@ export class AvoirsService {
 
 	private async sendAvoirNotification(avoir: {
 		id: number;
+		organizationId: number;
 		invoiceId?: string | null;
 		invoice?: { number?: string | null } | null;
 		client?: { email?: string | null; name?: string | null; companyName?: string | null } | null;
@@ -230,6 +234,11 @@ export class AvoirsService {
 			});
 			if (exists) return;
 
+			const organization = await this.organizations
+				.getProfile(avoir.organizationId)
+				.catch(() => undefined);
+			const issuerName = resolveEmailIssuerDisplayName(organization);
+
 			const clientName =
 				avoir.client?.companyName?.trim?.() ||
 				avoir.client?.name?.trim?.() ||
@@ -241,7 +250,8 @@ export class AvoirsService {
 				invoiceNumber: avoir.invoice?.number ?? `#${avoir.invoiceId ?? avoir.id}`,
 				creditedAmount: Number(avoir.total),
 				reason: avoir.legalMention ?? null,
-				issuerName: 'Votre prestataire',
+				issuerName,
+				organization,
 			});
 
 			await this.prisma.emailEvent.create({

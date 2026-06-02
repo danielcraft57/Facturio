@@ -1,0 +1,27 @@
+{
+  "runAt": "2026-06-01T01:54:32.985Z",
+  "targetDomain": "danielcraft.fr",
+  "engine": "google.fr",
+  "options": {
+    "headless": false,
+    "incognito": true,
+    "consent": "reject",
+    "proxy": null,
+    "maxPages": 3,
+    "noClick": true,
+    "browsePages": false,
+    "category": null
+  },
+  "results": [
+    {
+      "keyword": "danielcraft",
+      "category": "cli",
+      "position": 1,
+      "url": "https://danielcraft.fr/metz",
+      "title": "Développeur à Metz - DanielCraft",
+      "serpPage": 1,
+      "clicked": false,
+      "status": "found"
+    }
+  ]
+}

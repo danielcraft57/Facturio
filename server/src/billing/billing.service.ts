@@ -7,11 +7,12 @@ import { SAAS_PLAN_LIMITS } from './saas-plan.limits';
 export class BillingService {
 	constructor(private readonly prisma: PrismaService) {}
 
-	private monthBounds(): { start: Date; end: Date } {
-		const now = new Date();
+	/** Mois calendaire en cours (fuseau serveur) — le quota Free se réinitialise le 1er à 00:00. */
+	monthBounds(now = new Date()): { start: Date; end: Date; resetsAt: Date } {
 		const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
 		const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-		return { start, end };
+		const resetsAt = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+		return { start, end, resetsAt };
 	}
 
 	async getOrganizationPlan(organizationId: number): Promise<SaasBillingPlan> {
@@ -60,6 +61,7 @@ export class BillingService {
 		}
 
 		const limits = SAAS_PLAN_LIMITS[plan];
+		const period = this.monthBounds();
 		const invoicesThisMonth = await this.countInvoicesThisMonth(organizationId);
 		const max = limits.maxInvoicesPerMonth;
 
@@ -96,6 +98,12 @@ export class BillingService {
 			usage: {
 				invoicesThisMonth,
 			},
+			/** Période du quota mensuel (factures créées entre periodStart et periodEnd inclus). */
+			billingPeriod: {
+				start: period.start.toISOString(),
+				end: period.end.toISOString(),
+				resetsAt: period.resetsAt.toISOString(),
+			},
 			remainingInvoices: max == null ? null : Math.max(0, max - invoicesThisMonth),
 			atLimit: max != null && invoicesThisMonth >= max,
 			subscription,
@@ -107,7 +115,7 @@ export class BillingService {
 		const usage = await this.getUsage(organizationId);
 		if (usage.atLimit) {
 			throw new ForbiddenException(
-				`Quota mensuel atteint (${usage.limits.maxInvoicesPerMonth} factures sur le plan ${usage.planLabel}). Passez au plan Pro pour continuer.`,
+				`Quota mensuel atteint (${usage.limits.maxInvoicesPerMonth} factures ce mois-ci sur le plan ${usage.planLabel}). Le compteur est réinitialisé le 1er du mois suivant. Passez au plan Pro pour continuer.`,
 			);
 		}
 	}

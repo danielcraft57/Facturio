@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /**
+ * @deprecated Utiliser capture-marketing-screenshots.mjs (viewport + modales UX).
  * Capture full-page screenshots de Facturio pour cadres overflow marketing.
  *
  * Prérequis :
@@ -17,6 +18,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadPlaywright } from './playwright-marketing-helpers.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const OUT_DIR = path.resolve(__dirname, '../screenshots-temp/captures')
@@ -87,11 +89,9 @@ async function capturePage(browser, target, meta) {
 async function main() {
   let chromium
   try {
-    ;({ chromium } = await import('playwright'))
-  } catch {
-    console.error(
-      'Playwright non installé. Exécutez :\n  cd frontend && npm i -D playwright && npx playwright install chromium',
-    )
+    ;({ chromium } = await loadPlaywright())
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err)
     process.exit(1)
   }
 

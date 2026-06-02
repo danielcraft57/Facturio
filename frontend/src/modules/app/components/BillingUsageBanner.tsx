@@ -15,7 +15,7 @@ export function BillingUsageBanner() {
 
   if (!usage || usage.plan !== 'FREE') return null
 
-  const max = usage.limits.maxInvoicesPerMonth ?? 10
+  const max = usage.limits.maxInvoicesPerMonth ?? 25
   const used = usage.usage.invoicesThisMonth
   const pct = Math.min(100, (used / max) * 100)
 
@@ -29,9 +29,9 @@ export function BillingUsageBanner() {
           </Button>
         }
       >
-        Plan Free : {used} / {max} factures ce mois-ci.
+        Plan Free : {used} / {max} factures ce mois-ci (quota réinitialisé le 1er de chaque mois).
         {usage.atLimit
-          ? ' Création bloquée — passez au plan Pro pour continuer.'
+          ? ' Création bloquée jusqu’au prochain mois — ou passez au plan Pro.'
           : ' Passez au Pro pour des factures illimitées.'}
         <LinearProgress
           variant="determinate"

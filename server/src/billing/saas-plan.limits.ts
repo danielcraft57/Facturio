@@ -16,7 +16,7 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 	FREE: {
 		plan: 'FREE',
 		label: 'Free',
-		maxInvoicesPerMonth: 10,
+		maxInvoicesPerMonth: 25,
 		eInvoicing: false,
 		stripePayments: true,
 		prospection: false,

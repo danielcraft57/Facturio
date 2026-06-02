@@ -1,8 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { productService } from '../services/productService';
+import { unwrapApiPayload } from '../services/clients';
 import type { Product, ProductFilters, CreateProductData, UpdateProductData } from '../types/product';
 import { normalizeProductFromApi } from '../modules/products/utils/productVisual';
+
+function parseProductResponse(res: unknown): Product | null {
+  const payload = unwrapApiPayload<Record<string, unknown>>(res);
+  if (!payload || payload.id == null) return null;
+  return normalizeProductFromApi(payload);
+}
 
 interface ProductsState {
   products: Product[];
@@ -74,7 +81,8 @@ export const useProductsStore = create<ProductsState>()(
         set({ isLoading: true });
         try {
           const res = await productService.getProduct(id);
-          if (res.success && res.data) set({ selectedProduct: normalizeProductFromApi(res.data as unknown as Record<string, unknown>) });
+          const product = parseProductResponse(res);
+          if (product) set({ selectedProduct: product });
         } finally {
           set({ isLoading: false });
         }
@@ -84,9 +92,13 @@ export const useProductsStore = create<ProductsState>()(
         set({ isCreating: true });
         try {
           const res = await productService.createProduct(data);
-          if (res.success && res.data) {
-            const created = normalizeProductFromApi(res.data as unknown as Record<string, unknown>);
-            set(s => ({ products: [created, ...s.products], selectedProduct: created }));
+          const created = parseProductResponse(res);
+          if (created) {
+            set(s => ({
+              products: [created, ...s.products.filter(p => p.id !== created.id)],
+              selectedProduct: created,
+              pagination: { ...s.pagination, total: s.pagination.total + 1 },
+            }));
             get().markAsStale();
             return created;
           }
@@ -100,8 +112,8 @@ export const useProductsStore = create<ProductsState>()(
         set({ isUpdating: true });
         try {
           const res = await productService.updateProduct(id, data);
-          if (res.success && res.data) {
-            const updated = normalizeProductFromApi(res.data as unknown as Record<string, unknown>);
+          const updated = parseProductResponse(res);
+          if (updated) {
             set(s => ({
               products: s.products.map(p => (p.id === id ? updated : p)),
               selectedProduct: s.selectedProduct?.id === id ? updated : s.selectedProduct,
@@ -119,8 +131,14 @@ export const useProductsStore = create<ProductsState>()(
         set({ isDeleting: true });
         try {
           const res = await productService.deleteProduct(id);
-          if (res.success) {
-            set(s => ({ products: s.products.filter(p => p.id !== id), selectedProduct: s.selectedProduct?.id === id ? null : s.selectedProduct }));
+          const raw: any = (res as any)?.data ?? res;
+          const ok = raw?.success === true || raw === true;
+          if (ok) {
+            set(s => ({
+              products: s.products.filter(p => p.id !== id),
+              selectedProduct: s.selectedProduct?.id === id ? null : s.selectedProduct,
+              pagination: { ...s.pagination, total: Math.max(0, s.pagination.total - 1) },
+            }));
             get().markAsStale();
             return true;
           }

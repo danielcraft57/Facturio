@@ -19,6 +19,7 @@ function computeTotals(lines: Array<{ quantity: number; unitPrice: number; taxRa
 export async function seedInvoices(prisma: PrismaClient, clients: any[], products: any): Promise<void> {
 	const year = getYear();
 	let invoiceCounter = 1;
+	const organizationId: number | undefined = clients?.[0]?.organizationId ?? undefined;
 
 	// Facture 1: FR B2B (20%) - Payée
 	const inv1Lines = [
@@ -38,6 +39,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 		update: inv1Mb,
 		create: {
 			number: inv1Number,
+			organizationId,
 			clientId: clients[0].id, // ACME France
 			status: InvoiceStatus.PAID,
 			date: new Date(year, 0, 15),
@@ -80,6 +82,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 		update: inv2Mb,
 		create: {
 			number: inv2Number,
+			organizationId,
 			clientId: clients[1].id, // EU GmbH
 			status: InvoiceStatus.SENT,
 			date: new Date(year, 1, 10),
@@ -111,6 +114,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 		update: inv3Mb,
 		create: {
 			number: inv3Number,
+			organizationId,
 			clientId: clients[2].id, // US Corp
 			status: InvoiceStatus.DRAFT,
 			date: new Date(year, 1, 20),
@@ -148,6 +152,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 		update: inv4Mb,
 		create: {
 			number: inv4Number,
+			organizationId,
 			clientId: clients[3].id, // Jean Client
 			status: InvoiceStatus.SENT,
 			date: new Date(year, 2, 5),
@@ -181,6 +186,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 		update: inv5Mb,
 		create: {
 			number: inv5Number,
+			organizationId,
 			clientId: clients[4].id, // Exempt SARL
 			status: InvoiceStatus.PAID,
 			date: new Date(year, 2, 15),
@@ -218,6 +224,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 		update: inv6Mb,
 		create: {
 			number: inv6Number,
+			organizationId,
 			clientId: clients[5].id, // TechCorp Belgium
 			status: InvoiceStatus.OVERDUE,
 			date: new Date(year, 0, 10),
@@ -255,6 +262,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 		update: inv7Mb,
 		create: {
 			number: inv7Number,
+			organizationId,
 			clientId: clients[6].id, // Startup Innovante
 			status: InvoiceStatus.SENT,
 			date: new Date(year, 2, 1),
@@ -297,6 +305,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 		update: inv8Mb,
 		create: {
 			number: inv8Number,
+			organizationId,
 			clientId: clients[0].id,
 			status: InvoiceStatus.PAID,
 			date: new Date(year - 1, 11, 15),

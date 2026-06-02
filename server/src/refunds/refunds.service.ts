@@ -9,6 +9,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { AvoirsService } from '../avoirs/avoirs.service';
 import { EmailService } from '../common/email.service';
+import { resolveEmailIssuerDisplayName } from '../common/email-legal-footer';
+import { OrganizationsService } from '../organizations/organizations.service';
 import { StripeService } from '../stripe/stripe.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { parseTagsJson, serializeTagsJson } from '../common/document-folder.util';
@@ -42,6 +44,7 @@ export class RefundsService {
 		private readonly email: EmailService,
 		private readonly stripe: StripeService,
 		private readonly realtime: RealtimeEventsService,
+		private readonly organizations: OrganizationsService,
 	) {}
 
 	private formatRefund(r: {
@@ -226,11 +229,10 @@ export class RefundsService {
 					where: { invoiceId, type },
 				});
 				if (!exists) {
-					const issuerName = invoice.organization?.legalName?.trim()
-						? invoice.organization.legalName
-						: invoice.organization?.name?.trim()
-							? invoice.organization.name
-							: 'Votre prestataire';
+					const organization = await this.organizations
+						.getProfile(organizationId)
+						.catch(() => undefined);
+					const issuerName = resolveEmailIssuerDisplayName(organization);
 
 					const clientName =
 						(invoice.client as any)?.companyName?.trim?.() ||
@@ -245,6 +247,7 @@ export class RefundsService {
 						refundedAmount: amount,
 						refundReason: dto.reason ?? null,
 						issuerName,
+						organization,
 					});
 
 					await this.prisma.emailEvent.create({

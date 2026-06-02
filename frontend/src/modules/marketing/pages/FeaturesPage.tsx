@@ -73,7 +73,7 @@ export function FeaturesPage() {
       </Box>
 
       <CtaSection
-        title="Testez gratuitement — 10 factures/mois"
+        title="Testez gratuitement — 25 factures/mois"
         subtitle="Passez Pro pour l’illimité et ProspectLab. Réservez Pro + e-facture pour verrouiller la conformité PA."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}

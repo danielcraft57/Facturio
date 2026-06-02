@@ -14,6 +14,8 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClock, faDownload } from '@fortawesome/free-solid-svg-icons';
 import type { Product } from '../../../types/product';
+import type { RealtimeHighlightTone } from '../../../types/realtime';
+import { getRealtimeRowSx } from '../../../utils/realtimeRowHighlight';
 import { ProductAvatar } from './ProductAvatar';
 import { PURPOSE_LABELS, CATEGORY_LABELS, KIND_LABELS } from '../constants/productLabels';
 import { resolveProductImageUrl } from '../utils/productVisual';
@@ -24,9 +26,10 @@ type Props = {
   onMenu: (event: MouseEvent<HTMLElement>, product: Product) => void;
   onClick?: (product: Product) => void;
   mode?: 'catalog' | 'compact' | 'list';
+  highlight?: boolean;
 };
 
-export function ProductCatalogCard({ product, onMenu, onClick, mode = 'catalog' }: Props) {
+export function ProductCatalogCard({ product, onMenu, onClick, mode = 'catalog', highlight = false }: Props) {
   const imageUrl = resolveProductImageUrl(product);
   const [imageBroken, setImageBroken] = useState(false);
   const price = Number(product.unitPrice ?? 0);
@@ -34,6 +37,7 @@ export function ProductCatalogCard({ product, onMenu, onClick, mode = 'catalog' 
   const showVisualImage = Boolean(imageUrl && !imageBroken);
   const isList = mode === 'list';
   const isCompact = mode === 'compact';
+  const highlightTone: RealtimeHighlightTone | undefined = highlight ? 'created' : undefined;
 
   useEffect(() => {
     setImageBroken(false);
@@ -54,12 +58,13 @@ export function ProductCatalogCard({ product, onMenu, onClick, mode = 'catalog' 
         flexDirection: isList ? 'row' : 'column',
         cursor: onClick ? 'pointer' : 'default',
         border: '1px solid',
-        borderColor: 'divider',
+        borderColor: highlight ? 'success.main' : 'divider',
         borderRadius: 2.5,
-        transition: 'box-shadow 0.2s, transform 0.15s',
+        transition: 'box-shadow 0.25s ease, transform 0.2s ease, border-color 0.35s ease',
+        ...getRealtimeRowSx(highlightTone),
         '&:hover': onClick
           ? {
-              transform: 'translateY(-2px)',
+              transform: highlight ? undefined : 'translateY(-2px)',
               boxShadow: theme => theme.shadows[4],
             }
           : {},

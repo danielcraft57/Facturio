@@ -1,3 +1,4 @@
+import type { EmailEngagement } from '../modules/documents/documentEmailEngagement';
 import type { DocumentFolder } from './documentFolders';
 
 export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
@@ -27,6 +28,11 @@ export interface Quote {
   total: number;
   publicToken?: string;
   sentAt?: string;
+  /** Email client effectivement envoyé (événement SMTP enregistré). */
+  emailSent?: boolean;
+  emailOpened?: boolean;
+  emailClicked?: boolean;
+  emailClickAction?: string | null;
   acceptedAt?: string;
   acceptedIp?: string;
   invoiceId?: string;
@@ -39,6 +45,7 @@ export interface Quote {
   snoozedUntil?: string;
   seenAt?: string;
   tags?: string[];
+  emailEngagement?: EmailEngagement;
 }
 
 export interface CreateQuoteData {

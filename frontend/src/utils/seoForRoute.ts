@@ -70,7 +70,7 @@ const MARKETING: Record<string, RouteSeo> = {
   '/tarifs': {
     title: 'Tarifs',
     description:
-      'Free (10 factures/mois), Pro 12 €, Pro + e-facture 24 € et packs catalogue. Anticipez la réforme septembre 2026 sans engagement.',
+      'Free (25 factures/mois), Pro 12 €, Pro + e-facture 24 € et packs catalogue. Anticipez la réforme septembre 2026 sans engagement.',
     ogImage: '/images/facturio-pricing.png',
   },
   '/legal': {

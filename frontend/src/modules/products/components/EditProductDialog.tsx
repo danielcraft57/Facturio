@@ -10,7 +10,7 @@ import {
   Typography,
   Stepper,
   Step,
-  StepLabel,
+  StepButton,
   MobileStepper,
   Slide,
   Chip,
@@ -19,6 +19,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  CircularProgress,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -53,6 +54,7 @@ import {
 import { SelectionCard } from './SelectionCard';
 import { ProductVisualPicker } from './ProductVisualPicker';
 import { ProductAvatar } from './ProductAvatar';
+import { ProductTechAutocomplete } from './ProductTechAutocomplete';
 import { PRODUCT_VISUAL_LIBRARY } from '../constants/productVisualLibrary';
 import { PRODUCT_ICON_OPTIONS } from '../constants/productIconOptions';
 
@@ -84,7 +86,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
   const [category, setCategory] = useState<ProductCategory | ''>('');
   const [unitPrice, setUnitPrice] = useState<number | ''>('');
   const [estimatedHours, setEstimatedHours] = useState<number | ''>('');
-  const [languages, setLanguages] = useState('');
+  const [languages, setLanguages] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [detailsText, setDetailsText] = useState('');
   const [visualType, setVisualType] = useState<ProductVisualType>('icon');
@@ -105,7 +107,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       setCategory(product.category || '');
       setUnitPrice(product.unitPrice ?? '');
       setEstimatedHours(product.estimatedHours ?? '');
-      setLanguages((product.languages || []).join(', '));
+      setLanguages(product.languages || []);
       setDescription(product.description || '');
       setDetailsText((product.details || []).join('\n'));
       setVisualType(product.visualType || 'icon');
@@ -121,7 +123,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       setCategory('');
       setUnitPrice('');
       setEstimatedHours('');
-      setLanguages('');
+      setLanguages([]);
       setDescription('');
       setDetailsText('');
       setVisualType('library');
@@ -168,6 +170,42 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
     }, 120);
   };
 
+  const goToStep = (targetStep: number) => {
+    if (isSaving || targetStep === activeStep) return;
+    if (targetStep < 0 || targetStep >= FORM_STEPS.length) return;
+
+    if (targetStep > activeStep) {
+      for (let s = activeStep; s < targetStep; s++) {
+        if (!validateStep(s)) return;
+      }
+    }
+
+    setSlideIn(false);
+    setTimeout(() => {
+      setActiveStep(targetStep);
+      setSlideIn(true);
+    }, 120);
+  };
+
+  const renderStepIcon = (index: number) => (
+    <Box
+      sx={{
+        width: 32,
+        height: 32,
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: index <= activeStep ? 'primary.main' : 'action.disabledBackground',
+        color: index <= activeStep ? 'primary.contrastText' : 'text.disabled',
+        fontSize: 14,
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+      }}
+    >
+      <FontAwesomeIcon icon={STEP_ICONS[index]} />
+    </Box>
+  );
+
   const buildPayload = (): CreateProductData | UpdateProductData => ({
     name: name.trim(),
     sku: sku.trim() || undefined,
@@ -176,7 +214,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
     category: category || undefined,
     unitPrice: unitPrice === '' ? undefined : Number(unitPrice),
     estimatedHours: estimatedHours === '' ? undefined : Number(estimatedHours),
-    languages: languages.split(',').map(s => s.trim()).filter(Boolean),
+    languages,
     description: description.trim() || undefined,
     details: detailsText.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean),
     visualType,
@@ -297,23 +335,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
 
       case 'skills':
         return (
-          <Box>
-            <TextField
-              label="Technologies & langages"
-              value={languages}
-              onChange={e => setLanguages(e.target.value)}
-              fullWidth
-              placeholder="React, TypeScript, NestJS…"
-              helperText="Séparez par des virgules"
-            />
-            {languages.trim() && (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 2 }}>
-                {languages.split(',').map(s => s.trim()).filter(Boolean).map(lang => (
-                  <Chip key={lang} label={lang} size="small" color="primary" variant="outlined" />
-                ))}
-              </Box>
-            )}
-          </Box>
+          <ProductTechAutocomplete value={languages} onChange={setLanguages} />
         );
 
       case 'visual':
@@ -385,9 +407,9 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
                   <ListItemText primary="Charge" secondary={`${estimatedHours} h`} />
                 </ListItem>
               )}
-              {languages.trim() && (
+              {languages.length > 0 && (
                 <ListItem disableGutters>
-                  <ListItemText primary="Technos" secondary={languages} />
+                  <ListItemText primary="Technos" secondary={languages.join(', ')} />
                 </ListItem>
               )}
             </List>
@@ -427,30 +449,27 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       </DialogTitle>
 
       <DialogContent dividers sx={{ minHeight: 380 }}>
-        <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3, display: { xs: 'none', sm: 'flex' } }}>
+        <Stepper activeStep={activeStep} nonLinear alternativeLabel sx={{ mb: 3, display: { xs: 'none', sm: 'flex' } }}>
           {FORM_STEPS.map((step, i) => (
             <Step key={step.id} completed={i < activeStep}>
-              <StepLabel
-                StepIconComponent={() => (
-                  <Box
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      bgcolor: i <= activeStep ? 'primary.main' : 'action.disabledBackground',
-                      color: i <= activeStep ? 'primary.contrastText' : 'text.disabled',
-                      fontSize: 14,
-                    }}
-                  >
-                    <FontAwesomeIcon icon={STEP_ICONS[i]} />
-                  </Box>
-                )}
+              <StepButton
+                onClick={() => goToStep(i)}
+                disabled={isSaving}
+                icon={renderStepIcon(i)}
+                sx={{
+                  py: 0.5,
+                  borderRadius: 2,
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    '& .MuiStepIcon-root, & > span > div': {
+                      transform: 'scale(1.06)',
+                    },
+                  },
+                  '&.Mui-disabled': { opacity: 0.55 },
+                }}
               >
                 {step.label}
-              </StepLabel>
+              </StepButton>
             </Step>
           ))}
         </Stepper>
@@ -497,7 +516,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
               Continuer
             </Button>
           ) : (
-            <Button variant="contained" onClick={handleSave} disabled={isSaving || !isFormValid} startIcon={<FontAwesomeIcon icon={faCheck} />}>
+            <Button variant="contained" onClick={handleSave} disabled={isSaving || !isFormValid} startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <FontAwesomeIcon icon={faCheck} />}>
               {isSaving ? 'Enregistrement…' : 'Enregistrer'}
             </Button>
           )}

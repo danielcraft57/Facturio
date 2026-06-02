@@ -31,10 +31,23 @@
 !**/env.example
 !**/env.prod.example
 !**/.env.example
+!docs/marketing/env.marketing.example
 
-# Marketing — captures temporaires (PII possible)
-docs/marketing/screenshots-temp/raw/
-docs/marketing/screenshots-temp/captures/
+# Marketing — production pub (PII possible, non versionné)
+docs/marketing/screenshots-temp/
+docs/marketing/tts-output/
+docs/marketing/pub-2026/captures/*
+!docs/marketing/pub-2026/captures/.gitkeep
+docs/marketing/pub-2026/videos/
+docs/marketing/pub-2026/workflow/
+docs/marketing/pub-2026/audio/*
+!docs/marketing/pub-2026/audio/.gitkeep
+docs/marketing/pub-2026/subtitles/*
+!docs/marketing/pub-2026/subtitles/.gitkeep
+docs/marketing/pub-2026/exports/*
+!docs/marketing/pub-2026/exports/.gitkeep
+docs/marketing/pub-2026/manifest.json
+docs/marketing/pub-2026/.playwright-auth.json
 
 # Logs applicatifs
 **/logs/
