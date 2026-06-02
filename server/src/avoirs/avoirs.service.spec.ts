@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { ConfigService } from '../config/config.service';
 import { EmailService } from '../common/email.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateAvoirDto } from './dto/create-avoir.dto';
 
@@ -57,6 +58,10 @@ describe('AvoirsService', () => {
 		sendInvoiceCreditedToClient: jest.fn().mockResolvedValue(undefined)
 	};
 
+	const mockOrganizationsService = {
+		getProfile: jest.fn().mockResolvedValue({})
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -76,6 +81,10 @@ describe('AvoirsService', () => {
 				{
 					provide: EmailService,
 					useValue: mockEmailService
+				},
+				{
+					provide: OrganizationsService,
+					useValue: mockOrganizationsService
 				}
 			]
 		}).compile();

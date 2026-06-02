@@ -135,7 +135,6 @@ export function MarketingScreensShowcase({
                   durationSec={screen.durationSec ?? 11}
                   distanceRatio={screen.distanceRatio ?? 0.5}
                   delaySec={screen.delaySec ?? 0}
-                  maxWidth="100%"
                 />
               </ScrollReveal>
             </Grid>
