@@ -21,6 +21,10 @@
  *   node scripts/purge-organization-invoices.js purge user@example.com --stripe --confirm
  *   node scripts/purge-organization-invoices.js purge user@example.com --this-month --confirm
  *   node scripts/purge-organization-invoices.js purge org:1 --all --confirm
+ *   npm run invoices:purge -- user@example.com --stripe --confirm
+ *
+ * Doc : docs/deployment/SCRIPTS_EXPLOITATION_PRODUCTION.md
+ * Shell : scripts/deploy/ops-facturio.sh invoices-purge …
  */
 
 const path = require('path');
@@ -63,6 +67,10 @@ Options purge :
 Exemples :
   node scripts/purge-organization-invoices.js list daniel@danielcraft.fr --stripe
   node scripts/purge-organization-invoices.js purge daniel@danielcraft.fr --stripe --confirm
+  npm run invoices:purge -- user@example.com --this-month --confirm
+
+Doc : docs/deployment/SCRIPTS_EXPLOITATION_PRODUCTION.md
+Shell : scripts/deploy/ops-facturio.sh invoices-purge …
 `);
 }
 

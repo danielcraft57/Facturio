@@ -44,6 +44,7 @@ Référence SSL : `nginx/facturio-reverse-proxy.ssl.conf`
 | Script | Usage |
 |--------|--------|
 | `facturio-update.sh` | Mise à jour complète node10 |
+| `ops-facturio.sh` | Plans SaaS (free/pro/agency) et purge factures — voir [SCRIPTS_EXPLOITATION_PRODUCTION.md](../../docs/deployment/SCRIPTS_EXPLOITATION_PRODUCTION.md) |
 | `fetch-frontend-dist.sh` | Artefact CI uniquement |
 | `facturio-frontend-nginx-app.conf` | Nginx statique sur node10 (port 5173) |
 | `linux/deploy-nginx-config.sh` | Publier la config sur node12 |

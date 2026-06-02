@@ -584,48 +584,55 @@ node scripts/manage-user.js list
 npm run user:list
 ```
 
-## Plans SaaS en production
+## Scripts d'exploitation (plans, factures, utilisateurs)
 
-Script : `server/scripts/set-organization-plan.js` (même prérequis que `manage-user.js` : `.env`, `DATABASE_URL`, client Prisma généré).
+Guide détaillé : **[SCRIPTS_EXPLOITATION_PRODUCTION.md](./SCRIPTS_EXPLOITATION_PRODUCTION.md)**.
 
-**Consulter le plan** d’un compte (email du login ou id organisation) :
+Raccourci shell sur le serveur :
+
+```bash
+chmod +x /opt/facturio/scripts/deploy/ops-facturio.sh
+/opt/facturio/scripts/deploy/ops-facturio.sh plan-show "client@example.com"
+/opt/facturio/scripts/deploy/ops-facturio.sh plan-agency "client@example.com" --months=12
+/opt/facturio/scripts/deploy/ops-facturio.sh invoices-purge "client@example.com" --stripe --confirm
+```
+
+Prérequis : `cd /opt/facturio/server`, `.env` avec `DATABASE_URL`, client Prisma généré.
+
+### Plans SaaS (Free / Pro / Agence)
+
+Script : `server/scripts/set-organization-plan.js`
+
+| Plan | Commande |
+|------|----------|
+| **Free** | `npm run plan:set -- "email" free --clear-subscription` |
+| **Pro** | `npm run plan:set -- "email" pro` |
+| **Pro + e-facture** | `npm run plan:set -- "email" pro-efacture --months=12` |
+| **Agence** | `npm run plan:set -- "email" agency` |
 
 ```bash
 cd /opt/facturio/server
 node scripts/set-organization-plan.js show "client@example.com"
-node scripts/set-organization-plan.js show org:12
-# ou
-npm run plan:show -- "client@example.com"
-```
-
-**Changer le plan** — valeurs : `free`, `pro`, `pro-efacture` (ou `PRO_EFACTURE`), `agency` :
-
-```bash
-# Pro sans date de fin (accès illimité côté Facturio)
-node scripts/set-organization-plan.js set "client@example.com" pro
-
-# Pro + e-facture pour 12 mois
-node scripts/set-organization-plan.js set "client@example.com" pro-efacture --months=12
-
-# Fin à une date précise
-node scripts/set-organization-plan.js set "client@example.com" pro --expires=2026-12-31
-
-# Repasser en Free et détacher l’abonnement Stripe enregistré dans Facturio
+node scripts/set-organization-plan.js set "client@example.com" agency --months=12
 node scripts/set-organization-plan.js set "client@example.com" free --clear-subscription
-
-# Simulation
-node scripts/set-organization-plan.js set "client@example.com" pro --dry-run
+npm run plan:list
+npm run plan:list -- --plan=AGENCY
 ```
 
-**Lister les organisations** :
+> Si un client a encore un abonnement actif dans Stripe et que vous le repassez en `free` **sans** `--clear-subscription`, un webhook peut rétablir un plan payant.
+
+### Purge factures (quota Free, tests Stripe)
+
+Script : `server/scripts/purge-organization-invoices.js` — le quota Free compte **toutes les factures créées dans le mois**, y compris paiements Stripe test.
 
 ```bash
-node scripts/set-organization-plan.js list
-node scripts/set-organization-plan.js list --plan=FREE
-npm run plan:list
+node scripts/purge-organization-invoices.js usage "client@example.com"
+node scripts/purge-organization-invoices.js list "client@example.com" --stripe
+node scripts/purge-organization-invoices.js purge "client@example.com" --stripe --confirm
+npm run invoices:usage -- "client@example.com"
 ```
 
-> Si un client a encore un abonnement actif dans Stripe et que vous le repassez en `free` sans `--clear-subscription`, un webhook Stripe peut rétablir un plan payant. Annulez l’abonnement dans Stripe ou utilisez `--clear-subscription`.
+Filtres : `--stripe`, `--this-month`, `--all`, `--paid`, `--status=…`, `--ids=…`. **`--confirm`** obligatoire pour supprimer.
 
 ## Dépannage
 

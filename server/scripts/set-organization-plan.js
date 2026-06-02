@@ -73,13 +73,27 @@ Usage:
   node scripts/set-organization-plan.js set <email|org:id> <plan> [options]
   node scripts/set-organization-plan.js list [--plan=FREE|PRO|...]
 
-Options (set):
+Cible : email de connexion ou org:42 / #42
+
+Plans (alias CLI → enum) :
+  free              → FREE
+  pro               → PRO
+  pro-efacture      → PRO_EFACTURE  (alias pro_efacture, efacture)
+  agency, agence    → AGENCY
+
+Exemples :
+  node scripts/set-organization-plan.js set user@example.com pro
+  node scripts/set-organization-plan.js set user@example.com agency --months=12
+  node scripts/set-organization-plan.js set user@example.com free --clear-subscription
+  npm run plan:set -- user@example.com pro-efacture --months=12
+
+Options (set) :
   --months=N           Fin d'accès dans N mois (plans payants)
   --expires=YYYY-MM-DD Fin d'accès à cette date (23:59 UTC)
   --clear-subscription Détache stripeSubscriptionId + statut (recommandé si passage en Free)
   --dry-run            Affiche la modification sans l'appliquer
 
-Plans: ${VALID_PLANS.join(', ')}
+Doc : docs/deployment/SCRIPTS_EXPLOITATION_PRODUCTION.md
 `);
 }
 

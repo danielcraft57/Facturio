@@ -1,42 +1,57 @@
-# Scripts serveur
+# Scripts serveur — exploitation
 
-## manage-user.js
+Exécution : **`cd /opt/facturio/server`** (prod) avec `.env` et `DATABASE_URL`.
 
-Script de gestion des utilisateurs en production (ajout, suppression, liste). A deployer avec l'application ; a executer sur le serveur dans `/opt/facturio/server` avec le `.env` et `DATABASE_URL` configurés.
+**Documentation complète** : [docs/deployment/SCRIPTS_EXPLOITATION_PRODUCTION.md](../../docs/deployment/SCRIPTS_EXPLOITATION_PRODUCTION.md)
 
-- **add** : cree une organisation et un utilisateur (status ACTIVE, role ADMIN par defaut).
-- **remove** : supprime l'utilisateur par email ; si l'organisation n'a plus d'utilisateur, elle est supprimee.
-- **list** : affiche la liste des utilisateurs.
+**Raccourci shell** (depuis la racine du dépôt) : [scripts/deploy/ops-facturio.sh](../../scripts/deploy/ops-facturio.sh)
 
-Voir `docs/deployment/DEPLOIEMENT_PRODUCTION.md` (section "Gestion des utilisateurs en production") pour les exemples de commandes.
+## Commandes npm
 
-## set-organization-plan.js
+| Script npm | Équivalent node |
+|------------|-----------------|
+| `npm run plan:show -- <cible>` | `set-organization-plan.js show` |
+| `npm run plan:set -- <cible> <plan> [opts]` | `set-organization-plan.js set` |
+| `npm run plan:list` | `set-organization-plan.js list` |
+| `npm run invoices:usage -- <cible>` | `purge-organization-invoices.js usage` |
+| `npm run invoices:list -- <cible> [filtres]` | `purge-organization-invoices.js list` |
+| `npm run invoices:purge -- <cible> [filtres] --confirm` | `purge-organization-invoices.js purge` |
+| `npm run user:add -- …` | `manage-user.js add` |
+| `npm run user:remove -- <email>` | `manage-user.js remove` |
+| `npm run user:list` | `manage-user.js list` |
 
-Changement manuel du plan SaaS (`FREE`, `PRO`, `PRO_EFACTURE`, `AGENCY`) d'une organisation, par email utilisateur ou `org:ID`.
+**Plans** : `free`, `pro`, `pro-efacture`, `agency` (alias `agence`).
 
-- **show** : affiche plan, expiration, Stripe, utilisateurs de l'org.
-- **set** : applique le plan (`--months`, `--expires`, `--clear-subscription`, `--dry-run`).
-- **list** : liste les organisations (`--plan=PRO` pour filtrer).
+## Fichiers
+
+### `set-organization-plan.js` — plans SaaS
+
+- **show** : plan, expiration, Stripe, utilisateurs
+- **set** : `free` | `pro` | `pro-efacture` | `agency` + `--months`, `--expires`, `--clear-subscription`, `--dry-run`
+- **list** : toutes les orgs (`--plan=PRO` pour filtrer)
 
 ```bash
-node scripts/set-organization-plan.js show user@example.com
-node scripts/set-organization-plan.js set user@example.com pro
+node scripts/set-organization-plan.js set user@example.com agency --months=12
 node scripts/set-organization-plan.js set user@example.com free --clear-subscription
-npm run plan:set -- user@example.com pro-efacture --months=12
 ```
 
-Voir `docs/deployment/DEPLOIEMENT_PRODUCTION.md` (section « Plans SaaS en production »).
+### `purge-organization-invoices.js` — factures et quota Free
 
-## purge-organization-invoices.js
-
-Suppression **définitive** de factures (paiements, écritures comptables, quota mensuel Free). Utile après des paiements Stripe de test.
+Suppression **définitive** (paiements, compta, quota mensuel). Filtres : `--stripe`, `--this-month`, `--all`, `--paid`, `--status=…`, `--ids=…`. **`--confirm`** obligatoire pour exécuter.
 
 ```bash
 node scripts/purge-organization-invoices.js usage user@example.com
-node scripts/purge-organization-invoices.js list user@example.com --stripe
-node scripts/purge-organization-invoices.js purge user@example.com --stripe --dry-run
 node scripts/purge-organization-invoices.js purge user@example.com --stripe --confirm
-node scripts/purge-organization-invoices.js purge user@example.com --this-month --confirm
 ```
 
-Filtres : `--all`, `--this-month`, `--stripe`, `--paid`, `--status=…`, `--ids=…`. La purge exige `--confirm`.
+### `manage-user.js` — comptes
+
+- **add** / **remove** / **list** — voir [DEPLOIEMENT_PRODUCTION.md](../../docs/deployment/DEPLOIEMENT_PRODUCTION.md)
+
+### Autres
+
+| Script | Rôle |
+|--------|------|
+| `test-stripe-config.js` | Vérifier clés Stripe org |
+| `preview-emails.ts` | Aperçu templates email |
+| `prisma-migrate-setup.mjs` | Base test / migrate setup |

@@ -18,7 +18,7 @@ Hostname applicatif : **node10.lan** (pas `raspberry-10` dans les configs).
 - Nginx public : `scripts/deploy/nginx/facturio-reverse-proxy.ssl.conf` sur node12.
 - Frontend prod : `VITE_API_URL=/api` dans `frontend/env.prod.example`.
 
-Doc détaillée : `scripts/deploy/README.md`, `docs/deployment/POSTGRESQL_PRODUCTION.md`.
+Doc détaillée : `scripts/deploy/README.md`, `docs/deployment/POSTGRESQL_PRODUCTION.md`, `docs/deployment/SCRIPTS_EXPLOITATION_PRODUCTION.md` (plans Free/Pro/Agence, purge factures : `scripts/deploy/ops-facturio.sh`).
 
 ### Diagnostic login / API
 
