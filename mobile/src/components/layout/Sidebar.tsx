@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: '/(app)/quotes', label: 'Devis', icon: 'clipboard' as const },
   { href: '/(app)/activity', label: 'Activité', icon: 'activity' as const },
   { href: '/(app)/clients', label: 'Clients', icon: 'users' as const },
+  { href: '/(app)/products', label: 'Produits', icon: 'package' as const },
   { href: '/(app)/more', label: 'Paramètres', icon: 'settings' as const },
 ]
 

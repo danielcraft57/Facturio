@@ -1,17 +1,41 @@
 import 'react-native-gesture-handler'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import { StyleSheet } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { AuthProvider } from '../src/hooks/useAuth'
-export default function RootLayout() {
+import { ThemeProvider, useTheme } from '../src/hooks/useTheme'
+
+function RootStack() {
+  const { colors, isDark } = useTheme()
+
   return (
-    <AuthProvider>
-      <StatusBar style="dark" />
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#F1F5F9' },
+          animation: 'fade_from_bottom',
+          animationDuration: 240,
+          contentStyle: { backgroundColor: colors.background },
         }}
       />
-    </AuthProvider>
+    </>
   )
 }
+
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={styles.root}>
+      <ThemeProvider>
+        <AuthProvider>
+          <RootStack />
+        </AuthProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
+  )
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+})

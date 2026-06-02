@@ -46,31 +46,32 @@ export function DonutChart({ title, segments }: DonutChartProps) {
     <Card style={styles.card}>
       <Text style={styles.title}>{title}</Text>
       <View style={styles.donutRow}>
-        <Svg width={100} height={100} viewBox="0 0 100 100">
-          {segments.reduce<{ offset: number; nodes: ReactNode[] }>(
-            (acc, seg, i) => {
-              const pct = seg.value / total
-              const dash = pct * 251
-              acc.nodes.push(
-                <Circle
-                  key={seg.label}
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  stroke={seg.color}
-                  strokeWidth="12"
-                  fill="none"
-                  strokeDasharray={`${dash} 251`}
-                  strokeDashoffset={-acc.offset}
-                  transform="rotate(-90 50 50)"
-                />,
-              )
-              acc.offset += dash
-              return acc
-            },
-            { offset: 0, nodes: [] },
-          ).nodes}
-        </Svg>
+        <View style={styles.donutRotate}>
+          <Svg width={100} height={100} viewBox="0 0 100 100">
+            {segments.reduce<{ offset: number; nodes: ReactNode[] }>(
+              (acc, seg) => {
+                const pct = seg.value / total
+                const dash = pct * 251
+                acc.nodes.push(
+                  <Circle
+                    key={seg.label}
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    stroke={seg.color}
+                    strokeWidth="12"
+                    fill="none"
+                    strokeDasharray={`${dash} 251`}
+                    strokeDashoffset={-acc.offset}
+                  />,
+                )
+                acc.offset += dash
+                return acc
+              },
+              { offset: 0, nodes: [] },
+            ).nodes}
+          </Svg>
+        </View>
         <View style={styles.legend}>
           {segments.map((seg) => (
             <View key={seg.label} style={styles.legendRow}>
@@ -101,6 +102,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+  },
+  /** Rotation via RN (pas rotation/origin SVG → évite transform-origin invalide sur web). */
+  donutRotate: {
+    width: 100,
+    height: 100,
+    transform: [{ rotate: '-90deg' }],
   },
   legend: { flex: 1, gap: 8 },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

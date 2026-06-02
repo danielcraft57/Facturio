@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Button } from '../../src/components/ui/Button'
 import { Logo } from '../../src/components/ui/Logo'
+import { AnimatedOrbs } from '../../src/components/ui/AnimatedOrbs'
 import { useAuth } from '../../src/hooks/useAuth'
 import { useResponsiveLayout } from '../../src/hooks/useResponsiveLayout'
 import { useDocumentTitle } from '../../src/hooks/useDocumentTitle'
@@ -112,6 +113,7 @@ export default function LoginScreen() {
         <View style={[styles.container, isTablet && styles.containerTablet]}>
           {isTablet && (
             <View style={styles.hero}>
+              <AnimatedOrbs />
               <Logo />
               <Text style={styles.heroTitle}>La facturation simple, rapide et professionnelle</Text>
               <Text style={styles.heroSubtitle}>Créez, envoyez et suivez vos factures en toute simplicité.</Text>
@@ -133,7 +135,10 @@ export default function LoginScreen() {
           <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
             {!isTablet && (
               <View style={styles.mobileBrand}>
+                <AnimatedOrbs />
                 <Logo />
+                <Text style={styles.mobileAppName}>{APP_NAME}</Text>
+                <Text style={styles.mobileTagline}>{APP_TAGLINE}</Text>
               </View>
             )}
             {form}
@@ -156,6 +161,8 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     justifyContent: 'center',
     gap: spacing.md,
+    position: 'relative',
+    overflow: 'hidden',
   },
   heroTitle: {
     ...typography.hero,
@@ -188,6 +195,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
     alignItems: 'flex-start',
+    position: 'relative',
+    overflow: 'hidden',
   },
   mobileAppName: {
     ...typography.title,

@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar'
 import { BottomTabs } from './BottomTabs'
 import { AppHeader } from './AppHeader'
 import { colors, spacing } from '../../theme'
+import { useTheme } from '../../hooks/useTheme'
 
 interface AppShellProps extends ViewProps {
   children: React.ReactNode
@@ -13,13 +14,14 @@ interface AppShellProps extends ViewProps {
 
 export function AppShell({ children }: AppShellProps) {
   const { isTablet } = useResponsiveLayout()
+  const { colors: themeColors } = useTheme()
   useDocumentTitle()
 
   if (isTablet) {
     return (
-      <View style={styles.tabletRoot}>
+      <View style={[styles.tabletRoot, { backgroundColor: themeColors.background }]}>
         <Sidebar />
-        <SafeAreaView style={styles.tabletContent} edges={['top', 'right', 'bottom']}>
+        <SafeAreaView style={[styles.tabletContent, { backgroundColor: themeColors.background }]} edges={['top', 'right', 'bottom']}>
           <View style={styles.inner}>
             <AppHeader />
             {children}
@@ -30,7 +32,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <SafeAreaView style={styles.phoneRoot} edges={['top']}>
+    <SafeAreaView style={[styles.phoneRoot, { backgroundColor: themeColors.background }]} edges={['top']}>
       <View style={styles.phoneContent}>
         <AppHeader />
         {children}

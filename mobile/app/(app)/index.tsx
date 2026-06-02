@@ -7,16 +7,23 @@ import {
   Text,
   View,
 } from 'react-native'
+import { useRouter } from 'expo-router'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { MetricCard } from '../../src/components/ui/MetricCard'
 import { DonutChart, SimpleLineChart } from '../../src/components/dashboard/ChartPlaceholders'
 import { Card } from '../../src/components/ui/Card'
+import { FloatingActionButton } from '../../src/components/ui/FloatingActionButton'
+import { ShimmerBlock } from '../../src/components/ui/ShimmerBlock'
 import { useResponsiveLayout } from '../../src/hooks/useResponsiveLayout'
+import { useHaptics } from '../../src/hooks/useHaptics'
 import { dashboardService } from '../../src/services/dashboardService'
 import type { DashboardStats } from '../../src/types/dashboard'
 import { colors, spacing, typography } from '../../src/theme'
 import { formatCurrency } from '../../src/utils/format'
 
 export default function DashboardScreen() {
+  const router = useRouter()
+  const { impactLight } = useHaptics()
   const { isTablet } = useResponsiveLayout()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,8 +49,11 @@ export default function DashboardScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.teal} />
+      <View style={styles.loadingWrap}>
+        <ShimmerBlock height={72} />
+        <ShimmerBlock height={72} />
+        <ShimmerBlock height={220} />
+        <ShimmerBlock height={180} />
       </View>
     )
   }
@@ -62,7 +72,7 @@ export default function DashboardScreen() {
     >
       {error && <Text style={styles.error}>{error}</Text>}
 
-      <View style={[styles.kpiGrid, isTablet && styles.kpiGridTablet]}>
+      <Animated.View entering={FadeInDown.delay(20).duration(260)} style={[styles.kpiGrid, isTablet && styles.kpiGridTablet]}>
         <MetricCard
           label="Chiffre d'affaires"
           value={formatCurrency(revenue?.thisMonth ?? 0)}
@@ -93,9 +103,9 @@ export default function DashboardScreen() {
           iconBg="#E0F2FE"
           iconColor={colors.primary}
         />
-      </View>
+      </Animated.View>
 
-      <View style={[styles.chartsRow, isTablet && styles.chartsRowTablet]}>
+      <Animated.View entering={FadeInDown.delay(60).duration(280)} style={[styles.chartsRow, isTablet && styles.chartsRowTablet]}>
         <SimpleLineChart
           title="Évolution du chiffre d'affaires"
           labels={chartLabels}
@@ -109,9 +119,10 @@ export default function DashboardScreen() {
             { label: 'En retard', value: invoices?.overdue ?? 0, color: colors.error },
           ]}
         />
-      </View>
+      </Animated.View>
 
-      <Card style={styles.activityCard}>
+      <Animated.View entering={FadeInDown.delay(100).duration(300)}>
+        <Card style={styles.activityCard}>
         <Text style={styles.sectionTitle}>Activité récente</Text>
         {(stats?.recentActivity ?? []).slice(0, 5).map((item, i) => (
           <View key={`${item.date}-${i}`} style={styles.activityRow}>
@@ -122,7 +133,16 @@ export default function DashboardScreen() {
         {!stats?.recentActivity?.length && (
           <Text style={styles.empty}>Aucune activité récente</Text>
         )}
-      </Card>
+        </Card>
+      </Animated.View>
+
+      <FloatingActionButton
+        label="Créer facture"
+        onPress={async () => {
+          await impactLight()
+          router.push('/(app)/invoices' as never)
+        }}
+      />
     </ScrollView>
   )
 }
@@ -130,6 +150,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xxl },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loadingWrap: { gap: spacing.sm, paddingTop: spacing.sm },
   error: { color: colors.error, marginBottom: spacing.md, ...typography.body },
   kpiGrid: { gap: spacing.sm, marginBottom: spacing.lg },
   kpiGridTablet: {

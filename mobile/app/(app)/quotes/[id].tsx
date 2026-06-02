@@ -1,22 +1,26 @@
 import { useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import { useNetInfo } from '@react-native-community/netinfo'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { useOnlineStatus } from '../../../src/hooks/useOnlineStatus'
 import { Card } from '../../../src/components/ui/Card'
 import { StatusBadge } from '../../../src/components/ui/StatusBadge'
+import { Button } from '../../../src/components/ui/Button'
+import { ComboStreak } from '../../../src/components/ui/ComboStreak'
 import { quotesService } from '../../../src/services/quotesService'
 import { queueOrRunAction } from '../../../src/hooks/useLiveSync'
+import { useHaptics } from '../../../src/hooks/useHaptics'
 import type { Quote } from '../../../src/types/quote'
 import { colors, spacing, typography } from '../../../src/theme'
 import { formatCurrency, formatShortDate } from '../../../src/utils/format'
 
 export default function QuoteDetailScreen() {
+  const { impactLight, notifySuccess, notifyError } = useHaptics()
   const { id } = useLocalSearchParams<{ id: string }>()
-  const netInfo = useNetInfo()
-  const online = !!netInfo.isConnected && (netInfo.isInternetReachable ?? true)
+  const online = useOnlineStatus()
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loading, setLoading] = useState(true)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [combo, setCombo] = useState(0)
 
   useEffect(() => {
     if (!id) return
@@ -25,11 +29,59 @@ export default function QuoteDetailScreen() {
 
   const sendNow = async () => {
     if (!quote) return
-    const result = await queueOrRunAction(
-      { method: 'POST', url: `/quotes/${quote.id}/send`, body: {} },
-      online,
-    )
-    setFeedback(result.queued ? 'Hors ligne : envoi mis en attente.' : 'Devis envoyé.')
+    try {
+      const result = await queueOrRunAction(
+        { method: 'POST', url: `/quotes/${quote.id}/send`, body: {} },
+        online,
+      )
+      if (result.queued) {
+        await impactLight()
+        setFeedback('Hors ligne : envoi mis en attente.')
+        setCombo((v) => v + 1)
+      } else {
+        await notifySuccess()
+        setFeedback('Devis envoyé.')
+        setCombo((v) => v + 2)
+      }
+    } catch {
+      await notifyError()
+      setFeedback('Erreur pendant l’envoi du devis.')
+      setCombo(0)
+    }
+  }
+
+  const acceptNow = async () => {
+    if (!quote) return
+    try {
+      const result = await queueOrRunAction(
+        { method: 'POST', url: `/quotes/${quote.id}/accept`, body: {} },
+        online,
+      )
+      setFeedback(result.queued ? 'Acceptation mise en attente (hors ligne).' : 'Devis accepté.')
+      await notifySuccess()
+      setCombo((v) => v + (result.queued ? 1 : 3))
+    } catch {
+      await notifyError()
+      setFeedback('Impossible d’accepter le devis.')
+      setCombo(0)
+    }
+  }
+
+  const rejectNow = async () => {
+    if (!quote) return
+    try {
+      const result = await queueOrRunAction(
+        { method: 'POST', url: `/quotes/${quote.id}/reject`, body: {} },
+        online,
+      )
+      setFeedback(result.queued ? 'Refus mis en attente (hors ligne).' : 'Devis refusé.')
+      await impactLight()
+      setCombo((v) => v + 1)
+    } catch {
+      await notifyError()
+      setFeedback('Impossible de refuser le devis.')
+      setCombo(0)
+    }
   }
 
   if (loading) return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.teal} />
@@ -46,10 +98,13 @@ export default function QuoteDetailScreen() {
       </Card>
 
       {feedback && <Text style={styles.feedback}>{feedback}</Text>}
+      <ComboStreak value={combo} />
 
-      <Pressable style={styles.sendBtn} onPress={sendNow}>
-        <Text style={styles.sendText}>Envoyer le devis</Text>
-      </Pressable>
+      <Button label="Envoyer le devis" onPress={sendNow} variant="teal" fullWidth />
+      <View style={styles.row}>
+        <Button label="Accepter" onPress={acceptNow} variant="navy" fullWidth style={styles.colBtn} />
+        <Button label="Refuser" onPress={rejectNow} variant="outline" fullWidth style={styles.colBtn} />
+      </View>
     </View>
   )
 }
@@ -60,12 +115,7 @@ const styles = StyleSheet.create({
   line: { ...typography.body, color: colors.text, marginTop: 6 },
   total: { ...typography.kpi, color: colors.text, marginTop: spacing.md },
   feedback: { ...typography.caption, color: colors.textMuted },
-  sendBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  sendText: { ...typography.subtitle, color: colors.surface },
+  row: { flexDirection: 'row', gap: spacing.sm },
+  colBtn: { flex: 1 },
   empty: { ...typography.body, color: colors.textMuted, marginTop: spacing.xl },
 })

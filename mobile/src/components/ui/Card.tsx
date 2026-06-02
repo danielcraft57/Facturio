@@ -1,13 +1,30 @@
 import { Platform, StyleSheet, View, type ViewProps } from 'react-native'
 import { colors, radius, spacing } from '../../theme'
+import { useTheme } from '../../hooks/useTheme'
 
 interface CardProps extends ViewProps {
   padded?: boolean
 }
 
 export function Card({ children, padded = true, style, ...rest }: CardProps) {
+  const { colors: themeColors } = useTheme()
   return (
-    <View style={[styles.card, padded && styles.padded, style]} {...rest}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: themeColors.surface,
+          borderColor: themeColors.border,
+          ...Platform.select({
+            web: { boxShadow: '0px 4px 12px rgba(15, 23, 42, 0.14)' },
+            default: { shadowColor: themeColors.text },
+          }),
+        },
+        padded && styles.padded,
+        style,
+      ]}
+      {...rest}
+    >
       {children}
     </View>
   )

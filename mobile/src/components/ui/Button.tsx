@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View, type PressableProps, ActivityIndicator } from 'react-native'
 import { colors, radius, spacing, typography } from '../../theme'
+import { useTheme } from '../../hooks/useTheme'
 
 type Variant = 'teal' | 'navy' | 'outline' | 'ghost'
 
@@ -11,6 +12,7 @@ interface ButtonProps extends PressableProps {
 }
 
 export function Button({ label, variant = 'teal', loading, fullWidth, disabled, style, ...rest }: ButtonProps) {
+  const { colors: themeColors } = useTheme()
   const isDisabled = disabled || loading
 
   return (
@@ -20,6 +22,9 @@ export function Button({ label, variant = 'teal', loading, fullWidth, disabled, 
       style={(state) => [
         styles.base,
         styles[variant],
+        variant === 'teal' && { backgroundColor: themeColors.teal },
+        variant === 'navy' && { backgroundColor: themeColors.navy },
+        variant === 'outline' && { borderColor: themeColors.border },
         fullWidth && styles.fullWidth,
         state.pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
@@ -28,9 +33,19 @@ export function Button({ label, variant = 'teal', loading, fullWidth, disabled, 
       {...rest}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? colors.teal : colors.surface} />
+        <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? themeColors.teal : themeColors.surface} />
       ) : (
-        <Text style={[styles.label, styles[`${variant}Label` as keyof typeof styles]]}>{label}</Text>
+        <Text
+          style={[
+            styles.label,
+            styles[`${variant}Label` as keyof typeof styles],
+            variant === 'teal' && { color: themeColors.surface },
+            variant === 'outline' && { color: themeColors.text },
+            variant === 'ghost' && { color: themeColors.primary },
+          ]}
+        >
+          {label}
+        </Text>
       )}
     </Pressable>
   )

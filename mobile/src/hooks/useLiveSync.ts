@@ -1,18 +1,10 @@
 import { useEffect } from 'react'
+import { Platform } from 'react-native'
 import { getAuthToken } from '../services/sessionStorage'
-import { startRealtime, stopRealtime, onRealtimeEvent } from '../services/realtimeService'
-import { prepareNotifications, pushLocalNotification } from '../services/notificationService'
-import { registerPushToken } from '../services/mobileNotificationsService'
-import {
-  enqueueOfflineAction,
-  flushOfflineQueue,
-  getOfflineQueueSize,
-  type OfflineAction,
-} from '../services/offlineQueueService'
-import { onNetworkChange, startNetworkWatcher } from '../services/networkService'
 import type { RealtimeEvent } from '../types/realtime'
 import { useLiveSyncStore } from '../stores/liveSyncStore'
 import { useRealtimeEventsStore } from '../stores/realtimeEventsStore'
+import type { OfflineAction } from '../services/offlineQueueService'
 
 function eventLabel(event: RealtimeEvent) {
   const doc = event.resource === 'quotes' ? 'Devis' : 'Facture'
@@ -36,6 +28,7 @@ export async function queueOrRunAction(action: Omit<OfflineAction, 'id' | 'creat
     await apiClient.request(action.method, action.url, action.body)
     return { queued: false }
   }
+  const { enqueueOfflineAction } = await import('../services/offlineQueueService')
   await enqueueOfflineAction(action)
   return { queued: true }
 }
@@ -53,13 +46,22 @@ export function useLiveSync(enabled: boolean) {
     let stopped = false
 
     const boot = async () => {
+      const { startNetworkWatcher, onNetworkChange } = await import('../services/networkService')
+      const { prepareNotifications, pushLocalNotification } = await import('../services/notificationService')
+      const { startRealtime, onRealtimeEvent } = await import('../services/realtimeService')
+      const { registerPushToken } = await import('../services/mobileNotificationsService')
+      const { getOfflineQueueSize, flushOfflineQueue } = await import('../services/offlineQueueService')
+
       startNetworkWatcher()
-      const pushToken = await prepareNotifications()
-      if (pushToken) {
-        try {
-          await registerPushToken(pushToken)
-        } catch {
-          // on garde la synchro locale même si l'enregistrement serveur échoue
+
+      if (Platform.OS !== 'web') {
+        const pushToken = await prepareNotifications()
+        if (pushToken) {
+          try {
+            await registerPushToken(pushToken)
+          } catch {
+            // synchro locale même si l'enregistrement serveur échoue
+          }
         }
       }
 
@@ -99,13 +101,14 @@ export function useLiveSync(enabled: boolean) {
       })
     }
 
-    boot()
+    void boot()
 
     return () => {
       stopped = true
       unsubRealtime?.()
       unsubNetwork?.()
-      stopRealtime()
+      void import('../services/realtimeService').then(({ stopRealtime }) => stopRealtime())
+      void import('../services/networkService').then(({ stopNetworkWatcher }) => stopNetworkWatcher())
     }
   }, [enabled, bumpInvoices, bumpQuotes, pushRealtimeEvent])
 }

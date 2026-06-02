@@ -18,6 +18,7 @@ export const ROUTE_TITLES: Record<string, string> = {
   '/quotes': 'Devis',
   '/activity': 'Activité',
   '/clients': 'Clients',
+  '/products': 'Produits',
   '/more': 'Paramètres',
   '/login': 'Connexion',
 }

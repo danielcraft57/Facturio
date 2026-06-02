@@ -1,11 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
-import { usePathname } from 'expo-router'
+import { usePathname, useRouter } from 'expo-router'
 import { Logo } from '../ui/Logo'
 import { useAuth } from '../../hooks/useAuth'
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout'
 import { APP_NAME, titleForPath } from '../../constants/appMetadata'
 import { colors, radius, spacing, typography } from '../../theme'
+import { useRealtimeEventsStore } from '../../stores/realtimeEventsStore'
+import { useTheme } from '../../hooks/useTheme'
 
 interface AppHeaderProps {
   /** Surcharge le titre déduit de la route */
@@ -14,9 +16,12 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ title, subtitle }: AppHeaderProps) {
+  const router = useRouter()
   const pathname = usePathname()
   const { user } = useAuth()
+  const { colors: themeColors } = useTheme()
   const { isTablet } = useResponsiveLayout()
+  const eventsCount = useRealtimeEventsStore((s) => s.events.length)
   const screenTitle = title ?? titleForPath(pathname)
   const isHome =
     pathname === '/' ||
@@ -25,6 +30,7 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
     (!pathname.includes('invoices') &&
       !pathname.includes('quotes') &&
       !pathname.includes('clients') &&
+      !pathname.includes('activity') &&
       !pathname.includes('more'))
   const greeting =
     isHome && user?.firstName ? `Bonjour ${user.firstName} 👋` : undefined
@@ -32,27 +38,32 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
   const initials = [user?.firstName?.[0], user?.lastName?.[0]].filter(Boolean).join('') || user?.email?.[0]?.toUpperCase() || '?'
 
   return (
-    <View style={styles.wrap} accessibilityRole="header">
+    <View style={[styles.wrap, { borderBottomColor: themeColors.border }]} accessibilityRole="header">
       <View style={styles.left}>
         {!isTablet && <Logo compact />}
         <View style={styles.titles}>
-          {!isTablet && <Text style={styles.appName}>{APP_NAME}</Text>}
-          <Text style={styles.screenTitle} numberOfLines={1}>
+          {!isTablet && <Text style={[styles.appName, { color: themeColors.teal }]}>{APP_NAME}</Text>}
+          <Text style={[styles.screenTitle, { color: themeColors.text }]} numberOfLines={1}>
             {screenTitle}
           </Text>
           {resolvedSubtitle ? (
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <Text style={[styles.subtitle, { color: themeColors.textMuted }]} numberOfLines={1}>
               {resolvedSubtitle}
             </Text>
           ) : null}
         </View>
       </View>
       <View style={styles.actions}>
-        <Pressable style={styles.iconBtn} accessibilityLabel="Notifications">
-          <Feather name="bell" size={20} color={colors.text} />
+        <Pressable
+          style={[styles.iconBtn, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
+          accessibilityLabel="Notifications"
+          onPress={() => router.push('/(app)/activity' as never)}
+        >
+          <Feather name="bell" size={20} color={themeColors.text} />
+          {eventsCount > 0 && <View style={styles.badge} />}
         </Pressable>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
+        <View style={[styles.avatar, { backgroundColor: themeColors.navy }]}>
+          <Text style={[styles.avatarText, { color: themeColors.textOnDark }]}>{initials}</Text>
         </View>
       </View>
     </View>
@@ -121,5 +132,14 @@ const styles = StyleSheet.create({
     color: colors.textOnDark,
     fontWeight: '700',
     fontSize: 14,
+  },
+  badge: {
+    position: 'absolute',
+    right: 7,
+    top: 7,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.error,
   },
 })

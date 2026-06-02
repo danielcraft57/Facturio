@@ -1,22 +1,26 @@
 import { useLocalSearchParams } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import { useNetInfo } from '@react-native-community/netinfo'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { useOnlineStatus } from '../../../src/hooks/useOnlineStatus'
 import { Card } from '../../../src/components/ui/Card'
 import { StatusBadge } from '../../../src/components/ui/StatusBadge'
+import { Button } from '../../../src/components/ui/Button'
+import { ComboStreak } from '../../../src/components/ui/ComboStreak'
 import { invoicesService } from '../../../src/services/invoicesService'
 import { queueOrRunAction } from '../../../src/hooks/useLiveSync'
+import { useHaptics } from '../../../src/hooks/useHaptics'
 import type { Invoice } from '../../../src/types/invoice'
 import { colors, spacing, typography } from '../../../src/theme'
 import { formatCurrency, formatShortDate } from '../../../src/utils/format'
 
 export default function InvoiceDetailScreen() {
+  const { impactLight, notifySuccess, notifyError } = useHaptics()
   const { id } = useLocalSearchParams<{ id: string }>()
-  const netInfo = useNetInfo()
-  const online = !!netInfo.isConnected && (netInfo.isInternetReachable ?? true)
+  const online = useOnlineStatus()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [combo, setCombo] = useState(0)
 
   useEffect(() => {
     if (!id) return
@@ -25,11 +29,25 @@ export default function InvoiceDetailScreen() {
 
   const sendNow = async () => {
     if (!invoice) return
-    const result = await queueOrRunAction(
-      { method: 'POST', url: `/invoices/${invoice.id}/send`, body: {} },
-      online,
-    )
-    setFeedback(result.queued ? 'Hors ligne : envoi mis en attente.' : 'Facture envoyée.')
+    try {
+      const result = await queueOrRunAction(
+        { method: 'POST', url: `/invoices/${invoice.id}/send`, body: {} },
+        online,
+      )
+      if (result.queued) {
+        await impactLight()
+        setFeedback('Hors ligne : envoi mis en attente.')
+        setCombo((v) => v + 1)
+      } else {
+        await notifySuccess()
+        setFeedback('Facture envoyée.')
+        setCombo((v) => v + 2)
+      }
+    } catch {
+      await notifyError()
+      setFeedback('Impossible d’envoyer la facture.')
+      setCombo(0)
+    }
   }
 
   if (loading) return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.teal} />
@@ -46,10 +64,9 @@ export default function InvoiceDetailScreen() {
       </Card>
 
       {feedback && <Text style={styles.feedback}>{feedback}</Text>}
+      <ComboStreak value={combo} />
 
-      <Pressable style={styles.sendBtn} onPress={sendNow}>
-        <Text style={styles.sendText}>Envoyer la facture</Text>
-      </Pressable>
+      <Button label="Envoyer la facture" onPress={sendNow} variant="teal" fullWidth />
     </View>
   )
 }
@@ -60,12 +77,5 @@ const styles = StyleSheet.create({
   line: { ...typography.body, color: colors.text, marginTop: 6 },
   total: { ...typography.kpi, color: colors.text, marginTop: spacing.md },
   feedback: { ...typography.caption, color: colors.textMuted },
-  sendBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  sendText: { ...typography.subtitle, color: colors.surface },
   empty: { ...typography.body, color: colors.textMuted, marginTop: spacing.xl },
 })

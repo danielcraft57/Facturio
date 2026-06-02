@@ -15,15 +15,16 @@ import { ShimmerBlock } from '../../src/components/ui/ShimmerBlock'
 import { FormModal } from '../../src/components/ui/FormModal'
 import { Button } from '../../src/components/ui/Button'
 import { SwipeableRow } from '../../src/components/ui/SwipeableRow'
-import { clientsService } from '../../src/services/clientsService'
-import type { Client } from '../../src/types/client'
+import { productsService } from '../../src/services/productsService'
+import type { Product } from '../../src/types/product'
 import { colors, radius, spacing, typography } from '../../src/theme'
 import { useHaptics } from '../../src/hooks/useHaptics'
+import { formatCurrency } from '../../src/utils/format'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 
-export default function ClientsScreen() {
+export default function ProductsScreen() {
   const { impactLight, impactMedium, notifySuccess, notifyError } = useHaptics()
-  const [clients, setClients] = useState<Client[]>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -33,14 +34,14 @@ export default function ClientsScreen() {
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
   const [draftName, setDraftName] = useState('')
-  const [draftEmail, setDraftEmail] = useState('')
-  const [draftPhone, setDraftPhone] = useState('')
+  const [draftPrice, setDraftPrice] = useState('')
+  const [draftDescription, setDraftDescription] = useState('')
 
   const load = useCallback(async (pageNum = 1, query = search) => {
     try {
-      const result = await clientsService.list({ page: pageNum, limit: 20, search: query || undefined })
-      const items = result.items ?? result.clients ?? []
-      setClients((prev) => (pageNum === 1 ? items : [...prev, ...items]))
+      const result = await productsService.list({ page: pageNum, limit: 20, search: query || undefined })
+      const items = result.items ?? result.products ?? []
+      setProducts((prev) => (pageNum === 1 ? items : [...prev, ...items]))
       setTotal(result.total ?? items.length)
       setPage(pageNum)
     } finally {
@@ -54,18 +55,18 @@ export default function ClientsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const confirmDelete = (client: Client) => {
-    Alert.alert('Supprimer le client', `Supprimer « ${client.name} » ?`, [
+  const confirmDelete = (product: Product) => {
+    Alert.alert('Supprimer le produit', `Supprimer « ${product.name} » ?`, [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Supprimer',
         style: 'destructive',
         onPress: async () => {
           try {
-            await clientsService.delete(client.id)
-            setClients((prev) => prev.filter((c) => c.id !== client.id))
+            await productsService.delete(product.id)
+            setProducts((prev) => prev.filter((p) => p.id !== product.id))
             setTotal((t) => Math.max(0, t - 1))
-            setFeedback('Client supprimé.')
+            setFeedback('Produit supprimé.')
             await notifySuccess()
           } catch (e) {
             setFeedback(e instanceof Error ? e.message : 'Suppression impossible.')
@@ -76,18 +77,14 @@ export default function ClientsScreen() {
     ])
   }
 
-  const duplicateClient = async (client: Client) => {
-    if (!client.email) {
-      setFeedback('Email requis pour dupliquer un client.')
-      return
-    }
+  const duplicateProduct = async (product: Product) => {
     try {
-      await clientsService.create({
-        name: `${client.name} (copie)`,
-        email: client.email,
-        phone: client.phone,
+      await productsService.create({
+        name: `${product.name} (copie)`,
+        unitPrice: product.unitPrice ?? undefined,
+        description: product.description ?? undefined,
       })
-      setFeedback('Client dupliqué.')
+      setFeedback('Produit dupliqué.')
       await impactMedium()
       await load(1)
     } catch (e) {
@@ -101,7 +98,7 @@ export default function ClientsScreen() {
       {feedback && <Text style={styles.feedback}>{feedback}</Text>}
       <Text style={styles.hint}>Glisser : gauche = supprimer, droite = dupliquer</Text>
       <View style={styles.toolbar}>
-        <SearchInput value={search} onChangeText={setSearch} placeholder="Rechercher un client…" />
+        <SearchInput value={search} onChangeText={setSearch} placeholder="Rechercher un produit…" />
       </View>
 
       {loading ? (
@@ -112,8 +109,8 @@ export default function ClientsScreen() {
         </View>
       ) : (
         <FlatList
-          data={clients}
-          keyExtractor={(item) => item.id}
+          data={products}
+          keyExtractor={(item) => String(item.id)}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -125,10 +122,10 @@ export default function ClientsScreen() {
             />
           }
           onEndReached={() => {
-            if (clients.length < total) load(page + 1)
+            if (products.length < total) load(page + 1)
           }}
-          ListEmptyComponent={<Text style={styles.empty}>Aucun client</Text>}
-          ListFooterComponent={<Text style={styles.footer}>{clients.length} / {total} clients</Text>}
+          ListEmptyComponent={<Text style={styles.empty}>Aucun produit</Text>}
+          ListFooterComponent={<Text style={styles.footer}>{products.length} / {total} produits</Text>}
           renderItem={({ item, index }) => (
             <Animated.View entering={FadeInDown.delay(index * 20).duration(260)}>
               <SwipeableRow
@@ -140,14 +137,16 @@ export default function ClientsScreen() {
                 rightAction={{
                   label: 'Dupliquer',
                   variant: 'duplicate',
-                  onPress: () => void duplicateClient(item),
+                  onPress: () => void duplicateProduct(item),
                 }}
-                onWebLongPress={() => void duplicateClient(item)}
+                onWebLongPress={() => void duplicateProduct(item)}
               >
                 <Card style={styles.card}>
                   <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.meta}>{item.email || 'Email non renseigné'}</Text>
-                  <Text style={styles.meta}>{item.phone || item.city || 'Coordonnées à compléter'}</Text>
+                  <Text style={styles.meta}>
+                    {item.unitPrice != null ? formatCurrency(item.unitPrice, 'EUR') : 'Prix non renseigné'}
+                  </Text>
+                  {item.description ? <Text style={styles.meta}>{item.description}</Text> : null}
                 </Card>
               </SwipeableRow>
             </Animated.View>
@@ -157,7 +156,7 @@ export default function ClientsScreen() {
       )}
 
       <FloatingActionButton
-        label="Nouveau client"
+        label="Nouveau produit"
         onPress={async () => {
           await impactLight()
           setShowCreate(true)
@@ -166,34 +165,32 @@ export default function ClientsScreen() {
 
       <FormModal
         visible={showCreate}
-        title="Nouveau client"
-        subtitle="Création rapide mobile"
+        title="Nouveau produit"
+        subtitle="Catalogue mobile"
         onClose={() => setShowCreate(false)}
       >
         <Text style={styles.label}>Nom</Text>
         <TextInput
           value={draftName}
           onChangeText={setDraftName}
-          placeholder="Ex: Martin Dupont"
+          placeholder="Ex: Prestation horaire"
           placeholderTextColor={colors.textMuted}
           style={styles.input}
         />
-        <Text style={styles.label}>Email</Text>
+        <Text style={styles.label}>Prix unitaire € (optionnel)</Text>
         <TextInput
-          value={draftEmail}
-          onChangeText={setDraftEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          placeholder="client@exemple.fr"
+          value={draftPrice}
+          onChangeText={setDraftPrice}
+          keyboardType="decimal-pad"
+          placeholder="120"
           placeholderTextColor={colors.textMuted}
           style={styles.input}
         />
-        <Text style={styles.label}>Téléphone (optionnel)</Text>
+        <Text style={styles.label}>Description (optionnel)</Text>
         <TextInput
-          value={draftPhone}
-          onChangeText={setDraftPhone}
-          keyboardType="phone-pad"
-          placeholder="06..."
+          value={draftDescription}
+          onChangeText={setDraftDescription}
+          placeholder="Détail court"
           placeholderTextColor={colors.textMuted}
           style={styles.input}
         />
@@ -203,25 +200,28 @@ export default function ClientsScreen() {
             label="Créer"
             loading={creating}
             onPress={async () => {
-              if (!draftName.trim() || !draftEmail.trim()) {
-                setFeedback('Nom et email requis.')
+              if (!draftName.trim()) {
+                setFeedback('Nom requis.')
                 return
               }
               setCreating(true)
               try {
-                await clientsService.create({
+                const price = draftPrice.trim() ? Number(draftPrice.replace(',', '.')) : undefined
+                await productsService.create({
                   name: draftName.trim(),
-                  email: draftEmail.trim(),
-                  phone: draftPhone.trim() || undefined,
+                  unitPrice: price != null && Number.isFinite(price) ? price : undefined,
+                  description: draftDescription.trim() || undefined,
                 })
                 setShowCreate(false)
                 setDraftName('')
-                setDraftEmail('')
-                setDraftPhone('')
-                setFeedback('Client créé avec succès.')
+                setDraftPrice('')
+                setDraftDescription('')
+                setFeedback('Produit créé.')
+                await notifySuccess()
                 await load(1)
               } catch (e) {
-                setFeedback(e instanceof Error ? e.message : 'Impossible de créer le client.')
+                setFeedback(e instanceof Error ? e.message : 'Impossible de créer le produit.')
+                await notifyError()
               } finally {
                 setCreating(false)
               }

@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { Card } from '../ui/Card'
 import { StatusBadge } from '../ui/StatusBadge'
+import { SwipeableRow } from '../ui/SwipeableRow'
 import { colors, spacing, typography } from '../../theme'
 import { formatCurrency, formatShortDate } from '../../utils/format'
 import type { Invoice } from '../../types/invoice'
@@ -14,10 +16,11 @@ interface InvoiceListItemProps {
   unread?: boolean
   onPress?: () => void
   onSend?: () => void
+  onArchive?: () => void
 }
 
-export function InvoiceListItem({ invoice, unread, onPress, onSend }: InvoiceListItemProps) {
-  return (
+export function InvoiceListItem({ invoice, unread, onPress, onSend, onArchive }: InvoiceListItemProps) {
+  const card = (
     <Pressable onPress={onPress}>
       <Card style={styles.card}>
         <View style={styles.topRow}>
@@ -41,6 +44,23 @@ export function InvoiceListItem({ invoice, unread, onPress, onSend }: InvoiceLis
         </View>
       </Card>
     </Pressable>
+  )
+
+  return (
+    <Animated.View entering={FadeInDown.duration(280)}>
+      <SwipeableRow
+        leftAction={
+          onArchive
+            ? { label: 'Archiver', variant: 'archive', onPress: onArchive }
+            : undefined
+        }
+        rightAction={
+          onSend ? { label: 'Envoyer', variant: 'send', onPress: onSend } : undefined
+        }
+      >
+        {card}
+      </SwipeableRow>
+    </Animated.View>
   )
 }
 

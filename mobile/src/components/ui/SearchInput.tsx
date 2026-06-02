@@ -1,6 +1,7 @@
 import { StyleSheet, TextInput, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { colors, radius, spacing, typography } from '../../theme'
+import { useTheme } from '../../hooks/useTheme'
 
 interface SearchInputProps {
   value: string
@@ -9,15 +10,16 @@ interface SearchInputProps {
 }
 
 export function SearchInput({ value, onChangeText, placeholder = 'Rechercher…' }: SearchInputProps) {
+  const { colors: themeColors } = useTheme()
   return (
-    <View style={styles.wrap}>
-      <Feather name="search" size={18} color={colors.textMuted} style={styles.icon} />
+    <View style={[styles.wrap, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+      <Feather name="search" size={18} color={themeColors.textMuted} style={styles.icon} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        style={styles.input}
+        placeholderTextColor={themeColors.textMuted}
+        style={[styles.input, { color: themeColors.text }]}
         autoCapitalize="none"
         autoCorrect={false}
         clearButtonMode="while-editing"
