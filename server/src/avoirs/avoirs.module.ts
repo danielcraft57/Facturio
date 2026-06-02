@@ -4,9 +4,10 @@ import { AvoirsController } from './avoirs.controller';
 import { CommonModule } from '../common/common.module';
 import { AccountingModule } from '../accounting/accounting.module';
 import { ConfigModule } from '../config/config.module';
+import { OrganizationsModule } from '../organizations/organizations.module';
 
 @Module({
-	imports: [CommonModule, AccountingModule, ConfigModule],
+	imports: [CommonModule, AccountingModule, ConfigModule, OrganizationsModule],
 	controllers: [AvoirsController],
 	providers: [AvoirsService],
 	exports: [AvoirsService]

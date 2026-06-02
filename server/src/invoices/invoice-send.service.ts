@@ -7,6 +7,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SendInvoiceDto } from './dto/send-invoice.dto';
 import { DocumentEmailCopiesService } from '../common/document-email-copies.service';
 import { parseTagsJson } from '../common/document-folder.util';
+import { buildEmailClickTrackUrl, buildEmailOpenTrackUrl } from '../common/email-track.util';
+import { recordInvoiceEmailSent } from '../common/email-engagement.util';
 
 @Injectable()
 export class InvoiceSendService {
@@ -62,16 +64,12 @@ export class InvoiceSendService {
 				// La facture d'acompte reste envoyée même si le contrat n'a pas pu être généré.
 			}
 		}
-		const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
-		const trackOpenUrl = result.publicToken
-			? `${apiUrl}/api/track/opened/invoice/${result.publicToken}`
-			: undefined;
+		const token = result.publicToken;
+		const trackOpenUrl = token ? buildEmailOpenTrackUrl('invoice', token) : undefined;
 
 		const isPaid =
 			result.status === 'PAID' || Number(result.balance) <= 0 || Number(invoice.balance) <= 0;
-		const publicViewUrl = result.publicToken
-			? InvoicesService.buildPublicPaymentUrl(result.publicToken)
-			: undefined;
+		const publicViewUrl = token ? InvoicesService.buildPublicPaymentUrl(token) : undefined;
 		const orgProfile = organization as
 			| {
 					invoiceStripeSecretKeySet?: boolean;
@@ -101,10 +99,17 @@ export class InvoiceSendService {
 			pdfBuffer: pdf,
 			extraAttachments,
 			trackOpenUrl,
-			paymentUrl: canPayOnline ? publicViewUrl : undefined,
+			paymentUrl: canPayOnline && token ? buildEmailClickTrackUrl('invoice', token, 'pay') : undefined,
 			alreadyPaid: isPaid,
-			invoiceViewUrl: !isPaid && !canPayOnline ? publicViewUrl : isPaid ? publicViewUrl : undefined,
+			invoiceViewUrl:
+				!isPaid && !canPayOnline && token
+					? buildEmailClickTrackUrl('invoice', token, 'view')
+					: isPaid && token
+						? buildEmailClickTrackUrl('invoice', token, 'view')
+						: undefined,
+			organization,
 		});
+		await recordInvoiceEmailSent(this.prisma, id);
 
 		const copyRecipients = this.documentCopies.buildCopyRecipients(dto, to, senderEmail);
 		const copiesSent = await this.documentCopies.sendInvoiceCopies({
@@ -115,6 +120,7 @@ export class InvoiceSendService {
 			total: Number(invoice.total),
 			pdfBuffer: pdf,
 			extraAttachments,
+			organization,
 		});
 
 		return {

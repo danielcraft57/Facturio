@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Alert,
@@ -30,22 +30,9 @@ import { SendQuoteDialog, type SendQuotePayload } from './components/SendQuoteDi
 import { useToast } from '../../components/useToast'
 import { openInvoiceView } from '../../utils/openDocumentView'
 import { QuoteDepositEngagementCard } from './components/QuoteDepositEngagementCard'
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Brouillon',
-  SENT: 'Envoyé',
-  ACCEPTED: 'Accepté',
-  REJECTED: 'Refusé',
-  EXPIRED: 'Expiré',
-}
-
-const STATUS_COLORS: Record<string, 'default' | 'primary' | 'success' | 'error' | 'warning'> = {
-  DRAFT: 'default',
-  SENT: 'primary',
-  ACCEPTED: 'success',
-  REJECTED: 'error',
-  EXPIRED: 'warning',
-}
+import { resolveQuoteDisplayStatus } from './quoteDisplayStatus'
+import { useRealtimePanelHighlight } from '../../hooks/useRealtimeRowHighlight'
+import { getRealtimePanelSx } from '../../utils/realtimeRowHighlight'
 
 function formatTaxRate(rate: number | undefined): string {
   const r = Number(rate ?? 0)
@@ -62,29 +49,44 @@ export function QuoteDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [sending, setSending] = useState(false)
+  const panelHighlight = useRealtimePanelHighlight('quotes', id)
+  const initialLoadDone = useRef(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!id || !isEntityId(id)) {
       setError('Devis introuvable')
       setLoading(false)
       return
     }
-    setLoading(true)
+    if (!opts?.silent) setLoading(true)
     setError(null)
     try {
       const data = await quoteService.getQuote(id)
       setQuote(data)
+      initialLoadDone.current = true
     } catch (err: unknown) {
       setQuote(null)
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement du devis')
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [id])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!id) return
+    const onRealtime = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ id?: string | number }>).detail
+      if (detail?.id != null && String(detail.id) === id) {
+        void load({ silent: initialLoadDone.current })
+      }
+    }
+    window.addEventListener('facturio:quote-realtime', onRealtime)
+    return () => window.removeEventListener('facturio:quote-realtime', onRealtime)
+  }, [id, load])
 
   usePageTitle(
     loading
@@ -109,7 +111,7 @@ export function QuoteDetailPage() {
       }
       toast.success(msg)
       setSendDialogOpen(false)
-      await load()
+      await load({ silent: true })
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi du devis")
     } finally {
@@ -140,7 +142,7 @@ export function QuoteDetailPage() {
   const canSend = quote.status === 'DRAFT'
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, ...getRealtimePanelSx(panelHighlight) }}>
       <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/devis/inbox')}>
           Retour
@@ -166,11 +168,10 @@ export function QuoteDetailPage() {
         <Typography variant="h4" component="h1">
           Devis {quote.number}
         </Typography>
-        <Chip
-          label={STATUS_LABELS[quote.status] ?? quote.status}
-          color={STATUS_COLORS[quote.status] ?? 'default'}
-          size="small"
-        />
+        {(() => {
+          const display = resolveQuoteDisplayStatus(quote)
+          return <Chip label={display.label} color={display.color} size="small" />
+        })()}
         {quote.important && <Chip label="Important" color="warning" size="small" variant="outlined" />}
         {quote.starred && <Chip label="Favori" size="small" variant="outlined" />}
       </Stack>

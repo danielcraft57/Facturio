@@ -86,6 +86,12 @@ export class InvoicePaymentNotificationService {
 		const documentKind = resolveDocumentKind(tags);
 		const engagementBreakdown = await resolveEngagementBreakdownForInvoice(this.prisma, invoice);
 		const attachments = await this.buildPaidEmailAttachments(invoice, documentKind);
+		const organizationProfile =
+			invoice.organizationId != null
+				? await this.organizations
+						.getProfile(invoice.organizationId)
+						.catch(() => undefined)
+				: undefined;
 
 		let sentAny = false;
 
@@ -108,6 +114,7 @@ export class InvoicePaymentNotificationService {
 						contractTotal: engagementBreakdown?.contractTotal,
 						remainderAmount: engagementBreakdown?.remainderAmount,
 					},
+					organization: organizationProfile,
 				});
 				sentAny = true;
 			} catch (err) {
@@ -132,6 +139,7 @@ export class InvoicePaymentNotificationService {
 					lastPaymentAmount: options.lastPaymentAmount,
 					paymentMethodLabel: methodLabel,
 					appInvoiceUrl,
+					organization: organizationProfile,
 				});
 				sentAny = true;
 			} catch (err) {

@@ -19,9 +19,32 @@ describe('BillingService', () => {
 		service = new BillingService(prisma as any);
 	});
 
+	it('expose la période de reset mensuel dans getUsage', async () => {
+		prisma.organization.findUnique.mockResolvedValue({
+			saasPlan: SaasBillingPlan.FREE,
+			saasPlanExpiresAt: null,
+			saasSubscriptionStatus: null,
+			stripeCustomerId: null,
+			stripeSubscriptionId: null,
+		});
+		prisma.invoice.count.mockResolvedValue(3);
+
+		const usage = await service.getUsage(1);
+		expect(usage.billingPeriod?.resetsAt).toBeDefined();
+		const resets = new Date(usage.billingPeriod!.resetsAt);
+		expect(resets.getDate()).toBe(1);
+		expect(resets.getTime()).toBeGreaterThan(Date.now());
+	});
+
 	it('bloque la création si quota Free atteint', async () => {
-		prisma.organization.findUnique.mockResolvedValue({ saasPlan: SaasBillingPlan.FREE, saasPlanExpiresAt: null });
-		prisma.invoice.count.mockResolvedValue(10);
+		prisma.organization.findUnique.mockResolvedValue({
+			saasPlan: SaasBillingPlan.FREE,
+			saasPlanExpiresAt: null,
+			saasSubscriptionStatus: null,
+			stripeCustomerId: null,
+			stripeSubscriptionId: null,
+		});
+		prisma.invoice.count.mockResolvedValue(25);
 
 		await expect(service.assertCanCreateInvoice(1)).rejects.toBeInstanceOf(ForbiddenException);
 	});

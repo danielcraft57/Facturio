@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EmailService } from './email.service';
+import { EmailService, type EmailOrganizationProfile } from './email.service';
 import { parseEmailList } from './parse-email-list';
 import type { SendDocumentEmailDto } from './dto/send-document-email.dto';
 
@@ -45,6 +45,7 @@ export class DocumentEmailCopiesService {
 		total: number;
 		pdfBuffer: Buffer;
 		extraAttachments?: { filename: string; content: Buffer; contentType?: string }[];
+		organization?: EmailOrganizationProfile;
 	}): Promise<string[]> {
 		const sent: string[] = [];
 		for (const to of options.recipients) {
@@ -57,6 +58,7 @@ export class DocumentEmailCopiesService {
 				pdfBuffer: options.pdfBuffer,
 				extraAttachments: options.extraAttachments,
 				informativeCopy: true,
+				organization: options.organization,
 			});
 			sent.push(to);
 		}
@@ -71,6 +73,7 @@ export class DocumentEmailCopiesService {
 		total: number;
 		expiryDate?: Date | string;
 		pdfBuffer: Buffer;
+		organization?: EmailOrganizationProfile;
 	}): Promise<string[]> {
 		const sent: string[] = [];
 		for (const to of options.recipients) {
@@ -83,6 +86,7 @@ export class DocumentEmailCopiesService {
 				expiryDate: options.expiryDate,
 				pdfBuffer: options.pdfBuffer,
 				informativeCopy: true,
+				organization: options.organization,
 			});
 			sent.push(to);
 		}

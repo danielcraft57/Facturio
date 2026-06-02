@@ -58,6 +58,7 @@ import { InvoiceFolderMobileList } from './components/InvoiceFolderMobileList'
 import { InvoiceRowActionsMenu } from './components/InvoiceRowActionsMenu'
 import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInvoiceDialog'
 import { useRealtimeRowHighlight } from '../../hooks/useRealtimeRowHighlight'
+import { resolveInvoiceDisplayStatus } from './invoiceDisplayStatus'
 import { getRealtimeRowSx } from '../../utils/realtimeRowHighlight'
 import { DocumentFolderRowActions } from '../../components/finance/DocumentFolderRowActions'
 import { DocumentFolderRowCheckbox } from '../../components/finance/DocumentFolderRowCheckbox'
@@ -180,32 +181,10 @@ export function InvoicesPage() {
     openInvoiceView(invoice.id)
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid': return 'success'
-      case 'sent': return 'info'
-      case 'overdue': return 'error'
-      case 'draft': return 'warning'
-      case 'cancelled': return 'default'
-      default: return 'default'
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'paid': return 'Payée'
-      case 'sent': return 'Envoyée'
-      case 'overdue': return 'En retard'
-      case 'draft': return 'Brouillon'
-      case 'cancelled': return 'Annulée'
-      default: return status
-    }
-  }
-
   const searchOptions = useMemo(
     () =>
       invoices.map((inv) =>
-        buildInvoiceSearchEntry(inv, getStatusLabel(inv.status)).option,
+        buildInvoiceSearchEntry(inv, resolveInvoiceDisplayStatus(inv).label).option,
       ),
     [invoices],
   )
@@ -213,7 +192,7 @@ export function InvoicesPage() {
   const displayedInvoices = useMemo(() => {
     const sorted = sortOutgoingNewestFirst(invoices)
     return filterItemsByDocumentSearch(sorted, debouncedSearch, (inv) =>
-      buildInvoiceSearchEntry(inv, getStatusLabel(inv.status)).searchable,
+      buildInvoiceSearchEntry(inv, resolveInvoiceDisplayStatus(inv).label).searchable,
     )
   }, [invoices, debouncedSearch])
 
@@ -436,8 +415,6 @@ export function InvoicesPage() {
               highlightRows={highlightRows}
               actionLoadingId={actionLoadingId}
               formatCurrency={formatCurrency}
-              getStatusLabel={getStatusLabel}
-              getStatusColor={getStatusColor}
               canRemind={canRemind}
               onPatchFlags={patchDocumentFlags}
               onNavigate={(id) => {
@@ -585,12 +562,17 @@ export function InvoicesPage() {
                         </Typography>
                       </TableCell>
                       <TableCell sx={documentFolderColStatusSx}>
-                        <Chip
-                          label={getStatusLabel(invoice.status)}
-                          color={getStatusColor(invoice.status) as 'success' | 'info' | 'error' | 'warning' | 'default'}
-                          size="small"
-                          sx={{ fontWeight: 600, borderRadius: 1.5, maxWidth: '100%' }}
-                        />
+                        {(() => {
+                          const display = resolveInvoiceDisplayStatus(invoice)
+                          return (
+                            <Chip
+                              label={display.label}
+                              color={display.color}
+                              size="small"
+                              sx={{ fontWeight: 600, borderRadius: 1.5, maxWidth: '100%' }}
+                            />
+                          )
+                        })()}
                       </TableCell>
                       <TableCell align="right" className="doc-folder-col-amount" sx={documentFolderColAmountSx}>
                         <Typography variant="body2" fontWeight="medium" noWrap>

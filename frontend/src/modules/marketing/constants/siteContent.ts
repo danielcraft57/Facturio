@@ -195,7 +195,7 @@ export const FEATURES_COMPTA = [
   },
   {
     title: 'Quotas par plan',
-    description: 'Free : 10 factures/mois ; Pro illimité — incitation claire à monter en gamme.',
+    description: 'Free : 25 factures/mois ; Pro illimité — incitation claire à monter en gamme.',
   },
 ] as const
 
@@ -238,7 +238,7 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     period: '€ / mois',
     description: 'Découvrir Facturio et les tout petits volumes.',
     features: [
-      'Jusqu’à 10 factures / mois',
+      'Jusqu’à 25 factures / mois (réinitialisé chaque mois)',
       '1 organisation',
       'Devis & PDF illimités',
       'Catalogue de base (seed)',
@@ -342,7 +342,7 @@ export const PRICING_FAQ = [
   },
   {
     q: 'Comment limiter l’accès sur le plan Free ?',
-    a: 'Maximum 10 factures créées par mois. Au-delà, l’API renvoie une erreur et l’app propose de passer Pro — devis et PDF restent disponibles.',
+    a: 'Maximum 25 factures créées par mois calendaire. Le compteur repart à zéro le 1er de chaque mois. Au-delà du quota, la création est bloquée jusqu’au mois suivant ou passage au plan Pro — devis et PDF restent disponibles.',
   },
 ] as const
 

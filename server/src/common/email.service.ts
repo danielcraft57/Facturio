@@ -1,6 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import {
+	emailAmountHighlight,
+	emailBanner,
+	emailButton,
+	emailButtonRow,
+	emailParagraph,
+	renderFacturioEmailLayout,
+	renderSimpleFacturioEmail,
+} from './email-layout';
+import { prepareBrandedEmailForDelivery } from './email-inline-assets';
+import {
+	buildEmailLegalFooter,
+	buildPlatformEmailLegalFooter,
+	resolveEmailIssuerDisplayName,
+} from './email-legal-footer';
+
+/** Profil organisation (fiche entreprise) pour pied de page et objet des emails. */
+export type EmailOrganizationProfile = Record<string, unknown> | null | undefined;
 
 /**
  * Service d'envoi d'emails avec templates
@@ -88,13 +106,30 @@ export class EmailService {
 		subject: string;
 		html?: string;
 		text?: string;
-		attachments?: { filename: string; content: Buffer; contentType?: string }[];
+		attachments?: {
+			filename: string;
+			content: Buffer;
+			contentType?: string;
+			cid?: string;
+		}[];
 		from?: string;
 		replyTo?: string;
 	}): Promise<void> {
 		try {
 			const from = options.from ?? `${this.fromName} <${this.fromEmail}>`;
-			const { from: _omit, replyTo, ...rest } = options;
+			const { from: _omit, replyTo, html: rawHtml, attachments: rawAttachments, ...rest } = options;
+			let html = rawHtml;
+			let attachments = rawAttachments;
+			if (rawHtml) {
+				const prepared = prepareBrandedEmailForDelivery(rawHtml);
+				html = prepared.html;
+				if (prepared.attachments.length > 0) {
+					attachments = [...prepared.attachments, ...(rawAttachments ?? [])];
+					this.logger.debug(
+						`Images email inline (CID): ${prepared.attachments.map((a) => a.filename).join(', ')}`,
+					);
+				}
+			}
 			const reply =
 				replyTo ||
 				process.env.COMPANY_EMAIL ||
@@ -104,6 +139,8 @@ export class EmailService {
 				from,
 				replyTo: reply,
 				...rest,
+				html,
+				attachments,
 				headers: {
 					'Auto-Submitted': 'auto-generated',
 					'X-Auto-Response-Suppress': 'All',
@@ -135,8 +172,10 @@ export class EmailService {
 		invoiceViewUrl?: string;
 		/** Copie prestataire / tiers : PDF joint, sans lien de paiement ni suivi d’ouverture */
 		informativeCopy?: boolean;
+		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
-		const company = process.env.COMPANY_NAME || 'Facturio';
+		const company = resolveEmailIssuerDisplayName(options.organization);
+		const legalFooter = buildEmailLegalFooter(options.organization);
 		const copy = options.informativeCopy === true;
 		const subject = copy
 			? `[Copie] Facture ${options.invoiceNumber} — ${options.clientName} — ${company}`
@@ -153,6 +192,7 @@ export class EmailService {
 			alreadyPaid: copy ? undefined : options.alreadyPaid,
 			invoiceViewUrl: copy ? undefined : options.invoiceViewUrl,
 			informativeCopy: copy,
+			legalFooter,
 		});
 
 		const paymentLine =
@@ -214,8 +254,10 @@ export class EmailService {
 		rejectUrl?: string;
 		/** Copie prestataire / tiers : PDF joint, sans accepter/refuser ni suivi */
 		informativeCopy?: boolean;
+		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
-		const company = process.env.COMPANY_NAME || 'Facturio';
+		const company = resolveEmailIssuerDisplayName(options.organization);
+		const legalFooter = buildEmailLegalFooter(options.organization);
 		const copy = options.informativeCopy === true;
 		const subject = copy
 			? `[Copie] Devis ${options.quoteNumber} — ${options.clientName} — ${company}`
@@ -230,6 +272,7 @@ export class EmailService {
 			acceptUrl: copy ? undefined : options.acceptUrl,
 			rejectUrl: copy ? undefined : options.rejectUrl,
 			informativeCopy: copy,
+			legalFooter,
 		});
 
 		const copyNote = copy
@@ -266,8 +309,11 @@ export class EmailService {
 		amount: number;
 		daysOverdue?: number;
 		paymentUrl?: string;
+		trackOpenUrl?: string;
 		pdfBuffer?: Buffer;
+		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		const legalFooter = buildEmailLegalFooter(options.organization);
 		const subject = options.daysOverdue
 			? `Relance - Facture ${options.invoiceNumber} (${options.daysOverdue} jour(s) de retard)`
 			: `Relance - Facture ${options.invoiceNumber}`;
@@ -277,7 +323,9 @@ export class EmailService {
 			clientName: options.clientName,
 			amount: options.amount,
 			daysOverdue: options.daysOverdue,
-			paymentUrl: options.paymentUrl
+			paymentUrl: options.paymentUrl,
+			trackOpenUrl: options.trackOpenUrl,
+			legalFooter,
 		});
 		const payLine = options.paymentUrl
 			? `\n\nConsulter ou régler en ligne : ${options.paymentUrl}`
@@ -314,8 +362,10 @@ export class EmailService {
 			contractTotal?: number;
 			remainderAmount?: number;
 		};
+		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
-		const html = this.getInvoicePaidClientTemplate(options);
+		const legalFooter = buildEmailLegalFooter(options.organization);
+		const html = this.getInvoicePaidClientTemplate({ ...options, legalFooter });
 		const viewLine = options.invoiceViewUrl
 			? `\n\nConsulter la facture : ${options.invoiceViewUrl}`
 			: '';
@@ -368,8 +418,10 @@ export class EmailService {
 		lastPaymentAmount: number;
 		paymentMethodLabel: string;
 		appInvoiceUrl: string;
+		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
-		const html = this.getInvoicePaidProviderTemplate(options);
+		const legalFooter = buildEmailLegalFooter(options.organization);
+		const html = this.getInvoicePaidProviderTemplate({ ...options, legalFooter });
 		const text =
 			`La facture ${options.invoiceNumber} a été intégralement payée par ${options.clientName}.\n` +
 			`Montant encaissé : ${this.formatCurrency(options.lastPaymentAmount)} (${options.paymentMethodLabel}).\n` +
@@ -397,23 +449,26 @@ export class EmailService {
 		refundedAmount: number;
 		refundReason?: string | null;
 		issuerName: string;
+		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		const legalFooter = buildEmailLegalFooter(options.organization);
 		const subject = `Remboursement effectué — Facture ${options.invoiceNumber}`;
-		const reasonLine = options.refundReason?.trim()
-			? `<p style="margin: 10px 0 0; color:#374151;">Motif : ${options.refundReason}</p>`
+		const reasonBlock = options.refundReason?.trim()
+			? emailParagraph(`<strong>Motif :</strong> ${options.refundReason}`)
 			: '';
-		const html = `<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${subject}</title></head>
-<body style="font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height:1.6; color:#111827; background:#f8fafc; margin:0; padding:0;">
-	<div style="max-width:600px; margin:0 auto; padding:24px;">
-		<h2 style="margin:0 0 14px; color:#b91c1c;">Remboursement</h2>
-		<p>Bonjour ${options.clientName},</p>
-		<p>Nous vous confirmons que <b>${this.formatCurrency(options.refundedAmount)}</b> a été remboursé(e) pour la facture <b>${options.invoiceNumber}</b> (du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')}).</p>
-		${reasonLine}
-		<p style="margin-top:18px;">Cordialement,<br/>${options.issuerName}</p>
-	</div>
-</body></html>`;
+		const html = renderSimpleFacturioEmail({
+			title: subject,
+			headline: 'Remboursement effectué',
+			headerVariant: 'danger',
+			footerHtml: `<p>${legalFooter}</p>`,
+			bodyHtml:
+				emailParagraph(`Bonjour ${options.clientName},`) +
+				emailParagraph(
+					`Nous vous confirmons que <strong>${this.formatCurrency(options.refundedAmount)}</strong> a été remboursé(e) pour la facture <strong>${options.invoiceNumber}</strong> (du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')}).`,
+				) +
+				reasonBlock +
+				emailParagraph(`Cordialement,<br><strong>${options.issuerName}</strong>`),
+		});
 
 		const text =
 			`Bonjour ${options.clientName},\n\n` +
@@ -439,24 +494,29 @@ export class EmailService {
 		creditedAmount: number;
 		reason?: string | null;
 		issuerName: string;
+		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		const legalFooter = buildEmailLegalFooter(options.organization);
 		const subject = `Crédit émis — Facture ${options.invoiceNumber}`;
-		const reasonLine = options.reason?.trim()
-			? `<p style="margin: 10px 0 0; color:#374151;">Motif : ${options.reason}</p>`
+		const reasonBlock = options.reason?.trim()
+			? emailParagraph(`<strong>Motif :</strong> ${options.reason}`)
 			: '';
-		const html = `<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${subject}</title></head>
-<body style="font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height:1.6; color:#111827; background:#f8fafc; margin:0; padding:0;">
-	<div style="max-width:600px; margin:0 auto; padding:24px;">
-		<h2 style="margin:0 0 14px; color:#2563eb;">Crédit client</h2>
-		<p>Bonjour ${options.clientName},</p>
-		<p>Un crédit de <b>${this.formatCurrency(options.creditedAmount)}</b> a été émis pour la facture <b>${options.invoiceNumber}</b>.</p>
-		<p>Ce crédit sera déduit d’une prochaine facture (il n’y a pas de remboursement bancaire pour cette opération).</p>
-		${reasonLine}
-		<p style="margin-top:18px;">Cordialement,<br/>${options.issuerName}</p>
-	</div>
-</body></html>`;
+		const html = renderSimpleFacturioEmail({
+			title: subject,
+			headline: 'Crédit client',
+			headerVariant: 'default',
+			footerHtml: `<p>${legalFooter}</p>`,
+			bodyHtml:
+				emailParagraph(`Bonjour ${options.clientName},`) +
+				emailParagraph(
+					`Un crédit de <strong>${this.formatCurrency(options.creditedAmount)}</strong> a été émis pour la facture <strong>${options.invoiceNumber}</strong>.`,
+				) +
+				emailParagraph(
+					'Ce crédit sera déduit d’une prochaine facture (il n’y a pas de remboursement bancaire pour cette opération).',
+				) +
+				reasonBlock +
+				emailParagraph(`Cordialement,<br><strong>${options.issuerName}</strong>`),
+		});
 
 		const text =
 			`Bonjour ${options.clientName},\n\n` +
@@ -475,25 +535,6 @@ export class EmailService {
 	}
 
 	/**
-	 * Pied de page avec mentions légales (SIRET, adresse, etc.) - style V6 / LCEN.
-	 */
-	private getLegalFooter(): string {
-		const name = process.env.COMPANY_NAME || 'Votre Entreprise';
-		const address = process.env.COMPANY_ADDRESS || '';
-		const siret = process.env.COMPANY_SIRET || '';
-		const vat = process.env.COMPANY_VAT || '';
-		const phone = process.env.COMPANY_PHONE || '';
-		const email = process.env.COMPANY_EMAIL || process.env.MAIL_FROM || '';
-		const parts: string[] = [name];
-		if (address) parts.push(address);
-		if (siret) parts.push(`SIRET : ${siret}`);
-		if (vat) parts.push(`TVA : ${vat}`);
-		if (phone) parts.push(`Tél. : ${phone}`);
-		if (email) parts.push(`Email : ${email}`);
-		return parts.join(' - ');
-	}
-
-	/**
 	 * Template HTML pour facture (style DanielCraftFr, pixel tracking, mentions légales).
 	 */
 	private getInvoiceTemplate(data: {
@@ -506,94 +547,68 @@ export class EmailService {
 		alreadyPaid?: boolean;
 		invoiceViewUrl?: string;
 		informativeCopy?: boolean;
+		legalFooter: string;
 	}): string {
+		const dateStr = new Date(data.invoiceDate).toLocaleDateString('fr-FR');
 		const copyBanner = data.informativeCopy
-			? `<p style="margin: 16px 0; padding: 12px 14px; background: #fef3c7; border-radius: 8px; color: #92400e; font-size: 14px;"><strong>Copie à titre informatif</strong> — document envoyé au client. Ce message ne contient pas de lien de paiement en ligne.</p>`
+			? emailBanner(
+					'<strong>Copie à titre informatif</strong> — document envoyé au client. Ce message ne contient pas de lien de paiement en ligne.',
+					'warning',
+				)
 			: '';
-		const pixel = data.trackOpenUrl
-			? `<img src="${data.trackOpenUrl}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
-			: '';
-		const legal = this.getLegalFooter();
-		return `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Facture ${data.invoiceNumber}</title>
-	<style>
-		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #fdf2f2; }
-		.container { max-width: 600px; margin: 0 auto; padding: 24px; }
-		/* Entête aligné sur la même ligne visuelle que la confirmation : rouge → bleu, titre noir */
-		.header { background: linear-gradient(135deg, #b91c1c 0%, #dc2626 30%, #2563eb 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 18px 45px rgba(185,28,28,0.55); }
-		.header h2 { margin: 0; font-size: 1.4rem; color: #111827; font-weight: 700; letter-spacing: -0.02em; }
-		.content { padding: 0 0 24px; }
-		.content p { margin: 0 0 12px; color: #1f2933; font-size: 15px; }
-		.total { font-size: 1.1rem; font-weight: 600; color: #b91c1c; }
-		.footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #fecaca; font-size: 11px; color: #6b7280; line-height: 1.5; }
-	</style>
-</head>
-<body>
-	${pixel}
-	<div class="container">
-		<div class="header">
-			<h2>Facture ${data.invoiceNumber}</h2>
-		</div>
-		<div class="content">
-			${copyBanner}
-			<p>Bonjour${data.informativeCopy ? '' : ` ${data.clientName}`},</p>
-			<p>${data.informativeCopy ? 'Copie de la ' : 'Veuillez trouver ci-joint la '}facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')}${data.informativeCopy ? ` (client : ${data.clientName})` : ''}.</p>
-			<p class="total">Montant total : ${this.formatCurrency(data.total)}</p>
-			${data.informativeCopy
-				? ''
-				: data.alreadyPaid
-				? `<p style="color: #15803d; font-weight: 600;">Cette facture a déjà été réglée.</p>
-			<p>Vous trouverez le justificatif en pièce jointe${data.invoiceViewUrl ? ' ; vous pouvez aussi la consulter en ligne.' : '.'}</p>`
-				: '<p>Merci de régler cette facture dans les délais convenus.</p>'}
-			${!data.informativeCopy && data.alreadyPaid && data.invoiceViewUrl
-				? `
-			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 24px;">
-				<tr>
-					<td>
-						<a href="${data.invoiceViewUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
-							Voir la facture en ligne
-						</a>
-					</td>
-				</tr>
-			</table>`
-				: !data.informativeCopy && data.paymentUrl
-					? `
-			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 24px;">
-				<tr>
-					<td>
-						<a href="${data.paymentUrl}" style="display: inline-block; padding: 14px 28px; background: #16a34a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
-							Voir la facture et payer en ligne
-						</a>
-					</td>
-				</tr>
-			</table>
-			<p style="font-size: 12px; color: #6b7280; margin-top: 12px;">Paiement sécurisé par carte bancaire.</p>`
-					: !data.informativeCopy && data.invoiceViewUrl
-						? `
-			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 24px;">
-				<tr>
-					<td>
-						<a href="${data.invoiceViewUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
-							Voir la facture en ligne
-						</a>
-					</td>
-				</tr>
-			</table>
-			<p style="font-size: 12px; color: #6b7280; margin-top: 12px;">Le règlement en ligne par carte n’est pas disponible pour cette facture.</p>`
-						: ''}
-		</div>
-		<div class="footer">
-			<p>${legal}</p>
-			<p>Cet email a été envoyé automatiquement par Facturio.</p>
-		</div>
-	</div>
-</body>
-</html>`;
+
+		let statusBlock = '';
+		if (!data.informativeCopy) {
+			statusBlock = data.alreadyPaid
+				? emailBanner(
+						`Cette facture a déjà été réglée. Vous trouverez le justificatif en pièce jointe${data.invoiceViewUrl ? ' ; vous pouvez aussi la consulter en ligne.' : '.'}`,
+						'success',
+					)
+				: emailParagraph('Merci de régler cette facture dans les délais convenus.');
+		}
+
+		let actions = '';
+		if (!data.informativeCopy) {
+			if (data.alreadyPaid && data.invoiceViewUrl) {
+				actions =
+					emailButton(data.invoiceViewUrl, 'Voir la facture en ligne', 'secondary') +
+					emailParagraph(
+						'<span style="font-size:12px;color:#64748b;">Consultation en ligne du justificatif.</span>',
+					);
+			} else if (data.paymentUrl) {
+				actions =
+					emailButton(data.paymentUrl, 'Voir la facture et payer en ligne', 'success') +
+					emailParagraph(
+						'<span style="font-size:12px;color:#64748b;">Paiement sécurisé par carte bancaire.</span>',
+					);
+			} else if (data.invoiceViewUrl) {
+				actions =
+					emailButton(data.invoiceViewUrl, 'Voir la facture en ligne', 'secondary') +
+					emailParagraph(
+						'<span style="font-size:12px;color:#64748b;">Le règlement en ligne par carte n’est pas disponible pour cette facture.</span>',
+					);
+			}
+		}
+
+		const greeting = data.informativeCopy ? 'Bonjour,' : `Bonjour ${data.clientName},`;
+		const intro = data.informativeCopy
+			? `Copie de la facture <strong>${data.invoiceNumber}</strong> du ${dateStr} (client : ${data.clientName}).`
+			: `Veuillez trouver ci-joint la facture <strong>${data.invoiceNumber}</strong> du ${dateStr}.`;
+
+		return renderFacturioEmailLayout({
+			title: `Facture ${data.invoiceNumber}`,
+			headline: `Facture ${data.invoiceNumber}`,
+			headerVariant: 'default',
+			trackPixel: data.trackOpenUrl,
+			contentHtml:
+				copyBanner +
+				emailParagraph(greeting) +
+				emailParagraph(intro) +
+				emailAmountHighlight(`Montant total : ${this.formatCurrency(data.total)}`) +
+				statusBlock +
+				actions,
+			footerHtml: `<p>${data.legalFooter}</p>`,
+		});
 	}
 
 	private getInvoicePaidClientTemplate(data: {
@@ -611,10 +626,10 @@ export class EmailService {
 			contractTotal?: number;
 			remainderAmount?: number;
 		};
+		legalFooter: string;
 	}): string {
-		const legal = this.getLegalFooter();
 		const viewBtn = data.invoiceViewUrl
-			? `<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 20px;"><tr><td><a href="${data.invoiceViewUrl}" style="display: inline-block; padding: 14px 28px; background: #16a34a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Voir la facture</a></td></tr></table>`
+			? emailButton(data.invoiceViewUrl, 'Voir la facture', 'success')
 			: '';
 
 		const kind = data.paidContext?.kind ?? 'standard';
@@ -636,59 +651,50 @@ export class EmailService {
 					? this.formatCurrency(data.paidContext.contractTotal)
 					: null;
 			statusHtml =
-				`<p>Cette facture d&apos;acompte (<strong>${this.formatCurrency(data.total)}</strong>) est réglée.</p>` +
+				emailParagraph(
+					`Cette facture d&apos;acompte (<strong>${this.formatCurrency(data.total)}</strong>) est réglée.`,
+				) +
 				(totalDevis && solde
-					? `<p style="margin-top: 12px; padding: 12px 14px; background: #eff6ff; border-radius: 8px; color: #1e3a8a; font-size: 14px;">` +
-						`<strong>Devis ${totalDevis}</strong> — solde restant : <strong>${solde}</strong><br>` +
-						`<span style="color: #475569;">Le solde vous sera facturé séparément après réalisation / livraison.</span></p>`
+					? emailBanner(
+							`<strong>Devis ${totalDevis}</strong> — solde restant : <strong>${solde}</strong><br>` +
+								`<span style="color:#475569;">Le solde vous sera facturé séparément après réalisation / livraison.</span>`,
+							'info',
+						)
 					: '');
 		} else if (kind === 'remainder') {
-			statusHtml = `<p>Facture de solde (<strong>${this.formatCurrency(data.total)}</strong>) réglée — votre devis est entièrement payé. Merci !</p>`;
+			statusHtml = emailParagraph(
+				`Facture de solde (<strong>${this.formatCurrency(data.total)}</strong>) réglée — votre devis est entièrement payé. Merci !`,
+			);
 		} else {
-			statusHtml = `<p>Montant total de la facture : ${this.formatCurrency(data.total)} — <strong>facture réglée</strong>.</p>`;
+			statusHtml = emailParagraph(
+				`Montant total de la facture : ${this.formatCurrency(data.total)} — <strong>facture réglée</strong>.`,
+			);
 		}
 
 		const attachmentNote =
 			(data.attachments?.length ?? 0) > 0
-				? `<p style="margin-top: 16px; font-size: 14px; color: #475569;">` +
-					`Pièces jointes : facture PDF` +
-					(data.attachments!.length > 1 ? ' et contrat de prestation.' : '.') +
-					`</p>`
+				? emailParagraph(
+						`Pièces jointes : facture PDF${data.attachments!.length > 1 ? ' et contrat de prestation.' : '.'}`,
+					)
 				: '';
 
-		return `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Paiement reçu — ${data.invoiceNumber}</title>
-	<style>
-		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #f0fdf4; }
-		.container { max-width: 600px; margin: 0 auto; padding: 24px; }
-		.header { background: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #2563eb 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; }
-		.header h2 { margin: 0; font-size: 1.35rem; color: #fff; font-weight: 700; }
-		.content p { margin: 0 0 12px; color: #1f2933; font-size: 15px; }
-		.highlight { font-size: 1.05rem; font-weight: 600; color: #15803d; }
-		.footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #bbf7d0; font-size: 11px; color: #6b7280; }
-	</style>
-</head>
-<body>
-	<div class="container">
-		<div class="header"><h2>Paiement reçu</h2></div>
-		<div class="content">
-			<p>Bonjour ${data.clientName},</p>
-			<p>${intro}</p>
-			<p class="highlight">Montant encaissé : ${this.formatCurrency(data.lastPaymentAmount)} (${data.paymentMethodLabel})</p>
-			${statusHtml}
-			${attachmentNote}
-			${viewBtn}
-			<p style="margin-top: 20px;">Cordialement,<br><strong>${data.issuerName}</strong></p>
-</div>
-		<div class="footer"><p>${legal}</p></div>
-	</div>
-</body>
-</html>`;
+		return renderFacturioEmailLayout({
+			title: `Paiement reçu — ${data.invoiceNumber}`,
+			headline: 'Paiement reçu',
+			headerVariant: 'success',
+			contentHtml:
+				emailParagraph(`Bonjour ${data.clientName},`) +
+				emailParagraph(intro) +
+				emailAmountHighlight(
+					`Montant encaissé : ${this.formatCurrency(data.lastPaymentAmount)} (${data.paymentMethodLabel})`,
+					'success',
+				) +
+				statusHtml +
+				attachmentNote +
+				viewBtn +
+				emailParagraph(`Cordialement,<br><strong>${data.issuerName}</strong>`),
+			footerHtml: `<p>${data.legalFooter}</p>`,
+		});
 	}
 
 	private getInvoicePaidProviderTemplate(data: {
@@ -698,38 +704,24 @@ export class EmailService {
 		lastPaymentAmount: number;
 		paymentMethodLabel: string;
 		appInvoiceUrl: string;
+		legalFooter: string;
 	}): string {
-		const legal = this.getLegalFooter();
-		return `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Facture payée — ${data.invoiceNumber}</title>
-	<style>
-		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #eff6ff; }
-		.container { max-width: 600px; margin: 0 auto; padding: 24px; }
-		.header { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; }
-		.header h2 { margin: 0; font-size: 1.35rem; color: #fff; font-weight: 700; }
-		.content p { margin: 0 0 12px; font-size: 15px; }
-		.footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #bfdbfe; font-size: 11px; color: #6b7280; }
-	</style>
-</head>
-<body>
-	<div class="container">
-		<div class="header"><h2>Facture payée</h2></div>
-		<div class="content">
-			<p>Bonjour,</p>
-			<p>La facture <strong>${data.invoiceNumber}</strong> a été intégralement réglée par <strong>${data.clientName}</strong>.</p>
-			<p>Encaissement : <strong>${this.formatCurrency(data.lastPaymentAmount)}</strong> (${data.paymentMethodLabel})</p>
-			<p>Total facture : ${this.formatCurrency(data.total)}</p>
-			<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 20px;"><tr><td><a href="${data.appInvoiceUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600;">Ouvrir la facture dans Facturio</a></td></tr></table>
-</div>
-		<div class="footer"><p>${legal}</p><p>Notification automatique Facturio.</p></div>
-	</div>
-</body>
-</html>`;
+		return renderFacturioEmailLayout({
+			title: `Facture payée — ${data.invoiceNumber}`,
+			headline: 'Facture payée',
+			headerVariant: 'success',
+			contentHtml:
+				emailParagraph('Bonjour,') +
+				emailParagraph(
+					`La facture <strong>${data.invoiceNumber}</strong> a été intégralement réglée par <strong>${data.clientName}</strong>.`,
+				) +
+				emailParagraph(
+					`Encaissement : <strong>${this.formatCurrency(data.lastPaymentAmount)}</strong> (${data.paymentMethodLabel})`,
+				) +
+				emailParagraph(`Total facture : ${this.formatCurrency(data.total)}`) +
+				emailButton(data.appInvoiceUrl, 'Ouvrir la facture dans Facturio', 'secondary'),
+			footerHtml: `<p>${data.legalFooter}</p><p>Notification automatique Facturio.</p>`,
+		});
 	}
 
 	/**
@@ -745,64 +737,55 @@ export class EmailService {
 		acceptUrl?: string;
 		rejectUrl?: string;
 		informativeCopy?: boolean;
+		legalFooter: string;
 	}): string {
+		const dateStr = new Date(data.quoteDate).toLocaleDateString('fr-FR');
 		const copyBanner = data.informativeCopy
-			? `<p style="margin: 16px 0; padding: 12px 14px; background: #fef3c7; border-radius: 8px; color: #92400e; font-size: 14px;"><strong>Copie à titre informatif</strong> — document envoyé au client. Aucun lien d’acceptation ou de paiement dans ce message.</p>`
+			? emailBanner(
+					'<strong>Copie à titre informatif</strong> — document envoyé au client. Aucun lien d’acceptation ou de paiement dans ce message.',
+					'warning',
+				)
 			: '';
-		const expiryText = data.expiryDate
-			? `<p><strong style="color: #dc2626;">Valable jusqu'au ${new Date(data.expiryDate).toLocaleDateString('fr-FR')}</strong></p>`
-			: '';
-		const pixel = data.trackOpenUrl
-			? `<img src="${data.trackOpenUrl}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
-			: '';
-		const legal = this.getLegalFooter();
-		const buttons = (data.acceptUrl || data.rejectUrl) ? `
-		<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 24px;">
-			<tr>
-				${data.acceptUrl ? `<td style="padding-right: 12px;"><a href="${data.acceptUrl}" style="display: inline-block; padding: 12px 24px; background: #dc2626; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; transition: background 300ms ease;">Accepter le devis</a></td>` : ''}
-				${data.rejectUrl ? `<td><a href="${data.rejectUrl}" style="display: inline-block; padding: 12px 24px; background: #f9fafb; color: #374151; text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 14px; border: 1px solid #e5e7eb;">Refuser</a></td>` : ''}
-			</tr>
-		</table>` : '';
-		return `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Devis ${data.quoteNumber}</title>
-	<style>
-		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #fdf2f2; }
-		.container { max-width: 600px; margin: 0 auto; padding: 24px; }
-		.header { background: linear-gradient(135deg, #b91c1c 0%,rgb(231, 166, 166) 30%, #2563eb 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 18px 45px rgba(185,28,28,0.55); }
-		.header h2 { margin: 0; font-size: 1.4rem; color: #111827; font-weight: 700; letter-spacing: -0.02em; }
-		.content { padding: 0 0 24px; }
-		.content p { margin: 0 0 12px; color: #1f2933; font-size: 15px; }
-		.total { font-size: 1.1rem; font-weight: 600; color: #b91c1c; }
-		.footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #fecaca; font-size: 11px; color: #6b7280; line-height: 1.5; }
-	</style>
-</head>
-<body>
-	${pixel}
-	<div class="container">
-		<div class="header">
-			<h2>Devis ${data.quoteNumber}</h2>
-		</div>
-		<div class="content">
-			${copyBanner}
-			<p>Bonjour${data.informativeCopy ? '' : ` ${data.clientName}`},</p>
-			<p>${data.informativeCopy ? 'Copie du ' : 'Veuillez trouver ci-joint le '}devis <strong>${data.quoteNumber}</strong> du ${new Date(data.quoteDate).toLocaleDateString('fr-FR')}${data.informativeCopy ? ` (client : ${data.clientName})` : ''}.</p>
-			${data.informativeCopy ? '' : expiryText}
-			<p class="total">Montant total : ${this.formatCurrency(data.total)}</p>
-			${data.informativeCopy ? '' : '<p>Nous restons à votre disposition pour toute question.</p>'}
-			${buttons}
-		</div>
-		<div class="footer">
-			<p>${legal}</p>
-			<p>Cet email a été envoyé automatiquement par Facturio.</p>
-		</div>
-	</div>
-</body>
-</html>`;
+		const expiryText =
+			!data.informativeCopy && data.expiryDate
+				? emailBanner(
+						`<strong>Valable jusqu'au ${new Date(data.expiryDate).toLocaleDateString('fr-FR')}</strong>`,
+						'warning',
+					)
+				: '';
+
+		const buttonRow =
+			!data.informativeCopy && (data.acceptUrl || data.rejectUrl)
+				? emailButtonRow([
+						...(data.acceptUrl
+							? [{ href: data.acceptUrl, label: 'Accepter le devis', variant: 'success' as const }]
+							: []),
+						...(data.rejectUrl
+							? [{ href: data.rejectUrl, label: 'Refuser', variant: 'ghost' as const }]
+							: []),
+					])
+				: '';
+
+		const greeting = data.informativeCopy ? 'Bonjour,' : `Bonjour ${data.clientName},`;
+		const intro = data.informativeCopy
+			? `Copie du devis <strong>${data.quoteNumber}</strong> du ${dateStr} (client : ${data.clientName}).`
+			: `Veuillez trouver ci-joint le devis <strong>${data.quoteNumber}</strong> du ${dateStr}.`;
+
+		return renderFacturioEmailLayout({
+			title: `Devis ${data.quoteNumber}`,
+			headline: `Devis ${data.quoteNumber}`,
+			headerVariant: 'quote',
+			trackPixel: data.trackOpenUrl,
+			contentHtml:
+				copyBanner +
+				emailParagraph(greeting) +
+				emailParagraph(intro) +
+				expiryText +
+				emailAmountHighlight(`Montant total : ${this.formatCurrency(data.total)}`) +
+				(data.informativeCopy ? '' : emailParagraph('Nous restons à votre disposition pour toute question.')) +
+				buttonRow,
+			footerHtml: `<p>${data.legalFooter}</p>`,
+		});
 	}
 
 	/**
@@ -815,47 +798,35 @@ export class EmailService {
 		amount: number;
 		daysOverdue?: number;
 		paymentUrl?: string;
+		trackOpenUrl?: string;
+		legalFooter: string;
 	}): string {
-		const overdueText = data.daysOverdue 
-			? `<p><strong>Cette facture est en retard de ${data.daysOverdue} jour(s).</strong></p>`
-			: '<p><strong>Cette facture est en attente de paiement.</strong></p>';
+		const overdueBanner = data.daysOverdue
+			? emailBanner(
+					`<strong>Cette facture est en retard de ${data.daysOverdue} jour(s).</strong>`,
+					'warning',
+				)
+			: emailBanner('<strong>Cette facture est en attente de paiement.</strong>', 'info');
 		const payBtn = data.paymentUrl
-			? `<table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 20px;"><tr><td style="border-radius: 8px; background: #2563eb;"><a href="${data.paymentUrl}" style="display: inline-block; padding: 12px 24px; color: #fff; text-decoration: none; font-weight: 600;">Voir la facture et payer en ligne</a></td></tr></table>`
+			? emailButton(data.paymentUrl, 'Voir la facture et payer en ligne', 'primary')
 			: '';
-		
-		return `
-			<!DOCTYPE html>
-			<html>
-			<head>
-				<meta charset="UTF-8">
-				<style>
-					body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #fdf2f2; }
-					.container { max-width: 600px; margin: 0 auto; padding: 24px; }
-					.header { background: linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #f97373 100%); padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 18px 45px rgba(185,28,28,0.55); }
-					.content { padding: 0 0 24px; }
-					.footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #fecaca; font-size: 12px; color: #6b7280; }
-				</style>
-			</head>
-			<body>
-				<div class="container">
-					<div class="header">
-						<h2>Rappel - Facture ${data.invoiceNumber}</h2>
-					</div>
-					<div class="content">
-						<p>Bonjour ${data.clientName},</p>
-						<p>Nous vous rappelons que la facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')} est toujours en attente de paiement.</p>
-						${overdueText}
-						<p><strong>Montant à régler : ${this.formatCurrency(data.amount)}</strong></p>
-						<p>Merci de procéder au règlement dans les plus brefs délais.</p>
-						${payBtn}
-					</div>
-					<div class="footer">
-						<p>Cet email a été envoyé automatiquement par Facturio.</p>
-					</div>
-				</div>
-			</body>
-			</html>
-		`;
+
+		return renderFacturioEmailLayout({
+			title: `Rappel — Facture ${data.invoiceNumber}`,
+			headline: `Rappel — Facture ${data.invoiceNumber}`,
+			headerVariant: 'warning',
+			trackPixel: data.trackOpenUrl,
+			contentHtml:
+				emailParagraph(`Bonjour ${data.clientName},`) +
+				emailParagraph(
+					`Nous vous rappelons que la facture <strong>${data.invoiceNumber}</strong> du ${new Date(data.invoiceDate).toLocaleDateString('fr-FR')} est toujours en attente de paiement.`,
+				) +
+				overdueBanner +
+				emailAmountHighlight(`Montant à régler : ${this.formatCurrency(data.amount)}`, 'teal') +
+				emailParagraph('Merci de procéder au règlement dans les plus brefs délais.') +
+				payBtn,
+			footerHtml: `<p>${data.legalFooter}</p>`,
+		});
 	}
 
 	/**
@@ -873,19 +844,20 @@ export class EmailService {
 	}): Promise<void> {
 		const subject = 'Confirmez cette connexion - Facturio';
 		const deviceHint = options.userAgent
-			? `<p style="color:#6b7280;font-size:0.9rem;">Appareil détecté : ${options.userAgent.slice(0, 120)}</p>`
+			? emailParagraph(
+					`<span style="font-size:13px;color:#64748b;">Appareil détecté : ${options.userAgent.slice(0, 120)}</span>`,
+				)
 			: '';
 		const html = this.getBaseLayout({
 			title: subject,
+			headline: 'Confirmez cette connexion',
 			content: `
-				<p>Bonjour${options.firstName ? ` ${options.firstName}` : ''},</p>
-				<p>Une connexion à votre compte Facturio a été détectée depuis un <strong>nouvel appareil</strong> ou pendant une session déjà active ailleurs.</p>
+				${emailParagraph(`Bonjour${options.firstName ? ` ${options.firstName}` : ''},`)}
+				${emailParagraph('Une connexion à votre compte Facturio a été détectée depuis un <strong>nouvel appareil</strong> ou pendant une session déjà active ailleurs.')}
 				${deviceHint}
-				<p>Si c'était vous, confirmez cette connexion :</p>
-				<p style="text-align:center;margin:28px 0;">
-					<a href="${options.verifyUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Confirmer cette connexion</a>
-				</p>
-				<p style="color:#6b7280;font-size:0.9rem;">Ce lien expire dans 1 heure. Sinon, ignorez cet email et changez votre mot de passe si vous suspectez une intrusion.</p>
+				${emailParagraph('Si c\'était vous, confirmez cette connexion :')}
+				${emailButton(options.verifyUrl, 'Confirmer cette connexion', 'primary')}
+				${emailParagraph('<span style="font-size:13px;color:#64748b;">Ce lien expire dans 1 heure. Sinon, ignorez cet email et changez votre mot de passe si vous suspectez une intrusion.</span>')}
 			`,
 		});
 		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ''},\n\nConfirmez cette connexion : ${options.verifyUrl}\n\nLien valide 1 heure.\n\nL'équipe Facturio`;
@@ -943,52 +915,19 @@ export class EmailService {
 	/**
 	 * Layout HTML commun (Facturio) pour emails transactionnels.
 	 */
-	private getBaseLayout(data: { title: string; content: string }): string {
-		const legal = this.getLegalFooter();
-		return `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>${data.title}</title>
-	<style>
-		/* Couleurs texte globales */
-		body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background: #fdf2f2; }
-		/* Ratio global : largeur 560px, padding vertical ~34px (≈ 560 / φ²) pour un équilibre visuel */
-		.wrapper { padding: 34px 21px; }
-		.container { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 18px; box-shadow: 0 22px 55px rgba(15,23,42,0.25); overflow: hidden; }
-		/* Entête dégradé DanielCraft : rouge → ton clair → bleu (pastel, sobre) */
-		.header { background: linear-gradient(135deg, #fecaca 0%, #ffe4e6 40%, #bfdbfe 100%); padding: 30px 24px 22px; text-align: left; border-bottom: 1px solid rgba(248,113,113,0.25); }
-		.header h1 { margin: 0; font-size: 1.72rem; font-weight: 700; color: #111827; letter-spacing: -0.03em; }
-		.header .logo { color: #111827; font-size: 0.95rem; margin-top: 4px; opacity: 0.85; }
-		.content { padding: 28px 24px 24px; }
-		.content p { margin: 0 0 16px; color: #111827; font-size: 15px; }
-		.btn { display: inline-block; padding: 14px 28px; background: #dc2626; color: #ffffff !important; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 15px; margin: 8px 0 24px; box-shadow: 0 12px 30px rgba(220,38,38,0.55); }
-		.btn:hover { background: #b91c1c; }
-		.footer { padding: 20px 24px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; line-height: 1.5; }
-		.footer p { margin: 0; }
-		.link-plain { color: #dc2626; word-break: break-all; }
-	</style>
-</head>
-<body>
-	<div class="wrapper">
-		<div class="container">
-			<div class="header">
-				<h1>Danielcraft.fr</h1>
-				<div class="logo">${data.title}</div>
-			</div>
-			<div class="content">
-				${data.content}
-			</div>
-			<div class="footer">
-				<p>${legal}</p>
-				<p>Cet email a été envoyé automatiquement par Facturio.</p>
-			</div>
-		</div>
-	</div>
-</body>
-</html>`;
+	private getBaseLayout(data: {
+		title: string;
+		headline?: string;
+		content: string;
+		legalFooter?: string;
+	}): string {
+		return renderFacturioEmailLayout({
+			title: data.title,
+			headline: data.headline ?? data.title,
+			headerVariant: 'default',
+			contentHtml: data.content,
+			footerHtml: `<p>${data.legalFooter ?? buildPlatformEmailLegalFooter()}</p>`,
+		});
 	}
 
 	/**
@@ -996,14 +935,19 @@ export class EmailService {
 	 */
 	private getVerifyEmailTemplate(data: { firstName?: string | null; verifyUrl: string }): string {
 		const greeting = data.firstName ? `Bonjour ${data.firstName},` : 'Bonjour,';
-		const content = `
-			<p>${greeting}</p>
-			<p>Merci d'avoir créé un compte sur Facturio. Pour activer votre compte et accéder à toutes les fonctionnalités, veuillez confirmer votre adresse email en cliquant sur le bouton ci-dessous.</p>
-			<p><a href="${data.verifyUrl}" class="btn">Confirmer mon adresse email</a></p>
-			<p>Ce lien est valide <strong>24 heures</strong>. Si vous n'avez pas créé de compte Facturio, vous pouvez ignorer cet email.</p>
-			<p>À bientôt,<br><strong>L'équipe Facturio</strong></p>`;
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				'Merci d\'avoir créé un compte sur Facturio. Pour activer votre compte et accéder à toutes les fonctionnalités, veuillez confirmer votre adresse email en cliquant sur le bouton ci-dessous.',
+			) +
+			emailButton(data.verifyUrl, 'Confirmer mon adresse email', 'primary') +
+			emailParagraph(
+				'Ce lien est valide <strong>24 heures</strong>. Si vous n\'avez pas créé de compte Facturio, vous pouvez ignorer cet email.',
+			) +
+			emailParagraph('À bientôt,<br><strong>L\'équipe Facturio</strong>');
 		return this.getBaseLayout({
 			title: 'Confirmez votre adresse email',
+			headline: 'Confirmez votre adresse email',
 			content,
 		});
 	}
@@ -1013,14 +957,19 @@ export class EmailService {
 	 */
 	private getPasswordResetTemplate(data: { firstName?: string | null; resetUrl: string }): string {
 		const greeting = data.firstName ? `Bonjour ${data.firstName},` : 'Bonjour,';
-		const content = `
-			<p>${greeting}</p>
-			<p>Vous avez demandé la réinitialisation de votre mot de passe Facturio. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.</p>
-			<p><a href="${data.resetUrl}" class="btn">Réinitialiser mon mot de passe</a></p>
-			<p>Ce lien est valide <strong>1 heure</strong>. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email en toute sécurité.</p>
-			<p>Cordialement,<br><strong>L'équipe Facturio</strong></p>`;
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				'Vous avez demandé la réinitialisation de votre mot de passe Facturio. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.',
+			) +
+			emailButton(data.resetUrl, 'Réinitialiser mon mot de passe', 'primary') +
+			emailParagraph(
+				'Ce lien est valide <strong>1 heure</strong>. Si vous n\'êtes pas à l\'origine de cette demande, ignorez cet email en toute sécurité.',
+			) +
+			emailParagraph('Cordialement,<br><strong>L\'équipe Facturio</strong>');
 		return this.getBaseLayout({
 			title: 'Réinitialisation de votre mot de passe',
+			headline: 'Réinitialisation de votre mot de passe',
 			content,
 		});
 	}
@@ -1033,13 +982,19 @@ export class EmailService {
 		settingsUrl: string;
 	}): Promise<void> {
 		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
-		const content = `
-			<p>${greeting}</p>
-			<p>Votre abonnement <strong>${options.planLabel}</strong> est maintenant actif sur Facturio.</p>
-			<p>Vous pouvez gérer votre facturation et consulter vos quotas depuis les paramètres.</p>
-			<p><a href="${options.settingsUrl}" class="btn">Voir mon abonnement</a></p>
-			<p>Merci pour votre confiance,<br><strong>L'équipe Facturio</strong></p>`;
-		const html = this.getBaseLayout({ title: 'Abonnement activé', content });
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				`Votre abonnement <strong>${options.planLabel}</strong> est maintenant actif sur Facturio.`,
+			) +
+			emailParagraph('Vous pouvez gérer votre facturation et consulter vos quotas depuis les paramètres.') +
+			emailButton(options.settingsUrl, 'Voir mon abonnement', 'success') +
+			emailParagraph('Merci pour votre confiance,<br><strong>L\'équipe Facturio</strong>');
+		const html = this.getBaseLayout({
+			title: 'Abonnement activé',
+			headline: 'Abonnement activé',
+			content,
+		});
 		await this.send({
 			from: this.subscriptionFrom,
 			to: options.to,
@@ -1060,14 +1015,16 @@ export class EmailService {
 		pdfBuffer: Buffer;
 		hostedInvoiceUrl?: string | null;
 	}): Promise<void> {
-		const company = process.env.COMPANY_NAME || 'Facturio';
+		const company = resolveEmailIssuerDisplayName(null);
 		const subject = `Facture ${options.invoiceNumber} — ${company}`;
+		const legalFooter = buildPlatformEmailLegalFooter();
 		const html = this.getInvoiceTemplate({
 			invoiceNumber: options.invoiceNumber,
 			invoiceDate: options.invoiceDate,
 			clientName: options.clientName,
 			total: options.amountEur,
 			paymentUrl: options.hostedInvoiceUrl ?? undefined,
+			legalFooter,
 		});
 		const paymentLine = options.hostedInvoiceUrl
 			? `\n\nConsulter en ligne : ${options.hostedInvoiceUrl}\n`
@@ -1100,13 +1057,17 @@ export class EmailService {
 		manageUrl: string;
 	}): Promise<void> {
 		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
-		const content = `
-			<p>${greeting}</p>
-			<p>Le renouvellement de votre abonnement Facturio n'a pas pu être débité.</p>
-			<p>Mettez à jour votre moyen de paiement pour éviter une interruption de service.</p>
-			<p><a href="${options.manageUrl}" class="btn">Mettre à jour le paiement</a></p>
-			<p>Si vous avez des questions, répondez à cet email ou contactez le support.</p>`;
-		const html = this.getBaseLayout({ title: 'Paiement abonnement échoué', content });
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph('Le renouvellement de votre abonnement Facturio n\'a pas pu être débité.') +
+			emailParagraph('Mettez à jour votre moyen de paiement pour éviter une interruption de service.') +
+			emailButton(options.manageUrl, 'Mettre à jour le paiement', 'primary') +
+			emailParagraph('Si vous avez des questions, répondez à cet email ou contactez le support.');
+		const html = this.getBaseLayout({
+			title: 'Paiement abonnement échoué',
+			headline: 'Paiement abonnement échoué',
+			content,
+		});
 		await this.send({
 			from: this.subscriptionFrom,
 			to: options.to,
@@ -1123,12 +1084,20 @@ export class EmailService {
 		planLabel: string;
 	}): Promise<void> {
 		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
-		const content = `
-			<p>${greeting}</p>
-			<p>Votre abonnement <strong>${options.planLabel}</strong> a été résilié. Votre compte est repassé sur le plan gratuit.</p>
-			<p>Vos données restent accessibles ; les quotas du plan Free s'appliquent à nouveau.</p>
-			<p>Vous pouvez vous réabonner à tout moment depuis Facturio.</p>`;
-		const html = this.getBaseLayout({ title: 'Abonnement terminé', content });
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				`Votre abonnement <strong>${options.planLabel}</strong> a été résilié. Votre compte est repassé sur le plan gratuit.`,
+			) +
+			emailParagraph(
+				'Vos données restent accessibles ; les quotas du plan Free s\'appliquent à nouveau.',
+			) +
+			emailParagraph('Vous pouvez vous réabonner à tout moment depuis Facturio.');
+		const html = this.getBaseLayout({
+			title: 'Abonnement terminé',
+			headline: 'Abonnement terminé',
+			content,
+		});
 		await this.send({
 			from: this.subscriptionFrom,
 			to: options.to,

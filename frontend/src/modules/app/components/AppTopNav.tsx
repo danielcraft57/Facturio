@@ -3,33 +3,17 @@ import AddIcon from '@mui/icons-material/Add'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { navDashboard, navGroups, navSettings, isNavActive } from '../config/navConfig'
 import { AppMegaMenu } from './AppMegaMenu'
+import { topNavItemSx } from './topNavItemStyles'
 
 function NavTextLink({ to, label, active }: { to: string; label: string; active: boolean }) {
   const theme = useTheme()
-  const isDark = theme.palette.mode === 'dark'
 
   return (
     <Button
       component={RouterLink}
       to={to}
-      sx={{
-        color: 'inherit',
-        fontWeight: active ? 600 : 500,
-        fontSize: '0.9375rem',
-        textTransform: 'none',
-        px: 1.25,
-        py: 0.75,
-        minHeight: 40,
-        borderRadius: 1.5,
-        letterSpacing: '-0.01em',
-        opacity: active ? 1 : 0.88,
-        boxShadow: active ? `inset 0 -2px 0 ${theme.palette.primary.main}` : 'none',
-        bgcolor: active ? alpha(theme.palette.primary.main, isDark ? 0.12 : 0.06) : 'transparent',
-        '&:hover': {
-          opacity: 1,
-          bgcolor: alpha(theme.palette.primary.main, isDark ? 0.1 : 0.05),
-        },
-      }}
+      disableRipple
+      sx={topNavItemSx(theme, active)}
     >
       {label}
     </Button>

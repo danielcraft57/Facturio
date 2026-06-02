@@ -1,0 +1,24 @@
+{
+  "runAt": "2026-06-01T01:51:18.239Z",
+  "targetDomain": "danielcraft.fr",
+  "engine": "google.fr",
+  "options": {
+    "headless": false,
+    "maxPages": 3,
+    "noClick": false,
+    "browsePages": false,
+    "category": null
+  },
+  "results": [
+    {
+      "keyword": "danielcraft",
+      "category": "marque",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "captcha"
+    }
+  ]
+}

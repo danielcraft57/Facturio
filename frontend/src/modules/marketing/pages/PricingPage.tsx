@@ -26,7 +26,7 @@ export function PricingPage() {
           <Grid size={{ xs: 12, md: 6 }}>
             <ScrollReveal>
               <Alert severity="success" sx={{ borderRadius: 2, height: '100%' }}>
-                <strong>Dogfooding DanielCraft</strong> — Facturio facture les prestations du site. Plan Free : 10
+                <strong>Dogfooding DanielCraft</strong> — Facturio facture les prestations du site. Plan Free : 25
                 factures/mois ; Pro : illimité.
               </Alert>
             </ScrollReveal>
@@ -97,7 +97,7 @@ export function PricingPage() {
 
       <CtaSection
         title="Commencez gratuit — montez en gamme quand vous scalez"
-        subtitle="10 factures/mois suffisent pour valider le produit. Pro dès que vous prospectez ou dépassez le quota."
+        subtitle="25 factures/mois suffisent pour valider le produit. Pro dès que vous prospectez ou dépassez le quota."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
         secondaryLabel={CTA.reserveEfacture.label}

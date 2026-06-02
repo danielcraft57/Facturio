@@ -584,6 +584,49 @@ node scripts/manage-user.js list
 npm run user:list
 ```
 
+## Plans SaaS en production
+
+Script : `server/scripts/set-organization-plan.js` (même prérequis que `manage-user.js` : `.env`, `DATABASE_URL`, client Prisma généré).
+
+**Consulter le plan** d’un compte (email du login ou id organisation) :
+
+```bash
+cd /opt/facturio/server
+node scripts/set-organization-plan.js show "client@example.com"
+node scripts/set-organization-plan.js show org:12
+# ou
+npm run plan:show -- "client@example.com"
+```
+
+**Changer le plan** — valeurs : `free`, `pro`, `pro-efacture` (ou `PRO_EFACTURE`), `agency` :
+
+```bash
+# Pro sans date de fin (accès illimité côté Facturio)
+node scripts/set-organization-plan.js set "client@example.com" pro
+
+# Pro + e-facture pour 12 mois
+node scripts/set-organization-plan.js set "client@example.com" pro-efacture --months=12
+
+# Fin à une date précise
+node scripts/set-organization-plan.js set "client@example.com" pro --expires=2026-12-31
+
+# Repasser en Free et détacher l’abonnement Stripe enregistré dans Facturio
+node scripts/set-organization-plan.js set "client@example.com" free --clear-subscription
+
+# Simulation
+node scripts/set-organization-plan.js set "client@example.com" pro --dry-run
+```
+
+**Lister les organisations** :
+
+```bash
+node scripts/set-organization-plan.js list
+node scripts/set-organization-plan.js list --plan=FREE
+npm run plan:list
+```
+
+> Si un client a encore un abonnement actif dans Stripe et que vous le repassez en `free` sans `--clear-subscription`, un webhook Stripe peut rétablir un plan payant. Annulez l’abonnement dans Stripe ou utilisez `--clear-subscription`.
+
 ## Dépannage
 
 ### Problème : EACCES sur node_modules (npm install)

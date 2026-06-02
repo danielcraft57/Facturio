@@ -1,0 +1,159 @@
+{
+  "runAt": "2026-06-01T02:04:19.421Z",
+  "targetDomain": "danielcraft.fr",
+  "engine": "google.fr",
+  "options": {
+    "headless": false,
+    "incognito": true,
+    "consent": "reject",
+    "proxy": null,
+    "maxPages": 3,
+    "noClick": false,
+    "browsePages": false,
+    "category": null
+  },
+  "results": [
+    {
+      "keyword": "danielcraft",
+      "category": "marque",
+      "position": 1,
+      "url": "https://danielcraft.fr/metz",
+      "title": "Développeur à Metz - DanielCraft",
+      "serpPage": 1,
+      "clicked": true,
+      "status": "found"
+    },
+    {
+      "keyword": "daniel craft développeur",
+      "category": "marque",
+      "position": 1,
+      "url": "https://danielcraft.fr/",
+      "title": "DanielCraft - Développeur Full-Stack TypeScript, Python ...",
+      "serpPage": 1,
+      "clicked": false,
+      "status": "found"
+    },
+    {
+      "keyword": "développeur web Metz",
+      "category": "local",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "error",
+      "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('textarea[name=\"q\"], input[name=\"q\"]').first() to be visible\u001b[22m\n"
+    },
+    {
+      "keyword": "création site vitrine Metz",
+      "category": "local",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "error",
+      "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('textarea[name=\"q\"], input[name=\"q\"]').first() to be visible\u001b[22m\n"
+    },
+    {
+      "keyword": "freelance développeur Lorraine",
+      "category": "local",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    },
+    {
+      "keyword": "développeur full stack Metz",
+      "category": "local",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    },
+    {
+      "keyword": "site vitrine professionnel freelance",
+      "category": "services",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    },
+    {
+      "keyword": "SEO ChatGPT site web",
+      "category": "services",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    },
+    {
+      "keyword": "création site vitrine sans WordPress",
+      "category": "services",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    },
+    {
+      "keyword": "développeur TypeScript freelance France",
+      "category": "services",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    },
+    {
+      "keyword": "audit SEO site vitrine",
+      "category": "services",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    },
+    {
+      "keyword": "site vitrine restaurant sur mesure",
+      "category": "secteur",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    },
+    {
+      "keyword": "site vitrine hôtel professionnel",
+      "category": "secteur",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    },
+    {
+      "keyword": "site web artisan chocolatier",
+      "category": "secteur",
+      "position": null,
+      "url": null,
+      "title": null,
+      "serpPage": null,
+      "clicked": false,
+      "status": "not_found"
+    }
+  ]
+}

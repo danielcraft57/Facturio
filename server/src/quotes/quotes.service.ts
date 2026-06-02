@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import * as crypto from 'crypto';
 import { AccountingService } from '../accounting/accounting.service';
 import { buildPublicQuoteUrl } from '../common/public-app-url';
+import { attachListEmailEngagementFlags, getQuoteEmailEngagement } from '../common/email-engagement.util';
 import { InvoicesService } from '../invoices/invoices.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
@@ -570,8 +571,10 @@ export class QuotesService {
 				? await this.loadFolderCounts(organizationId)
 				: undefined;
 
+		const quotes = await attachListEmailEngagementFlags(this.prisma, items, 'quote');
+
 		return {
-			quotes: items,
+			quotes,
 			total,
 			page,
 			limit: pageSize,
@@ -657,7 +660,8 @@ export class QuotesService {
 			},
 		});
 		if (!quote) throw new NotFoundException('Devis non trouve');
-		return quote;
+		const emailEngagement = await getQuoteEmailEngagement(this.prisma, quote.id);
+		return { ...quote, emailEngagement };
 	}
 
 	/**
@@ -784,7 +788,6 @@ export class QuotesService {
 			where: { id },
 			data: { publicToken: token, status: QuoteStatus.SENT, sentAt: new Date() }
 		});
-		await this.prisma.emailEvent.create({ data: { quoteId: id, type: 'sent' } });
 		// Hors-bilan: enregistre une écriture DRAFT dans OD
 		try {
 			await this.accounting.postEntry({
@@ -1452,8 +1455,6 @@ export class QuotesService {
 			},
 			include: { client: true, lines: true }
 		});
-
-		await this.prisma.emailEvent.create({ data: { quoteId: id, type: 'sent' } });
 
 		// Hors-bilan: enregistre une écriture DRAFT dans OD (comme dans send)
 		try {

@@ -2,6 +2,12 @@ import { PrismaClient, InvoiceStatus, QuoteStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { documentFolderFields } from './document-folder.seed';
 import { withEntityId } from '../../src/common/entity-id';
+import {
+	configurePlaywrightOrgPlan,
+	installPlaywrightCatalogPacks,
+	seedPlaywrightInvoicePayments,
+	syncPlaywrightAccounting,
+} from './playwright-catalog-accounting.seed';
 
 type DemoConfig = {
 	email: string;
@@ -113,6 +119,8 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 					preferredTechnologies: ['react', 'nestjs', 'typescript'],
 				},
 		  });
+
+	await configurePlaywrightOrgPlan(prisma, org.id);
 
 	const hashed = await bcrypt.hash(config.password, 12);
 	await prisma.user.upsert({
@@ -269,9 +277,20 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 		});
 	}
 
+	const catalogCount = await installPlaywrightCatalogPacks(prisma, org.id);
+	const paymentsCount = await seedPlaywrightInvoicePayments(prisma, org.id);
+	const accounting = await syncPlaywrightAccounting(prisma, org.id);
+
 	console.log('\n🎬 Seed Playwright prêt');
 	console.log(`   Compte: ${config.email}`);
 	console.log(`   Mot de passe: ${config.password}`);
-	console.log(`   Org: ${org.name} (id ${org.id})\n`);
+	console.log(`   Org: ${org.name} (id ${org.id}) — plan Pro`);
+	console.log(`   Catalogue: ${catalogCount} produit(s) cloné(s)`);
+	console.log(`   Paiements factures: ${paymentsCount}`);
+	console.log(
+		`   Compta: ${accounting.salesCreated} ventes, ${accounting.paymentsCreated} encaissements` +
+			(accounting.errors.length ? ` (${accounting.errors.length} erreur(s))` : ''),
+	);
+	console.log('');
 }
 

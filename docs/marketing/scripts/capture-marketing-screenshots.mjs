@@ -10,34 +10,62 @@
  * Usage :
  *   node docs/marketing/scripts/capture-marketing-screenshots.mjs
  *
- * Sortie :
- *   docs/marketing/screenshots-temp/captures/*.png
- *   frontend/public/images/marketing/overflow/captures/*.png
+ * Sortie : docs/marketing/pub-2026/captures/ (option --sync-public pour la landing)
  */
 
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { PATHS, syncPublic, PUBLIC_OVERFLOW_CAPTURES } from './marketing-paths.mjs'
+import { captureFilename } from './marketing-screenshot-env.mjs'
 import {
-  VIEWPORT,
   envBaseUrl,
+  envCredentials,
+  assertAppReachable,
   login,
+  openMegaMenu,
   snap,
-  waitForAppShell,
+  loadPlaywright,
+  gotoReady,
+  createMarketingContext,
+  getViewport,
+  syncAccountingFromInvoices,
+  navigateToFirstInvoiceDetail,
+  navigateToFirstQuoteDetail,
 } from './playwright-marketing-helpers.mjs'
+import {
+  fillQuoteModal,
+  fillInvoiceModal,
+  fillNewProductWizard,
+  fillEditProductWizard,
+  openFirstProductForEdit,
+} from './playwright-marketing-forms.mjs'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const OUT_DIR = path.resolve(__dirname, '../screenshots-temp/captures')
-const PUBLIC_DIR = path.resolve(__dirname, '../../../frontend/public/images/marketing/overflow/captures')
+const OUT_DIR = PATHS.captures
 const BASE_URL = envBaseUrl()
 
 function pub(slug) {
-  return { publicPath: path.join(PUBLIC_DIR, `${slug}.png`) }
+  return syncPublic() ? { publicPath: path.join(PUBLIC_OVERFLOW_CAPTURES, `${slug}.png`) } : {}
 }
 
 /** @type {Array<{ slug: string, path: string, waitMs?: number, fullPage?: boolean, before?: (page: import('playwright').Page) => Promise<void> }>} */
 const TARGETS = [
   { slug: 'dashboard', path: '/dashboard', waitMs: 2000 },
+  {
+    slug: 'menu-commercial',
+    path: '/dashboard',
+    waitMs: 600,
+    before: async (page) => {
+      await openMegaMenu(page, 'Commercial')
+    },
+  },
+  {
+    slug: 'menu-finance',
+    path: '/dashboard',
+    waitMs: 600,
+    before: async (page) => {
+      await openMegaMenu(page, 'Finance')
+    },
+  },
   { slug: 'clients-inbox', path: '/clients/inbox', waitMs: 1200 },
   { slug: 'clients-prospects', path: '/clients/prospects', waitMs: 1000 },
   {
@@ -70,7 +98,16 @@ const TARGETS = [
     waitMs: 600,
     before: async (page) => {
       await page.getByRole('button', { name: /nouveau produit/i }).click()
-      await page.getByRole('heading', { name: /nouveau produit|modifier/i }).waitFor({ timeout: 10_000 })
+      await fillNewProductWizard(page)
+    },
+  },
+  {
+    slug: 'produits-modifier',
+    path: '/produits',
+    waitMs: 700,
+    before: async (page) => {
+      await openFirstProductForEdit(page)
+      await fillEditProductWizard(page)
     },
   },
   { slug: 'factures-inbox', path: '/factures/inbox', waitMs: 1400 },
@@ -83,46 +120,53 @@ const TARGETS = [
   {
     slug: 'devis-nouveau-modal',
     path: '/devis/inbox',
-    waitMs: 400,
+    waitMs: 500,
     before: async (page) => {
       await page.getByRole('button', { name: /nouveau devis/i }).first().click()
-      await page.getByText(/nouveau devis/i).first().waitFor({ timeout: 10_000 })
+      await fillQuoteModal(page)
     },
   },
   {
     slug: 'factures-nouvelle-modal',
     path: '/factures/inbox',
-    waitMs: 400,
+    waitMs: 500,
     before: async (page) => {
       await page.getByRole('button', { name: /nouvelle facture/i }).first().click()
-      await page.getByText(/nouvelle facture/i).first().waitFor({ timeout: 10_000 })
+      await fillInvoiceModal(page)
     },
   },
   {
     slug: 'facture-detail',
-    path: '/factures/inbox',
-    waitMs: 500,
+    path: '/factures/voir',
+    waitMs: 1200,
+    skipGoto: true,
     before: async (page) => {
-      const link = page.locator('table tbody tr a').first()
-      await link.waitFor({ timeout: 15_000 })
-      await link.click()
-      await page.waitForURL(/\/factures\/voir\//, { timeout: 20_000 })
-      await page.waitForTimeout(1200)
+      await navigateToFirstInvoiceDetail(page, BASE_URL)
     },
   },
   {
     slug: 'devis-detail',
-    path: '/devis/inbox',
-    waitMs: 500,
+    path: '/devis/voir',
+    waitMs: 1200,
+    skipGoto: true,
     before: async (page) => {
-      const link = page.locator('table tbody tr a').first()
-      await link.waitFor({ timeout: 15_000 })
-      await link.click()
-      await page.waitForURL(/\/devis\/voir\//, { timeout: 20_000 })
-      await page.waitForTimeout(1200)
+      await navigateToFirstQuoteDetail(page, BASE_URL)
     },
   },
-  { slug: 'comptabilite', path: '/comptabilite', waitMs: 2000 },
+  {
+    slug: 'comptabilite',
+    path: '/comptabilite',
+    waitMs: 2500,
+    before: async (page) => {
+      await syncAccountingFromInvoices(page)
+      await gotoReady(page, '/comptabilite', BASE_URL)
+      const syncBtn = page.getByRole('button', { name: /synchroniser/i }).first()
+      if (await syncBtn.isVisible().catch(() => false)) {
+        await syncBtn.click().catch(() => {})
+        await page.waitForTimeout(1200)
+      }
+    },
+  },
   { slug: 'parametres', path: '/parametres', waitMs: 1000 },
   { slug: 'parametres-entreprise', path: '/parametres/entreprise', waitMs: 1500 },
   { slug: 'parametres-efacture', path: '/parametres/facturation-electronique', waitMs: 1200 },
@@ -131,35 +175,37 @@ const TARGETS = [
 async function main() {
   let chromium
   try {
-    ;({ chromium } = await import('playwright'))
-  } catch {
-    console.error(
-      'Playwright manquant : cd frontend && npm i -D playwright && npx playwright install chromium',
-    )
+    ;({ chromium } = await loadPlaywright())
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err)
     process.exit(1)
   }
 
   await mkdir(OUT_DIR, { recursive: true })
-  await mkdir(PUBLIC_DIR, { recursive: true })
+  await mkdir(PATHS.root, { recursive: true })
+  if (syncPublic()) await mkdir(PUBLIC_OVERFLOW_CAPTURES, { recursive: true })
 
   const browser = await chromium.launch({ headless: true })
-  const context = await browser.newContext({
-    viewport: VIEWPORT,
-    deviceScaleFactor: 2,
-    locale: 'fr-FR',
-  })
+  const context = await createMarketingContext(browser)
   const page = await context.newPage()
+
+  await assertAppReachable(BASE_URL)
 
   console.log(`[capture] Connexion ${envCredentials().email} @ ${BASE_URL}`)
   await login(page, BASE_URL)
+  const vp = getViewport()
+  console.log(`[capture] Viewport ${vp.width}×${vp.height} — ${TARGETS.length} écrans\n`)
 
   const manifest = { capturedAt: new Date().toISOString(), baseUrl: BASE_URL, files: [] }
 
   for (const target of TARGETS) {
-    const file = path.join(OUT_DIR, `${target.slug}.png`)
+    const file = path.join(OUT_DIR, captureFilename(target.slug))
+    const skipGoto = target.skipGoto === true || target.slug === 'comptabilite'
     try {
-      await page.goto(`${BASE_URL}${target.path}`, { waitUntil: 'networkidle' })
-      await waitForAppShell(page)
+      console.log(`[capture] → ${target.slug} (${target.path})`)
+      if (!skipGoto) {
+        await gotoReady(page, target.path, BASE_URL)
+      }
       if (target.before) await target.before(page)
       await snap(page, file, {
         ...pub(target.slug),
@@ -174,11 +220,13 @@ async function main() {
   }
 
   await writeFile(path.join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2))
+  await writeFile(PATHS.manifest, JSON.stringify({ ...manifest, capturesDir: OUT_DIR }, null, 2))
   await browser.close()
-  console.log(`\n[capture] ${manifest.files.length}/${TARGETS.length} OK → ${PUBLIC_DIR}`)
+  console.log(`\n[capture] ${manifest.files.length}/${TARGETS.length} OK → ${OUT_DIR}`)
+  if (syncPublic()) console.log(`[capture] Copie landing → ${PUBLIC_OVERFLOW_CAPTURES}`)
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error(err)
   process.exit(1)
 })

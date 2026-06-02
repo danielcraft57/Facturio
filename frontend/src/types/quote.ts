@@ -27,6 +27,11 @@ export interface Quote {
   total: number;
   publicToken?: string;
   sentAt?: string;
+  /** Email client effectivement envoyé (événement SMTP enregistré). */
+  emailSent?: boolean;
+  emailOpened?: boolean;
+  emailClicked?: boolean;
+  emailClickAction?: string | null;
   acceptedAt?: string;
   acceptedIp?: string;
   invoiceId?: string;
@@ -39,6 +44,7 @@ export interface Quote {
   snoozedUntil?: string;
   seenAt?: string;
   tags?: string[];
+  emailEngagement?: EmailEngagement;
 }
 
 export interface CreateQuoteData {

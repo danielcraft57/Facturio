@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "project": "facturio",
+    "title": "Publicité réseaux — Facturio 2026",
+    "default_voice": "fr-FR-DeniseNeural",
+    "pause_between_segments_ms": 450,
+    "productionRoot": "docs/marketing/pub-2026"
+  },
+  "variants": [
+    {
+      "id": "30s-main",
+      "label": "Version 30 secondes (principale)",
+      "segments": [
+        {
+          "id": "01-hook",
+          "captureSlug": "dashboard",
+          "visual": "Logo Facturio + accroche",
+          "text": "Vous codez. Vous facturez encore à la main ?"
+        },
+        {
+          "id": "02-positionnement",
+          "captureSlug": "factures-inbox",
+          "visual": "Liste factures",
+          "text": "Facturio, la facturation pensée pour les devs et intégrateurs."
+        },
+        {
+          "id": "03-cycle",
+          "captureSlug": "devis-nouveau-modal",
+          "visual": "Modal devis rempli",
+          "text": "Devis, clients SIREN, factures : tout au même endroit."
+        },
+        {
+          "id": "04-paiement",
+          "captureSlug": "devis-detail",
+          "visual": "Détail devis",
+          "text": "Acomptes, soldes, paiement Stripe : le cycle commercial est bouclé."
+        },
+        {
+          "id": "05-dashboard",
+          "captureSlug": "dashboard",
+          "visual": "Dashboard KPI",
+          "text": "Tableau de bord, encaissements, conversion devis-factures."
+        },
+        {
+          "id": "06-efacture",
+          "captureSlug": "parametres-efacture",
+          "visual": "Paramètres e-facture",
+          "text": "Et la réforme e-facture 2026 ? Réception obligatoire dès septembre. Facturio vous prépare."
+        },
+        {
+          "id": "07-conformite",
+          "captureSlug": "parametres-entreprise",
+          "visual": "Paramètres entreprise",
+          "text": "Score de conformité, export Factur-X : anticipez sans changer de métier."
+        },
+        {
+          "id": "08-cta",
+          "captureSlug": "menu-commercial",
+          "visual": "Navigation produit",
+          "text": "Compte gratuit sur facturio point danielcraft point fr. Votre premier devis en dix minutes."
+        }
+      ]
+    },
+    {
+      "id": "15s-teaser",
+      "label": "Teaser 15 secondes",
+      "segments": [
+        { "id": "01", "captureSlug": "dashboard", "text": "Facturation dev, sans tableur." },
+        { "id": "02", "captureSlug": "factures-inbox", "text": "Devis, acomptes, Stripe." },
+        { "id": "03", "captureSlug": "parametres-efacture", "text": "Prêt pour septembre 2026." },
+        { "id": "04", "captureSlug": "devis-nouveau-modal", "text": "Essai gratuit — lien en bio." }
+      ]
+    }
+  ]
+}

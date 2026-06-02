@@ -6,6 +6,8 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DocumentEmailCopiesService } from '../common/document-email-copies.service';
 import type { SendDocumentEmailDto } from '../common/dto/send-document-email.dto';
+import { buildEmailClickTrackUrl, buildEmailOpenTrackUrl } from '../common/email-track.util';
+import { recordQuoteEmailSent } from '../common/email-engagement.util';
 
 @Injectable()
 export class QuoteSendService {
@@ -47,11 +49,7 @@ export class QuoteSendService {
 
 		let emailSent = false;
 		if (token) {
-			const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
-			const baseUrl = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
-			const trackOpenUrl = `${apiUrl}/api/track/opened/quote/${token}`;
-			const acceptUrl = `${baseUrl}/public/devis/${token}/accepter`;
-			const rejectUrl = `${baseUrl}/public/devis/${token}/refuser`;
+			const trackOpenUrl = buildEmailOpenTrackUrl('quote', token);
 			await this.email.sendQuote({
 				to,
 				quoteNumber: result.number,
@@ -61,9 +59,11 @@ export class QuoteSendService {
 				expiryDate: result.expiryDate || undefined,
 				pdfBuffer: pdf,
 				trackOpenUrl,
-				acceptUrl,
-				rejectUrl,
+				acceptUrl: buildEmailClickTrackUrl('quote', token, 'accept'),
+				rejectUrl: buildEmailClickTrackUrl('quote', token, 'reject'),
+				organization,
 			});
+			await recordQuoteEmailSent(this.prisma, id);
 			emailSent = true;
 		}
 
@@ -76,6 +76,7 @@ export class QuoteSendService {
 			total: Number(result.total),
 			expiryDate: result.expiryDate || undefined,
 			pdfBuffer: pdf,
+			organization,
 		});
 
 		return {

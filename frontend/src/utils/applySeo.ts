@@ -82,7 +82,7 @@ export function applySeo(meta: SeoPayload, pathname?: string) {
 
   upsertLink('canonical', canonical)
 
-  upsertMeta('name', 'theme-color', '#1976d2')
+  upsertMeta('name', 'theme-color', '#0f766e')
 
   const jsonLdId = 'app-jsonld'
   let script = document.getElementById(jsonLdId) as HTMLScriptElement | null

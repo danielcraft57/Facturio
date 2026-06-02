@@ -29,6 +29,12 @@ export interface BillingUsage {
     publicApi: boolean
   }
   usage: { invoicesThisMonth: number }
+  /** Mois calendaire courant ; le quota Free est remis à zéro à resetsAt. */
+  billingPeriod?: {
+    start: string
+    end: string
+    resetsAt: string
+  }
   remainingInvoices: number | null
   atLimit: boolean
   subscription: BillingSubscriptionInfo | null

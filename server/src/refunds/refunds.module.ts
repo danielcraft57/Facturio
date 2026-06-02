@@ -6,9 +6,11 @@ import { AccountingModule } from '../accounting/accounting.module';
 import { AvoirsModule } from '../avoirs/avoirs.module';
 import { StripeModule } from '../stripe/stripe.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { OrganizationsModule } from '../organizations/organizations.module';
+import { CommonModule } from '../common/common.module';
 
 @Module({
-	imports: [PrismaModule, AccountingModule, AvoirsModule, StripeModule, RealtimeModule],
+	imports: [PrismaModule, AccountingModule, AvoirsModule, StripeModule, RealtimeModule, OrganizationsModule, CommonModule],
 	controllers: [RefundsController],
 	providers: [RefundsService],
 	exports: [RefundsService],

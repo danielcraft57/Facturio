@@ -9,26 +9,39 @@
  *   node docs/marketing/scripts/record-workflow-demo.mjs --invoice-only
  *
  * Sortie :
- *   docs/marketing/screenshots-temp/workflow/
- *   frontend/public/images/marketing/workflow/
- *   docs/marketing/screenshots-temp/videos/ (webm)
+ *   docs/marketing/pub-2026/workflow/
+ *   docs/marketing/pub-2026/videos/workflow/*.webm
+ *   frontend/public/images/marketing/workflow/ (PNG publics)
  */
 
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-  VIEWPORT,
-  envBaseUrl,
-  login,
-  snap,
-  waitForAppShell,
-} from './playwright-marketing-helpers.mjs'
+import { PATHS } from './marketing-paths.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const WORKFLOW_DIR = path.resolve(__dirname, '../screenshots-temp/workflow')
+import {
+  envBaseUrl,
+  loadPlaywright,
+  login,
+  snap,
+  gotoReady,
+  createMarketingContext,
+  getVideoViewport,
+  saveMarketingAuthState,
+  finalizeRecordedVideo,
+} from './playwright-marketing-helpers.mjs'
+import { pauseAfterScene } from './marketing-showreel-scenes.mjs'
+import {
+  fillQuoteModal,
+  fillInvoiceModal,
+  fillQuoteClientOnly,
+  fillInvoiceClientOnly,
+} from './playwright-marketing-forms.mjs'
+
+const WORKFLOW_DIR = PATHS.workflow
 const PUBLIC_WORKFLOW = path.resolve(__dirname, '../../../frontend/public/images/marketing/workflow')
-const VIDEO_DIR = path.resolve(__dirname, '../screenshots-temp/videos')
+const VIDEO_DIR = path.join(PATHS.videos, 'workflow')
 const BASE_URL = envBaseUrl()
 
 const args = new Set(process.argv.slice(2))
@@ -41,51 +54,20 @@ function pub(name) {
   return { publicPath: path.join(PUBLIC_WORKFLOW, name) }
 }
 
-async function fillFirstQuoteLine(page) {
-  const dialog = page.getByRole('dialog')
-  const lineInput = dialog.locator('input[type="text"]').filter({ visible: true }).nth(1)
-  await lineInput.click()
-  await lineInput.fill('Développement React Native — écrans, navigation et API')
-  await page.keyboard.press('Tab')
-  const price = dialog.locator('input[type="number"], input[inputmode="decimal"]').first()
-  await price.fill('1200')
-}
-
-async function fillFirstInvoiceLine(page) {
-  const dialog = page.getByRole('dialog')
-  const lineInput = dialog.locator('input[type="text"]').filter({ visible: true }).nth(1)
-  await lineInput.click()
-  await lineInput.fill('Maintenance & correctifs — forfait mensuel')
-  await page.keyboard.press('Tab')
-  const price = dialog.locator('input[type="number"], input[inputmode="decimal"]').first()
-  await price.fill('290')
-}
-
-async function pickFirstClient(page, query = 'Atelier') {
-  const dialog = page.getByRole('dialog')
-  const client = dialog.getByPlaceholder(/rechercher un client/i)
-  await client.click()
-  await client.fill(query)
-  await page.waitForTimeout(600)
-  await page.getByRole('option').first().click()
-  await page.waitForTimeout(400)
-}
-
 async function recordQuoteWorkflow(page) {
   console.log('\n[workflow] Devis — création & envoi')
 
-  await page.goto(`${BASE_URL}/devis/inbox`, { waitUntil: 'networkidle' })
-  await waitForAppShell(page)
+  await gotoReady(page, '/devis/inbox', BASE_URL)
   await snap(page, path.join(WORKFLOW_DIR, 'quote-01-liste.png'), { ...pub('quote-01-liste.png'), waitMs: 800 })
 
   await page.getByRole('button', { name: /nouveau devis/i }).first().click()
-  await page.getByText(/nouveau devis/i).first().waitFor({ timeout: 12_000 })
+  await page.getByRole('dialog').waitFor({ timeout: 12_000 })
   await snap(page, path.join(WORKFLOW_DIR, 'quote-02-modal-vide.png'), { ...pub('quote-02-modal-vide.png'), waitMs: 500 })
 
-  await pickFirstClient(page)
+  await fillQuoteClientOnly(page)
   await snap(page, path.join(WORKFLOW_DIR, 'quote-03-modal-client.png'), { ...pub('quote-03-modal-client.png'), waitMs: 400 })
 
-  await fillFirstQuoteLine(page)
+  await fillQuoteModal(page)
   await snap(page, path.join(WORKFLOW_DIR, 'quote-04-modal-lignes.png'), { ...pub('quote-04-modal-lignes.png'), waitMs: 600 })
 
   const createBtn = page.getByRole('button', { name: /créer le devis/i })
@@ -110,18 +92,17 @@ async function recordQuoteWorkflow(page) {
 async function recordInvoiceWorkflow(page) {
   console.log('\n[workflow] Facture — création & envoi')
 
-  await page.goto(`${BASE_URL}/factures/inbox`, { waitUntil: 'networkidle' })
-  await waitForAppShell(page)
+  await gotoReady(page, '/factures/inbox', BASE_URL)
   await snap(page, path.join(WORKFLOW_DIR, 'invoice-01-liste.png'), { ...pub('invoice-01-liste.png'), waitMs: 800 })
 
   await page.getByRole('button', { name: /nouvelle facture/i }).first().click()
-  await page.getByText(/nouvelle facture/i).first().waitFor({ timeout: 12_000 })
+  await page.getByRole('dialog').waitFor({ timeout: 12_000 })
   await snap(page, path.join(WORKFLOW_DIR, 'invoice-02-modal-vide.png'), { ...pub('invoice-02-modal-vide.png'), waitMs: 500 })
 
-  await pickFirstClient(page, 'Studio')
+  await fillInvoiceClientOnly(page)
   await snap(page, path.join(WORKFLOW_DIR, 'invoice-03-modal-client.png'), { ...pub('invoice-03-modal-client.png'), waitMs: 400 })
 
-  await fillFirstInvoiceLine(page)
+  await fillInvoiceModal(page)
   await snap(page, path.join(WORKFLOW_DIR, 'invoice-04-modal-lignes.png'), { ...pub('invoice-04-modal-lignes.png'), waitMs: 600 })
 
   const createBtn = page.getByRole('button', { name: /créer la facture/i })
@@ -143,27 +124,37 @@ async function recordInvoiceWorkflow(page) {
 }
 
 async function recordWithVideo(browser, name, fn) {
-  const videoDir = path.join(VIDEO_DIR, name)
-  await mkdir(videoDir, { recursive: true })
-  const context = await browser.newContext({
-    viewport: VIEWPORT,
-    deviceScaleFactor: 2,
-    locale: 'fr-FR',
-    recordVideo: { dir: videoDir, size: VIEWPORT },
+  const outFile = path.join(VIDEO_DIR, `${name}.webm`)
+  const tmpDir = path.join(VIDEO_DIR, '_tmp', name)
+  await mkdir(tmpDir, { recursive: true })
+  const vp = getVideoViewport()
+  const context = await createMarketingContext(browser, {
+    forVideo: true,
+    recordVideo: { dir: tmpDir, size: vp },
   })
   const page = await context.newPage()
-  await login(page, BASE_URL)
-  await fn(page)
-  await context.close()
-  console.log(`[workflow] Vidéo ${name} → ${videoDir}`)
+  try {
+    await login(page, BASE_URL)
+    await fn(page)
+    await pauseAfterScene(page, 800)
+    const video = page.video()
+    await context.close()
+    await finalizeRecordedVideo(video, outFile)
+    console.log(`[workflow] Vidéo → ${outFile}`)
+  } catch (err) {
+    await context.close().catch(() => {})
+    throw err
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true }).catch(() => {})
+  }
 }
 
 async function main() {
   let chromium
   try {
-    ;({ chromium } = await import('playwright'))
-  } catch {
-    console.error('Installez Playwright dans frontend/')
+    ;({ chromium } = await loadPlaywright())
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err)
     process.exit(1)
   }
 

@@ -276,6 +276,9 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               Factures ce mois-ci : {usage.usage.invoicesThisMonth} / {max}
             </Typography>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+              Compteur remis à zéro le 1er de chaque mois (mois calendaire).
+            </Typography>
             <LinearProgress
               variant="determinate"
               value={quotaPct}

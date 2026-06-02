@@ -43,7 +43,8 @@ import {
   MoneyOff,
 } from '@mui/icons-material'
 import { invoiceService, normalizeInvoiceFromApi, unwrapApiPayload, type Invoice } from '../../services/invoices'
-import { formatInvoiceSentAt, wasInvoiceEmailed } from './invoiceEmailUi'
+import { wasInvoiceEmailed } from './invoiceEmailUi'
+import { resolveInvoiceDisplayStatus } from './invoiceDisplayStatus'
 import { useToast } from '../../components/useToast'
 import { logActivity } from '../../utils/activity'
 import { apiClient } from '../../services/api'
@@ -267,28 +268,6 @@ export function InvoiceDetailPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid': return 'success'
-      case 'sent': return 'info'
-      case 'overdue': return 'error'
-      case 'draft': return 'warning'
-      case 'cancelled': return 'default'
-      default: return 'default'
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'paid': return 'Payée'
-      case 'sent': return 'Envoyée'
-      case 'overdue': return 'En retard'
-      case 'draft': return 'Brouillon'
-      case 'cancelled': return 'Annulée'
-      default: return status
-    }
-  }
-
   if (isDocumentFolder(id)) {
     return <Navigate to={`/factures/${id}`} replace />
   }
@@ -336,7 +315,7 @@ export function InvoiceDetailPage() {
         ? 'Soldée (avoir + paiement)'
         : invoice.settlement === 'SOLDEE_CB'
           ? 'Payée'
-          : getStatusLabel(invoice.status)
+          : resolveInvoiceDisplayStatus(invoice).label
   const isArchived = Boolean(invoice.archivedAt)
   const isCancelled = invoice.status === 'cancelled'
   const isDepositInvoice = invoice.tags?.includes('ACOMPTE_10')
@@ -494,26 +473,13 @@ export function InvoiceDetailPage() {
                     Échéance: {formatDate(invoice.dueDate)}
                   </Typography>
                 </Box>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <Chip
-                    label={getStatusLabel(invoice.status)}
-                    color={getStatusColor(invoice.status) as any}
-                    size="medium"
-                  />
-                  {wasInvoiceEmailed(invoice) && (
-                    <Chip
-                      icon={<MarkEmailRead sx={{ fontSize: 18 }} />}
-                      label={
-                        formatInvoiceSentAt(invoice.sentAt)
-                          ? `Email — ${formatInvoiceSentAt(invoice.sentAt)}`
-                          : 'Email envoyé'
-                      }
-                      size="small"
-                      color="success"
-                      variant="outlined"
-                      sx={{ fontWeight: 600 }}
-                    />
-                  )}
+                <Stack alignItems="flex-end" spacing={1}>
+                  {(() => {
+                    const display = resolveInvoiceDisplayStatus(invoice)
+                    return (
+                      <Chip label={display.label} color={display.color} size="medium" />
+                    )
+                  })()}
                 </Stack>
               </Stack>
 

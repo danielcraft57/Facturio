@@ -13,22 +13,7 @@ import { documentFolderUnreadRowSx } from '../../../components/finance/documentF
 import { getRealtimeRowSx } from '../../../utils/realtimeRowHighlight'
 import type { RealtimeHighlightTone } from '../../../types/realtime'
 import { QuoteRowActionsMenu } from './QuoteRowActionsMenu'
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Brouillon',
-  SENT: 'Envoyé',
-  ACCEPTED: 'Accepté',
-  REJECTED: 'Rejeté',
-  EXPIRED: 'Expiré',
-}
-
-const STATUS_COLORS: Record<string, 'default' | 'primary' | 'success' | 'error' | 'warning'> = {
-  DRAFT: 'default',
-  SENT: 'primary',
-  ACCEPTED: 'success',
-  REJECTED: 'error',
-  EXPIRED: 'warning',
-}
+import { resolveQuoteDisplayStatus } from '../quoteDisplayStatus'
 
 type QuoteFolderMobileListProps = {
   quotes: Quote[]
@@ -111,12 +96,17 @@ export function QuoteFolderMobileList({
                       </Typography>
                     </Box>
                     <Stack alignItems="flex-end" spacing={0.5} flexShrink={0}>
-                      <Chip
-                        label={STATUS_LABELS[quote.status] ?? quote.status}
-                        color={STATUS_COLORS[quote.status] ?? 'default'}
-                        size="small"
-                        sx={{ fontWeight: 600, height: 22, fontSize: '0.7rem' }}
-                      />
+                      {(() => {
+                        const display = resolveQuoteDisplayStatus(quote)
+                        return (
+                          <Chip
+                            label={display.label}
+                            color={display.color}
+                            size="small"
+                            sx={{ fontWeight: 600, height: 22, fontSize: '0.7rem' }}
+                          />
+                        )
+                      })()}
                       <Typography variant="body2" fontWeight={700}>
                         {formatCurrency(quote.total)}
                       </Typography>

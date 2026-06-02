@@ -1,5 +1,6 @@
 import { apiClient, type ApiResponse } from './api'
 import type { DocumentFolder, DocumentFlags, DocumentFolderCounts } from '../types/documentFolders'
+import type { EmailEngagement } from '../modules/documents/documentEmailEngagement'
 import { normalizeDocumentFolderCounts } from '../types/documentFolders'
 
 // Types pour les factures
@@ -36,8 +37,13 @@ export interface Invoice {
   createdAt: string
   updatedAt: string
   paidAt?: string
-  /** Date du premier envoi email (ou dernier marquage « envoyée »). */
+  /** Date d’émission / passage au statut envoyé (pas forcément un email). */
   sentAt?: string
+  /** Email client effectivement envoyé (événement SMTP enregistré). */
+  emailSent?: boolean
+  emailOpened?: boolean
+  emailClicked?: boolean
+  emailClickAction?: string | null
   archivedAt?: string
   starred?: boolean
   important?: boolean
@@ -48,6 +54,7 @@ export interface Invoice {
   /** Solde restant TTC (après paiements et avoirs). */
   balance?: number
   settlement?: 'A_PAYER' | 'SOLDEE_CB' | 'SOLDEE_AVOIR' | 'SOLDEE_MIXTE' | 'ANNULEE'
+  emailEngagement?: EmailEngagement
 }
 
 export interface CreateInvoiceData {
@@ -165,6 +172,13 @@ export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
     updatedAt: String(raw.updatedAt ?? ''),
     paidAt: raw.paidAt ? String(raw.paidAt) : undefined,
     sentAt: raw.sentAt ? String(raw.sentAt) : undefined,
+    emailSent: raw.emailSent === true || raw.emailSent === 'true',
+    emailOpened: raw.emailOpened === true || raw.emailOpened === 'true',
+    emailClicked: raw.emailClicked === true || raw.emailClicked === 'true',
+    emailClickAction:
+      typeof raw.emailClickAction === 'string' && raw.emailClickAction.trim()
+        ? raw.emailClickAction.trim()
+        : null,
     archivedAt: raw.archivedAt ? String(raw.archivedAt) : undefined,
     starred: Boolean(raw.starred),
     important: Boolean(raw.important),
@@ -185,6 +199,7 @@ export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
           ? Number((raw.settlementDetails as { balance: number }).balance)
           : undefined,
     settlement: raw.settlement as Invoice['settlement'] | undefined,
+    emailEngagement: raw.emailEngagement as EmailEngagement | undefined,
   }
 }
 

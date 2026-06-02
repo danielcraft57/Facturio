@@ -13,6 +13,7 @@ import type { PublicAcceptDepositDto } from './quotes.service';
 import type { PayQuoteDto } from './quotes.service';
 import { QuoteSendService } from './quote-send.service';
 import { SendDocumentEmailDto } from '../common/dto/send-document-email.dto';
+import { buildEmailClickTrackUrl, buildEmailOpenTrackUrl } from '../common/email-track.util';
 
 @Controller(['quotes', 'devis'])
 export class QuotesController {
@@ -130,6 +131,12 @@ export class QuotesController {
 			throw new BadRequestException('Le client n’a pas d’adresse email');
 		}
 
+		const token = invoice.publicToken;
+		const trackOpenUrl = token ? buildEmailOpenTrackUrl('invoice', token) : undefined;
+		const paymentUrl = token
+			? buildEmailClickTrackUrl('invoice', token, 'pay')
+			: publicUrl;
+
 		await this.email.sendReminder({
 			to: client.email,
 			invoiceNumber: invoice.number,
@@ -137,8 +144,10 @@ export class QuotesController {
 			clientName: client.name || client.companyName || '',
 			amount: Number(invoice.total),
 			daysOverdue,
-			paymentUrl: publicUrl,
+			paymentUrl,
+			trackOpenUrl,
 			pdfBuffer: pdf,
+			organization,
 		});
 
 		return { success: true, invoiceId: invoice.id, daysOverdue: daysOverdue ?? null };

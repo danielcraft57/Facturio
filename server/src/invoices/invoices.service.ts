@@ -8,6 +8,7 @@ import { ConfigService } from '../config/config.service';
 import { BillingService } from '../billing/billing.service';
 import { assertValidPublicToken } from './public-token.util';
 import { buildPublicInvoiceUrl } from '../common/public-app-url';
+import { attachListEmailEngagementFlags, getInvoiceEmailEngagement } from '../common/email-engagement.util';
 import { InvoicePaymentNotificationService } from './invoice-payment-notification.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
@@ -717,9 +718,10 @@ export class InvoicesService {
 			const reconciled = await Promise.all(
 				items.map((inv) => this.reconcileRemainderAwaitingSend(inv)),
 			);
+			const withEmailFlags = await attachListEmailEngagementFlags(this.prisma, reconciled, 'invoice');
 			const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 0;
 			return {
-				invoices: reconciled,
+				invoices: withEmailFlags,
 				total,
 				page,
 				limit: pageSize,
@@ -749,7 +751,9 @@ export class InvoicesService {
 		});
 		if (!invoice) throw new NotFoundException('Facture non trouvee');
 		invoice = await this.reconcileRemainderAwaitingSend(invoice);
-		return this.enrichInvoiceWithSettlement(invoice, organizationId);
+		const enriched = await this.enrichInvoiceWithSettlement(invoice, organizationId);
+		const emailEngagement = await getInvoiceEmailEngagement(this.prisma, enriched.id);
+		return { ...enriched, emailEngagement };
 	}
 
 	/**
@@ -1377,9 +1381,6 @@ export class InvoicesService {
 				tags: tagsWithoutPending,
 			},
 			include: { lines: true, client: true }
-		});
-		await this.prisma.emailEvent.create({
-			data: { invoiceId: id, type: 'sent' }
 		});
 		if (this.isEmittedInvoiceStatus(nextStatus)) {
 			await this.postSaleOnEmission(id);

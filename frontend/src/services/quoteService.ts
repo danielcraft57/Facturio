@@ -10,6 +10,7 @@ import type {
 } from '../types/quote';
 import type { ApiResponse } from '../types/api';
 import type { DocumentFolderCounts, DocumentFlags } from '../types/documentFolders';
+import type { EmailEngagement } from '../modules/documents/documentEmailEngagement';
 import { normalizeDocumentFolderCounts } from '../types/documentFolders';
 import { unwrapApiPayload } from './invoices';
 
@@ -64,6 +65,13 @@ export function normalizeQuoteFromApi(raw: Record<string, unknown>): Quote {
     total: Number(raw.total ?? 0),
     publicToken: raw.publicToken ? String(raw.publicToken) : undefined,
     sentAt: raw.sentAt ? String(raw.sentAt) : undefined,
+    emailSent: raw.emailSent === true || raw.emailSent === 'true',
+    emailOpened: raw.emailOpened === true || raw.emailOpened === 'true',
+    emailClicked: raw.emailClicked === true || raw.emailClicked === 'true',
+    emailClickAction:
+      typeof raw.emailClickAction === 'string' && raw.emailClickAction.trim()
+        ? raw.emailClickAction.trim()
+        : null,
     acceptedAt: raw.acceptedAt ? String(raw.acceptedAt) : undefined,
     invoiceId:
       raw.invoiceId != null
@@ -83,6 +91,7 @@ export function normalizeQuoteFromApi(raw: Record<string, unknown>): Quote {
     starred: Boolean(raw.starred),
     important: Boolean(raw.important),
     tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
+    emailEngagement: raw.emailEngagement as EmailEngagement | undefined,
   }
 }
 
