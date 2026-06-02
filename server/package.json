@@ -38,6 +38,9 @@
     "plan:show": "node scripts/set-organization-plan.js show",
     "plan:set": "node scripts/set-organization-plan.js set",
     "plan:list": "node scripts/set-organization-plan.js list",
+    "invoices:usage": "node scripts/purge-organization-invoices.js usage",
+    "invoices:list": "node scripts/purge-organization-invoices.js list",
+    "invoices:purge": "node scripts/purge-organization-invoices.js purge",
     "preview:emails": "ts-node --transpile-only scripts/preview-emails.ts",
     "test:email:branded": "node scripts/test-email-branded.js"
   },

@@ -26,3 +26,17 @@ npm run plan:set -- user@example.com pro-efacture --months=12
 ```
 
 Voir `docs/deployment/DEPLOIEMENT_PRODUCTION.md` (section « Plans SaaS en production »).
+
+## purge-organization-invoices.js
+
+Suppression **définitive** de factures (paiements, écritures comptables, quota mensuel Free). Utile après des paiements Stripe de test.
+
+```bash
+node scripts/purge-organization-invoices.js usage user@example.com
+node scripts/purge-organization-invoices.js list user@example.com --stripe
+node scripts/purge-organization-invoices.js purge user@example.com --stripe --dry-run
+node scripts/purge-organization-invoices.js purge user@example.com --stripe --confirm
+node scripts/purge-organization-invoices.js purge user@example.com --this-month --confirm
+```
+
+Filtres : `--all`, `--this-month`, `--stripe`, `--paid`, `--status=…`, `--ids=…`. La purge exige `--confirm`.
