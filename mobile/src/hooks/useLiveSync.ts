@@ -1,26 +1,12 @@
 import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import { getAuthToken } from '../services/sessionStorage'
-import type { RealtimeEvent } from '../types/realtime'
 import { useLiveSyncStore } from '../stores/liveSyncStore'
 import { useRealtimeEventsStore } from '../stores/realtimeEventsStore'
 import type { OfflineAction } from '../services/offlineQueueService'
-
-function eventLabel(event: RealtimeEvent) {
-  const doc = event.resource === 'quotes' ? 'Devis' : 'Facture'
-  const num = event.number ? ` ${event.number}` : ''
-  const status = event.status?.toUpperCase()
-  const action = event.action?.toUpperCase()
-
-  if (status === 'EMAIL_OPENED') return `${doc}${num} consulté par le client`
-  if (status === 'EMAIL_CLICKED') return `${doc}${num} cliqué par le client`
-  if (status === 'PAID' || action === 'PAID') return `${doc}${num} payé`
-  if (status === 'ACCEPTED') return `${doc}${num} accepté`
-  if (status === 'REJECTED') return `${doc}${num} refusé`
-  if (action === 'SENT') return `${doc}${num} envoyé`
-  if (action === 'UPDATED') return `${doc}${num} mis à jour`
-  return `${doc}${num} (${action?.toLowerCase() ?? 'événement'})`
-}
+import { formatRealtimeEventLabel } from '../utils/realtimeEventLabel'
+import { scheduleWhenIdle } from '../utils/scheduleWhenIdle'
+import { usesNativeNotifications } from '../services/notificationService'
 
 export async function queueOrRunAction(action: Omit<OfflineAction, 'id' | 'createdAt'>, online: boolean) {
   if (online) {
@@ -43,18 +29,27 @@ export function useLiveSync(enabled: boolean) {
 
     let unsubRealtime: (() => void) | null = null
     let unsubNetwork: (() => void) | null = null
+    let cancelIdle: (() => void) | null = null
     let stopped = false
 
     const boot = async () => {
+      if (stopped) return
+
       const { startNetworkWatcher, onNetworkChange } = await import('../services/networkService')
-      const { prepareNotifications, pushLocalNotification } = await import('../services/notificationService')
+      const notificationApi = usesNativeNotifications()
+        ? await import('../services/notificationService')
+        : {
+            prepareNotifications: async () => null,
+            pushLocalNotification: async () => {},
+          }
+      const { prepareNotifications, pushLocalNotification } = notificationApi
       const { startRealtime, onRealtimeEvent } = await import('../services/realtimeService')
       const { registerPushToken } = await import('../services/mobileNotificationsService')
       const { getOfflineQueueSize, flushOfflineQueue } = await import('../services/offlineQueueService')
 
       startNetworkWatcher()
 
-      if (Platform.OS !== 'web') {
+      if (usesNativeNotifications()) {
         const pushToken = await prepareNotifications()
         if (pushToken) {
           try {
@@ -77,7 +72,7 @@ export function useLiveSync(enabled: boolean) {
         if (event.resource === 'invoices') bumpInvoices()
         if (event.resource === 'quotes') bumpQuotes()
 
-        await pushLocalNotification('Mise à jour client', eventLabel(event), {
+        await pushLocalNotification('Mise à jour client', formatRealtimeEventLabel(event), {
           resource: event.resource,
           action: event.action,
           status: event.status,
@@ -101,10 +96,13 @@ export function useLiveSync(enabled: boolean) {
       })
     }
 
-    void boot()
+    cancelIdle = scheduleWhenIdle(() => {
+      void boot()
+    }, Platform.OS)
 
     return () => {
       stopped = true
+      cancelIdle?.()
       unsubRealtime?.()
       unsubNetwork?.()
       void import('../services/realtimeService').then(({ stopRealtime }) => stopRealtime())

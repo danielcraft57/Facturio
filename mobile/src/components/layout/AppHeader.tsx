@@ -20,7 +20,7 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
   const pathname = usePathname()
   const { user } = useAuth()
   const { colors: themeColors } = useTheme()
-  const { isTablet } = useResponsiveLayout()
+  const { useSidebarLayout, isTablet } = useResponsiveLayout()
   const eventsCount = useRealtimeEventsStore((s) => s.events.length)
   const screenTitle = title ?? titleForPath(pathname)
   const isHome =
@@ -40,9 +40,9 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
   return (
     <View style={[styles.wrap, { borderBottomColor: themeColors.border }]} accessibilityRole="header">
       <View style={styles.left}>
-        {!isTablet && <Logo compact />}
+        {!useSidebarLayout && <Logo compact />}
         <View style={styles.titles}>
-          {!isTablet && <Text style={[styles.appName, { color: themeColors.teal }]}>{APP_NAME}</Text>}
+          {!useSidebarLayout && <Text style={[styles.appName, { color: themeColors.teal }]}>{APP_NAME}</Text>}
           <Text style={[styles.screenTitle, { color: themeColors.text }]} numberOfLines={1}>
             {screenTitle}
           </Text>

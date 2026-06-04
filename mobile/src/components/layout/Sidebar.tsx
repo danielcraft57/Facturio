@@ -38,13 +38,6 @@ export function Sidebar() {
           )
         })}
       </ScrollView>
-      <View style={styles.promo}>
-        <Text style={styles.promoTitle}>Gagnez du temps</Text>
-        <Text style={styles.promoText}>Automatisez vos relances et paiements.</Text>
-        <Pressable style={styles.promoBtn}>
-          <Text style={styles.promoBtnText}>Découvrir</Text>
-        </Pressable>
-      </View>
     </View>
   )
 }
@@ -82,33 +75,5 @@ const styles = StyleSheet.create({
   itemLabelActive: {
     color: colors.textOnDark,
     fontWeight: '600',
-  },
-  promo: {
-    marginTop: 'auto',
-    backgroundColor: colors.navyDark,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  promoTitle: {
-    ...typography.subtitle,
-    color: colors.textOnDark,
-    marginBottom: 4,
-  },
-  promoText: {
-    ...typography.caption,
-    color: 'rgba(248,250,252,0.7)',
-    marginBottom: spacing.sm,
-  },
-  promoBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.teal,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  promoBtnText: {
-    ...typography.caption,
-    color: colors.surface,
-    fontWeight: '700',
   },
 })

@@ -53,6 +53,8 @@ export const radius = {
 
 export const layout = {
   tabletBreakpoint: 768,
+  /** Largeur min. en paysage pour afficher la sidebar (ex. iPhone en horizontal). */
+  landscapeSidebarMinWidth: 560,
   sidebarWidth: 240,
   maxContentWidth: 1200,
 } as const

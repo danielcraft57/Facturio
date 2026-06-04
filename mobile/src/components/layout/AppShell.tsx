@@ -13,11 +13,11 @@ interface AppShellProps extends ViewProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const { isTablet } = useResponsiveLayout()
+  const { useSidebarLayout } = useResponsiveLayout()
   const { colors: themeColors } = useTheme()
   useDocumentTitle()
 
-  if (isTablet) {
+  if (useSidebarLayout) {
     return (
       <View style={[styles.tabletRoot, { backgroundColor: themeColors.background }]}>
         <Sidebar />

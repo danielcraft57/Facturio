@@ -24,7 +24,7 @@ import { formatCurrency } from '../../src/utils/format'
 export default function DashboardScreen() {
   const router = useRouter()
   const { impactLight } = useHaptics()
-  const { isTablet } = useResponsiveLayout()
+  const { useSidebarLayout } = useResponsiveLayout()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -72,7 +72,7 @@ export default function DashboardScreen() {
     >
       {error && <Text style={styles.error}>{error}</Text>}
 
-      <Animated.View entering={FadeInDown.delay(20).duration(260)} style={[styles.kpiGrid, isTablet && styles.kpiGridTablet]}>
+      <Animated.View entering={FadeInDown.delay(20).duration(260)} style={[styles.kpiGrid, useSidebarLayout && styles.kpiGridTablet]}>
         <MetricCard
           label="Chiffre d'affaires"
           value={formatCurrency(revenue?.thisMonth ?? 0)}
@@ -105,7 +105,7 @@ export default function DashboardScreen() {
         />
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(60).duration(280)} style={[styles.chartsRow, isTablet && styles.chartsRowTablet]}>
+      <Animated.View entering={FadeInDown.delay(60).duration(280)} style={[styles.chartsRow, useSidebarLayout && styles.chartsRowTablet]}>
         <SimpleLineChart
           title="Évolution du chiffre d'affaires"
           labels={chartLabels}

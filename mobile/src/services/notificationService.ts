@@ -1,20 +1,41 @@
-import * as Device from 'expo-device'
-import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
 
-if (Platform.OS !== 'web') {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
-  })
+export function usesNativeNotifications(platform: string = Platform.OS): boolean {
+  return platform !== 'web'
+}
+
+type ExpoNotifications = typeof import('expo-notifications')
+
+let notificationsModule: Promise<ExpoNotifications> | null = null
+let handlerConfigured = false
+
+async function loadNotifications(): Promise<ExpoNotifications | null> {
+  if (!usesNativeNotifications()) return null
+  if (!notificationsModule) {
+    notificationsModule = import('expo-notifications')
+  }
+  const Notifications = await notificationsModule
+  if (!handlerConfigured) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    })
+    handlerConfigured = true
+  }
+  return Notifications
 }
 
 export async function prepareNotifications(): Promise<string | null> {
-  if (Platform.OS === 'web') return null
+  if (!usesNativeNotifications()) return null
+
+  const Notifications = await loadNotifications()
+  if (!Notifications) return null
+
+  const Device = await import('expo-device')
   if (!Device.isDevice) return null
 
   const perms = await Notifications.getPermissionsAsync()
@@ -30,9 +51,13 @@ export async function prepareNotifications(): Promise<string | null> {
 }
 
 export async function pushLocalNotification(title: string, body: string, data?: Record<string, unknown>) {
-  if (Platform.OS === 'web') return
+  if (!usesNativeNotifications()) return
+
+  const Notifications = await loadNotifications()
+  if (!Notifications) return
+
   await Notifications.scheduleNotificationAsync({
-    content: { title, body, data: data as any },
+    content: { title, body, data: data as Record<string, unknown> },
     trigger: null,
   })
 }
