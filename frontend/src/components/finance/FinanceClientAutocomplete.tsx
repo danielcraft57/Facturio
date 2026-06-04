@@ -27,6 +27,8 @@ type Props = {
   onCreateEmailChange?: (value: string) => void
   onCreateConfirm?: () => void
   onCreateCancel?: () => void
+  /** Libellé métier (ex. « client », « créancier ») pour les messages. */
+  entitySingular?: string
 }
 
 export function FinanceClientAutocomplete({
@@ -49,9 +51,11 @@ export function FinanceClientAutocomplete({
   onCreateEmailChange,
   onCreateConfirm,
   onCreateCancel,
+  entitySingular = 'client',
 }: Props) {
   const selected = valueId ? options.find((o) => o.id === valueId) ?? null : null
   const q = query.trim()
+  const entityCap = entitySingular.charAt(0).toUpperCase() + entitySingular.slice(1)
 
   return (
     <Stack spacing={0.75}>
@@ -83,7 +87,7 @@ export function FinanceClientAutocomplete({
         noOptionsText={
           q ? (
             <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ width: '100%' }}>
-              <Typography variant="body2">Client introuvable</Typography>
+              <Typography variant="body2">{entityCap} introuvable</Typography>
               {onCreateRequested && (
                 <Button size="small" variant="contained" onMouseDown={(e) => e.preventDefault()} onClick={onCreateRequested}>
                   Créer
@@ -91,7 +95,7 @@ export function FinanceClientAutocomplete({
               )}
             </Stack>
           ) : (
-            'Aucun client'
+            `Aucun ${entitySingular}`
           )
         }
         renderOption={(props, option) => {
@@ -136,7 +140,7 @@ export function FinanceClientAutocomplete({
         >
           <Stack spacing={0.75}>
             <Typography variant="caption" sx={{ fontWeight: 700 }}>
-              Nouveau client rapide
+              {`Nouveau ${entitySingular} rapide`}
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={0.75}>
               <TextField

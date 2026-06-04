@@ -212,30 +212,6 @@ export function QuotesPage() {
     }
   };
 
-  const handleAcceptQuote = async (quote: Quote) => {
-    const result = await quotesStore.acceptQuote(quote.id);
-    await refresh();
-    if (result?.invoiceId) {
-      openInvoiceView(result.invoiceId);
-    }
-  };
-
-  const handlePayQuoteFull = async (quote: Quote) => {
-    const result = await quotesStore.payQuote(quote.id, { mode: 'FULL' });
-    await refresh();
-    if (result?.invoiceId) {
-      openInvoiceView(result.invoiceId);
-    }
-  };
-
-  const handlePayQuoteDeposit = async (quote: Quote) => {
-    const result = await quotesStore.payQuote(quote.id, { mode: 'DEPOSIT', depositRate: 0.1 });
-    await refresh();
-    if (result?.invoiceId) {
-      openInvoiceView(result.invoiceId);
-    }
-  };
-
   const handleRemindDeposit = async (quote: Quote) => {
     try {
       const ok = await quotesStore.remindDepositQuote(quote.id);
@@ -248,11 +224,6 @@ export function QuotesPage() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de la relance");
     }
-  };
-
-  const handleRejectQuote = async (quote: Quote) => {
-    await quotesStore.rejectQuote(quote.id);
-    await refresh();
   };
 
   const handleViewOrConvertInvoice = async (quote: Quote) => {
@@ -349,11 +320,7 @@ export function QuotesPage() {
                 onPatchFlags={patchDocumentFlags}
                 onEdit={(q) => navigate(`/devis/${q.id}/edit`)}
                 onSend={openSendQuoteDialog}
-                onAccept={handleAcceptQuote}
-                onReject={handleRejectQuote}
                 onConvert={(q) => void handleViewOrConvertInvoice(q)}
-                onPayFull={handlePayQuoteFull}
-                onPayDeposit={handlePayQuoteDeposit}
                 onArchive={(q) => {
                   setQuoteToArchive(q);
                   setArchiveDialogOpen(true);
@@ -457,11 +424,7 @@ export function QuotesPage() {
                               expanded={isWideActions}
                               onEdit={() => navigate(`/devis/${quote.id}/edit`)}
                               onSend={() => openSendQuoteDialog(quote)}
-                              onAccept={() => handleAcceptQuote(quote)}
-                              onReject={() => handleRejectQuote(quote)}
                               onConvert={() => void handleViewOrConvertInvoice(quote)}
-                              onPayFull={() => handlePayQuoteFull(quote)}
-                              onPayDeposit={() => handlePayQuoteDeposit(quote)}
                               onRemindDeposit={() => void handleRemindDeposit(quote)}
                               onArchive={() => {
                                 setQuoteToArchive(quote);

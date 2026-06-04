@@ -1,12 +1,19 @@
-import { buildPublicInvoiceUrl, buildPublicQuoteUrl, resolvePublicAppBaseUrl } from './public-app-url';
+import {
+	buildPublicInvoiceUrl,
+	buildPublicPayableDebtUrl,
+	buildPublicQuoteUrl,
+	resolvePublicAppBaseUrl,
+} from './public-app-url';
 
-export type TrackDocumentKind = 'invoice' | 'quote';
+export type TrackDocumentKind = 'invoice' | 'quote' | 'payable_debt';
 
 export type InvoiceClickAction = 'pay' | 'view';
 export type QuoteClickAction = 'accept' | 'reject';
+export type PayableDebtClickAction = 'view';
 
 const INVOICE_ACTIONS = new Set<InvoiceClickAction>(['pay', 'view']);
 const QUOTE_ACTIONS = new Set<QuoteClickAction>(['accept', 'reject']);
+const PAYABLE_DEBT_ACTIONS = new Set<PayableDebtClickAction>(['view']);
 
 /** Base publique pour pixels / liens trackés (accessible depuis le client mail, pas node10.lan). */
 export function resolveTrackApiBase(): string {
@@ -45,6 +52,10 @@ export function isQuoteClickAction(action: string): action is QuoteClickAction {
 	return QUOTE_ACTIONS.has(action as QuoteClickAction);
 }
 
+export function isPayableDebtClickAction(action: string): action is PayableDebtClickAction {
+	return PAYABLE_DEBT_ACTIONS.has(action as PayableDebtClickAction);
+}
+
 export function resolveInvoiceClickRedirect(publicToken: string, _action: InvoiceClickAction): string {
 	return buildPublicInvoiceUrl(publicToken);
 }
@@ -55,9 +66,13 @@ export function resolveQuoteClickRedirect(publicToken: string, action: QuoteClic
 	return `${base}/public/devis/${publicToken}/refuser`;
 }
 
+export function resolvePayableDebtClickRedirect(publicToken: string, _action: PayableDebtClickAction): string {
+	return buildPublicPayableDebtUrl(publicToken);
+}
+
 export const CLICK_ACTION_LABELS: Record<string, string> = {
 	pay: 'Payer en ligne',
-	view: 'Voir la facture',
+	view: 'Voir le détail',
 	accept: 'Accepter le devis',
 	reject: 'Refuser le devis',
 };

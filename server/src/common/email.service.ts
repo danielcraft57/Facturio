@@ -16,6 +16,10 @@ import {
 	buildPlatformEmailLegalFooter,
 	resolveEmailIssuerDisplayName,
 } from './email-legal-footer';
+import {
+	buildPayableDebtEmailLegalHtml,
+	buildPayableDebtEmailLegalPlain,
+} from './payable-debt-legal.util';
 
 /** Profil organisation (fiche entreprise) pour pied de page et objet des emails. */
 export type EmailOrganizationProfile = Record<string, unknown> | null | undefined;
@@ -523,6 +527,149 @@ export class EmailService {
 			`Un crédit de ${this.formatCurrency(options.creditedAmount)} a été émis pour la facture ${options.invoiceNumber}.\n` +
 			`Ce crédit sera déduit d’une prochaine facture (pas de remboursement bancaire).\n` +
 			(options.reason?.trim() ? `Motif : ${options.reason.trim()}\n` : '') +
+			`\nCordialement,\n${options.issuerName}`;
+
+		await this.send({
+			from: this.invoiceFrom,
+			to: options.to,
+			subject,
+			html,
+			text,
+		});
+	}
+
+	/** Notification au créancier : reconnaissance d’une dette à régler. */
+	async sendPayableDebt(options: {
+		to: string;
+		creditorName: string;
+		label: string;
+		totalAmount: number;
+		balance: number;
+		dueDate?: Date | string | null;
+		notes?: string | null;
+		issuerName: string;
+		trackOpenUrl?: string;
+		viewUrl?: string;
+		organization?: EmailOrganizationProfile;
+	}): Promise<void> {
+		const legalFooter = buildEmailLegalFooter(options.organization);
+		const subject = 'Reconnaissance de dette';
+		const dueLine = options.dueDate
+			? emailParagraph(
+					`<strong>Échéance convenue :</strong> ${new Date(options.dueDate).toLocaleDateString('fr-FR')}`,
+				)
+			: emailParagraph(
+					'<em>Aucune date d’échéance indiquée sur ce document.</em>',
+				);
+		const notesBlock = options.notes?.trim()
+			? emailParagraph(`<strong>Précisions :</strong> ${options.notes.trim()}`)
+			: '';
+		const viewBtn = options.viewUrl
+			? emailButton(options.viewUrl, 'Voir le détail', 'primary')
+			: '';
+		const legalBlock = buildPayableDebtEmailLegalHtml(options.organization);
+		const html = renderSimpleFacturioEmail({
+			title: subject,
+			headline: 'Reconnaissance de dette',
+			headerVariant: 'default',
+			footerHtml: `<p style="margin:0 0 8px;">${legalFooter}</p>`,
+			trackPixel: options.trackOpenUrl,
+			bodyHtml:
+				emailParagraph(`Bonjour ${options.creditorName},`) +
+				emailParagraph(
+					`<strong>${options.issuerName}</strong> vous informe reconnaître une dette de <strong>${this.formatCurrency(options.totalAmount)}</strong> au titre de : <strong>${options.label}</strong>.`,
+				) +
+				emailParagraph(
+					`Solde restant dû à ce jour : <strong>${this.formatCurrency(options.balance)}</strong>.`,
+				) +
+				dueLine +
+				notesBlock +
+				viewBtn +
+				legalBlock +
+				emailParagraph(`Cordialement,<br><strong>${options.issuerName}</strong>`),
+		});
+
+		const dueText = options.dueDate
+			? `Échéance convenue : ${new Date(options.dueDate).toLocaleDateString('fr-FR')}\n`
+			: '';
+		const text =
+			`Bonjour ${options.creditorName},\n\n` +
+			`${options.issuerName} reconnaît une dette de ${this.formatCurrency(options.totalAmount)} ` +
+			`(${options.label}). Solde restant : ${this.formatCurrency(options.balance)}.\n` +
+			dueText +
+			(options.notes?.trim() ? `Précisions : ${options.notes.trim()}\n` : '') +
+			`\n${buildPayableDebtEmailLegalPlain(options.organization)}` +
+			`\nCordialement,\n${options.issuerName}`;
+
+		await this.send({
+			from: this.invoiceFrom,
+			to: options.to,
+			subject,
+			html,
+			text,
+		});
+	}
+
+	/** Notification au créancier après enregistrement d’un remboursement. */
+	async sendPayableDebtPayment(options: {
+		to: string;
+		creditorName: string;
+		label: string;
+		paymentAmount: number;
+		totalAmount: number;
+		totalPaid: number;
+		balance: number;
+		fullyPaid: boolean;
+		issuerName: string;
+		trackOpenUrl?: string;
+		viewUrl?: string;
+		organization?: EmailOrganizationProfile;
+	}): Promise<void> {
+		const legalFooter = buildEmailLegalFooter(options.organization);
+		const subject = options.fullyPaid
+			? 'Remboursement de la dette'
+			: 'Remboursement partiel de la dette';
+		const balanceLine = options.fullyPaid
+			? emailParagraph(
+					'<strong>Cette dette est désormais entièrement soldée.</strong>',
+				)
+			: emailParagraph(
+					`Solde restant dû : <strong>${this.formatCurrency(options.balance)}</strong>.`,
+				);
+		const viewBtn = options.viewUrl
+			? emailButton(options.viewUrl, 'Voir le détail', 'primary')
+			: '';
+		const legalBlock = buildPayableDebtEmailLegalHtml(options.organization);
+		const html = renderSimpleFacturioEmail({
+			title: subject,
+			headline: subject,
+			headerVariant: 'default',
+			footerHtml: `<p style="margin:0 0 8px;">${legalFooter}</p>`,
+			trackPixel: options.trackOpenUrl,
+			bodyHtml:
+				emailParagraph(`Bonjour ${options.creditorName},`) +
+				emailParagraph(
+					`<strong>${options.issuerName}</strong> vous informe avoir enregistré un remboursement de <strong>${this.formatCurrency(options.paymentAmount)}</strong> au titre de la dette : <strong>${options.label}</strong>.`,
+				) +
+				emailParagraph(
+					`Montant initial : <strong>${this.formatCurrency(options.totalAmount)}</strong> — Total déjà remboursé : <strong>${this.formatCurrency(options.totalPaid)}</strong>.`,
+				) +
+				balanceLine +
+				viewBtn +
+				legalBlock +
+				emailParagraph(`Cordialement,<br><strong>${options.issuerName}</strong>`),
+		});
+
+		const balanceText = options.fullyPaid
+			? 'Cette dette est désormais entièrement soldée.\n'
+			: `Solde restant : ${this.formatCurrency(options.balance)}.\n`;
+		const text =
+			`Bonjour ${options.creditorName},\n\n` +
+			`${options.issuerName} a enregistré un remboursement de ${this.formatCurrency(options.paymentAmount)} ` +
+			`(${options.label}). Montant initial : ${this.formatCurrency(options.totalAmount)}, ` +
+			`total remboursé : ${this.formatCurrency(options.totalPaid)}.\n` +
+			balanceText +
+			`\n${buildPayableDebtEmailLegalPlain(options.organization)}` +
 			`\nCordialement,\n${options.issuerName}`;
 
 		await this.send({

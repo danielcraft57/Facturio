@@ -22,5 +22,8 @@ describe('email-track.util', () => {
 		expect(buildEmailOpenTrackUrl('quote', 'abc123')).toBe(
 			'https://facturio.danielcraft.fr/api/track/opened/quote/abc123',
 		);
+		expect(buildEmailOpenTrackUrl('payable_debt', 'debt99')).toBe(
+			'https://facturio.danielcraft.fr/api/track/opened/payable_debt/debt99',
+		);
 	});
 });

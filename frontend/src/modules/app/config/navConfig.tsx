@@ -4,14 +4,14 @@ import PeopleIcon from '@mui/icons-material/People'
 import DescriptionIcon from '@mui/icons-material/Description'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
-import SearchIcon from '@mui/icons-material/Search'
 import LocalAtmIcon from '@mui/icons-material/LocalAtm'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
 import GavelIcon from '@mui/icons-material/Gavel'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import CreditScoreIcon from '@mui/icons-material/CreditScore'
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 
 export type NavItem = {
   to: string
@@ -19,6 +19,8 @@ export type NavItem = {
   description?: string
   icon: ReactNode
   badge?: string
+  /** Mise en avant visuelle (ex. créances / dettes). */
+  emphasis?: boolean
 }
 
 export type NavFeatured = {
@@ -26,6 +28,7 @@ export type NavFeatured = {
   description: string
   to: string
   cta: string
+  secondaryCta?: { label: string; to: string }
   icon: ReactNode
   accent: 'navy' | 'emerald' | 'amber'
 }
@@ -50,11 +53,11 @@ export const navGroups: NavGroup[] = [
   {
     id: 'commercial',
     label: 'Commercial',
-    overview: 'Clients, devis, factures et catalogue — le cœur de votre activité.',
-    overviewCta: { label: 'Voir les factures', to: '/factures/inbox' },
+    overview: 'Vente : clients, devis, factures et catalogue.',
+    overviewCta: { label: 'Factures', to: '/factures/inbox' },
     featured: {
       title: 'Créer une facture',
-      description: 'Émettez et envoyez une facture en quelques clics, avec relance intégrée.',
+      description: 'Émission rapide avec relances intégrées.',
       to: '/factures/inbox',
       cta: 'Nouvelle facture',
       icon: <AddCircleOutlineIcon />,
@@ -64,7 +67,7 @@ export const navGroups: NavGroup[] = [
       {
         to: '/clients/inbox',
         label: 'Clients',
-        description: 'Carnet, contacts et historique',
+        description: 'Carnet acheteurs (≠ créanciers des dettes)',
         icon: <PeopleIcon fontSize="small" />,
       },
       {
@@ -86,28 +89,35 @@ export const navGroups: NavGroup[] = [
         description: 'Catalogue et tarifs',
         icon: <Inventory2Icon fontSize="small" />,
       },
-      {
-        to: '/prospection',
-        label: 'Prospection',
-        description: 'Pipeline et prospects',
-        icon: <SearchIcon fontSize="small" />,
-      },
     ],
   },
   {
     id: 'finance',
     label: 'Finance',
-    overview: 'Fiscalité, abonnements, déclarations et suivi comptable.',
-    overviewCta: { label: 'Ouvrir la comptabilité', to: '/comptabilite' },
+    overview: 'Encours, obligations fiscales et comptabilité.',
+    overviewCta: { label: 'Créances', to: '/finance/creances' },
     featured: {
-      title: 'Suivi financier',
-      description: 'Consolidez taxes, déclarations et indicateurs en un seul espace.',
-      to: '/comptabilite',
-      cta: 'Tableau finance',
-      icon: <TrendingUpIcon />,
+      title: 'Encours',
+      description: 'À recevoir des clients et à rembourser aux créanciers.',
+      to: '/finance/creances',
+      cta: 'Créances',
+      secondaryCta: { label: 'Dettes', to: '/finance/dettes' },
+      icon: <CreditScoreIcon />,
       accent: 'emerald',
     },
     items: [
+      {
+        to: '/finance/creances',
+        label: 'Créances',
+        description: 'Factures impayées par vos clients',
+        icon: <CreditScoreIcon fontSize="small" />,
+      },
+      {
+        to: '/finance/dettes',
+        label: 'Dettes',
+        description: 'Montants dus à vos créanciers',
+        icon: <AccountBalanceWalletIcon fontSize="small" />,
+      },
       {
         to: '/taxes',
         label: 'Taxes',
@@ -155,6 +165,9 @@ export function isNavActive(pathname: string, to: string): boolean {
   if (to.startsWith('/factures')) return pathname.startsWith('/factures')
   if (to.startsWith('/devis')) return pathname.startsWith('/devis')
   if (to.startsWith('/clients')) return pathname.startsWith('/clients')
+  if (to === '/finance/creances' || to === '/finance/dettes') {
+    return pathname === to || pathname.startsWith(`${to}/`)
+  }
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 

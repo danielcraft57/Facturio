@@ -56,6 +56,8 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { InvoiceDetailPage } from '../invoices/InvoiceDetailPage'
 import { QuoteDetailPage } from '../quotes/QuoteDetailPage'
+import { PublicPayableDebtPage } from '../finance/PublicPayableDebtPage'
+import { PayableDebtDetailPage } from '../finance/PayableDebtDetailPage'
 
 // Lazy loading des pages pour optimiser les performances
 const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -87,6 +89,12 @@ const TaxesPage = lazy(() => import('../taxes/TaxesPage').then(m => ({ default: 
 const SubscriptionsPage = lazy(() => import('../subscriptions/SubscriptionsPage').then(m => ({ default: m.SubscriptionsPage })))
 const FilingsPage = lazy(() => import('../filings/FilingsPage').then(m => ({ default: m.FilingsPage })))
 const AccountingPage = lazy(() => import('../accounting/AccountingPage').then(m => ({ default: m.AccountingPage })))
+const ReceivablesPage = lazy(() =>
+  import('../finance/ReceivablesPage').then((m) => ({ default: m.ReceivablesPage })),
+)
+const PayablesPage = lazy(() =>
+  import('../finance/PayablesPage').then((m) => ({ default: m.PayablesPage })),
+)
 const SettingsLayout = lazy(() => import('../account/SettingsLayout').then(m => ({ default: m.SettingsLayout })))
 const SettingsIndexPage = lazy(() =>
   import('../account/pages/SettingsIndexPage').then(m => ({ default: m.SettingsIndexPage })),
@@ -312,6 +320,14 @@ export function App() {
                 }
               />
               <Route
+                path="/dette/:token"
+                element={
+                  <PublicLayout>
+                    <PublicPayableDebtPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
                 path="/public/factures/:token"
                 element={<LegacyPublicInvoiceRedirect />}
               />
@@ -473,6 +489,30 @@ export function App() {
                 element={
                   <PrivateRouteWrapper>
                     <AccountingPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/finance/creances"
+                element={
+                  <PrivateRouteWrapper>
+                    <ReceivablesPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/finance/dettes"
+                element={
+                  <PrivateRouteWrapper>
+                    <PayablesPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/finance/dettes/voir/:id"
+                element={
+                  <PrivateRouteWrapper>
+                    <PayableDebtDetailPage />
                   </PrivateRouteWrapper>
                 }
               />

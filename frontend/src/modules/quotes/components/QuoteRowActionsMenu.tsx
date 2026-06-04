@@ -10,13 +10,10 @@ import {
 } from '@mui/material'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import SendIcon from '@mui/icons-material/Send'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import CancelIcon from '@mui/icons-material/Cancel'
+import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
 import ReceiptIcon from '@mui/icons-material/Receipt'
-import PaymentIcon from '@mui/icons-material/Payment'
 import ArchiveIcon from '@mui/icons-material/Archive'
 import EditIcon from '@mui/icons-material/Edit'
-import PercentIcon from '@mui/icons-material/Percent'
 import ReplayIcon from '@mui/icons-material/Replay'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import type { Quote } from '../../../types/quote'
@@ -25,12 +22,8 @@ export type QuoteRowActionsHandlers = {
   busy?: boolean
   onEdit?: () => void
   onSend: () => void
-  onAccept: () => void
-  onReject: () => void
   onConvert: () => void
   onArchive: () => void
-  onPayFull?: () => void
-  onPayDeposit?: () => void
   onRemindDeposit?: () => void
 }
 
@@ -40,22 +33,24 @@ type QuoteRowActionsMenuProps = QuoteRowActionsHandlers & {
   expanded?: boolean
 }
 
+function wasQuoteEmailed(quote: Quote): boolean {
+  const eng = quote.emailEngagement
+  return Boolean(eng?.emailSent ?? quote.emailSent)
+}
+
 export function QuoteRowActionsMenu({
   quote,
   busy = false,
   expanded = false,
   onEdit,
   onSend,
-  onAccept,
-  onReject,
   onConvert,
   onArchive,
-  onPayFull,
-  onPayDeposit,
   onRemindDeposit,
 }: QuoteRowActionsMenuProps) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null)
   const close = () => setAnchor(null)
+  const emailed = wasQuoteEmailed(quote)
 
   const openInvoiceOrConvert = () => {
     if (quote.invoiceId) {
@@ -103,51 +98,15 @@ export function QuoteRowActionsMenu({
       : []),
     ...(quote.status === 'SENT'
       ? [
-          ...(onPayFull
-            ? [
-                <MenuItem
-                  key="payFull"
-                  onClick={() => {
-                    close()
-                    onPayFull()
-                  }}
-                  disabled={busy}
-                >
-                  <ListItemIcon>
-                    <PaymentIcon fontSize="small" color="success" />
-                  </ListItemIcon>
-                  <ListItemText>Accepter & payer (100%)</ListItemText>
-                </MenuItem>,
-              ]
-            : []),
-          ...(onPayDeposit
-            ? [
-                <MenuItem
-                  key="payDeposit"
-                  onClick={() => {
-                    close()
-                    onPayDeposit()
-                  }}
-                  disabled={busy}
-                >
-                  <ListItemIcon>
-                    <PercentIcon fontSize="small" color="warning" />
-                  </ListItemIcon>
-                  <ListItemText>Accepter & acompte (10%)</ListItemText>
-                </MenuItem>,
-              ]
-            : []),
-          <MenuItem key="accept" onClick={() => { close(); onAccept() }} disabled={busy}>
+          <MenuItem key="resend" onClick={() => { close(); onSend() }} disabled={busy}>
             <ListItemIcon>
-              <CheckCircleIcon fontSize="small" color="success" />
+              {emailed ? (
+                <MarkEmailReadIcon fontSize="small" color="success" />
+              ) : (
+                <SendIcon fontSize="small" />
+              )}
             </ListItemIcon>
-            <ListItemText>Accepter (sans paiement)</ListItemText>
-          </MenuItem>,
-          <MenuItem key="reject" onClick={() => { close(); onReject() }} disabled={busy}>
-            <ListItemIcon>
-              <CancelIcon fontSize="small" color="error" />
-            </ListItemIcon>
-            <ListItemText>Rejeter</ListItemText>
+            <ListItemText>{emailed ? 'Renvoyer' : 'Envoyer'}</ListItemText>
           </MenuItem>,
         ]
       : []),
@@ -213,21 +172,18 @@ export function QuoteRowActionsMenu({
           </IconButton>
         )}
         {quote.status === 'SENT' && (
-          <>
-            {onPayFull && (
-              <IconButton size="small" title="Accepter & payer (100%)" disabled={busy} color="success" onClick={onPayFull}>
-                <PaymentIcon fontSize="small" />
-              </IconButton>
+          <IconButton
+            size="small"
+            title={emailed ? 'Renvoyer' : 'Envoyer'}
+            disabled={busy}
+            onClick={onSend}
+          >
+            {emailed ? (
+              <MarkEmailReadIcon fontSize="small" color="success" />
+            ) : (
+              <SendIcon fontSize="small" />
             )}
-            {onPayDeposit && (
-              <IconButton size="small" title="Accepter & acompte (10%)" disabled={busy} color="warning" onClick={onPayDeposit}>
-                <PercentIcon fontSize="small" />
-              </IconButton>
-            )}
-            <IconButton size="small" title="Rejeter" disabled={busy} color="error" onClick={onReject}>
-              <CancelIcon fontSize="small" />
-            </IconButton>
-          </>
+          </IconButton>
         )}
         {quote.status === 'ACCEPTED' && (
           <IconButton

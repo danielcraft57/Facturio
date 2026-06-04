@@ -10,11 +10,15 @@ import {
 
 	isInvoiceClickAction,
 
+	isPayableDebtClickAction,
+
 	isQuoteClickAction,
 
 	normalizeEmailTrackToken,
 
 	resolveInvoiceClickRedirect,
+
+	resolvePayableDebtClickRedirect,
 
 	resolveQuoteClickRedirect,
 
@@ -73,6 +77,18 @@ export class TrackController {
 	async trackInvoiceOpened(@Param('token') token: string, @Res() res: Response) {
 
 		await this.recordOpened('invoice', token);
+
+		return this.sendPixel(res);
+
+	}
+
+
+
+	@Get('opened/payable_debt/:token')
+
+	async trackPayableDebtOpened(@Param('token') token: string, @Res() res: Response) {
+
+		await this.recordOpened('payable_debt', token);
 
 		return this.sendPixel(res);
 
@@ -200,7 +216,71 @@ export class TrackController {
 
 
 
-	private async recordOpened(kind: 'quote' | 'invoice', rawToken: string): Promise<void> {
+	@Get('click/payable_debt/:token/:action')
+
+	async trackPayableDebtClick(
+
+		@Param('token') token: string,
+
+		@Param('action') action: string,
+
+		@Res() res: Response,
+
+	) {
+
+		if (!isPayableDebtClickAction(action)) {
+
+			throw new BadRequestException('Action de tracking invalide');
+
+		}
+
+		const safeToken = normalizeEmailTrackToken(token);
+
+		const debt = await this.prisma.payableDebt.findUnique({
+
+			where: { publicToken: safeToken },
+
+			select: { id: true, organizationId: true, label: true },
+
+		});
+
+		if (debt) {
+
+			await this.prisma.emailEvent.create({
+
+				data: {
+
+					payableDebtId: debt.id,
+
+					type: 'clicked',
+
+					meta: { action, source: 'email' },
+
+				},
+
+			});
+
+			if (debt.organizationId) {
+
+				this.realtime.emit(debt.organizationId, 'payables', 'updated', String(debt.id), {
+
+					number: debt.label,
+
+					status: 'EMAIL_CLICKED',
+
+				});
+
+			}
+
+		}
+
+		return res.redirect(302, resolvePayableDebtClickRedirect(safeToken, action));
+
+	}
+
+
+
+	private async recordOpened(kind: 'quote' | 'invoice' | 'payable_debt', rawToken: string): Promise<void> {
 
 		const token = normalizeEmailTrackToken(rawToken);
 
@@ -223,6 +303,42 @@ export class TrackController {
 				});
 
 				this.emitEngagementUpdate('quotes', quote.organizationId, quote.id, quote.number, 'EMAIL_OPENED');
+
+			}
+
+			return;
+
+		}
+
+		if (kind === 'payable_debt') {
+
+			const debt = await this.prisma.payableDebt.findUnique({
+
+				where: { publicToken: token },
+
+				select: { id: true, organizationId: true, label: true },
+
+			});
+
+			if (debt) {
+
+				await this.prisma.emailEvent.create({
+
+					data: { payableDebtId: debt.id, type: 'opened' },
+
+				});
+
+				if (debt.organizationId) {
+
+					this.realtime.emit(debt.organizationId, 'payables', 'updated', String(debt.id), {
+
+						number: debt.label,
+
+						status: 'EMAIL_OPENED',
+
+					});
+
+				}
 
 			}
 

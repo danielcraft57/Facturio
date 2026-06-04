@@ -23,11 +23,7 @@ type QuoteFolderMobileListProps = {
   onPatchFlags: (id: string, patch: DocumentFlags) => void
   onEdit: (q: Quote) => void
   onSend: (q: Quote) => void
-  onAccept: (q: Quote) => void
-  onReject: (q: Quote) => void
   onConvert: (q: Quote) => void
-  onPayFull?: (q: Quote) => void
-  onPayDeposit?: (q: Quote) => void
   onRemindDeposit?: (q: Quote) => void
   onArchive: (q: Quote) => void
 }
@@ -40,11 +36,7 @@ export function QuoteFolderMobileList({
   onPatchFlags,
   onEdit,
   onSend,
-  onAccept,
-  onReject,
   onConvert,
-  onPayFull,
-  onPayDeposit,
   onRemindDeposit,
   onArchive,
 }: QuoteFolderMobileListProps) {
@@ -125,11 +117,7 @@ export function QuoteFolderMobileList({
                 quote={quote}
                 onEdit={() => onEdit(quote)}
                 onSend={() => onSend(quote)}
-                onAccept={() => onAccept(quote)}
-                onReject={() => onReject(quote)}
                 onConvert={() => onConvert(quote)}
-                onPayFull={onPayFull ? () => onPayFull(quote) : undefined}
-                onPayDeposit={onPayDeposit ? () => onPayDeposit(quote) : undefined}
                 onRemindDeposit={onRemindDeposit ? () => onRemindDeposit(quote) : undefined}
                 onArchive={() => onArchive(quote)}
               />

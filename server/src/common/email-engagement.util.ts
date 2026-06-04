@@ -85,6 +85,25 @@ export async function recordInvoiceEmailSent(prisma: PrismaService, invoiceId: s
 	await prisma.emailEvent.create({ data: { invoiceId, type: 'sent' } });
 }
 
+export async function recordPayableDebtEmailSent(prisma: PrismaService, payableDebtId: number) {
+	await prisma.emailEvent.create({ data: { payableDebtId, type: 'sent' } });
+}
+
+export async function getPayableDebtEmailEngagement(
+	prisma: PrismaService,
+	payableDebtId: number,
+): Promise<EmailEngagementSummary> {
+	const events = await prisma.emailEvent.findMany({
+		where: {
+			payableDebtId,
+			type: { in: ['sent', 'opened', 'clicked'] },
+		},
+		orderBy: { createdAt: 'asc' },
+		select: { type: true, meta: true, createdAt: true },
+	});
+	return summarizeEmailEvents(events);
+}
+
 export type ListEmailEngagementFlags = {
 	emailSent: boolean;
 	emailOpened: boolean;
@@ -129,6 +148,37 @@ export async function attachListEmailEngagementFlags<T extends { id: string }>(
 		emailClicked: clickedIds.has(item.id),
 		emailClickAction: lastClickAction.get(item.id) ?? null,
 	}));
+}
+
+export async function attachPayableDebtEmailEngagement<T extends { id: number }>(
+	prisma: PrismaService,
+	items: T[],
+): Promise<(T & { emailEngagement: EmailEngagementSummary | null })[]> {
+	if (!items.length) return [];
+	const ids = items.map((i) => i.id);
+	const events = await prisma.emailEvent.findMany({
+		where: {
+			payableDebtId: { in: ids },
+			type: { in: ['sent', 'opened', 'clicked'] },
+		},
+		orderBy: { createdAt: 'asc' },
+		select: { payableDebtId: true, type: true, meta: true, createdAt: true },
+	});
+	const byDebt = new Map<number, EmailEventRow[]>();
+	for (const e of events) {
+		const debtId = e.payableDebtId;
+		if (debtId == null) continue;
+		const list = byDebt.get(debtId) ?? [];
+		list.push({ type: e.type, meta: e.meta, createdAt: e.createdAt });
+		byDebt.set(debtId, list);
+	}
+	return items.map((item) => {
+		const summary = summarizeEmailEvents(byDebt.get(item.id) ?? []);
+		return {
+			...item,
+			emailEngagement: summary.emailSent ? summary : null,
+		};
+	});
 }
 
 /** @deprecated Utiliser attachListEmailEngagementFlags */
