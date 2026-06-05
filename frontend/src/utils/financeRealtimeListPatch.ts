@@ -2,6 +2,7 @@ import type { Invoice } from '../services/invoices'
 import type { PayableDebtRow } from '../services/payables'
 import type { Quote, QuoteStatus } from '../types/quote'
 import type { FinanceRealtimeDetail } from '../types/realtime'
+import type { EmailEngagement } from '../modules/documents/documentEmailEngagement'
 
 function matchesDetailId(itemId: string | number, detail: FinanceRealtimeDetail): boolean {
   return detail.id != null && String(itemId) === String(detail.id)
@@ -16,6 +17,32 @@ function engagementFlags(status?: string): Partial<{
   if (s === 'EMAIL_OPENED') return { emailSent: true, emailOpened: true }
   if (s === 'EMAIL_CLICKED') return { emailSent: true, emailOpened: true, emailClicked: true }
   return {}
+}
+
+function defaultEngagement(): EmailEngagement {
+  return {
+    emailSent: false,
+    sentAt: null,
+    opened: false,
+    openedAt: null,
+    clicked: false,
+    clickedAt: null,
+    clickAction: null,
+    clickLabel: null,
+  }
+}
+
+function mergeDebtEngagement(
+  current: EmailEngagement | null,
+  flags: Partial<{ emailSent: boolean; emailOpened: boolean; emailClicked: boolean }>,
+): EmailEngagement {
+  const base = current ?? defaultEngagement()
+  return {
+    ...base,
+    emailSent: flags.emailSent ?? base.emailSent,
+    opened: flags.emailOpened ?? base.opened,
+    clicked: flags.emailClicked ?? base.clicked,
+  }
 }
 
 export function patchQuoteFromRealtimeDetail(
@@ -97,15 +124,7 @@ export function patchPayableDebtFromRealtimeDetail(
   if (Object.keys(flags).length > 0) {
     return {
       ...debt,
-      emailSent: flags.emailSent ?? debt.emailSent,
-      emailOpened: flags.emailOpened ?? debt.emailOpened,
-      emailClicked: flags.emailClicked ?? debt.emailClicked,
-      emailEngagement: {
-        ...(debt.emailEngagement ?? {}),
-        emailSent: flags.emailSent ?? debt.emailEngagement?.emailSent,
-        opened: flags.emailOpened ?? debt.emailEngagement?.opened,
-        clicked: flags.emailClicked ?? debt.emailEngagement?.clicked,
-      },
+      emailEngagement: mergeDebtEngagement(debt.emailEngagement, flags),
     }
   }
 
@@ -123,8 +142,7 @@ export function patchQuoteWithInvoiceId(quote: Quote, invoiceId: string): Quote 
 export function patchPayableDebtAfterSend(debt: PayableDebtRow): PayableDebtRow {
   return {
     ...debt,
-    emailSent: true,
-    emailEngagement: { ...(debt.emailEngagement ?? {}), emailSent: true },
+    emailEngagement: mergeDebtEngagement(debt.emailEngagement, { emailSent: true }),
   }
 }
 

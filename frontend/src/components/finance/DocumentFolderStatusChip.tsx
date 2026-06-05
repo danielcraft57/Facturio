@@ -1,6 +1,13 @@
 import { Chip } from '@mui/material'
 import type { ChipProps } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 import { DocumentFolderStatusSlideSwap } from './DocumentFolderStatusSlideSwap'
+
+const chipBaseSx: SxProps<Theme> = {
+  fontWeight: 600,
+  borderRadius: 1.5,
+  maxWidth: '100%',
+}
 
 type Props = {
   label: string
@@ -24,10 +31,7 @@ export function DocumentFolderStatusChip({
         color={color}
         size={size}
         title={title}
-        sx={[
-          { fontWeight: 600, borderRadius: 1.5, maxWidth: '100%' },
-          ...(chipSx ? [chipSx] : []),
-        ]}
+        sx={(chipSx ? [chipBaseSx, chipSx] : chipBaseSx) as SxProps<Theme>}
       />
     </DocumentFolderStatusSlideSwap>
   )

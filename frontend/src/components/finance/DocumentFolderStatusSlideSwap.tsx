@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Box } from '@mui/material'
+import type { SxProps, Theme } from '@mui/material/styles'
 import {
   DOCUMENT_FOLDER_STATUS_ENTER_DELAY_MS,
   DOCUMENT_FOLDER_STATUS_SWAP_MS,
@@ -93,19 +94,25 @@ export function DocumentFolderStatusSlideSwap({
       }}
     >
       {swapping && outgoing != null && (
-        <Box sx={[layerSx, { zIndex: 2 }, getDocumentFolderStatusMotionSx('exit')]}>
+        <Box
+          sx={
+            [layerSx, { zIndex: 2 }, getDocumentFolderStatusMotionSx('exit')] as SxProps<Theme>
+          }
+        >
           {outgoing}
         </Box>
       )}
       {swapping ? (
         <Box
-          sx={[
-            layerSx,
-            { zIndex: 1 },
-            getDocumentFolderStatusMotionSx('enter', {
-              enterDelayMs: DOCUMENT_FOLDER_STATUS_ENTER_DELAY_MS,
-            }),
-          ]}
+          sx={
+            [
+              layerSx,
+              { zIndex: 1 },
+              getDocumentFolderStatusMotionSx('enter', {
+                enterDelayMs: DOCUMENT_FOLDER_STATUS_ENTER_DELAY_MS,
+              }),
+            ] as SxProps<Theme>
+          }
         >
           {children}
         </Box>

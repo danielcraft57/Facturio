@@ -468,7 +468,7 @@ export function InvoicesPage() {
       >
         <CardContent sx={documentFolderTableCardContentSx}>
           {isNarrow ? (
-            <Box sx={[documentFolderTableCardContentPaddedSx, rowMotion.getMotionClipSx()]}>
+            <Box sx={[documentFolderTableCardContentPaddedSx, rowMotion.getMotionClipSx()] as SxProps<Theme>}>
             <InvoiceFolderMobileList
               invoices={displayedInvoices}
               highlightRows={highlightRows}

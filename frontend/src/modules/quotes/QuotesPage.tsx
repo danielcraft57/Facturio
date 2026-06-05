@@ -410,7 +410,7 @@ export function QuotesPage() {
         >
           <CardContent sx={documentFolderTableCardContentSx}>
             {isNarrow ? (
-              <Box sx={[documentFolderTableCardContentPaddedSx, rowMotion.getMotionClipSx()]}>
+              <Box sx={[documentFolderTableCardContentPaddedSx, rowMotion.getMotionClipSx()] as SxProps<Theme>}>
               <QuoteFolderMobileList
                 quotes={displayedQuotes}
                 highlightRows={highlightRows}

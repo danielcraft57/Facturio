@@ -378,7 +378,7 @@ export function PayablesPage() {
         >
           <CardContent sx={documentFolderTableCardContentSx}>
             {isNarrow ? (
-              <Box sx={[documentFolderTableCardContentPaddedSx, rowMotion.getMotionClipSx()]}>
+              <Box sx={[documentFolderTableCardContentPaddedSx, rowMotion.getMotionClipSx()] as SxProps<Theme>}>
               <PayableDebtFolderMobileList
                 debts={displayedDebts}
                 highlightRows={highlightRows}

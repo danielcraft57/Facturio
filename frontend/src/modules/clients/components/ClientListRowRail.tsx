@@ -26,11 +26,11 @@ export function buildClientListRowRail(
   index = 0,
 ): ClientListRowRailParts {
   const visual = resolveClientRailVisual(client)
-  const rowSx: SxProps<Theme> = [
+  const rowSx = [
     layout === 'table' ? getDocumentFolderRailRowAccentSx(visual) : {},
     getClientFolderRowHoverSx(visual.accent),
     getClientFolderRowRevealSx(index),
-  ]
+  ] as SxProps<Theme>
   return {
     accent: visual.accent,
     rowSx,

@@ -138,11 +138,10 @@ export const documentFolderFilterGridSx: SxProps<Theme> = {
   alignItems: 'center',
 }
 
-export const documentFolderTableCardSx: SxProps<Theme> = (theme) => ({
-  ...(typeof financeCardSx === 'function' ? financeCardSx(theme) : financeCardSx),
-  display: 'flex',
-  flexDirection: 'column',
-})
+export const documentFolderTableCardSx = [
+  financeCardSx,
+  { display: 'flex', flexDirection: 'column' },
+] as SxProps<Theme>
 
 export const documentFolderTableCardWrapSx: SxProps<Theme> = {
   width: '100%',
@@ -238,6 +237,7 @@ export const documentFolderTableSx: SxProps<Theme> = {
     px: 0,
     py: 0,
     overflow: 'visible',
+    verticalAlign: 'middle',
   },
   '& .MuiTableCell-root.doc-folder-rail-cell': {
     px: 0,
@@ -246,9 +246,6 @@ export const documentFolderTableSx: SxProps<Theme> = {
     textOverflow: 'clip',
     verticalAlign: 'middle',
     borderLeft: 'none',
-  },
-  '& .MuiTableCell-root.doc-folder-bulk-cell': {
-    verticalAlign: 'middle',
   },
   '& tr.document-folder-table-row:hover': {
     bgcolor: (t) => alpha(FOLDER_NAVY, t.palette.mode === 'dark' ? 0.06 : 0.025),
