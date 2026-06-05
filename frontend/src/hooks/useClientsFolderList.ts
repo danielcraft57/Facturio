@@ -118,8 +118,37 @@ export function useClientsFolderList(activeFolder: ClientFolder, debouncedSearch
     })
   }, [activeFolder, debouncedSearch, fetchPage])
 
+  const patchClientById = useCallback(
+    (id: string, patch: Partial<Client> | ((client: Client) => Client)) => {
+      setClients((prev) =>
+        prev.map((client) => {
+          if (client.id !== id) return client
+          return typeof patch === 'function' ? patch(client) : { ...client, ...patch }
+        }),
+      )
+    },
+    [],
+  )
+
+  const prependClients = useCallback((newClients: Client[]) => {
+    if (!newClients.length) return
+    setClients((prev) => {
+      const existing = new Set(prev.map((c) => c.id))
+      const toAdd = newClients.filter((c) => !existing.has(c.id))
+      if (!toAdd.length) return prev
+      return [...toAdd, ...prev]
+    })
+    setTotal((prev) => prev + newClients.length)
+  }, [])
+
+  const removeClientById = useCallback((id: string) => {
+    setClients((prev) => prev.filter((c) => c.id !== id))
+    setTotal((prev) => Math.max(0, prev - 1))
+  }, [])
+
   return {
     clients,
+    setClients,
     total,
     loading,
     loadingMore,
@@ -130,6 +159,9 @@ export function useClientsFolderList(activeFolder: ClientFolder, debouncedSearch
     hasMore,
     loadMore,
     refresh,
+    patchClientById,
+    prependClients,
+    removeClientById,
     pageSize: CLIENTS_PAGE_SIZE,
   }
 }

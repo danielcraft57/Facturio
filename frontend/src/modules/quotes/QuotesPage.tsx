@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Typography,
-  Chip,
   IconButton,
   Tooltip,
   Stack,
@@ -51,6 +50,10 @@ import { DocumentFolderBulkBar } from '../../components/finance/DocumentFolderBu
 import { useDocumentFolderSelection } from '../../hooks/useDocumentFolderSelection';
 import { runBulkArchive } from '../../utils/bulkArchive';
 import {
+  useDocumentFolderNewRowMotion,
+  useDocumentFolderRowMotion,
+} from '../../hooks/useDocumentFolderRowMotion';
+import {
   isDocumentFolder,
   DOCUMENT_FOLDER_LABELS,
   sortOutgoingNewestFirst,
@@ -77,6 +80,7 @@ import {
 } from '../../components/finance/documentFolderStyles';
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch';
 import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell';
+import { DocumentFolderStatusChip } from '../../components/finance/DocumentFolderStatusChip';
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import {
@@ -94,6 +98,13 @@ import { useUserDocumentTags } from '../../services/userDocumentTags';
 import { organizationService, type OrganizationProfile } from '../../services/organizationService';
 import { unwrapApiPayload } from '../../services/clients';
 import { useDocumentFolderCreateDialog } from '../../hooks/useDocumentFolderCreateDialog';
+import { folderCountsAfterArchive, folderCountsAfterInboxCreate } from '../../utils/documentFolderListMutations';
+import {
+  patchQuoteAfterSend,
+  patchQuoteFromRealtimeDetail,
+  patchQuoteWithInvoiceId,
+} from '../../utils/financeRealtimeListPatch';
+import type { FinanceRealtimeDetail } from '../../types/realtime';
 
 export function QuotesPage() {
   const { folder: folderParam } = useParams<{ folder?: string }>();
@@ -123,6 +134,10 @@ export function QuotesPage() {
     loadMore,
     refresh,
     setItems,
+    removeItemsById,
+    bumpFolderCounts,
+    patchItemById,
+    prependItems,
   } = useQuotesFolderList(activeFolder, debouncedSearch);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [archiveTargetIds, setArchiveTargetIds] = useState<string[]>([]);
@@ -134,16 +149,22 @@ export function QuotesPage() {
   } = useDocumentFolderCreateDialog();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const highlightRows = useRealtimeRowHighlight('quotes');
+  const rowMotion = useDocumentFolderRowMotion();
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
 
   useEffect(() => {
-    const onRealtime = () => {
-      void refreshRef.current();
+    const onRealtime = (ev: Event) => {
+      const detail = (ev as CustomEvent<FinanceRealtimeDetail>).detail;
+      if (!detail?.id) return;
+      patchItemById(detail.id, (q) => patchQuoteFromRealtimeDetail(q, detail));
+      if (detail.action === 'created' || detail.action === 'deleted') {
+        void refreshRef.current();
+      }
     };
     window.addEventListener('facturio:quote-realtime', onRealtime);
     return () => window.removeEventListener('facturio:quote-realtime', onRealtime);
-  }, []);
+  }, [patchItemById]);
 
   const searchOptions = useMemo(
     () =>
@@ -159,6 +180,11 @@ export function QuotesPage() {
       buildQuoteSearchEntry(q, resolveQuoteDisplayStatus(q).label).searchable,
     );
   }, [quotes, debouncedSearch]);
+
+  useDocumentFolderNewRowMotion(
+    displayedQuotes.map((q) => String(q.id)),
+    rowMotion,
+  );
 
   const contentKey = `${activeFolder}-${debouncedSearch}`;
   const initialLoading = loading && quotes.length === 0;
@@ -191,12 +217,23 @@ export function QuotesPage() {
   );
 
   const handleArchiveConfirm = async () => {
-    if (archiveTargetIds.length === 0) return;
+    const idsToArchive = archiveTargetIds;
+    if (idsToArchive.length === 0) return;
+    setArchiveDialogOpen(false);
+    setArchiveTargetIds([]);
+    selection.clear();
     try {
       setBulkArchiving(true);
-      const { succeeded, failed } = await runBulkArchive(archiveTargetIds, (id) =>
-        quoteService.archiveQuote(id),
+      const { succeeded, failed, succeededIds } = await rowMotion.runArchiveWithRailExit(
+        idsToArchive,
+        () => runBulkArchive(idsToArchive, (id) => quoteService.archiveQuote(id)),
       );
+      if (succeededIds.length > 0) {
+        removeItemsById(succeededIds);
+        if (!debouncedSearch.trim()) {
+          bumpFolderCounts(folderCountsAfterArchive(activeFolder, succeededIds.length));
+        }
+      }
       if (failed === 0) {
         toast.success(
           succeeded === 1 ? 'Devis archivé' : `${succeeded} devis archivés`,
@@ -204,10 +241,6 @@ export function QuotesPage() {
       } else {
         toast.error(`${succeeded} archivé(s), ${failed} échec(s)`);
       }
-      setArchiveDialogOpen(false);
-      setArchiveTargetIds([]);
-      selection.clear();
-      await refresh();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de l'archivage");
     } finally {
@@ -232,9 +265,10 @@ export function QuotesPage() {
         msg += ` — copie(s) : ${copies.join(', ')}`;
       }
       toast.success(msg);
+      const sentId = quoteToSend.id;
       setSendDialogOpen(false);
       setQuoteToSend(null);
-      await refresh();
+      patchItemById(sentId, patchQuoteAfterSend);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi du devis", {
         autoHide: false,
@@ -277,8 +311,8 @@ export function QuotesPage() {
       return;
     }
     const invoiceId = await quotesStore.convertToInvoice(quote.id);
-    await refresh();
     if (invoiceId) {
+      patchItemById(quote.id, (q) => patchQuoteWithInvoiceId(q, invoiceId));
       openInvoiceView(invoiceId);
     }
   };
@@ -292,7 +326,10 @@ export function QuotesPage() {
       const quote = await quotesStore.createQuote(data);
       if (quote) {
         closeCreateDialog();
-        await refresh();
+        if (activeFolder === 'inbox' && !debouncedSearch.trim()) {
+          prependItems([quote]);
+          bumpFolderCounts(folderCountsAfterInboxCreate(!quote.seenAt));
+        }
         try {
           const full = await quoteService.getQuote(quote.id);
           setQuoteToSend(full);
@@ -362,10 +399,18 @@ export function QuotesPage() {
           resourceLabel="devis"
         />
       ) : (
-        <Card sx={[documentFolderTableCardSx, documentFolderTableCardWrapSx] as SxProps<Theme>}>
+        <Card
+          sx={
+            [
+              documentFolderTableCardSx,
+              documentFolderTableCardWrapSx,
+              rowMotion.getMotionClipSx(),
+            ] as SxProps<Theme>
+          }
+        >
           <CardContent sx={documentFolderTableCardContentSx}>
             {isNarrow ? (
-              <Box sx={documentFolderTableCardContentPaddedSx}>
+              <Box sx={[documentFolderTableCardContentPaddedSx, rowMotion.getMotionClipSx()]}>
               <QuoteFolderMobileList
                 quotes={displayedQuotes}
                 highlightRows={highlightRows}
@@ -381,10 +426,13 @@ export function QuotesPage() {
                 savedTags={savedTags}
                 onRememberTag={rememberTag}
                 onRemoveSavedTag={removeFromLibrary}
+                getRowMotionSx={rowMotion.getMotionSx}
               />
               </Box>
             ) : (
-              <TableContainer sx={documentFolderTableContainerSx}>
+              <TableContainer
+                sx={[documentFolderTableContainerSx, rowMotion.getMotionClipSx()] as SxProps<Theme>}
+              >
                 <Table
                   size="small"
                   sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}
@@ -445,6 +493,7 @@ export function QuotesPage() {
                                 selection.selectionActive,
                               ),
                               getRealtimeRowSx(rowHighlight),
+                              rowMotion.getMotionSx(quoteId),
                             ] as SxProps<Theme>
                           }
                         >
@@ -481,11 +530,9 @@ export function QuotesPage() {
                             {(() => {
                               const display = resolveQuoteDisplayStatus(quote);
                               return (
-                                <Chip
+                                <DocumentFolderStatusChip
                                   label={display.label}
                                   color={display.color}
-                                  size="small"
-                                  sx={{ fontWeight: 600, borderRadius: 1.5, maxWidth: '100%' }}
                                 />
                               );
                             })()}

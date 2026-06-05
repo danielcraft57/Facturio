@@ -1,5 +1,6 @@
 import type { SxProps, Theme } from '@mui/material/styles'
-import { Box, Card, Chip, Stack, Typography } from '@mui/material'
+import type { DocumentFolderRowMotionLayout } from '../../../components/finance/documentFolderRailMotion'
+import { Box, Card, Stack, Typography } from '@mui/material'
 import type { Quote } from '../../../types/quote'
 import type { DocumentFlags } from '../../../types/documentFolders'
 import {
@@ -19,6 +20,7 @@ import { getRealtimeRowSx } from '../../../utils/realtimeRowHighlight'
 import type { RealtimeHighlightTone } from '../../../types/realtime'
 import { QuoteRowActionsMenu } from './QuoteRowActionsMenu'
 import { resolveQuoteDisplayStatus } from '../quoteDisplayStatus'
+import { DocumentFolderStatusChip } from '../../../components/finance/DocumentFolderStatusChip'
 
 type QuoteFolderMobileListProps = {
   quotes: Quote[]
@@ -35,6 +37,7 @@ type QuoteFolderMobileListProps = {
   savedTags?: string[]
   onRememberTag?: (tag: string) => void | Promise<void>
   onRemoveSavedTag?: (tag: string) => void | Promise<void>
+  getRowMotionSx?: (id: string, layout?: DocumentFolderRowMotionLayout) => SxProps<Theme>
 }
 
 export function QuoteFolderMobileList({
@@ -52,6 +55,7 @@ export function QuoteFolderMobileList({
   savedTags = [],
   onRememberTag,
   onRemoveSavedTag,
+  getRowMotionSx,
 }: QuoteFolderMobileListProps) {
   return (
     <Stack spacing={1} sx={documentFolderMobileListSx}>
@@ -77,6 +81,7 @@ export function QuoteFolderMobileList({
                 selection
                   ? documentFolderBulkRowSx(selected, selection.selectionActive)
                   : {},
+                getRowMotionSx?.(quoteId, 'card') ?? {},
               ] as SxProps<Theme>
             }
           >
@@ -137,11 +142,10 @@ export function QuoteFolderMobileList({
                       {(() => {
                         const display = resolveQuoteDisplayStatus(quote)
                         return (
-                          <Chip
+                          <DocumentFolderStatusChip
                             label={display.label}
                             color={display.color}
-                            size="small"
-                            sx={{ fontWeight: 600, height: 22, fontSize: '0.7rem' }}
+                            chipSx={{ height: 22, fontSize: '0.7rem' }}
                           />
                         )
                       })()}

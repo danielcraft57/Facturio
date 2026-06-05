@@ -118,6 +118,9 @@ export function ClientsPage() {
     hasMore,
     loadMore,
     refresh,
+    patchClientById,
+    prependClients,
+    removeClientById,
   } = useClientsFolderList(activeFolder, debouncedSearch)
 
   const [formDialogMode, setFormDialogMode] = useState<'create' | 'edit' | null>(null)
@@ -240,7 +243,11 @@ export function ClientsPage() {
           companyName: name,
           status: clientForm.status,
         })
-        await clientService.createClient(payload as never)
+        const res = await clientService.createClient(payload as never)
+        const created = res.data
+        if (created && activeFolder === 'inbox' && !debouncedSearch.trim()) {
+          prependClients([created])
+        }
       } else if (formDialogMode === 'edit' && selectedClientId) {
         await clientService.updateClient({
           id: selectedClientId,
@@ -253,12 +260,19 @@ export function ClientsPage() {
             : undefined,
           status: clientForm.status,
         })
+        patchClientById(selectedClientId, (c) => ({
+          ...c,
+          name,
+          email,
+          phone: clientForm.phone.trim() || undefined,
+          siren: clientForm.siren || undefined,
+          status: clientForm.status,
+        }))
       }
 
       setFormDialogMode(null)
       resetClientForm()
       setSelectedClientId(null)
-      await refresh()
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : 'Enregistrement impossible')
     } finally {
@@ -272,8 +286,8 @@ export function ClientsPage() {
       setDeleting(true)
       await clientService.deleteClient(selectedClientId)
       setDeleteDialogOpen(false)
+      removeClientById(selectedClientId)
       setSelectedClientId(null)
-      await refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Suppression impossible')
     } finally {

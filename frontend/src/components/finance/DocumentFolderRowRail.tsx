@@ -14,6 +14,7 @@ import {
 } from './DocumentFolderRowActions'
 import type { DocumentFolderRailVisual } from './documentFolderRowRailVisual'
 import { DocumentTagsEditor } from './DocumentTagsEditor'
+import { DocumentFolderRailStatusBadge } from './DocumentFolderRailStatusBadge'
 
 /** Barre de statut collée au bord gauche de la ligne (via `getDocumentFolderRailRowAccentSx`). */
 export const DOCUMENT_FOLDER_RAIL_ACCENT_WIDTH = 4
@@ -57,12 +58,6 @@ type Props = {
   tagsSlot?: DocumentFolderRailTagsProps
 }
 
-const iconPop = keyframes`
-  0% { opacity: 0; transform: scale(0.45) rotate(-8deg); }
-  70% { transform: scale(1.08) rotate(0deg); }
-  100% { opacity: 1; transform: scale(1) rotate(0deg); }
-`
-
 const actionSlide = keyframes`
   0% { opacity: 0; transform: translateX(-8px) scale(0.9); }
   100% { opacity: 1; transform: translateX(0) scale(1); }
@@ -79,6 +74,7 @@ export function getDocumentFolderRailRowAccentSx(
   return {
     '& > .MuiTableCell-root:first-of-type': {
       borderLeft: `${DOCUMENT_FOLDER_RAIL_ACCENT_WIDTH}px solid ${visual.accent}`,
+      transition: 'border-color 0.45s ease',
     },
   }
 }
@@ -130,7 +126,6 @@ export function DocumentFolderRowRail({
   layout = 'table',
   tagsSlot,
 }: Props) {
-  const { Icon } = visual
   const [snoozeAnchor, setSnoozeAnchor] = useState<null | HTMLElement>(null)
   const [pending, setPending] = useState<'star' | 'important' | 'snooze' | null>(null)
   const [controlsOpen, setControlsOpen] = useState(false)
@@ -431,13 +426,15 @@ export function DocumentFolderRowRail({
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
-                bgcolor: isTable ? alpha(visual.accent, 0.06) : visual.accentMuted,
+                bgcolor: isTable ? 'transparent' : visual.accentMuted,
                 position: 'relative',
                 cursor: 'default',
+                transition: 'background-color 0.45s ease',
                 ...(isTable
                   ? {
                       width: RAIL_ICON_SLOT_WIDTH,
                       minHeight: 48,
+                      background: 'transparent',
                     }
                   : {
                       width: '100%',
@@ -449,32 +446,16 @@ export function DocumentFolderRowRail({
                         bottom: 0,
                         width: DOCUMENT_FOLDER_RAIL_ACCENT_WIDTH,
                         bgcolor: visual.accent,
+                        transition: 'background-color 0.45s ease',
                       },
                     }),
               }}
             >
-              <Box
-                role="img"
-                aria-label={visual.iconTitle}
-                sx={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  bgcolor: visual.accent,
-                  color: '#fff',
-                  animation: `${iconPop} 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both`,
-                  boxShadow: unread
-                    ? `0 0 0 2px ${alpha('#3b82f6', 0.65)}, 0 0 0 2px ${alpha('#fff', 0.9)}`
-                    : `0 0 0 1px ${alpha(visual.accent, 0.35)}`,
-                  transition: 'transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                  transform: panelVisible ? 'scale(1.08)' : 'scale(1)',
-                }}
-              >
-                <Icon sx={{ fontSize: 19 }} />
-              </Box>
+              <DocumentFolderRailStatusBadge
+                visual={visual}
+                unread={unread}
+                emphasized={panelVisible}
+              />
             </Box>
           </Tooltip>
 

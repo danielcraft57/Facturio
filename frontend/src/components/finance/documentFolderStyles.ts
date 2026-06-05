@@ -376,7 +376,7 @@ export const documentFolderPageSubtitle = (resource: 'factures' | 'devis' | 'det
 }
 
 export const documentFolderUnreadRowSx: SxProps<Theme> = {
-  bgcolor: alpha('#3b82f6', 0.04),
+  bgcolor: 'transparent',
 }
 
 /** Colonne bulk (avant le rail), sans marge ni padding, case centrée. */

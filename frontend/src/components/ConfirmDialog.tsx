@@ -130,15 +130,16 @@ export function ConfirmDialog({
       </DialogTitle>
 
       <DialogContent sx={{ pt: 0 }}>
-        {message && (
-          <DialogContentText sx={{ mb: 2 }}>
-            {typeof message === 'string' ? (
-              <Typography variant="body1">{message}</Typography>
-            ) : (
-              message
-            )}
-          </DialogContentText>
-        )}
+        {message &&
+          (typeof message === 'string' ? (
+            <DialogContentText component="div" sx={{ mb: 2 }}>
+              {message}
+            </DialogContentText>
+          ) : (
+            <Box component="div" sx={{ mb: 2, color: 'text.secondary' }}>
+              {message}
+            </Box>
+          ))}
 
         {children}
 

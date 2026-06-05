@@ -112,6 +112,53 @@ export function useFinanceDocumentFolderList<T>(
     })
   }, [loading, loadingMore, hasMore, fetchPage, debouncedSearch])
 
+  const removeItemsById = useCallback((ids: Iterable<string | number>) => {
+    const idSet = new Set([...ids].map(String))
+    if (!idSet.size) return
+    setItems((prev) =>
+      prev.filter((item) => !idSet.has(String((item as { id: string | number }).id))),
+    )
+    setTotal((prev) => Math.max(0, prev - idSet.size))
+  }, [])
+
+  const prependItems = useCallback((newItems: T[]) => {
+    if (!newItems.length) return
+    setItems((prev) => {
+      const existing = new Set(prev.map((item) => String((item as { id: string | number }).id)))
+      const toAdd = newItems.filter(
+        (item) => !existing.has(String((item as { id: string | number }).id)),
+      )
+      if (!toAdd.length) return prev
+      return [...toAdd, ...prev]
+    })
+    setTotal((prev) => prev + newItems.length)
+  }, [])
+
+  const patchItemById = useCallback(
+    (id: string | number, patch: Partial<T> | ((item: T) => T)) => {
+      const key = String(id)
+      setItems((prev) =>
+        prev.map((item) => {
+          if (String((item as { id: string | number }).id) !== key) return item
+          return typeof patch === 'function' ? patch(item) : { ...item, ...patch }
+        }),
+      )
+    },
+    [],
+  )
+
+  const bumpFolderCounts = useCallback((delta: Partial<DocumentFolderCounts>) => {
+    setFolderCounts((prev) => {
+      const next = { ...prev }
+      for (const [key, value] of Object.entries(delta) as [keyof DocumentFolderCounts, number][]) {
+        if (typeof value === 'number') {
+          next[key] = Math.max(0, (next[key] ?? 0) + value)
+        }
+      }
+      return normalizeDocumentFolderCounts(next)
+    })
+  }, [])
+
   // fetchListPage tenu en ref : évite boucle si le callback parent est recréé à chaque render
   useEffect(() => {
     fetchGen.current += 1
@@ -140,6 +187,10 @@ export function useFinanceDocumentFolderList<T>(
     hasMore,
     loadMore,
     refresh,
+    removeItemsById,
+    prependItems,
+    patchItemById,
+    bumpFolderCounts,
     pageSize: FINANCE_DOCUMENT_PAGE_SIZE,
   }
 }

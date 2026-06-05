@@ -1,5 +1,6 @@
 import type { SxProps, Theme } from '@mui/material/styles'
-import { Box, Card, Chip, Stack, Typography } from '@mui/material'
+import type { DocumentFolderRowMotionLayout } from '../../../components/finance/documentFolderRailMotion'
+import { Box, Card, Stack, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import type { PayableDebtRow } from '../../../services/payables'
 import type { DocumentFlags } from '../../../types/documentFolders'
@@ -20,6 +21,7 @@ import type { RealtimeHighlightTone } from '../../../types/realtime'
 type SelectionApi = ReturnType<typeof useDocumentFolderSelection<PayableDebtRow>>
 import { PayableDebtRowActionsMenu } from './PayableDebtRowActionsMenu'
 import { resolvePayableDebtDisplayStatus } from '../payableDebtDisplayStatus'
+import { DocumentFolderStatusChip } from '../../../components/finance/DocumentFolderStatusChip'
 import { formatCurrency } from '../../../utils/formatters'
 
 type Props = {
@@ -36,6 +38,7 @@ type Props = {
   savedTags?: string[]
   onRememberTag?: (tag: string) => void | Promise<void>
   onRemoveSavedTag?: (tag: string) => void | Promise<void>
+  getRowMotionSx?: (id: string, layout?: DocumentFolderRowMotionLayout) => SxProps<Theme>
 }
 
 export function PayableDebtFolderMobileList({
@@ -52,6 +55,7 @@ export function PayableDebtFolderMobileList({
   savedTags = [],
   onRememberTag,
   onRemoveSavedTag,
+  getRowMotionSx,
 }: Props) {
   return (
     <Stack spacing={1} sx={documentFolderMobileListSx}>
@@ -71,6 +75,7 @@ export function PayableDebtFolderMobileList({
                 selection
                   ? documentFolderBulkRowSx(selected, selection.selectionActive)
                   : {},
+                getRowMotionSx?.(String(debt.id), 'card') ?? {},
               ] as SxProps<Theme>
             }
           >
@@ -127,11 +132,10 @@ export function PayableDebtFolderMobileList({
                       </Typography>
                     </Box>
                     <Stack alignItems="flex-end" spacing={0.5} flexShrink={0}>
-                      <Chip
+                      <DocumentFolderStatusChip
                         label={display.label}
-                        size="small"
                         color={display.color}
-                        sx={{ fontWeight: 600, height: 22, fontSize: '0.7rem' }}
+                        chipSx={{ height: 22, fontSize: '0.7rem' }}
                       />
                       <Typography variant="body2" fontWeight={700}>
                         {formatCurrency(debt.balance)}

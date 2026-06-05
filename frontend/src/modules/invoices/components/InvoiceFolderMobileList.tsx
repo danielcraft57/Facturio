@@ -2,11 +2,11 @@ import {
   Box,
   Card,
   CardActionArea,
-  Chip,
   Stack,
   Typography,
 } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
+import type { DocumentFolderRowMotionLayout } from '../../../components/finance/documentFolderRailMotion'
 import type { Invoice } from '../../../services/invoices'
 import type { DocumentFlags } from '../../../types/documentFolders'
 import {
@@ -23,6 +23,7 @@ import { getRealtimeRowSx } from '../../../utils/realtimeRowHighlight'
 import type { RealtimeHighlightTone } from '../../../types/realtime'
 import { InvoiceRowActionsMenu } from './InvoiceRowActionsMenu'
 import { resolveInvoiceDisplayStatus } from '../invoiceDisplayStatus'
+import { DocumentFolderStatusChip } from '../../../components/finance/DocumentFolderStatusChip'
 import type { useDocumentFolderSelection } from '../../../hooks/useDocumentFolderSelection'
 
 type SelectionApi = ReturnType<typeof useDocumentFolderSelection<Invoice>>
@@ -44,6 +45,7 @@ type InvoiceFolderMobileListProps = {
   savedTags?: string[]
   onRememberTag?: (tag: string) => void | Promise<void>
   onRemoveSavedTag?: (tag: string) => void | Promise<void>
+  getRowMotionSx?: (id: string, layout?: DocumentFolderRowMotionLayout) => SxProps<Theme>
 }
 
 export function InvoiceFolderMobileList({
@@ -63,6 +65,7 @@ export function InvoiceFolderMobileList({
   savedTags = [],
   onRememberTag,
   onRemoveSavedTag,
+  getRowMotionSx,
 }: InvoiceFolderMobileListProps) {
   return (
     <Stack spacing={1} sx={documentFolderMobileListSx}>
@@ -94,6 +97,7 @@ export function InvoiceFolderMobileList({
                 selection
                   ? documentFolderBulkRowSx(selected, selection.selectionActive)
                   : {},
+                getRowMotionSx?.(invoice.id, 'card') ?? {},
               ] as SxProps<Theme>
             }
           >
@@ -155,11 +159,10 @@ export function InvoiceFolderMobileList({
                       {(() => {
                         const display = resolveInvoiceDisplayStatus(invoice)
                         return (
-                          <Chip
+                          <DocumentFolderStatusChip
                             label={display.label}
                             color={display.color}
-                            size="small"
-                            sx={{ fontWeight: 600, height: 22, fontSize: '0.7rem' }}
+                            chipSx={{ height: 22, fontSize: '0.7rem' }}
                           />
                         )
                       })()}

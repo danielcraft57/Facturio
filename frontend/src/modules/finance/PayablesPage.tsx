@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   IconButton,
   Stack,
   Table,
@@ -25,6 +24,7 @@ import { Refresh as RefreshIcon } from '@mui/icons-material'
 import { DocumentFolderPageShell } from '../../components/finance/DocumentFolderPageShell'
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
 import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell'
+import { DocumentFolderStatusChip } from '../../components/finance/DocumentFolderStatusChip'
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton'
 import { DocumentFolderLoadMore } from '../../components/finance/DocumentFolderLoadMore'
 import {
@@ -41,7 +41,19 @@ import { DocumentFolderRowCheckbox } from '../../components/finance/DocumentFold
 import { DocumentFolderBulkBar } from '../../components/finance/DocumentFolderBulkBar'
 import { useDocumentFolderSelection } from '../../hooks/useDocumentFolderSelection'
 import { runBulkArchive } from '../../utils/bulkArchive'
+import {
+  useDocumentFolderNewRowMotion,
+  useDocumentFolderRowMotion,
+} from '../../hooks/useDocumentFolderRowMotion'
 import { useUserDocumentTags } from '../../services/userDocumentTags'
+import { folderCountsAfterArchive } from '../../utils/documentFolderListMutations'
+import {
+  patchPayableDebtAfterCancel,
+  patchPayableDebtAfterSend,
+  patchPayableDebtFromRealtimeDetail,
+} from '../../utils/financeRealtimeListPatch'
+import { folderCountsAfterInboxCreate } from '../../utils/documentFolderListMutations'
+import type { FinanceRealtimeDetail } from '../../types/realtime'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import {
   financeTableHeadSx,
@@ -75,7 +87,6 @@ import { PayableDebtFolderMobileList } from './components/PayableDebtFolderMobil
 import { RecordPayableDebtPaymentDialog } from './components/RecordPayableDebtPaymentDialog'
 import { resolvePayableDebtDisplayStatus } from './payableDebtDisplayStatus'
 import { formatEmailEngagementAt } from '../documents/documentEmailEngagement'
-import type { FinanceRealtimeDetail } from '../../types/realtime'
 import { useRealtimeRowHighlight } from '../../hooks/useRealtimeRowHighlight'
 import { getRealtimeRowSx } from '../../utils/realtimeRowHighlight'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
@@ -118,6 +129,10 @@ export function PayablesPage() {
     loadMore,
     refresh,
     setItems,
+    removeItemsById,
+    bumpFolderCounts,
+    patchItemById,
+    prependItems,
   } = usePayablesFolderList(activeFolder, debouncedSearch)
 
   const [debtDialogOpen, setDebtDialogOpen] = useState(false)
@@ -134,18 +149,22 @@ export function PayablesPage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const highlightRows = useRealtimeRowHighlight('payables')
+  const rowMotion = useDocumentFolderRowMotion()
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
 
   useEffect(() => {
     const onRealtime = (ev: Event) => {
       const detail = (ev as CustomEvent<FinanceRealtimeDetail>).detail
-      if (detail?.resource !== 'payables') return
-      void refreshRef.current()
+      if (detail?.resource !== 'payables' || detail.id == null) return
+      patchItemById(detail.id, (d) => patchPayableDebtFromRealtimeDetail(d, detail))
+      if (detail.action === 'created' || detail.action === 'deleted') {
+        void refreshRef.current()
+      }
     }
     window.addEventListener('facturio:payables-realtime', onRealtime)
     return () => window.removeEventListener('facturio:payables-realtime', onRealtime)
-  }, [])
+  }, [patchItemById])
 
   const searchOptions = useMemo(
     () =>
@@ -161,6 +180,11 @@ export function PayablesPage() {
       buildPayableDebtSearchEntry(d, resolvePayableDebtDisplayStatus(d).label).searchable,
     )
   }, [debts, debouncedSearch])
+
+  useDocumentFolderNewRowMotion(
+    displayedDebts.map((d) => String(d.id)),
+    rowMotion,
+  )
 
   const contentKey = `${activeFolder}-${debouncedSearch}`
   const initialLoading = loading && debts.length === 0
@@ -197,7 +221,10 @@ export function PayablesPage() {
       setDebtDialogOpen(false)
       setDebtToSend(debt)
       setSendDialogOpen(true)
-      await refresh()
+      if (activeFolder === 'inbox' && !debouncedSearch.trim()) {
+        prependItems([debt])
+        bumpFolderCounts(folderCountsAfterInboxCreate(true))
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erreur à la création')
     } finally {
@@ -235,19 +262,33 @@ export function PayablesPage() {
     try {
       await payablesService.cancelDebt(debt.id)
       toast.success('Dette annulée')
-      await refresh()
+      patchItemById(debt.id, patchPayableDebtAfterCancel)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Annulation impossible')
     }
   }
 
   const handleArchiveConfirm = async () => {
-    if (archiveTargetIds.length === 0) return
+    const idsToArchive = archiveTargetIds
+    if (idsToArchive.length === 0) return
+    setArchiveDialogOpen(false)
+    setArchiveTargetIds([])
+    selection.clear()
     try {
       setBulkArchiving(true)
-      const { succeeded, failed } = await runBulkArchive(archiveTargetIds, (id) =>
-        payablesService.archiveDebt(Number(id)),
+      const { succeeded, failed, succeededIds } = await rowMotion.runArchiveWithRailExit(
+        idsToArchive,
+        () =>
+          runBulkArchive(idsToArchive, (id) =>
+            payablesService.archiveDebt(Number(id)),
+          ),
       )
+      if (succeededIds.length > 0) {
+        removeItemsById(succeededIds)
+        if (!debouncedSearch.trim()) {
+          bumpFolderCounts(folderCountsAfterArchive(activeFolder, succeededIds.length))
+        }
+      }
       if (failed === 0) {
         toast.success(
           succeeded === 1 ? 'Dette archivée' : `${succeeded} dettes archivées`,
@@ -255,10 +296,6 @@ export function PayablesPage() {
       } else {
         toast.error(`${succeeded} archivée(s), ${failed} échec(s)`)
       }
-      setArchiveDialogOpen(false)
-      setArchiveTargetIds([])
-      selection.clear()
-      await refresh()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Archivage impossible')
     } finally {
@@ -330,10 +367,18 @@ export function PayablesPage() {
           resourceLabel="dettes"
         />
       ) : (
-        <Card sx={[documentFolderTableCardSx, documentFolderTableCardWrapSx] as SxProps<Theme>}>
+        <Card
+          sx={
+            [
+              documentFolderTableCardSx,
+              documentFolderTableCardWrapSx,
+              rowMotion.getMotionClipSx(),
+            ] as SxProps<Theme>
+          }
+        >
           <CardContent sx={documentFolderTableCardContentSx}>
             {isNarrow ? (
-              <Box sx={documentFolderTableCardContentPaddedSx}>
+              <Box sx={[documentFolderTableCardContentPaddedSx, rowMotion.getMotionClipSx()]}>
               <PayableDebtFolderMobileList
                 debts={displayedDebts}
                 highlightRows={highlightRows}
@@ -348,10 +393,13 @@ export function PayablesPage() {
                 savedTags={savedTags}
                 onRememberTag={rememberTag}
                 onRemoveSavedTag={removeFromLibrary}
+                getRowMotionSx={rowMotion.getMotionSx}
               />
               </Box>
             ) : (
-              <TableContainer sx={documentFolderTableContainerSx}>
+              <TableContainer
+                sx={[documentFolderTableContainerSx, rowMotion.getMotionClipSx()] as SxProps<Theme>}
+              >
                 <Table
                   size="small"
                   sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}
@@ -429,6 +477,7 @@ export function PayablesPage() {
                                   selection.selectionActive,
                                 ),
                                 getRealtimeRowSx(rowHighlight),
+                                rowMotion.getMotionSx(String(d.id)),
                               ] as SxProps<Theme>
                             }
                           >
@@ -473,8 +522,7 @@ export function PayablesPage() {
                               {formatCurrency(d.balance)}
                             </TableCell>
                             <TableCell>
-                              <Chip
-                                size="small"
+                              <DocumentFolderStatusChip
                                 label={display.label}
                                 color={display.color}
                                 title={statusTitle}
@@ -534,7 +582,11 @@ export function PayablesPage() {
           setSendDialogOpen(false)
           setDebtToSend(null)
         }}
-        onSent={() => refresh()}
+        onSent={() => {
+          if (debtToSend) {
+            patchItemById(debtToSend.id, patchPayableDebtAfterSend)
+          }
+        }}
       />
 
       <RecordPayableDebtPaymentDialog
@@ -549,7 +601,7 @@ export function PayablesPage() {
           setDebtAfterPayment(updated)
           setLastPaymentAmount(amount)
           setPaymentNoticeOpen(true)
-          await refresh()
+          patchItemById(updated.id, () => updated)
         }}
       />
 
@@ -562,7 +614,11 @@ export function PayablesPage() {
           setDebtAfterPayment(null)
           setLastPaymentAmount(0)
         }}
-        onSent={() => refresh()}
+        onSent={() => {
+          if (debtAfterPayment) {
+            patchItemById(debtAfterPayment.id, patchPayableDebtAfterSend)
+          }
+        }}
       />
 
       <ConfirmDialog
