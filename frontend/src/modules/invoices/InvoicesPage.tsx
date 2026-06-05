@@ -86,6 +86,7 @@ import {
   documentFolderTableCardWrapSx,
   documentFolderTableCardContentSx,
   documentFolderTableCardContentPaddedSx,
+  documentFolderTableCardFooterSx,
   documentFolderTableContainerSx,
   documentFolderTableSx,
   documentFolderUnreadRowSx,
@@ -451,16 +452,6 @@ export function InvoicesPage() {
               size="small"
               sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}
             >
-              <colgroup>
-                <col style={{ width: 32 }} />
-                <col style={{ width: 44 }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '28%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '13%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: isWideActions ? 188 : 52 }} />
-              </colgroup>
               <TableHead sx={[financeTableHeadSx, documentFolderTableHeadSx] as SxProps<Theme>}>
                 <TableRow sx={getDocumentFolderRailHeaderRowSx()}>
                   <DocumentFolderBulkTableHeaderCell
@@ -612,7 +603,7 @@ export function InvoicesPage() {
             </Box>
           )}
 
-          <Box sx={documentFolderTableCardContentPaddedSx}>
+          <Box sx={documentFolderTableCardFooterSx}>
           <DocumentFolderBulkBar
             count={selection.selectedCount}
             resourceLabel="facture"

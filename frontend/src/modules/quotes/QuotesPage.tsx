@@ -62,12 +62,18 @@ import {
   documentFolderTableCardWrapSx,
   documentFolderTableCardContentSx,
   documentFolderTableCardContentPaddedSx,
+  documentFolderTableCardFooterSx,
   documentFolderTableContainerSx,
   documentFolderTableSx,
   documentFolderUnreadRowSx,
   documentFolderBulkRowSx,
   documentFolderTableHeadSx,
-  folderColHideBelowXl,
+  documentFolderColInvoiceSx,
+  documentFolderColClientSx,
+  documentFolderColStatusSx,
+  documentFolderColAmountSx,
+  documentFolderColDueSx,
+  documentFolderColActionsSx,
 } from '../../components/finance/documentFolderStyles';
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch';
 import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell';
@@ -397,14 +403,14 @@ export function QuotesPage() {
                         }}
                       />
                       <DocumentFolderRailTableHeaderCell />
-                      <TableCell sx={{ width: '14%' }}>N° Devis</TableCell>
-                      <TableCell sx={{ width: '24%' }}>Client</TableCell>
-                      <TableCell sx={{ width: '10%' }}>Statut</TableCell>
-                      <TableCell align="right" sx={{ width: '10%' }}>
+                      <TableCell sx={documentFolderColInvoiceSx}>N° Devis</TableCell>
+                      <TableCell sx={documentFolderColClientSx}>Client</TableCell>
+                      <TableCell sx={documentFolderColStatusSx}>Statut</TableCell>
+                      <TableCell align="right" sx={documentFolderColAmountSx}>
                         Montant
                       </TableCell>
-                      <TableCell sx={{ ...folderColHideBelowXl, width: '9%' }}>Validité</TableCell>
-                      <TableCell align="center" sx={{ width: isWideActions ? 200 : 56 }}>
+                      <TableCell sx={documentFolderColDueSx}>Validité</TableCell>
+                      <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>
                         Actions
                       </TableCell>
                     </TableRow>
@@ -456,7 +462,7 @@ export function QuotesPage() {
                           >
                             {railParts.rail}
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={documentFolderColInvoiceSx}>
                             <Typography variant="body2" fontWeight={quote.seenAt ? 600 : 700} noWrap>
                               {quote.number}
                             </Typography>
@@ -464,14 +470,14 @@ export function QuotesPage() {
                               {formatDate(quote.date)}
                             </Typography>
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={documentFolderColClientSx}>
                             <DocumentFolderPartyCell
                               name={quote.client?.name ?? `Client #${quote.clientId}`}
                               email={quote.client?.email}
                               emphasize={!quote.seenAt}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={documentFolderColStatusSx}>
                             {(() => {
                               const display = resolveQuoteDisplayStatus(quote);
                               return (
@@ -484,17 +490,17 @@ export function QuotesPage() {
                               );
                             })()}
                           </TableCell>
-                          <TableCell align="right">
+                          <TableCell align="right" className="doc-folder-col-amount" sx={documentFolderColAmountSx}>
                             <Typography variant="body2" fontWeight="medium" noWrap>
                               {formatCurrency(quote.total)}
                             </Typography>
                           </TableCell>
-                          <TableCell sx={folderColHideBelowXl}>
+                          <TableCell sx={documentFolderColDueSx}>
                             <Typography variant="body2" noWrap>
                               {quote.expiryDate ? formatDate(quote.expiryDate) : '—'}
                             </Typography>
                           </TableCell>
-                          <TableCell align="center">
+                          <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>
                             <QuoteRowActionsMenu
                               quote={quote}
                               expanded={isWideActions}
@@ -523,7 +529,7 @@ export function QuotesPage() {
               </Box>
             )}
 
-            <Box sx={documentFolderTableCardContentPaddedSx}>
+            <Box sx={documentFolderTableCardFooterSx}>
             <DocumentFolderBulkBar
               count={selection.selectedCount}
               resourceLabel="devis"

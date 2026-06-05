@@ -49,6 +49,8 @@ type Props = {
   important: boolean
   showImportant?: boolean
   showTags?: boolean
+  /** Suivi / important / reporter (désactivé pour les clients). */
+  showActions?: boolean
   unread?: boolean
   onUpdate: (patch: DocumentFlags) => void | Promise<void>
   layout?: 'table' | 'card'
@@ -75,7 +77,9 @@ export function getDocumentFolderRailRowAccentSx(
   visual: DocumentFolderRailVisual,
 ): SxProps<Theme> {
   return {
-    borderLeft: `${DOCUMENT_FOLDER_RAIL_ACCENT_WIDTH}px solid ${visual.accent}`,
+    '& > .MuiTableCell-root:first-of-type': {
+      borderLeft: `${DOCUMENT_FOLDER_RAIL_ACCENT_WIDTH}px solid ${visual.accent}`,
+    },
   }
 }
 
@@ -90,14 +94,15 @@ export function getDocumentFolderRailTableCellSx(
     verticalAlign: 'middle',
     overflow: 'visible',
     position: 'relative',
-    borderBottom: 'none',
     borderLeft: 'none',
   }
 }
 
 export function getDocumentFolderRailHeaderRowSx(): SxProps<Theme> {
   return {
-    borderLeft: `${DOCUMENT_FOLDER_RAIL_ACCENT_WIDTH}px solid transparent`,
+    '& > .MuiTableCell-root:first-of-type': {
+      borderLeft: `${DOCUMENT_FOLDER_RAIL_ACCENT_WIDTH}px solid transparent`,
+    },
   }
 }
 
@@ -119,6 +124,7 @@ export function DocumentFolderRowRail({
   important,
   showImportant = true,
   showTags = true,
+  showActions = true,
   unread = false,
   onUpdate,
   layout = 'table',
@@ -132,12 +138,12 @@ export function DocumentFolderRowRail({
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isTable = layout === 'table'
   const hoverCapable = useMediaQuery('(hover: hover)')
-  const useDelayedHover = isTable && hoverCapable
+  const useDelayedHover = isTable && hoverCapable && showActions
   const withTags = showTags && !!tagsSlot
   const actionCount = showImportant ? 3 : 2
   const panelW = controlPanelWidth(showImportant, withTags)
   const panelPinned = Boolean(snoozeAnchor) || tagsPopoverOpen
-  const panelVisible = !useDelayedHover || controlsOpen || panelPinned
+  const panelVisible = showActions && (!useDelayedHover || controlsOpen || panelPinned)
 
   const cancelCloseTimer = useCallback(() => {
     if (closeTimerRef.current) {
@@ -428,8 +434,12 @@ export function DocumentFolderRowRail({
                 bgcolor: isTable ? alpha(visual.accent, 0.06) : visual.accentMuted,
                 position: 'relative',
                 cursor: 'default',
-                ...(!isTable
+                ...(isTable
                   ? {
+                      width: RAIL_ICON_SLOT_WIDTH,
+                      minHeight: 48,
+                    }
+                  : {
                       width: '100%',
                       '&::before': {
                         content: '""',
@@ -440,11 +450,12 @@ export function DocumentFolderRowRail({
                         width: DOCUMENT_FOLDER_RAIL_ACCENT_WIDTH,
                         bgcolor: visual.accent,
                       },
-                    }
-                  : {}),
+                    }),
               }}
             >
               <Box
+                role="img"
+                aria-label={visual.iconTitle}
                 sx={{
                   width: 34,
                   height: 34,
@@ -467,47 +478,49 @@ export function DocumentFolderRowRail({
             </Box>
           </Tooltip>
 
-          <Box
-            className="document-folder-control-panel"
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              gap: 0.35,
-              ...(isTable
-                ? hoverRevealSx
-                : {
-                    ...hoverRevealSx,
-                    position: 'relative',
-                    left: 'auto',
-                    top: 'auto',
-                    transform: 'none',
-                    mt: 0.35,
-                    ml: 0,
-                    opacity: 1,
-                    pointerEvents: 'auto',
-                    boxShadow: 'none',
-                    border: 'none',
-                    bgcolor: 'transparent',
-                  }),
-            }}
-          >
-            {actionsRow}
-            {withTags && tagsSlot && (
-              <Box className="document-folder-rail-tags" sx={{ minWidth: 0, maxWidth: panelW - 8 }}>
-                <DocumentTagsEditor
-                  layout="inline"
-                  tags={tagsSlot.tags}
-                  onChange={tagsSlot.onChange}
-                  maxVisible={1}
-                  savedTags={tagsSlot.savedTags}
-                  onRememberTag={tagsSlot.onRememberTag}
-                  onRemoveSavedTag={tagsSlot.onRemoveSavedTag}
-                  onPopoverOpenChange={setTagsPopoverOpen}
-                />
-              </Box>
-            )}
-          </Box>
+          {showActions && (
+            <Box
+              className="document-folder-control-panel"
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                gap: 0.35,
+                ...(isTable
+                  ? hoverRevealSx
+                  : {
+                      ...hoverRevealSx,
+                      position: 'relative',
+                      left: 'auto',
+                      top: 'auto',
+                      transform: 'none',
+                      mt: 0.35,
+                      ml: 0,
+                      opacity: 1,
+                      pointerEvents: 'auto',
+                      boxShadow: 'none',
+                      border: 'none',
+                      bgcolor: 'transparent',
+                    }),
+              }}
+            >
+              {actionsRow}
+              {withTags && tagsSlot && (
+                <Box className="document-folder-rail-tags" sx={{ minWidth: 0, maxWidth: panelW - 8 }}>
+                  <DocumentTagsEditor
+                    layout="inline"
+                    tags={tagsSlot.tags}
+                    onChange={tagsSlot.onChange}
+                    maxVisible={1}
+                    savedTags={tagsSlot.savedTags}
+                    onRememberTag={tagsSlot.onRememberTag}
+                    onRemoveSavedTag={tagsSlot.onRemoveSavedTag}
+                    onPopoverOpenChange={setTagsPopoverOpen}
+                  />
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>

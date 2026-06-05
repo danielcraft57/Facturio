@@ -48,7 +48,7 @@ export const financeTableHeadSx: SxProps<Theme> = (theme) => ({
 })
 
 export const financeTableSx: SxProps<Theme> = {
-  '& .MuiTableRow-root:hover': {
+  '& .MuiTableRow-root:not(.document-folder-table-row):hover': {
     bgcolor: alpha('#0f172a', 0.03),
   },
 }

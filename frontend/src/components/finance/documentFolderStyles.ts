@@ -138,7 +138,11 @@ export const documentFolderFilterGridSx: SxProps<Theme> = {
   alignItems: 'center',
 }
 
-export const documentFolderTableCardSx: SxProps<Theme> = financeCardSx
+export const documentFolderTableCardSx: SxProps<Theme> = (theme) => ({
+  ...(typeof financeCardSx === 'function' ? financeCardSx(theme) : financeCardSx),
+  display: 'flex',
+  flexDirection: 'column',
+})
 
 export const documentFolderTableCardWrapSx: SxProps<Theme> = {
   width: '100%',
@@ -148,8 +152,12 @@ export const documentFolderTableCardWrapSx: SxProps<Theme> = {
 
 /** Tableau bord à bord : barre de statut collée au bord gauche de la carte. */
 export const documentFolderTableCardContentSx: SxProps<Theme> = {
-  p: 0,
-  '&:last-child': { pb: { xs: 1, sm: 1.5, md: 2 } },
+  p: '0 !important',
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  '&:last-child': { pb: '0 !important' },
 }
 
 export const documentFolderTableCardContentPaddedSx: SxProps<Theme> = {
@@ -157,14 +165,48 @@ export const documentFolderTableCardContentPaddedSx: SxProps<Theme> = {
   py: { xs: 1, sm: 1.5, md: 2 },
 }
 
+/** Rayon intérieur aligné sur `financeCardSx` (borderRadius 2.5). */
+export const documentFolderCardInnerRadius = (theme: Theme) =>
+  typeof theme.shape.borderRadius === 'number' ? theme.shape.borderRadius * 2.5 : 10
+
+/** Pied de carte (charger plus, vide) — continu avec le tableau, sans effet flottant. */
+export const documentFolderTableCardFooterSx: SxProps<Theme> = (theme) => {
+  const innerRadius = documentFolderCardInnerRadius(theme)
+  return {
+    borderTop: `1px solid ${alpha(FOLDER_NAVY, theme.palette.mode === 'dark' ? 0.14 : 0.08)}`,
+    bgcolor: theme.palette.mode === 'dark' ? alpha('#fff', 0.02) : alpha(FOLDER_NAVY, 0.015),
+    px: { xs: 1, sm: 1.5, md: 2 },
+    py: { xs: 1.25, sm: 1.5 },
+    borderBottomLeftRadius: innerRadius,
+    borderBottomRightRadius: innerRadius,
+  }
+}
+
 /** Défilement horizontal uniquement (colonnes masquées sur petit écran) — pas de hauteur max. */
 export const documentFolderTableContainerSx: SxProps<Theme> = (theme) => {
   const thumb = alpha(FOLDER_NAVY, theme.palette.mode === 'dark' ? 0.38 : 0.2)
+  const innerRadius = documentFolderCardInnerRadius(theme)
   return {
     width: '100%',
     maxWidth: '100%',
+    m: 0,
+    p: 0,
+    flex: '1 1 auto',
+    bgcolor: 'background.paper',
+    borderTopLeftRadius: innerRadius,
+    borderTopRightRadius: innerRadius,
+    '& .MuiTable-root': {
+      width: '100%',
+      minWidth: '100%',
+    },
+    '& .MuiTableHead-root .MuiTableCell-head:first-of-type': {
+      borderTopLeftRadius: innerRadius,
+    },
+    '& .MuiTableHead-root .MuiTableCell-head:last-of-type': {
+      borderTopRightRadius: innerRadius,
+    },
     overflowX: 'auto',
-    overflowY: 'visible',
+    overflowY: 'hidden',
     WebkitOverflowScrolling: 'touch',
     scrollbarWidth: 'thin',
     scrollbarColor: `${thumb} transparent`,
@@ -183,7 +225,9 @@ export const documentFolderBulkCellClass = 'doc-folder-bulk-cell'
 
 export const documentFolderTableSx: SxProps<Theme> = {
   width: '100%',
+  minWidth: '100%',
   tableLayout: 'fixed',
+  borderCollapse: 'collapse',
   '& .MuiTableCell-root': {
     px: { md: 1, lg: 1.25 },
     py: { md: 1, lg: 1.25 },
@@ -203,9 +247,11 @@ export const documentFolderTableSx: SxProps<Theme> = {
     verticalAlign: 'middle',
     borderLeft: 'none',
   },
+  '& .MuiTableCell-root.doc-folder-bulk-cell': {
+    verticalAlign: 'middle',
+  },
   '& tr.document-folder-table-row:hover': {
-    position: 'relative',
-    zIndex: 2,
+    bgcolor: (t) => alpha(FOLDER_NAVY, t.palette.mode === 'dark' ? 0.06 : 0.025),
   },
   '& .doc-folder-col-amount': {
     overflow: 'visible',
@@ -234,11 +280,19 @@ export const documentFolderBulkCheckboxSx: SxProps<Theme> = {
   },
 }
 
-export const documentFolderTableHeadSx: SxProps<Theme> = {
-  [`&:hover .${documentFolderBulkCheckboxClass}`]: {
-    opacity: 1,
-    pointerEvents: 'auto',
-  },
+export const documentFolderTableHeadSx: SxProps<Theme> = (theme) => {
+  const headBg = theme.palette.mode === 'dark' ? alpha('#fff', 0.04) : alpha('#0f172a', 0.03)
+  const headBorder = `1px solid ${alpha('#0f172a', 0.1)}`
+  return {
+    [`&:hover .${documentFolderBulkCheckboxClass}`]: {
+      opacity: 1,
+      pointerEvents: 'auto',
+    },
+    '& .MuiTableCell-head.doc-folder-rail-cell, & .MuiTableCell-head.doc-folder-bulk-cell': {
+      bgcolor: headBg,
+      borderBottom: headBorder,
+    },
+  }
 }
 
 export const documentFolderColInvoiceSx: SxProps<Theme> = {
@@ -248,7 +302,7 @@ export const documentFolderColInvoiceSx: SxProps<Theme> = {
 }
 
 export const documentFolderColClientSx: SxProps<Theme> = {
-  width: '28%',
+  width: 'auto',
   minWidth: 140,
 }
 
@@ -270,11 +324,50 @@ export const documentFolderColDueSx: SxProps<Theme> = {
 }
 
 export const documentFolderColActionsSx = (expanded: boolean): SxProps<Theme> => ({
-  width: expanded ? 188 : 52,
-  minWidth: expanded ? 188 : 52,
-  maxWidth: expanded ? 188 : 52,
+  width: expanded ? '16%' : '9%',
+  minWidth: expanded ? 148 : 44,
+  whiteSpace: 'nowrap',
   px: { md: 0.5, lg: 0.75 },
 })
+
+/** Colonnes liste clients (statut = rail, pas de colonne dédiée). */
+export const clientFolderColClientSx: SxProps<Theme> = {
+  width: 'auto',
+  minWidth: 160,
+  pl: { md: 0.75, lg: 1 },
+}
+
+export const clientFolderColContactSx: SxProps<Theme> = {
+  ...folderColHideBelowLg,
+  width: '22%',
+  minWidth: 140,
+}
+
+export const clientFolderColRevenueSx: SxProps<Theme> = {
+  ...documentFolderColAmountSx,
+  width: '14%',
+}
+
+export const clientFolderColLastInvoiceSx: SxProps<Theme> = {
+  ...folderColHideBelowXl,
+  width: '12%',
+  minWidth: 108,
+}
+
+export const clientFolderColSirenSx: SxProps<Theme> = {
+  ...folderColHideBelowXl,
+  width: '11%',
+  minWidth: 96,
+}
+
+export const clientFolderTableBodyCellSx: SxProps<Theme> = {
+  verticalAlign: 'middle',
+}
+
+/** Scroll horizontal uniquement si le contenu dépasse (pas de minWidth > 100%). */
+export const clientFolderTableScrollSx: SxProps<Theme> = {
+  minWidth: 0,
+}
 
 export const documentFolderPageSubtitle = (resource: 'factures' | 'devis' | 'dettes') => {
   if (resource === 'factures') return 'Documents émis — les plus récents en premier'

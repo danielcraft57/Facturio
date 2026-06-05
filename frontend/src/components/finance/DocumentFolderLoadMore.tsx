@@ -16,7 +16,7 @@ export function DocumentFolderLoadMore({
   if (total <= 0 || loaded >= total) return null
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2, gap: 1 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 0.5, gap: 1 }}>
       <Typography variant="caption" color="text.secondary">
         {loaded} sur {total} affiché{loaded > 1 ? 's' : ''}
       </Typography>

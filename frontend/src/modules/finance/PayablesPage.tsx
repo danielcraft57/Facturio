@@ -53,10 +53,13 @@ import {
   documentFolderTableCardWrapSx,
   documentFolderTableCardContentSx,
   documentFolderTableCardContentPaddedSx,
+  documentFolderTableCardFooterSx,
   documentFolderTableContainerSx,
   documentFolderTableSx,
   documentFolderBulkRowSx,
   documentFolderTableHeadSx,
+  documentFolderColClientSx,
+  documentFolderColActionsSx,
   folderColHideBelowLg,
 } from '../../components/finance/documentFolderStyles'
 import { formatCurrency, formatDate } from '../../utils/formatters'
@@ -367,15 +370,15 @@ export function PayablesPage() {
                         }}
                       />
                       <DocumentFolderRailTableHeaderCell />
-                      <TableCell>Créancier</TableCell>
-                      <TableCell>Libellé</TableCell>
+                      <TableCell sx={documentFolderColClientSx}>Créancier</TableCell>
+                      <TableCell sx={{ width: '18%', minWidth: 120 }}>Libellé</TableCell>
                       <TableCell align="right">Initial</TableCell>
                       <TableCell align="right" sx={folderColHideBelowLg}>
                         Déjà payé
                       </TableCell>
                       <TableCell align="right">Reste</TableCell>
                       <TableCell>Statut</TableCell>
-                      <TableCell align="center" sx={{ width: isWideActions ? 200 : 56 }}>
+                      <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>
                         Actions
                       </TableCell>
                     </TableRow>
@@ -443,7 +446,7 @@ export function PayablesPage() {
                             >
                               {railParts.rail}
                             </TableCell>
-                            <TableCell>
+                            <TableCell sx={documentFolderColClientSx}>
                               <DocumentFolderPartyCell
                                 name={d.creditorName}
                                 email={d.creditorEmail}
@@ -477,7 +480,7 @@ export function PayablesPage() {
                                 title={statusTitle}
                               />
                             </TableCell>
-                            <TableCell align="center">
+                            <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>
                               <PayableDebtRowActionsMenu
                                 debt={d}
                                 onView={() => navigate(`/dettes/voir/${d.id}`)}
@@ -497,7 +500,7 @@ export function PayablesPage() {
               </TableContainer>
             )}
 
-            <Box sx={documentFolderTableCardContentPaddedSx}>
+            <Box sx={documentFolderTableCardFooterSx}>
             <DocumentFolderBulkBar
               count={selection.selectedCount}
               resourceLabel="dette"

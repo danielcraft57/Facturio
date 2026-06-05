@@ -12,10 +12,8 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Chip,
   Button,
   Stack,
-  Avatar,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -37,7 +35,6 @@ import {
   ClientFolderSidebar,
   ClientFolderMobileMenuButton,
 } from '../../components/finance/ClientFolderSidebar'
-import { ClientFolderSidebarSkeleton } from '../../components/loading/ClientFolderSidebarSkeleton'
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton'
 import {
@@ -47,11 +44,28 @@ import {
 import {
   documentFolderTableCardSx,
   documentFolderTableCardWrapSx,
+  documentFolderTableCardContentSx,
+  documentFolderTableCardContentPaddedSx,
+  documentFolderTableCardFooterSx,
   documentFolderTableContainerSx,
   documentFolderTableSx,
-  folderColHideBelowLg,
-  folderColHideBelowXl,
+  documentFolderTableHeadSx,
+  documentFolderColActionsSx,
+  clientFolderColClientSx,
+  clientFolderColContactSx,
+  clientFolderColLastInvoiceSx,
+  clientFolderColRevenueSx,
+  clientFolderColSirenSx,
+  clientFolderTableBodyCellSx,
 } from '../../components/finance/documentFolderStyles'
+import {
+  documentFolderRailCellClass,
+  documentFolderTableRowClass,
+  DocumentFolderRailTableHeaderCell,
+  getDocumentFolderRailHeaderRowSx,
+  getDocumentFolderRailTableCellSx,
+} from '../../components/finance/DocumentFolderRowRail'
+import { buildClientListRowRail } from './components/ClientListRowRail'
 import {
   isClientFolder,
   CLIENT_FOLDER_LABELS,
@@ -70,6 +84,7 @@ import {
   type ClientFormValues,
 } from './components/ClientFormDialog'
 import { ClientFolderMobileList } from './components/ClientFolderMobileList'
+import { ClientFolderRowIdentity } from './components/ClientFolderRowIdentity'
 import { ClientRowActionsMenu } from './components/ClientRowActionsMenu'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import {
@@ -85,6 +100,7 @@ export function ClientsPage() {
   const theme = useTheme()
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'))
   const isWideActions = useMediaQuery(theme.breakpoints.up('lg'))
+  const showEmailInClientCol = useMediaQuery(theme.breakpoints.down('lg'))
 
   const [searchTerm, setSearchTerm] = useState('')
   const debouncedSearch = useDebouncedValue(searchTerm, 320)
@@ -339,18 +355,7 @@ export function ClientsPage() {
     <DocumentFolderPageShell
       title={CLIENT_FOLDER_LABELS[activeFolder]}
       subtitle={clientFolderPageSubtitle()}
-      sidebar={
-        initialLoading ? (
-          <>
-            <Box sx={{ display: { xs: 'block', md: 'none' } }}>{sidebar}</Box>
-            <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-              <ClientFolderSidebarSkeleton />
-            </Box>
-          </>
-        ) : (
-          sidebar
-        )
-      }
+      sidebar={sidebar}
       mobileNavOpen={mobileNavOpen}
       onMobileNavOpen={() => setMobileNavOpen(true)}
       onMobileNavClose={() => setMobileNavOpen(false)}
@@ -381,8 +386,9 @@ export function ClientsPage() {
         />
       ) : (
         <Card sx={[documentFolderTableCardSx, documentFolderTableCardWrapSx] as SxProps<Theme>}>
-          <CardContent sx={{ p: { xs: 1, sm: 1.5, md: 2 }, '&:last-child': { pb: { xs: 1, md: 2 } } }}>
+          <CardContent sx={documentFolderTableCardContentSx}>
             {isNarrow ? (
+              <Box sx={documentFolderTableCardContentPaddedSx}>
               <ClientFolderMobileList
                 clients={displayedClients}
                 getStatusLabel={getStatusLabel}
@@ -396,64 +402,53 @@ export function ClientsPage() {
                 onNewQuote={(c) => openCreateQuoteForClient(c.id)}
                 onNewInvoice={(c) => openCreateInvoiceForClient(c.id)}
               />
+              </Box>
             ) : (
               <TableContainer sx={documentFolderTableContainerSx}>
-                <Table size="small" sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}>
-                  <TableHead sx={financeTableHeadSx}>
-                    <TableRow>
-                      <TableCell sx={{ width: '24%' }}>Client</TableCell>
-                      <TableCell sx={folderColHideBelowLg}>Contact</TableCell>
-                      <TableCell sx={{ width: '10%' }} align="right">
+                <Table
+                  size="small"
+                  sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}
+                >
+                  <TableHead sx={[financeTableHeadSx, documentFolderTableHeadSx] as SxProps<Theme>}>
+                    <TableRow sx={getDocumentFolderRailHeaderRowSx()}>
+                      <DocumentFolderRailTableHeaderCell />
+                      <TableCell sx={clientFolderColClientSx}>Client</TableCell>
+                      <TableCell sx={clientFolderColContactSx}>Contact</TableCell>
+                      <TableCell sx={clientFolderColRevenueSx} align="right">
                         CA
                       </TableCell>
-                      <TableCell sx={{ ...folderColHideBelowXl, width: '11%' }}>
-                        Dernière facture
-                      </TableCell>
-                      <TableCell sx={{ width: '9%' }}>Statut</TableCell>
-                      <TableCell sx={{ ...folderColHideBelowXl, width: '10%' }}>SIREN</TableCell>
-                      <TableCell align="center" sx={{ width: isWideActions ? 220 : 56 }}>
+                      <TableCell sx={clientFolderColLastInvoiceSx}>Dernière facture</TableCell>
+                      <TableCell sx={clientFolderColSirenSx}>SIREN</TableCell>
+                      <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>
                         Actions
                       </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {displayedClients.map((client) => (
-                      <TableRow key={client.id} hover>
-                        <TableCell>
-                          <Stack direction="row" alignItems="center" spacing={1.25}>
-                            <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>
-                              {client.name.charAt(0).toUpperCase()}
-                            </Avatar>
-                            <Box sx={{ minWidth: 0 }}>
-                              <Typography
-                                variant="body2"
-                                fontWeight={600}
-                                noWrap
-                                component="button"
-                                type="button"
-                                onClick={() => openClientView(client.id)}
-                                sx={{
-                                  border: 0,
-                                  p: 0,
-                                  bgcolor: 'transparent',
-                                  cursor: 'pointer',
-                                  textAlign: 'left',
-                                  font: 'inherit',
-                                  color: 'primary.main',
-                                  '&:hover': { textDecoration: 'underline' },
-                                }}
-                              >
-                                {client.name}
-                              </Typography>
-                              {client.company?.name && (
-                                <Typography variant="caption" color="text.secondary" noWrap display="block">
-                                  {client.company.name}
-                                </Typography>
-                              )}
-                            </Box>
-                          </Stack>
+                    {displayedClients.map((client, index) => {
+                      const railParts = buildClientListRowRail(client, 'table', index)
+                      return (
+                      <TableRow
+                        key={client.id}
+                        hover
+                        className={documentFolderTableRowClass}
+                        sx={railParts.rowSx as SxProps<Theme>}
+                      >
+                        <TableCell
+                          className={documentFolderRailCellClass}
+                          sx={getDocumentFolderRailTableCellSx()}
+                        >
+                          {railParts.rail}
                         </TableCell>
-                        <TableCell sx={folderColHideBelowLg}>
+                        <TableCell sx={[clientFolderColClientSx, clientFolderTableBodyCellSx] as SxProps<Theme>}>
+                          <ClientFolderRowIdentity
+                            name={client.name}
+                            companyName={client.company?.name}
+                            email={client.email}
+                            showEmail={showEmailInClientCol}
+                          />
+                        </TableCell>
+                        <TableCell sx={[clientFolderColContactSx, clientFolderTableBodyCellSx] as SxProps<Theme>}>
                           <Typography variant="body2" noWrap>
                             {client.email}
                           </Typography>
@@ -461,8 +456,12 @@ export function ClientsPage() {
                             {client.phone || '—'}
                           </Typography>
                         </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" fontWeight={600}>
+                        <TableCell
+                          align="right"
+                          className="doc-folder-col-amount"
+                          sx={[clientFolderColRevenueSx, clientFolderTableBodyCellSx] as SxProps<Theme>}
+                        >
+                          <Typography variant="body2" fontWeight={600} component="span">
                             {formatCurrency(client.revenueTotal ?? 0)}
                           </Typography>
                           {(client.invoiceCount ?? 0) > 0 && (
@@ -471,27 +470,22 @@ export function ClientsPage() {
                             </Typography>
                           )}
                         </TableCell>
-                        <TableCell sx={folderColHideBelowXl}>
-                          <Typography variant="body2">
+                        <TableCell sx={[clientFolderColLastInvoiceSx, clientFolderTableBodyCellSx] as SxProps<Theme>}>
+                          <Typography variant="body2" noWrap>
                             {client.lastInvoiceAt
                               ? formatDate(client.lastInvoiceAt)
                               : 'Aucune'}
                           </Typography>
                         </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={getStatusLabel(client.status)}
-                            color={getStatusColor(client.status)}
-                            size="small"
-                            sx={{ fontWeight: 600, borderRadius: 1.5 }}
-                          />
-                        </TableCell>
-                        <TableCell sx={folderColHideBelowXl}>
+                        <TableCell sx={[clientFolderColSirenSx, clientFolderTableBodyCellSx] as SxProps<Theme>}>
                           <Typography variant="body2" noWrap>
                             {client.siren || '—'}
                           </Typography>
                         </TableCell>
-                        <TableCell align="center">
+                        <TableCell
+                          align="center"
+                          sx={[documentFolderColActionsSx(isWideActions), clientFolderTableBodyCellSx] as SxProps<Theme>}
+                        >
                           <ClientRowActionsMenu
                             expanded={isWideActions}
                             onView={() => openClientView(client.id)}
@@ -505,14 +499,14 @@ export function ClientsPage() {
                           />
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )})}
                   </TableBody>
                 </Table>
               </TableContainer>
             )}
 
             {displayedClients.length === 0 && !loading && (
-              <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+              <Box sx={[documentFolderTableCardContentPaddedSx, { textAlign: 'center', py: 4, color: 'text.secondary' }] as SxProps<Theme>}>
                 <Typography variant="body1">
                   {searchTerm.trim()
                     ? 'Aucun client ne correspond à la recherche'
@@ -521,12 +515,14 @@ export function ClientsPage() {
               </Box>
             )}
 
+            <Box sx={documentFolderTableCardFooterSx}>
             <DocumentFolderLoadMore
               loaded={clients.length}
               total={total}
               loading={loadingMore}
               onLoadMore={loadMore}
             />
+            </Box>
           </CardContent>
         </Card>
       )}
