@@ -284,12 +284,12 @@ export function ClientsPage() {
     if (!selectedClientId) return
     try {
       setDeleting(true)
-      await clientService.deleteClient(selectedClientId)
+      await clientService.archiveClient(selectedClientId)
       setDeleteDialogOpen(false)
       removeClientById(selectedClientId)
       setSelectedClientId(null)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Suppression impossible')
+      setError(err instanceof Error ? err.message : 'Archivage impossible')
     } finally {
       setDeleting(false)
     }
@@ -544,8 +544,8 @@ export function ClientsPage() {
       <ConfirmDialog
         open={deleteDialogOpen}
         severity="error"
-        title="Supprimer le client"
-        message={`Supprimer « ${selectedClient?.name ?? 'ce client'} » ?`}
+        title="Archiver le client"
+        message={`Archiver « ${selectedClient?.name ?? 'ce client'} » ? Les factures et devis restent accessibles dans les archives.`}
         onConfirm={handleDeleteClient}
         onClose={() => {
           if (!deleting) {

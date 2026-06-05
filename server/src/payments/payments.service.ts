@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { InvoicePaymentNotificationService } from '../invoices/invoice-payment-notification.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import { notifyLinkedRemainderAfterDepositPaid } from '../invoices/invoice-deposit-realtime.util';
 
 /**
  * Données de création de paiement
@@ -139,6 +140,9 @@ export class PaymentsService {
 				data.invoiceId,
 				{ number: invoice.number, status: newStatus },
 			);
+			if (newStatus === 'PAID' && !wasFullyPaid) {
+				void notifyLinkedRemainderAfterDepositPaid(this.prisma, this.realtime, invoice);
+			}
 		}
 
 		return {

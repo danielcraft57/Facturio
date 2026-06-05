@@ -70,6 +70,14 @@ export class ConfigService {
 		return true;
 	}
 
+	/** Mois d'inactivité avant archivage auto (0 = désactivé). Variable : FACTURIO_AUTO_ARCHIVE_MONTHS */
+	get autoArchiveMonths(): number {
+		const raw = process.env.FACTURIO_AUTO_ARCHIVE_MONTHS;
+		if (raw === undefined || raw === '') return 12;
+		const n = Number(raw);
+		return Number.isFinite(n) && n >= 0 ? n : 12;
+	}
+
 	// ========================================
 	// FACTURATION ÉLECTRONIQUE — PA PARTENAIRE
 	// ========================================

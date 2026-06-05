@@ -110,6 +110,7 @@ import {
   folderCountsAfterInboxCreate,
 } from '../../utils/documentFolderListMutations'
 import { patchInvoiceFromRealtimeDetail } from '../../utils/financeRealtimeListPatch'
+import { scheduleDebounced } from '../../utils/scheduleDebounced'
 import type { FinanceRealtimeDetail } from '../../types/realtime'
 
 export function InvoicesPage() {
@@ -138,6 +139,7 @@ export function InvoicesPage() {
     hasMore,
     loadMore,
     refresh,
+    refreshSilent,
     setItems,
     removeItemsById,
     prependItems,
@@ -170,6 +172,8 @@ export function InvoicesPage() {
 
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
+  const refreshSilentRef = useRef(refreshSilent)
+  refreshSilentRef.current = refreshSilent
 
   const patchDocumentFlags = useOptimisticDocumentFlagsPatch<Invoice>(
     setItems,
@@ -177,13 +181,26 @@ export function InvoicesPage() {
     (message) => toast.error(message),
   )
 
+  const itemsRef = useRef(invoices)
+  itemsRef.current = invoices
+
   useEffect(() => {
     const onRealtime = (ev: Event) => {
       const detail = (ev as CustomEvent<FinanceRealtimeDetail>).detail
-      if (!detail?.id) return
+      if (detail?.id == null) return
       patchItemById(detail.id, (inv) => patchInvoiceFromRealtimeDetail(inv, detail))
-      if (detail.action === 'created' || detail.action === 'deleted') {
+      const action = detail.action
+      if (action === 'created' || action === 'deleted') {
         void refreshRef.current()
+        return
+      }
+      const row = itemsRef.current.find((inv) => String(inv.id) === String(detail.id))
+      const isRemainderInvoice =
+        (detail.number ?? row?.number ?? '').toUpperCase().startsWith('SOL-')
+      if (action === 'paid' || action === 'sent') {
+        scheduleDebounced(() => void refreshSilentRef.current())
+      } else if (action === 'updated' && (isRemainderInvoice || !row)) {
+        scheduleDebounced(() => void refreshSilentRef.current())
       }
     }
     window.addEventListener('facturio:invoice-realtime', onRealtime)

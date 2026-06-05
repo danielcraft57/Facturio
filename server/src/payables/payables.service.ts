@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { AccountingService } from '../accounting/accounting.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePayableCreditorDto } from './dto/create-payable-creditor.dto';
 import type { CreatePayableDebtDto } from './dto/create-payable-debt.dto';
@@ -78,11 +79,23 @@ export type PayablesSummaryResponse = {
 
 @Injectable()
 export class PayablesService {
+	private readonly logger = new Logger(PayablesService.name);
+
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly organizations: OrganizationsService,
 		private readonly realtime: RealtimeEventsService,
+		private readonly accounting: AccountingService,
 	) {}
+
+	/** Écriture achat 622/401 — idempotente (envoi ou 1er paiement). */
+	async postPurchaseOnRecognition(debtId: number, date?: Date): Promise<void> {
+		try {
+			await this.accounting.postPayableDebtPurchase({ debtId, date });
+		} catch (err) {
+			this.logger.warn(`Compta achat dette ${debtId}: ${(err as Error).message}`);
+		}
+	}
 
 	private assertOrg(organizationId?: number): number {
 		if (organizationId == null) throw new BadRequestException('Organisation requise');
@@ -426,15 +439,28 @@ export class PayablesService {
 			);
 		}
 
-		await this.prisma.payableDebtPayment.create({
+		const paymentDate = dto.date ? new Date(dto.date) : new Date();
+		const payment = await this.prisma.payableDebtPayment.create({
 			data: {
 				debtId,
 				amount,
-				date: dto.date ? new Date(dto.date) : new Date(),
+				date: paymentDate,
 				method: dto.method?.trim() || null,
 				notes: dto.notes?.trim() || null,
 			},
 		});
+
+		await this.postPurchaseOnRecognition(debtId, paymentDate);
+		try {
+			await this.accounting.postPayableDebtPayment({
+				debtId,
+				paymentId: payment.id,
+				amount,
+				date: paymentDate,
+			});
+		} catch (err) {
+			this.logger.warn(`Compta paiement dette ${debtId}#${payment.id}: ${(err as Error).message}`);
+		}
 
 		const updated = await this.syncDebtBalance(debtId, orgId);
 		const row = this.mapDebt(updated);
@@ -450,6 +476,7 @@ export class PayablesService {
 		const orgId = this.assertOrg(organizationId);
 		const debt = await this.prisma.payableDebt.findFirst({
 			where: { id: debtId, organizationId: orgId },
+			include: { payments: true },
 		});
 		if (!debt) throw new NotFoundException('Dette introuvable');
 		if (debt.status === 'CANCELLED') {
@@ -459,6 +486,18 @@ export class PayablesService {
 			throw new BadRequestException(
 				'Impossible d’annuler une dette soldée : l’historique des remboursements est conservé.',
 			);
+		}
+
+		const remaining = Number(debt.balance);
+		try {
+			if (debt.payments.length === 0) {
+				await this.accounting.contraPayableDebtPurchase(debtId);
+			} else if (remaining > BALANCE_EPSILON) {
+				await this.postPurchaseOnRecognition(debtId);
+				await this.accounting.postPayableDebtCancelRemaining(debtId, remaining);
+			}
+		} catch (err) {
+			this.logger.warn(`Compta annulation dette ${debtId}: ${(err as Error).message}`);
 		}
 
 		const updated = await this.prisma.payableDebt.update({

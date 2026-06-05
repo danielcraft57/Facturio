@@ -285,14 +285,22 @@ export class ClientService {
     return { data: client, success: true }
   }
 
-  // Supprimer un client
-  async deleteClient(id: string): Promise<ApiResponse<void>> {
-    const response = await apiClient.delete<void>(`${this.baseUrl}/${id}`)
-    
-    // Invalider les caches
+  /** Archive un client (conserve factures, devis et historique). */
+  async archiveClient(id: string): Promise<ApiResponse<{ success?: boolean; archivedAt?: string }>> {
+    const response = await apiClient.post<{ success?: boolean; archivedAt?: string }>(
+      `${this.baseUrl}/${id}/archive`,
+      {},
+    )
     apiClient.invalidateCache('/clients')
     apiClient.invalidateCache(`/clients/${id}`)
-    
+    return response
+  }
+
+  /** @deprecated Préférer archiveClient — DELETE archive côté API. */
+  async deleteClient(id: string): Promise<ApiResponse<void>> {
+    const response = await apiClient.delete<void>(`${this.baseUrl}/${id}`)
+    apiClient.invalidateCache('/clients')
+    apiClient.invalidateCache(`/clients/${id}`)
     return response
   }
 

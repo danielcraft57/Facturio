@@ -8,7 +8,11 @@ export type ReceivableAgingBucket =
   | 'days_61_90'
   | 'days_90_plus'
 
+export type ReceivableDocumentKind = 'standard' | 'deposit' | 'remainder'
+
 export type ReceivableAgingTotals = Record<ReceivableAgingBucket, number>
+
+export type ReceivablesByKindTotals = Record<ReceivableDocumentKind, number>
 
 export type ReceivableInvoiceRow = {
   id: string
@@ -22,6 +26,9 @@ export type ReceivableInvoiceRow = {
   status: string
   daysPastDue: number
   agingBucket: ReceivableAgingBucket
+  documentKind: ReceivableDocumentKind
+  quoteId: string | null
+  lastReminderAt: string | null
 }
 
 export type ReceivableClientRow = {
@@ -40,9 +47,16 @@ export type ReceivablesData = {
     clientCount: number
     invoiceCount: number
     aging: ReceivableAgingTotals
+    byKind: ReceivablesByKindTotals
   }
   clients: ReceivableClientRow[]
   invoices: ReceivableInvoiceRow[]
+}
+
+export type ReceivableRemindResult = {
+  sent: number
+  skipped: number
+  errors: string[]
 }
 
 export const AGING_BUCKET_LABELS: Record<ReceivableAgingBucket, string> = {
@@ -53,13 +67,31 @@ export const AGING_BUCKET_LABELS: Record<ReceivableAgingBucket, string> = {
   days_90_plus: '+90 j',
 }
 
+export const RECEIVABLE_DOCUMENT_KIND_LABELS: Record<ReceivableDocumentKind, string> = {
+  standard: 'Facture',
+  deposit: 'Acompte',
+  remainder: 'Solde',
+}
+
 export const receivablesService = {
-  async getReceivables(params?: { start?: string; end?: string }): Promise<ReceivablesData> {
+  async getReceivables(params?: {
+    start?: string
+    end?: string
+    kind?: ReceivableDocumentKind
+  }): Promise<ReceivablesData> {
     const q = new URLSearchParams()
     if (params?.start) q.set('start', params.start)
     if (params?.end) q.set('end', params.end)
+    if (params?.kind) q.set('kind', params.kind)
     const suffix = q.toString() ? `?${q}` : ''
     const res = await apiClient.get<ReceivablesData>(`/receivables${suffix}`)
     return unwrapApiPayload(res) as ReceivablesData
+  },
+
+  async remindOverdue(invoiceIds?: string[]): Promise<ReceivableRemindResult> {
+    const res = await apiClient.post<ReceivableRemindResult>('/receivables/remind-overdue', {
+      ...(invoiceIds?.length ? { invoiceIds } : {}),
+    })
+    return unwrapApiPayload(res) as ReceivableRemindResult
   },
 }

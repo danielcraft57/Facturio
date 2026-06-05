@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { connectFinanceRealtime, disconnectFinanceRealtime, subscribeFinanceRealtime } from '../services/financeRealtime'
 import { useInvoicesStore } from '../stores/invoicesStore'
 import { useQuotesStore } from '../stores/quotesStore'
@@ -7,6 +7,7 @@ import { useAppNotifications } from '../stores/appStore'
 import { useToast } from './useToast'
 import { buildNotificationFromRealtime, buildRealtimeDetail } from '../utils/financeRealtimeUi'
 import type { FinanceRealtimeDetail } from '../types/realtime'
+import { apiClient } from '../services/api'
 
 function dispatchDetail(detail: FinanceRealtimeDetail) {
   const name =
@@ -30,6 +31,23 @@ export function FinanceRealtimeBridge() {
   const addNotification = useAppNotifications().addNotification
   const toast = useToast()
 
+  const handlersRef = useRef({
+    fetchInvoices,
+    fetchQuotes,
+    markInvoicesStale,
+    markQuotesStale,
+    addNotification,
+    toast,
+  })
+  handlersRef.current = {
+    fetchInvoices,
+    fetchQuotes,
+    markInvoicesStale,
+    markQuotesStale,
+    addNotification,
+    toast,
+  }
+
   useEffect(() => {
     if (!isAuthenticated) {
       disconnectFinanceRealtime()
@@ -48,41 +66,39 @@ export function FinanceRealtimeBridge() {
       const detail = buildRealtimeDetail(event)
       if (!detail) return
 
+      const h = handlersRef.current
+
       if (detail.resource === 'invoices') {
-        markInvoicesStale()
-        void fetchInvoices()
+        apiClient.invalidateCache('/factures')
+        apiClient.invalidateCache('/invoices')
+        h.markInvoicesStale()
+        void h.fetchInvoices()
       }
       if (detail.resource === 'quotes') {
-        markQuotesStale()
-        void fetchQuotes()
+        apiClient.invalidateCache('/devis')
+        apiClient.invalidateCache('/quotes')
+        h.markQuotesStale()
+        void h.fetchQuotes()
       }
       dispatchDetail(detail)
 
       const notif = buildNotificationFromRealtime(detail)
-      addNotification(notif)
+      h.addNotification(notif)
 
       const toastText = `${notif.title} — ${notif.message}`
       if (detail.action === 'created') {
-        toast.success(toastText, { duration: 10000 })
+        h.toast.success(toastText, { duration: 10000 })
       } else if (detail.action === 'sent') {
-        toast.info(toastText, { duration: 9500 })
+        h.toast.info(toastText, { duration: 9500 })
       } else if (detail.action === 'paid') {
-        toast.success(toastText, { duration: 10000 })
+        h.toast.success(toastText, { duration: 10000 })
       } else if (detail.action === 'deleted') {
-        toast.warning(toastText, { duration: 9000 })
+        h.toast.warning(toastText, { duration: 9000 })
       } else if (detail.action === 'updated') {
-        toast.info(toastText, { duration: 9000 })
+        h.toast.info(toastText, { duration: 9000 })
       }
     })
-  }, [
-    isAuthenticated,
-    fetchInvoices,
-    fetchQuotes,
-    markInvoicesStale,
-    markQuotesStale,
-    addNotification,
-    toast,
-  ])
+  }, [isAuthenticated])
 
   return null
 }

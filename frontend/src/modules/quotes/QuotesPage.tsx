@@ -104,6 +104,7 @@ import {
   patchQuoteFromRealtimeDetail,
   patchQuoteWithInvoiceId,
 } from '../../utils/financeRealtimeListPatch';
+import { scheduleDebounced } from '../../utils/scheduleDebounced';
 import type { FinanceRealtimeDetail } from '../../types/realtime';
 
 export function QuotesPage() {
@@ -133,6 +134,7 @@ export function QuotesPage() {
     hasMore,
     loadMore,
     refresh,
+    refreshSilent,
     setItems,
     removeItemsById,
     bumpFolderCounts,
@@ -152,14 +154,27 @@ export function QuotesPage() {
   const rowMotion = useDocumentFolderRowMotion();
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
+  const refreshSilentRef = useRef(refreshSilent);
+  refreshSilentRef.current = refreshSilent;
 
   useEffect(() => {
     const onRealtime = (ev: Event) => {
       const detail = (ev as CustomEvent<FinanceRealtimeDetail>).detail;
-      if (!detail?.id) return;
+      if (detail?.id == null) return;
       patchItemById(detail.id, (q) => patchQuoteFromRealtimeDetail(q, detail));
-      if (detail.action === 'created' || detail.action === 'deleted') {
+      const action = detail.action;
+      if (action === 'created' || action === 'deleted') {
         void refreshRef.current();
+        return;
+      }
+      const status = detail.status?.toUpperCase();
+      const folderMove =
+        action === 'sent' ||
+        action === 'paid' ||
+        (action === 'updated' &&
+          (status === 'ACCEPTED' || status === 'REJECTED' || status === 'EXPIRED'));
+      if (folderMove) {
+        scheduleDebounced(() => void refreshSilentRef.current());
       }
     };
     window.addEventListener('facturio:quote-realtime', onRealtime);

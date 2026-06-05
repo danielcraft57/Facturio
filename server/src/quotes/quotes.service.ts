@@ -22,6 +22,12 @@ import {
 	buildDepositCommitmentParagraph,
 	buildRemainderCommitmentParagraph,
 } from '../invoices/invoice-deposit.util';
+import {
+	computeInvoiceDueDate,
+	DEFAULT_DEPOSIT_DUE_POLICY,
+	DEFAULT_REMAINDER_DUE_POLICY,
+	DEFAULT_STANDARD_DUE_POLICY,
+} from '../invoices/invoice-due-date.util';
 
 /**
  * Ligne de devis
@@ -1098,12 +1104,19 @@ export class QuotesService {
 			}
 		}
 
-		const defaultDue =
-			quote.expiryDate ??
-			new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-		const dueDateFr = new Date(defaultDue).toLocaleDateString('fr-FR');
-		const depositMention = buildDepositCommitmentParagraph(dueDateFr);
-		const remainderMention = buildRemainderCommitmentParagraph(dueDateFr);
+		const acceptedAt = new Date();
+		const depositDue = computeInvoiceDueDate(DEFAULT_DEPOSIT_DUE_POLICY, {
+			baseDate: acceptedAt,
+			quoteExpiry: quote.expiryDate,
+		});
+		const remainderDue = computeInvoiceDueDate(DEFAULT_REMAINDER_DUE_POLICY, {
+			baseDate: acceptedAt,
+			quoteExpiry: quote.expiryDate,
+		});
+		const depositDueFr = depositDue.toLocaleDateString('fr-FR');
+		const remainderDueFr = remainderDue.toLocaleDateString('fr-FR');
+		const depositMention = buildDepositCommitmentParagraph(depositDueFr);
+		const remainderMention = buildRemainderCommitmentParagraph(remainderDueFr);
 
 		if (!depositInvoice) {
 			depositInvoice = await this.invoices.create(
@@ -1112,7 +1125,7 @@ export class QuotesService {
 					sourceQuoteId: quote.id,
 					status: 'DRAFT',
 					number: await this.invoices.allocateInvoiceNumber('deposit'),
-					dueDate: defaultDue,
+					dueDate: depositDue,
 					legalMention: depositMention,
 					lines: linesDeposit.map((l) => ({
 						productId: undefined,
@@ -1132,7 +1145,7 @@ export class QuotesService {
 					clientId: quote.clientId,
 					status: 'DRAFT',
 					number: await this.invoices.allocateInvoiceNumber('remainder'),
-					dueDate: defaultDue,
+					dueDate: remainderDue,
 					legalMention: remainderMention,
 					lines: linesRemainderRaw.map((l) => ({
 						productId: undefined,
@@ -1273,10 +1286,16 @@ export class QuotesService {
 			}
 		}
 
+		const dueDate = computeInvoiceDueDate(DEFAULT_STANDARD_DUE_POLICY, {
+			baseDate: new Date(),
+			quoteExpiry: quote.expiryDate,
+		});
+
 		return this.invoices.create(
 			{
 				clientId: quote.clientId,
 				sourceQuoteId: quote.id,
+				dueDate,
 				// À l'acceptation, on considère la “vente” comme émise (compta à l'émission).
 				status: 'SENT',
 				lines: quote.lines.map((l) => ({

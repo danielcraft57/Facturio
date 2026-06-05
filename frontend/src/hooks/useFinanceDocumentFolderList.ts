@@ -27,6 +27,8 @@ type FetchOpts = {
   append: boolean
   withCounts?: boolean
   search?: string
+  /** Rafraîchissement temps réel sans spinner (évite d’écraser le patch optimiste). */
+  silent?: boolean
 }
 
 export function useFinanceDocumentFolderList<T>(
@@ -54,8 +56,10 @@ export function useFinanceDocumentFolderList<T>(
       const gen = ++fetchGen.current
       const isFirst = opts.page === 1 && !opts.append
 
-      if (isFirst) setLoading(true)
-      else setLoadingMore(true)
+      if (!opts.silent) {
+        if (isFirst) setLoading(true)
+        else setLoadingMore(true)
+      }
 
       try {
         if (isFirst) setError(null)
@@ -85,7 +89,7 @@ export function useFinanceDocumentFolderList<T>(
         setError(err instanceof Error ? err.message : defaultError)
         console.error(defaultError, err)
       } finally {
-        if (gen === fetchGen.current) {
+        if (!opts.silent && gen === fetchGen.current) {
           setLoading(false)
           setLoadingMore(false)
         }
@@ -100,6 +104,16 @@ export function useFinanceDocumentFolderList<T>(
       append: false,
       withCounts: true,
       search: debouncedSearch,
+    })
+  }, [fetchPage, debouncedSearch])
+
+  const refreshSilent = useCallback(async () => {
+    await fetchPage({
+      page: 1,
+      append: false,
+      withCounts: true,
+      search: debouncedSearch,
+      silent: true,
     })
   }, [fetchPage, debouncedSearch])
 
@@ -187,6 +201,7 @@ export function useFinanceDocumentFolderList<T>(
     hasMore,
     loadMore,
     refresh,
+    refreshSilent,
     removeItemsById,
     prependItems,
     patchItemById,
