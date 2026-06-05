@@ -22,7 +22,7 @@ describe('receivablesService', () => {
       summary: { totalOutstanding: 0, clientCount: 0, invoiceCount: 0, aging: {} },
       clients: [],
       invoices: [],
-    })
+    } as never)
 
     await receivablesService.getReceivables()
 
@@ -34,7 +34,7 @@ describe('receivablesService', () => {
       summary: { totalOutstanding: 120, clientCount: 1, invoiceCount: 1, aging: {} },
       clients: [],
       invoices: [],
-    })
+    } as never)
 
     const data = await receivablesService.getReceivables({
       start: '2026-01-01',

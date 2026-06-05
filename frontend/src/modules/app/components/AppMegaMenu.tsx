@@ -10,6 +10,7 @@ import {
   Popper,
   Typography,
   alpha,
+  keyframes,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
@@ -19,6 +20,19 @@ import { Link as RouterLink, useLocation } from 'react-router-dom'
 import type { NavFeatured, NavGroup, NavItem } from '../config/navConfig'
 import { isGroupActive, isNavActive } from '../config/navConfig'
 import { topNavItemSx } from './topNavItemStyles'
+
+/** Au-dessus de l’AppBar (drawer+2) et des panneaux latéraux. */
+const MEGA_MENU_Z_INDEX = 1500
+
+const menuReveal = keyframes`
+  0% { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+`
+
+const itemStagger = keyframes`
+  0% { opacity: 0; transform: translateX(-8px); }
+  100% { opacity: 1; transform: translateX(0); }
+`
 
 const ACCENT: Record<string, { bg: string; fg: string; glow: string; btn: string }> = {
   navy: {
@@ -64,14 +78,17 @@ function MegaMenuItem({
   item,
   selected,
   onNavigate,
+  staggerIndex = 0,
+  menuOpen,
 }: {
   item: NavItem
   selected: boolean
   onNavigate: () => void
+  staggerIndex?: number
+  menuOpen: boolean
 }) {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
-  const emphasis = item.emphasis === true && !selected
 
   return (
     <Box
@@ -87,25 +104,27 @@ function MegaMenuItem({
         textDecoration: 'none',
         color: 'text.primary',
         border: '1px solid',
-        borderColor: selected
-          ? alpha(theme.palette.primary.main, 0.4)
-          : emphasis
-            ? alpha(theme.palette.success.main, isDark ? 0.35 : 0.22)
-            : 'transparent',
-        transition: 'background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
-        bgcolor: selected
-          ? alpha(theme.palette.primary.main, isDark ? 0.18 : 0.07)
-          : emphasis
-            ? alpha(theme.palette.success.main, isDark ? 0.08 : 0.04)
-            : 'transparent',
+        borderColor: selected ? alpha(theme.palette.primary.main, 0.45) : 'transparent',
+        transition:
+          'background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        bgcolor: selected ? alpha(theme.palette.primary.main, isDark ? 0.18 : 0.07) : 'transparent',
+        animation: menuOpen
+          ? `${itemStagger} 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) ${staggerIndex * 45}ms both`
+          : 'none',
         '&:hover': {
           bgcolor: alpha(theme.palette.primary.main, isDark ? 0.14 : 0.05),
-          borderColor: alpha(theme.palette.primary.main, 0.25),
-          boxShadow: isDark ? 'none' : `0 4px 16px ${alpha('#0f172a', 0.06)}`,
+          borderColor: alpha(theme.palette.primary.main, 0.28),
+          transform: 'translateX(4px)',
+          boxShadow: isDark ? 'none' : `0 6px 20px ${alpha('#0f172a', 0.08)}`,
+          '& .mega-menu-item-icon': {
+            transform: 'scale(1.08)',
+            bgcolor: alpha(theme.palette.primary.main, isDark ? 0.22 : 0.12),
+          },
         },
       }}
     >
       <Box
+        className="mega-menu-item-icon"
         sx={{
           width: 36,
           height: 36,
@@ -114,12 +133,13 @@ function MegaMenuItem({
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
+          transition: 'transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease',
           bgcolor: selected
             ? alpha(theme.palette.primary.main, isDark ? 0.25 : 0.1)
             : isDark
               ? alpha('#fff', 0.06)
               : alpha('#0f172a', 0.05),
-          color: selected ? 'primary.main' : emphasis ? 'success.dark' : 'text.secondary',
+          color: selected ? 'primary.main' : 'text.secondary',
         }}
       >
         {item.icon}
@@ -170,18 +190,17 @@ function MegaMenuFeatured({
   horizontal,
   pathname,
   onNavigate,
+  menuOpen,
 }: {
   featured: NavFeatured
   accentKey: string
   horizontal: boolean
   pathname: string
   onNavigate: () => void
+  menuOpen: boolean
 }) {
   const accent = ACCENT[accentKey] ?? ACCENT.navy
   const primaryActive = isNavActive(pathname, featured.to)
-  const secondaryActive = featured.secondaryCta
-    ? isNavActive(pathname, featured.secondaryCta.to)
-    : false
 
   const ctaButtonSx = (active: boolean) => ({
     textTransform: 'none' as const,
@@ -209,8 +228,8 @@ function MegaMenuFeatured({
         to={featured.to}
         onClick={onNavigate}
         size="small"
-        variant={primaryActive || !secondaryActive ? 'contained' : 'outlined'}
-        sx={ctaButtonSx(primaryActive || !secondaryActive)}
+        variant="contained"
+        sx={ctaButtonSx(primaryActive)}
       >
         {featured.cta}
       </Button>
@@ -220,8 +239,8 @@ function MegaMenuFeatured({
           to={featured.secondaryCta.to}
           onClick={onNavigate}
           size="small"
-          variant={secondaryActive ? 'contained' : 'outlined'}
-          sx={ctaButtonSx(secondaryActive)}
+          variant="outlined"
+          sx={ctaButtonSx(isNavActive(pathname, featured.secondaryCta.to))}
         >
           {featured.secondaryCta.label}
         </Button>
@@ -229,16 +248,26 @@ function MegaMenuFeatured({
     </Box>
   )
 
+  const cardSx = {
+    borderRadius: 2.5,
+    color: accent.fg,
+    background: accent.bg,
+    animation: menuOpen ? `${menuReveal} 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.08s both` : 'none',
+    transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: `0 16px 48px ${accent.glow}`,
+    },
+  }
+
   if (horizontal) {
     return (
       <Box
         sx={{
+          ...cardSx,
           mx: 2,
           mb: 2,
           p: 2,
-          borderRadius: 2.5,
-          color: accent.fg,
-          background: accent.bg,
           boxShadow: `0 8px 32px ${accent.glow}`,
           display: 'flex',
           alignItems: 'center',
@@ -276,26 +305,18 @@ function MegaMenuFeatured({
   return (
     <Box
       sx={{
+        ...cardSx,
         p: 2.25,
         m: 2,
         ml: { lg: 0 },
         mr: { lg: 2 },
         mt: { lg: 2 },
         mb: { lg: 2 },
-        borderRadius: 2.5,
-        color: accent.fg,
-        background: accent.bg,
         boxShadow: `0 10px 36px ${accent.glow}`,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         minHeight: 200,
-        textDecoration: 'none',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        '&:hover': {
-          transform: 'translateY(-1px)',
-          boxShadow: `0 14px 44px ${accent.glow}`,
-        },
       }}
     >
       <Box
@@ -325,6 +346,39 @@ function MegaMenuFeatured({
   )
 }
 
+function groupItemsBySection(group: NavGroup): { activity: NavItem[]; encours: NavItem[]; other: NavItem[] } {
+  if (group.id !== 'commercial') {
+    return { activity: [], encours: [], other: group.items }
+  }
+  const activity: NavItem[] = []
+  const encours: NavItem[] = []
+  for (const item of group.items) {
+    if (item.section === 'encours') encours.push(item)
+    else activity.push(item)
+  }
+  return { activity, encours, other: [] }
+}
+
+function renderMenuItems(
+  items: NavItem[],
+  group: NavGroup,
+  pathname: string,
+  close: () => void,
+  menuOpen: boolean,
+  startIndex: number,
+) {
+  return items.map((item, i) => (
+    <MegaMenuItem
+      key={item.to}
+      item={item}
+      selected={isNavActive(pathname, item.to)}
+      onNavigate={close}
+      staggerIndex={startIndex + i}
+      menuOpen={menuOpen}
+    />
+  ))
+}
+
 export function AppMegaMenu({ group }: { group: NavGroup }) {
   const theme = useTheme()
   const location = useLocation()
@@ -342,8 +396,7 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
     setOpen(false)
   }, [location.pathname])
 
-  const financeEncoursLabelAt = group.id === 'finance' ? 0 : -1
-  const financeFiscalLabelAt = group.id === 'finance' ? 2 : -1
+  const { activity, encours, other } = groupItemsBySection(group)
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -357,7 +410,7 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
           <KeyboardArrowDownIcon
             sx={{
               fontSize: 18,
-              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
               transform: open ? 'rotate(180deg)' : 'none',
               opacity: highlighted ? 1 : 0.7,
             }}
@@ -368,16 +421,32 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
         {group.label}
       </Button>
 
+      {open && (
+        <Box
+          aria-hidden
+          onClick={close}
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: MEGA_MENU_Z_INDEX - 1,
+            bgcolor: alpha('#0f172a', isDark ? 0.45 : 0.12),
+            backdropFilter: 'blur(2px)',
+            animation: `${menuReveal} 0.2s ease both`,
+          }}
+        />
+      )}
+
       <Popper
         open={open}
         anchorEl={anchorRef.current}
         placement="bottom-start"
         transition
+        disablePortal={false}
         modifiers={[{ name: 'offset', options: { offset: [0, 10] } }]}
-        sx={{ zIndex: theme.zIndex.modal + 2 }}
+        sx={{ zIndex: MEGA_MENU_Z_INDEX }}
       >
         {({ TransitionProps }) => (
-          <Fade {...TransitionProps} timeout={180}>
+          <Fade {...TransitionProps} timeout={200}>
             <Box>
               <ClickAwayListener
                 onClickAway={(event) => {
@@ -388,15 +457,16 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                 <Paper
                   elevation={0}
                   sx={{
-                    width: { md: 'min(720px, calc(100vw - 32px))', lg: 780, xl: 840 },
+                    width: { md: 'min(720px, calc(100vw - 32px))', lg: 800, xl: 860 },
                     maxWidth: 'calc(100vw - 24px)',
                     borderRadius: 2.5,
                     overflow: 'hidden',
-                    border: `1px solid ${alpha(isDark ? '#fff' : '#0f172a', isDark ? 0.1 : 0.07)}`,
+                    border: `1px solid ${alpha(isDark ? '#fff' : '#0f172a', isDark ? 0.12 : 0.08)}`,
                     boxShadow: isDark
-                      ? `0 20px 60px ${alpha('#000', 0.5)}`
-                      : `0 20px 50px ${alpha('#0f172a', 0.1)}, 0 4px 12px ${alpha('#0f172a', 0.04)}`,
+                      ? `0 24px 70px ${alpha('#000', 0.55)}`
+                      : `0 24px 60px ${alpha('#0f172a', 0.14)}, 0 8px 24px ${alpha('#0f172a', 0.06)}`,
                     bgcolor: isDark ? alpha('#0f1419', 0.98) : '#ffffff',
+                    animation: open ? `${menuReveal} 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both` : 'none',
                   }}
                 >
                   <Box
@@ -410,7 +480,6 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                       overflow: isDesktopPanel ? 'visible' : 'auto',
                     }}
                   >
-                    {/* Intro */}
                     <Box
                       sx={{
                         p: 2,
@@ -475,7 +544,6 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                       )}
                     </Box>
 
-                    {/* Liens */}
                     <Box
                       sx={{
                         p: 1.75,
@@ -486,27 +554,46 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                         borderBottom: isDesktopPanel ? 'none' : `1px solid ${theme.palette.divider}`,
                       }}
                     >
-                      {group.items.map((item, index) => (
-                        <Box key={item.to} sx={{ display: 'contents' }}>
-                          {financeEncoursLabelAt === index && (
-                            <MenuSectionLabel>Encours</MenuSectionLabel>
-                          )}
-                          {financeFiscalLabelAt === index && (
-                            <>
-                              <MenuSectionLabel sx={{ pt: 2 }}>Fiscalité &amp; compta</MenuSectionLabel>
-                              <Divider sx={{ gridColumn: '1 / -1', my: 0.25 }} />
-                            </>
-                          )}
-                          <MegaMenuItem
-                            item={item}
-                            selected={isNavActive(location.pathname, item.to)}
-                            onNavigate={close}
-                          />
-                        </Box>
-                      ))}
+                      {group.id === 'commercial' ? (
+                        <>
+                          <MenuSectionLabel sx={{ pt: 0 }}>Activités courantes</MenuSectionLabel>
+                          {renderMenuItems(activity, group, location.pathname, close, open, 0)}
+                          <MenuSectionLabel sx={{ pt: 2 }}>Encours</MenuSectionLabel>
+                          <Divider sx={{ gridColumn: '1 / -1', my: 0.25 }} />
+                          {renderMenuItems(encours, group, location.pathname, close, open, activity.length)}
+                        </>
+                      ) : (
+                        <>
+                          {other.map((item, index) => {
+                            if (group.id === 'finance' && index === 0) {
+                              return (
+                                <Box key={item.to} sx={{ display: 'contents' }}>
+                                  <MenuSectionLabel sx={{ pt: 0 }}>Fiscalité &amp; compta</MenuSectionLabel>
+                                  <MegaMenuItem
+                                    item={item}
+                                    selected={isNavActive(location.pathname, item.to)}
+                                    onNavigate={close}
+                                    staggerIndex={index}
+                                    menuOpen={open}
+                                  />
+                                </Box>
+                              )
+                            }
+                            return (
+                              <MegaMenuItem
+                                key={item.to}
+                                item={item}
+                                selected={isNavActive(location.pathname, item.to)}
+                                onNavigate={close}
+                                staggerIndex={index}
+                                menuOpen={open}
+                              />
+                            )
+                          })}
+                        </>
+                      )}
                     </Box>
 
-                    {/* Carte — colonne droite (desktop) ou bandeau (tablette) */}
                     <Box sx={{ gridColumn: isDesktopPanel ? undefined : '1 / -1' }}>
                       <MegaMenuFeatured
                         featured={group.featured}
@@ -514,6 +601,7 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                         horizontal={!isDesktopPanel}
                         pathname={location.pathname}
                         onNavigate={close}
+                        menuOpen={open}
                       />
                     </Box>
                   </Box>

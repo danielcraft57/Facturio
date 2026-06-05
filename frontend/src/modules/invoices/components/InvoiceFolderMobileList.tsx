@@ -9,7 +9,10 @@ import {
 import type { SxProps, Theme } from '@mui/material/styles'
 import type { Invoice } from '../../../services/invoices'
 import type { DocumentFlags } from '../../../types/documentFolders'
-import { DocumentFolderRowActions } from '../../../components/finance/DocumentFolderRowActions'
+import {
+  DocumentFolderListRowRail,
+  documentFolderTableRowClass,
+} from '../../../components/finance/DocumentFolderListRowRail'
 import { DocumentFolderRowCheckbox } from '../../../components/finance/DocumentFolderRowCheckbox'
 import {
   documentFolderUnreadRowSx,
@@ -38,6 +41,9 @@ type InvoiceFolderMobileListProps = {
   onArchive: (invoice: Invoice) => void
   onDownload: (invoice: Invoice) => void
   selection?: SelectionApi
+  savedTags?: string[]
+  onRememberTag?: (tag: string) => void | Promise<void>
+  onRemoveSavedTag?: (tag: string) => void | Promise<void>
 }
 
 export function InvoiceFolderMobileList({
@@ -54,6 +60,9 @@ export function InvoiceFolderMobileList({
   onArchive,
   onDownload,
   selection,
+  savedTags = [],
+  onRememberTag,
+  onRemoveSavedTag,
 }: InvoiceFolderMobileListProps) {
   return (
     <Stack spacing={1} sx={documentFolderMobileListSx}>
@@ -71,6 +80,7 @@ export function InvoiceFolderMobileList({
           <Card
             key={invoice.id}
             variant="outlined"
+            className={documentFolderTableRowClass}
             sx={
               [
                 {
@@ -90,12 +100,7 @@ export function InvoiceFolderMobileList({
             <Stack direction="row" alignItems="stretch">
               {selection && (
                 <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    pt: 1.1,
-                    pl: 0.5,
-                  }}
+                  sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 0, m: 0, width: 32 }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <DocumentFolderRowCheckbox
@@ -107,74 +112,85 @@ export function InvoiceFolderMobileList({
                 </Box>
               )}
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <CardActionArea onClick={() => onNavigate(invoice.id)} sx={{ alignItems: 'stretch' }}>
-                  <Box sx={{ px: 1.5, py: 1.25, pl: selection ? 0.5 : 1.5 }}>
-                    <Stack direction="row" spacing={1} alignItems="flex-start">
-                      <DocumentFolderRowActions
-                        starred={!!invoice.starred}
-                        important={!!invoice.important}
-                        compact
-                        onUpdate={(patch) => onPatchFlags(invoice.id, patch)}
-                      />
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Stack
-                          direction="row"
-                          justifyContent="space-between"
-                          alignItems="flex-start"
-                          spacing={1}
-                        >
-                          <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Typography variant="body2" fontWeight={invoice.seenAt ? 600 : 800} noWrap>
-                              {invoice.number}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" noWrap display="block">
-                              {invoice.client.name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {new Date(invoice.issueDate).toLocaleDateString('fr-FR')}
-                            </Typography>
-                          </Box>
-                          <Stack alignItems="flex-end" spacing={0.5} flexShrink={0}>
-                            {(() => {
-                              const display = resolveInvoiceDisplayStatus(invoice)
-                              return (
-                                <Chip
-                                  label={display.label}
-                                  color={display.color}
-                                  size="small"
-                                  sx={{ fontWeight: 600, height: 22, fontSize: '0.7rem' }}
-                                />
-                              )
-                            })()}
-                            <Typography variant="body2" fontWeight={700}>
-                              {formatCurrency(invoice.total)}
-                            </Typography>
-                          </Stack>
-                        </Stack>
-                      </Box>
+            <DocumentFolderListRowRail
+              kind="invoice"
+              layout="card"
+              item={invoice}
+              onUpdate={(patch) => onPatchFlags(invoice.id, patch)}
+              tagsSlot={{
+                tags: invoice.tags ?? [],
+                onChange: (tags) => onPatchFlags(invoice.id, { tags }),
+                savedTags,
+                onRememberTag,
+                onRemoveSavedTag,
+              }}
+            />
+            <Stack direction="row" alignItems="stretch">
+              <CardActionArea
+                onClick={() => onNavigate(invoice.id)}
+                sx={{ flex: 1, minWidth: 0, alignItems: 'stretch' }}
+              >
+                <Stack sx={{ px: 1.5, py: 1.25 }} spacing={0.5}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="flex-start"
+                    spacing={1}
+                  >
+                    <Stack sx={{ minWidth: 0, flex: 1 }} spacing={0.25}>
+                      <Typography variant="body2" fontWeight={invoice.seenAt ? 600 : 800} noWrap>
+                        {invoice.number}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap display="block">
+                        {invoice.client.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap display="block">
+                        {invoice.client.email || '—'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(invoice.issueDate).toLocaleDateString('fr-FR')}
+                      </Typography>
                     </Stack>
-                  </Box>
-                </CardActionArea>
-                <Stack
-                  direction="row"
-                  justifyContent="flex-end"
-                  alignItems="center"
-                  sx={{ px: 1, pb: 1, pt: 0 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <InvoiceRowActionsMenu
-                    invoice={invoice}
-                    busy={busy}
-                    canSend={canSend}
-                    canRemind={canRemind(invoice.status)}
-                    onView={() => onNavigate(invoice.id)}
-                    onEdit={() => (onEditNavigate ?? onNavigate)(invoice.id)}
-                    onSend={() => onSend(invoice)}
-                    onRemind={() => onRemind(invoice)}
-                    onArchive={() => onArchive(invoice)}
-                    onDownload={() => onDownload(invoice)}
-                  />
+                    <Stack alignItems="flex-end" spacing={0.5} flexShrink={0}>
+                      {(() => {
+                        const display = resolveInvoiceDisplayStatus(invoice)
+                        return (
+                          <Chip
+                            label={display.label}
+                            color={display.color}
+                            size="small"
+                            sx={{ fontWeight: 600, height: 22, fontSize: '0.7rem' }}
+                          />
+                        )
+                      })()}
+                      <Typography variant="body2" fontWeight={700}>
+                        {formatCurrency(invoice.total)}
+                      </Typography>
+                    </Stack>
+                  </Stack>
                 </Stack>
+              </CardActionArea>
+              <Stack
+                direction="row"
+                justifyContent="flex-end"
+                alignItems="center"
+                sx={{ px: 1, pb: 1, pt: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <InvoiceRowActionsMenu
+                  invoice={invoice}
+                  busy={busy}
+                  canSend={canSend}
+                  canRemind={canRemind(invoice.status)}
+                  onView={() => onNavigate(invoice.id)}
+                  onEdit={() => (onEditNavigate ?? onNavigate)(invoice.id)}
+                  onSend={() => onSend(invoice)}
+                  onRemind={() => onRemind(invoice)}
+                  onArchive={() => onArchive(invoice)}
+                  onDownload={() => onDownload(invoice)}
+                />
+              </Stack>
+            </Stack>
               </Box>
             </Stack>
           </Card>

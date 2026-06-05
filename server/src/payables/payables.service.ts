@@ -9,6 +9,15 @@ import { resolveEmailIssuerDisplayName } from '../common/email-legal-footer';
 import { computeDebtBalance } from './payables-balance.util';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import {
+	buildDocumentFolderWhere,
+	documentFolderOrderBy,
+	parseTagsJson,
+	serializeTagsJson,
+} from '../common/document-folder.util';
+import { groupByYearAndMonth } from '../common/archive-group.util';
+import type { PayableDebtListQueryDto } from './dto/payable-debt-document-folder.dto';
+import type { UpdatePayableDebtDocumentFlagsDto } from './dto/payable-debt-document-folder.dto';
 
 const BALANCE_EPSILON = 0.01;
 
@@ -28,6 +37,13 @@ export type PayableDebtRow = {
 	publicToken: string | null;
 	createdAt: string;
 	emailEngagement: EmailEngagementSummary | null;
+	archivedAt?: string | null;
+	starred?: boolean;
+	important?: boolean;
+	snoozedUntil?: string | null;
+	seenAt?: string | null;
+	sentAt?: string | null;
+	tags?: string[];
 };
 
 export type PublicPayableDebtView = {
@@ -86,6 +102,13 @@ export class PayablesService {
 			notes: string | null;
 			publicToken: string | null;
 			createdAt: Date;
+			archivedAt?: Date | null;
+			starred?: boolean;
+			important?: boolean;
+			snoozedUntil?: Date | null;
+			seenAt?: Date | null;
+			sentAt?: Date | null;
+			tags?: string | null;
 			creditor: { name: string; email: string | null };
 			payments: Array<{ amount: unknown }>;
 		},
@@ -109,6 +132,184 @@ export class PayablesService {
 			publicToken: debt.publicToken,
 			createdAt: debt.createdAt.toISOString(),
 			emailEngagement: null,
+			archivedAt: debt.archivedAt?.toISOString() ?? null,
+			starred: debt.starred ?? false,
+			important: debt.important ?? false,
+			snoozedUntil: debt.snoozedUntil?.toISOString() ?? null,
+			seenAt: debt.seenAt?.toISOString() ?? null,
+			sentAt: debt.sentAt?.toISOString() ?? null,
+			tags: parseTagsJson(debt.tags),
+		};
+	}
+
+	async findAllDebts(organizationId: number | undefined, query?: PayableDebtListQueryDto) {
+		const orgId = this.assertOrg(organizationId);
+		const q = query ?? {};
+		const page = q.page ?? 1;
+		const pageSize = q.pageSize ?? q.limit ?? 30;
+		const skip = (page - 1) * pageSize;
+		const now = new Date();
+
+		const where: Record<string, unknown> = {
+			organizationId: orgId,
+			archivedAt: null,
+			status: { not: 'CANCELLED' },
+		};
+		Object.assign(where, buildDocumentFolderWhere(q.folder, now, 'payable_debt'));
+
+		if (q.search?.trim()) {
+			const term = q.search.trim();
+			where.OR = [
+				{ label: { contains: term } },
+				{ creditor: { name: { contains: term } } },
+				{ notes: { contains: term } },
+			];
+		}
+
+		const [items, total] = await this.prisma.$transaction([
+			this.prisma.payableDebt.findMany({
+				skip,
+				take: pageSize,
+				where: where as never,
+				orderBy: q.folder ? documentFolderOrderBy('payable_debt') : { createdAt: 'desc' },
+				include: { creditor: true, payments: true },
+			}),
+			this.prisma.payableDebt.count({ where: where as never }),
+		]);
+
+		const folderCounts =
+			q.includeFolderCounts && page === 1
+				? await this.loadFolderCounts(orgId)
+				: undefined;
+
+		const debts = await attachPayableDebtEmailEngagement(
+			this.prisma,
+			items.map((d) => this.mapDebt(d)),
+		);
+
+		return {
+			debts,
+			total,
+			page,
+			limit: pageSize,
+			totalPages: pageSize > 0 ? Math.ceil(total / pageSize) : 0,
+			...(folderCounts ? { folderCounts } : {}),
+		};
+	}
+
+	private async loadFolderCounts(organizationId: number) {
+		const base = {
+			organizationId,
+			archivedAt: null,
+			status: { not: 'CANCELLED' as const },
+		};
+		const now = new Date();
+		const count = (extra: Record<string, unknown>) =>
+			this.prisma.payableDebt.count({ where: { ...base, ...extra } });
+
+		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives] =
+			await Promise.all([
+				count(buildDocumentFolderWhere('inbox', now, 'payable_debt')),
+				count(buildDocumentFolderWhere('nouveau', now, 'payable_debt')),
+				count(buildDocumentFolderWhere('suivi', now, 'payable_debt')),
+				count(buildDocumentFolderWhere('attente', now, 'payable_debt')),
+				count(buildDocumentFolderWhere('important', now, 'payable_debt')),
+				count(buildDocumentFolderWhere('envoyes', now, 'payable_debt')),
+				count(buildDocumentFolderWhere('brouillons', now, 'payable_debt')),
+				this.prisma.payableDebt.count({
+					where: { organizationId, archivedAt: { not: null } },
+				}),
+			]);
+
+		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives };
+	}
+
+	async getFolderCounts(organizationId: number | undefined) {
+		const orgId = this.assertOrg(organizationId);
+		return this.loadFolderCounts(orgId);
+	}
+
+	async updateDocumentFlags(
+		organizationId: number | undefined,
+		debtId: number,
+		dto: UpdatePayableDebtDocumentFlagsDto,
+	) {
+		const orgId = this.assertOrg(organizationId);
+		await this.findOneDebt(orgId, debtId);
+		const data: Record<string, unknown> = {};
+		if (dto.starred !== undefined) data.starred = dto.starred;
+		if (dto.important !== undefined) data.important = dto.important;
+		if (dto.snoozedUntil !== undefined) {
+			data.snoozedUntil = dto.snoozedUntil ? new Date(dto.snoozedUntil) : null;
+		}
+		if (dto.tags !== undefined) data.tags = serializeTagsJson(dto.tags);
+		if (dto.markSeen) data.seenAt = new Date();
+
+		const updated = await this.prisma.payableDebt.update({
+			where: { id: debtId },
+			data,
+			include: { creditor: true, payments: true },
+		});
+		const row = this.mapDebt(updated);
+		this.realtime.emit(orgId, 'payables', 'updated', String(debtId), {
+			number: row.label,
+			status: row.status,
+		});
+		return row;
+	}
+
+	async archiveDebt(organizationId: number | undefined, debtId: number) {
+		const orgId = this.assertOrg(organizationId);
+		const debt = await this.prisma.payableDebt.findFirst({
+			where: { id: debtId, organizationId: orgId },
+		});
+		if (!debt) throw new NotFoundException('Dette introuvable');
+		if (debt.archivedAt) {
+			throw new BadRequestException('Cette dette est déjà archivée.');
+		}
+		const updated = await this.prisma.payableDebt.update({
+			where: { id: debtId },
+			data: { archivedAt: new Date() },
+			include: { creditor: true, payments: true },
+		});
+		this.realtime.emit(orgId, 'payables', 'updated', String(debtId), {
+			number: updated.label,
+			status: updated.status,
+		});
+		return { success: true, archivedAt: updated.archivedAt?.toISOString() };
+	}
+
+	async restoreDebt(organizationId: number | undefined, debtId: number) {
+		const orgId = this.assertOrg(organizationId);
+		const debt = await this.prisma.payableDebt.findFirst({
+			where: { id: debtId, organizationId: orgId },
+		});
+		if (!debt) throw new NotFoundException('Dette introuvable');
+		if (!debt.archivedAt) {
+			throw new BadRequestException('Cette dette n’est pas archivée.');
+		}
+		await this.prisma.payableDebt.update({
+			where: { id: debtId },
+			data: { archivedAt: null },
+		});
+		this.realtime.emit(orgId, 'payables', 'updated', String(debtId), {
+			number: debt.label,
+			status: debt.status,
+		});
+		return { success: true };
+	}
+
+	async findArchivedGrouped(organizationId: number | undefined) {
+		const orgId = this.assertOrg(organizationId);
+		const items = await this.prisma.payableDebt.findMany({
+			where: { organizationId: orgId, archivedAt: { not: null } },
+			orderBy: { createdAt: 'desc' },
+			include: { creditor: true, payments: true },
+		});
+		const rows = items.map((d) => this.mapDebt(d));
+		return {
+			groups: groupByYearAndMonth(rows, (d) => d.createdAt),
+			total: rows.length,
 		};
 	}
 
@@ -272,7 +473,7 @@ export class PayablesService {
 		const orgId = this.assertOrg(organizationId);
 
 		const debts = await this.prisma.payableDebt.findMany({
-			where: { organizationId: orgId, status: { not: 'CANCELLED' } },
+			where: { organizationId: orgId, archivedAt: null, status: { not: 'CANCELLED' } },
 			include: {
 				creditor: true,
 				payments: true,

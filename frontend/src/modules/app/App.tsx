@@ -70,6 +70,9 @@ const FacturesSegmentRouteLazy = lazy(() =>
 const DevisSegmentRouteLazy = lazy(() =>
   import('./routes/documentFolderRoutes').then((m) => ({ default: m.DevisSegmentRoute })),
 )
+const DettesSegmentRouteLazy = lazy(() =>
+  import('./routes/documentFolderRoutes').then((m) => ({ default: m.DettesSegmentRoute })),
+)
 const ArchivesPage = lazy(() => import('../archives/ArchivesPage').then(m => ({ default: m.ArchivesPage })))
 const InvoicesArchivePage = lazy(() =>
   import('../invoices/InvoicesArchivePage').then(m => ({ default: m.InvoicesArchivePage })),
@@ -94,6 +97,9 @@ const ReceivablesPage = lazy(() =>
 )
 const PayablesPage = lazy(() =>
   import('../finance/PayablesPage').then((m) => ({ default: m.PayablesPage })),
+)
+const PayablesArchivePage = lazy(() =>
+  import('../finance/PayablesArchivePage').then((m) => ({ default: m.PayablesArchivePage })),
 )
 const SettingsLayout = lazy(() => import('../account/SettingsLayout').then(m => ({ default: m.SettingsLayout })))
 const SettingsIndexPage = lazy(() =>
@@ -493,29 +499,59 @@ export function App() {
                 }
               />
               <Route
-                path="/finance/creances"
+                path="/creances"
                 element={
                   <PrivateRouteWrapper>
                     <ReceivablesPage />
                   </PrivateRouteWrapper>
                 }
               />
+              <Route path="/dettes" element={<Navigate to="/dettes/inbox" replace />} />
               <Route
-                path="/finance/dettes"
+                path="/dettes/archive"
+                element={<Navigate to="/dettes/archives" replace />}
+              />
+              <Route
+                path="/dettes/archives"
                 element={
                   <PrivateRouteWrapper>
-                    <PayablesPage />
+                    <Suspense fallback={<DocumentFolderRouteFallback resource="dettes" />}>
+                      <PayablesArchivePage />
+                    </Suspense>
                   </PrivateRouteWrapper>
                 }
               />
               <Route
-                path="/finance/dettes/voir/:id"
+                path="/dettes/voir/:id"
                 element={
                   <PrivateRouteWrapper>
                     <PayableDebtDetailPage />
                   </PrivateRouteWrapper>
                 }
               />
+              <Route
+                path="/dettes/:folder"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={<DocumentFolderRouteFallback resource="dettes" />}>
+                      <DettesSegmentRouteLazy />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route path="/finance/creances" element={<Navigate to="/creances" replace />} />
+              <Route path="/commercial/creances" element={<Navigate to="/creances" replace />} />
+              <Route path="/finance/dettes" element={<Navigate to="/dettes/inbox" replace />} />
+              <Route path="/commercial/dettes" element={<Navigate to="/dettes/inbox" replace />} />
+              <Route path="/finance/dettes/archives" element={<Navigate to="/dettes/archives" replace />} />
+              <Route
+                path="/commercial/dettes/archives"
+                element={<Navigate to="/dettes/archives" replace />}
+              />
+              <Route path="/finance/dettes/voir/:id" element={<LegacyDetteVoirRedirect />} />
+              <Route path="/commercial/dettes/voir/:id" element={<LegacyDetteVoirRedirect />} />
+              <Route path="/finance/dettes/:folder" element={<LegacyDetteFolderRedirect />} />
+              <Route path="/commercial/dettes/:folder" element={<LegacyDetteFolderRedirect />} />
               <Route
                 path="/parametres"
                 element={
@@ -567,4 +603,13 @@ export function App() {
   )
 }
 
+function LegacyDetteVoirRedirect() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/dettes/voir/${id ?? ''}`} replace />
+}
+
+function LegacyDetteFolderRedirect() {
+  const { folder } = useParams<{ folder: string }>()
+  return <Navigate to={`/dettes/${folder ?? 'inbox'}`} replace />
+}
 

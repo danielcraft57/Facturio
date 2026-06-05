@@ -70,7 +70,10 @@ export const documentFolderPageMainSx: SxProps<Theme> = (theme) => ({
   overflow: 'auto',
   overflowX: 'hidden',
   scrollbarGutter: 'stable',
-  p: { xs: 1.5, sm: 2, md: 3 },
+  pt: { xs: 1.5, sm: 2, md: 2 },
+  pr: { xs: 1.5, sm: 2, md: 3 },
+  pb: { xs: 1.5, sm: 2, md: 3 },
+  pl: { xs: 1.5, sm: 2, md: 0.5 },
   bgcolor: theme.palette.mode === 'dark' ? 'background.default' : alpha(FOLDER_NAVY, 0.02),
   ...(typeof documentFolderScrollbarSx === 'function'
     ? documentFolderScrollbarSx(theme)
@@ -85,6 +88,18 @@ export const documentFolderSidebarSx: SxProps<Theme> = {
   bgcolor: (t) => (t.palette.mode === 'dark' ? alpha('#fff', 0.02) : '#fff'),
   display: { xs: 'none', md: 'flex' },
   flexDirection: 'column',
+  borderRadius: 2,
+}
+
+/** Sidebar + zone liste : espacement horizontal entre les deux. */
+export const documentFolderLayoutRowSx: SxProps<Theme> = {
+  display: 'flex',
+  flex: 1,
+  minHeight: 0,
+  position: 'relative',
+  mt: { xs: 0.75, md: 1.5 },
+  gap: { xs: 0, md: 2.5 },
+  alignItems: 'stretch',
 }
 
 export const documentFolderNewButtonSx: SxProps<Theme> = {
@@ -131,6 +146,17 @@ export const documentFolderTableCardWrapSx: SxProps<Theme> = {
   minWidth: 0,
 }
 
+/** Tableau bord à bord : barre de statut collée au bord gauche de la carte. */
+export const documentFolderTableCardContentSx: SxProps<Theme> = {
+  p: 0,
+  '&:last-child': { pb: { xs: 1, sm: 1.5, md: 2 } },
+}
+
+export const documentFolderTableCardContentPaddedSx: SxProps<Theme> = {
+  px: { xs: 1, sm: 1.5, md: 2 },
+  py: { xs: 1, sm: 1.5, md: 2 },
+}
+
 /** Défilement horizontal uniquement (colonnes masquées sur petit écran) — pas de hauteur max. */
 export const documentFolderTableContainerSx: SxProps<Theme> = (theme) => {
   const thumb = alpha(FOLDER_NAVY, theme.palette.mode === 'dark' ? 0.38 : 0.2)
@@ -166,8 +192,20 @@ export const documentFolderTableSx: SxProps<Theme> = {
   },
   [`& .MuiTableCell-root.${documentFolderBulkCellClass}`]: {
     px: 0,
-    py: { md: 1, lg: 1.25 },
+    py: 0,
     overflow: 'visible',
+  },
+  '& .MuiTableCell-root.doc-folder-rail-cell': {
+    px: 0,
+    py: 0,
+    overflow: 'visible',
+    textOverflow: 'clip',
+    verticalAlign: 'middle',
+    borderLeft: 'none',
+  },
+  '& tr.document-folder-table-row:hover': {
+    position: 'relative',
+    zIndex: 2,
   },
   '& .doc-folder-col-amount': {
     overflow: 'visible',
@@ -187,8 +225,13 @@ export const folderColHideBelowXl: SxProps<Theme> = {
 export const documentFolderBulkCheckboxClass = 'doc-folder-bulk-cb'
 
 export const documentFolderBulkCheckboxSx: SxProps<Theme> = {
-  p: 0.35,
+  p: 0,
+  m: 0,
   transition: 'opacity 0.15s ease',
+  color: (t) => alpha(t.palette.text.primary, 0.42),
+  '&.Mui-checked': {
+    color: 'primary.main',
+  },
 }
 
 export const documentFolderTableHeadSx: SxProps<Theme> = {
@@ -233,36 +276,32 @@ export const documentFolderColActionsSx = (expanded: boolean): SxProps<Theme> =>
   px: { md: 0.5, lg: 0.75 },
 })
 
-export const documentFolderPageSubtitle = (resource: 'factures' | 'devis') =>
-  resource === 'factures'
-    ? 'Documents émis — les plus récents en premier'
-    : 'Devis émis — les plus récents en premier'
+export const documentFolderPageSubtitle = (resource: 'factures' | 'devis' | 'dettes') => {
+  if (resource === 'factures') return 'Documents émis — les plus récents en premier'
+  if (resource === 'dettes') return 'Dettes enregistrées — les plus récentes en premier'
+  return 'Devis émis — les plus récents en premier'
+}
 
 export const documentFolderUnreadRowSx: SxProps<Theme> = {
   bgcolor: alpha('#3b82f6', 0.04),
-  borderLeft: `3px solid ${alpha('#3b82f6', 0.55)}`,
 }
 
-/** Desktop : case + suivi / important — colonne fixe étroite. */
+/** Colonne bulk (avant le rail), sans marge ni padding, case centrée. */
 export const documentFolderBulkLeadCellSx: SxProps<Theme> = {
-  width: 76,
-  maxWidth: 76,
-  minWidth: 76,
-  pl: 0.5,
-  pr: 0,
+  width: 32,
+  maxWidth: 32,
+  minWidth: 32,
+  p: 0,
   whiteSpace: 'nowrap',
   verticalAlign: 'middle',
+  textAlign: 'center',
   '&.MuiTableCell-paddingCheckbox': {
-    width: 76,
-    paddingLeft: 4,
-    paddingRight: 0,
+    width: 32,
+    p: 0,
   },
-  '& .MuiIconButton-root': {
-    p: 0.35,
-    ml: -0.35,
-  },
-  '& .doc-folder-bulk-cb': {
-    mr: -0.25,
+  '& .MuiCheckbox-root': {
+    p: 0,
+    m: 0,
   },
 }
 

@@ -26,7 +26,6 @@ import { CreateQuoteDialog } from './components/CreateQuoteDialog';
 import { SendQuoteDialog, type SendQuotePayload } from './components/SendQuoteDialog';
 import { QuoteFolderMobileList } from './components/QuoteFolderMobileList';
 import { QuoteRowActionsMenu } from './components/QuoteRowActionsMenu';
-import { DocumentTagsEditor } from '../../components/finance/DocumentTagsEditor';
 import {
   financeTableHeadSx,
   financeTableSx,
@@ -37,7 +36,20 @@ import type { CreateQuoteData } from '../../types/quote';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { useRealtimeRowHighlight } from '../../hooks/useRealtimeRowHighlight';
 import { getRealtimeRowSx } from '../../utils/realtimeRowHighlight';
-import { DocumentFolderRowActions } from '../../components/finance/DocumentFolderRowActions';
+import {
+  buildDocumentFolderListRowRail,
+  documentFolderRailCellClass,
+  documentFolderTableRowClass,
+  DocumentFolderBulkTableBodyCell,
+  DocumentFolderBulkTableHeaderCell,
+  DocumentFolderRailTableHeaderCell,
+  getDocumentFolderRailHeaderRowSx,
+  getDocumentFolderRailTableCellSx,
+} from '../../components/finance/DocumentFolderListRowRail';
+import { DocumentFolderRowCheckbox } from '../../components/finance/DocumentFolderRowCheckbox';
+import { DocumentFolderBulkBar } from '../../components/finance/DocumentFolderBulkBar';
+import { useDocumentFolderSelection } from '../../hooks/useDocumentFolderSelection';
+import { runBulkArchive } from '../../utils/bulkArchive';
 import {
   isDocumentFolder,
   DOCUMENT_FOLDER_LABELS,
@@ -48,13 +60,17 @@ import {
   documentFolderPageSubtitle,
   documentFolderTableCardSx,
   documentFolderTableCardWrapSx,
+  documentFolderTableCardContentSx,
+  documentFolderTableCardContentPaddedSx,
   documentFolderTableContainerSx,
   documentFolderTableSx,
   documentFolderUnreadRowSx,
-  folderColHideBelowLg,
+  documentFolderBulkRowSx,
+  documentFolderTableHeadSx,
   folderColHideBelowXl,
 } from '../../components/finance/documentFolderStyles';
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch';
+import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell';
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import {
@@ -71,6 +87,7 @@ import { useToast } from '../../components/useToast';
 import { useUserDocumentTags } from '../../services/userDocumentTags';
 import { organizationService, type OrganizationProfile } from '../../services/organizationService';
 import { unwrapApiPayload } from '../../services/clients';
+import { useDocumentFolderCreateDialog } from '../../hooks/useDocumentFolderCreateDialog';
 
 export function QuotesPage() {
   const { folder: folderParam } = useParams<{ folder?: string }>();
@@ -102,8 +119,13 @@ export function QuotesPage() {
     setItems,
   } = useQuotesFolderList(activeFolder, debouncedSearch);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-  const [quoteToArchive, setQuoteToArchive] = useState<Quote | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [archiveTargetIds, setArchiveTargetIds] = useState<string[]>([]);
+  const [bulkArchiving, setBulkArchiving] = useState(false);
+  const {
+    open: createDialogOpen,
+    openDialog: openCreateDialog,
+    close: closeCreateDialog,
+  } = useDocumentFolderCreateDialog();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const highlightRows = useRealtimeRowHighlight('quotes');
   const refreshRef = useRef(refresh);
@@ -135,6 +157,17 @@ export function QuotesPage() {
   const contentKey = `${activeFolder}-${debouncedSearch}`;
   const initialLoading = loading && quotes.length === 0;
 
+  const selection = useDocumentFolderSelection(
+    displayedQuotes,
+    `${activeFolder}-${debouncedSearch}`,
+  );
+
+  const openArchiveDialog = (ids: string[]) => {
+    if (ids.length === 0) return;
+    setArchiveTargetIds(ids);
+    setArchiveDialogOpen(true);
+  };
+
   useEffect(() => {
     const quoteId = searchParams.get('quoteId');
     if (quoteId) {
@@ -145,28 +178,34 @@ export function QuotesPage() {
     }
   }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
-    if (searchParams.get('create') !== '1') return;
-    setCreateDialogOpen(true);
-    const next = new URLSearchParams(searchParams);
-    next.delete('create');
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
-
   const patchDocumentFlags = useOptimisticDocumentFlagsPatch<Quote>(
     setItems,
-    (id, patch) => quoteService.updateDocumentFlags(id, patch),
+    (id, patch) => quoteService.updateDocumentFlags(String(id), patch),
     (message) => toast.error(message),
   );
 
-  const handleArchiveQuote = async () => {
-    if (quoteToArchive) {
-      const success = await quotesStore.deleteQuote(quoteToArchive.id);
-      if (success) {
-        setArchiveDialogOpen(false);
-        setQuoteToArchive(null);
-        await refresh();
+  const handleArchiveConfirm = async () => {
+    if (archiveTargetIds.length === 0) return;
+    try {
+      setBulkArchiving(true);
+      const { succeeded, failed } = await runBulkArchive(archiveTargetIds, (id) =>
+        quoteService.archiveQuote(id),
+      );
+      if (failed === 0) {
+        toast.success(
+          succeeded === 1 ? 'Devis archivé' : `${succeeded} devis archivés`,
+        );
+      } else {
+        toast.error(`${succeeded} archivé(s), ${failed} échec(s)`);
       }
+      setArchiveDialogOpen(false);
+      setArchiveTargetIds([]);
+      selection.clear();
+      await refresh();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'archivage");
+    } finally {
+      setBulkArchiving(false);
     }
   };
 
@@ -238,18 +277,26 @@ export function QuotesPage() {
     }
   };
 
+  const createQuoteInFlightRef = useRef(false);
+
   const handleCreateQuote = async (data: CreateQuoteData) => {
-    const quote = await quotesStore.createQuote(data);
-    if (quote) {
-      setCreateDialogOpen(false);
-      await refresh();
-      try {
-        const full = await quoteService.getQuote(quote.id);
-        setQuoteToSend(full);
-      } catch {
-        setQuoteToSend(quote);
+    if (createQuoteInFlightRef.current || quotesStore.isCreating) return;
+    createQuoteInFlightRef.current = true;
+    try {
+      const quote = await quotesStore.createQuote(data);
+      if (quote) {
+        closeCreateDialog();
+        await refresh();
+        try {
+          const full = await quoteService.getQuote(quote.id);
+          setQuoteToSend(full);
+        } catch {
+          setQuoteToSend(quote);
+        }
+        setSendDialogOpen(true);
       }
-      setSendDialogOpen(true);
+    } finally {
+      createQuoteInFlightRef.current = false;
     }
   };
 
@@ -290,7 +337,7 @@ export function QuotesPage() {
       subtitle={documentFolderPageSubtitle('devis')}
       counts={folderCounts}
       activeFolder={activeFolder}
-      onNew={() => setCreateDialogOpen(true)}
+      onNew={openCreateDialog}
       newLabel="Nouveau devis"
       mobileNavOpen={mobileNavOpen}
       onMobileNavOpen={() => setMobileNavOpen(true)}
@@ -310,8 +357,9 @@ export function QuotesPage() {
         />
       ) : (
         <Card sx={[documentFolderTableCardSx, documentFolderTableCardWrapSx] as SxProps<Theme>}>
-          <CardContent sx={{ p: { xs: 1, sm: 1.5, md: 2 }, '&:last-child': { pb: { xs: 1, md: 2 } } }}>
+          <CardContent sx={documentFolderTableCardContentSx}>
             {isNarrow ? (
+              <Box sx={documentFolderTableCardContentPaddedSx}>
               <QuoteFolderMobileList
                 quotes={displayedQuotes}
                 highlightRows={highlightRows}
@@ -321,24 +369,36 @@ export function QuotesPage() {
                 onEdit={(q) => navigate(`/devis/${q.id}/edit`)}
                 onSend={openSendQuoteDialog}
                 onConvert={(q) => void handleViewOrConvertInvoice(q)}
-                onArchive={(q) => {
-                  setQuoteToArchive(q);
-                  setArchiveDialogOpen(true);
-                }}
+                onArchive={(q) => openArchiveDialog([String(q.id)])}
+                selection={selection}
                 onRemindDeposit={(q) => void handleRemindDeposit(q)}
+                savedTags={savedTags}
+                onRememberTag={rememberTag}
+                onRemoveSavedTag={removeFromLibrary}
               />
+              </Box>
             ) : (
               <TableContainer sx={documentFolderTableContainerSx}>
                 <Table
                   size="small"
                   sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}
                 >
-                  <TableHead sx={financeTableHeadSx}>
-                    <TableRow>
-                      <TableCell padding="checkbox" sx={{ width: 72 }} />
-                      <TableCell sx={folderColHideBelowLg}>Tags</TableCell>
+                  <TableHead sx={[financeTableHeadSx, documentFolderTableHeadSx] as SxProps<Theme>}>
+                    <TableRow sx={getDocumentFolderRailHeaderRowSx()}>
+                      <DocumentFolderBulkTableHeaderCell
+                        bulkHeader={{
+                          allVisibleSelected: selection.allVisibleSelected,
+                          someVisibleSelected: selection.someVisibleSelected,
+                          selectionActive: selection.selectionActive,
+                          onToggleAll: () => {
+                            if (selection.allVisibleSelected) selection.clear();
+                            else selection.selectAllVisible();
+                          },
+                        }}
+                      />
+                      <DocumentFolderRailTableHeaderCell />
                       <TableCell sx={{ width: '14%' }}>N° Devis</TableCell>
-                      <TableCell sx={{ width: '22%' }}>Client</TableCell>
+                      <TableCell sx={{ width: '24%' }}>Client</TableCell>
                       <TableCell sx={{ width: '10%' }}>Statut</TableCell>
                       <TableCell align="right" sx={{ width: '10%' }}>
                         Montant
@@ -352,38 +412,52 @@ export function QuotesPage() {
                   <TableBody>
                     {displayedQuotes.map((quote) => {
                       const rowHighlight = highlightRows[String(quote.id)];
+                      const quoteId = String(quote.id);
+                      const railParts = buildDocumentFolderListRowRail({
+                        kind: 'quote',
+                        item: quote,
+                        onUpdate: (patch) => patchDocumentFlags(quote.id, patch),
+                        tagsSlot: {
+                          tags: quote.tags ?? [],
+                          onChange: (tags) => patchDocumentFlags(quote.id, { tags }),
+                          savedTags,
+                          onRememberTag: rememberTag,
+                          onRemoveSavedTag: removeFromLibrary,
+                        },
+                      });
                       return (
                         <TableRow
                           key={quote.id}
                           hover
+                          className={documentFolderTableRowClass}
                           sx={
                             [
-                              getRealtimeRowSx(rowHighlight),
+                              railParts.rowAccentSx,
                               !quote.seenAt ? documentFolderUnreadRowSx : {},
+                              documentFolderBulkRowSx(
+                                selection.isSelected(quoteId),
+                                selection.selectionActive,
+                              ),
+                              getRealtimeRowSx(rowHighlight),
                             ] as SxProps<Theme>
                           }
                         >
-                          <TableCell padding="checkbox">
-                            <DocumentFolderRowActions
-                              starred={!!quote.starred}
-                              important={!!quote.important}
-                              compact
-                              onUpdate={(patch) => patchDocumentFlags(quote.id, patch)}
+                          <DocumentFolderBulkTableBodyCell>
+                            <DocumentFolderRowCheckbox
+                              checked={selection.isSelected(quoteId)}
+                              visible={selection.selectionActive}
+                              onToggle={() => selection.toggle(quoteId)}
+                              inputProps={{ 'aria-label': `Sélectionner ${quote.number}` }}
                             />
-                          </TableCell>
-                          <TableCell sx={folderColHideBelowLg}>
-                            <DocumentTagsEditor
-                              layout="inline"
-                              tags={quote.tags ?? []}
-                              onChange={(tags) => patchDocumentFlags(quote.id, { tags })}
-                              maxVisible={2}
-                              savedTags={savedTags}
-                              onRememberTag={rememberTag}
-                              onRemoveSavedTag={removeFromLibrary}
-                            />
+                          </DocumentFolderBulkTableBodyCell>
+                          <TableCell
+                            className={documentFolderRailCellClass}
+                            sx={getDocumentFolderRailTableCellSx({ withTags: true })}
+                          >
+                            {railParts.rail}
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" fontWeight={quote.seenAt ? 500 : 700} noWrap>
+                            <Typography variant="body2" fontWeight={quote.seenAt ? 600 : 700} noWrap>
                               {quote.number}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" noWrap display="block">
@@ -391,9 +465,11 @@ export function QuotesPage() {
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" fontWeight={500} noWrap>
-                              {quote.client?.name ?? `Client #${quote.clientId}`}
-                            </Typography>
+                            <DocumentFolderPartyCell
+                              name={quote.client?.name ?? `Client #${quote.clientId}`}
+                              email={quote.client?.email}
+                              emphasize={!quote.seenAt}
+                            />
                           </TableCell>
                           <TableCell>
                             {(() => {
@@ -426,10 +502,7 @@ export function QuotesPage() {
                               onSend={() => openSendQuoteDialog(quote)}
                               onConvert={() => void handleViewOrConvertInvoice(quote)}
                               onRemindDeposit={() => void handleRemindDeposit(quote)}
-                              onArchive={() => {
-                                setQuoteToArchive(quote);
-                                setArchiveDialogOpen(true);
-                              }}
+                              onArchive={() => openArchiveDialog([String(quote.id)])}
                             />
                           </TableCell>
                         </TableRow>
@@ -441,7 +514,7 @@ export function QuotesPage() {
             )}
 
             {displayedQuotes.length === 0 && !loading && (
-              <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+              <Box sx={[documentFolderTableCardContentPaddedSx, { textAlign: 'center', py: 4, color: 'text.secondary' }] as SxProps<Theme>}>
                 <Typography variant="body1">
                   {searchTerm.trim()
                     ? 'Aucun devis ne correspond à la recherche'
@@ -450,33 +523,49 @@ export function QuotesPage() {
               </Box>
             )}
 
+            <Box sx={documentFolderTableCardContentPaddedSx}>
+            <DocumentFolderBulkBar
+              count={selection.selectedCount}
+              resourceLabel="devis"
+              busy={bulkArchiving}
+              onArchive={() => openArchiveDialog(Array.from(selection.selectedIds))}
+              onClear={selection.clear}
+            />
+
             <DocumentFolderLoadMore
               loaded={quotes.length}
               total={total}
               loading={loadingMore}
               onLoadMore={loadMore}
             />
+            </Box>
           </CardContent>
         </Card>
       )}
 
-      {/* Dialog de confirmation suppression */}
       <ConfirmDialog
         open={archiveDialogOpen}
-        title="Archiver le devis"
-        message={`Archiver « ${quoteToArchive?.number} » ? Consultable dans Archives (aucune suppression).`}
+        title={archiveTargetIds.length > 1 ? 'Archiver les devis' : 'Archiver le devis'}
+        message={
+          archiveTargetIds.length > 1
+            ? `Archiver ${archiveTargetIds.length} devis ? Consultables dans Archives (aucune suppression).`
+            : 'Archiver ce devis ? Consultable dans Archives (aucune suppression).'
+        }
         confirmText="Archiver"
-        onConfirm={handleArchiveQuote}
+        loading={bulkArchiving}
+        onConfirm={() => void handleArchiveConfirm()}
         onClose={() => {
+          if (bulkArchiving) return;
           setArchiveDialogOpen(false);
-          setQuoteToArchive(null);
+          setArchiveTargetIds([]);
         }}
       />
 
       <CreateQuoteDialog
         open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
+        onClose={() => !quotesStore.isCreating && closeCreateDialog()}
         onSubmit={handleCreateQuote}
+        submitting={quotesStore.isCreating}
         defaultClientId={defaultClientId}
       />
 

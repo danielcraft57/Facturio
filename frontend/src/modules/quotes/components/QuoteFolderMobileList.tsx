@@ -1,15 +1,20 @@
 import type { SxProps, Theme } from '@mui/material/styles'
-import {
-  Box,
-  Card,
-  Chip,
-  Stack,
-  Typography,
-} from '@mui/material'
+import { Box, Card, Chip, Stack, Typography } from '@mui/material'
 import type { Quote } from '../../../types/quote'
 import type { DocumentFlags } from '../../../types/documentFolders'
-import { DocumentFolderRowActions } from '../../../components/finance/DocumentFolderRowActions'
-import { documentFolderUnreadRowSx } from '../../../components/finance/documentFolderStyles'
+import {
+  DocumentFolderListRowRail,
+  documentFolderTableRowClass,
+} from '../../../components/finance/DocumentFolderListRowRail'
+import { DocumentFolderRowCheckbox } from '../../../components/finance/DocumentFolderRowCheckbox'
+import {
+  documentFolderUnreadRowSx,
+  documentFolderBulkRowSx,
+  documentFolderMobileListSx,
+} from '../../../components/finance/documentFolderStyles'
+import type { useDocumentFolderSelection } from '../../../hooks/useDocumentFolderSelection'
+
+type SelectionApi = ReturnType<typeof useDocumentFolderSelection<Quote>>
 import { getRealtimeRowSx } from '../../../utils/realtimeRowHighlight'
 import type { RealtimeHighlightTone } from '../../../types/realtime'
 import { QuoteRowActionsMenu } from './QuoteRowActionsMenu'
@@ -26,6 +31,10 @@ type QuoteFolderMobileListProps = {
   onConvert: (q: Quote) => void
   onRemindDeposit?: (q: Quote) => void
   onArchive: (q: Quote) => void
+  selection?: SelectionApi
+  savedTags?: string[]
+  onRememberTag?: (tag: string) => void | Promise<void>
+  onRemoveSavedTag?: (tag: string) => void | Promise<void>
 }
 
 export function QuoteFolderMobileList({
@@ -39,15 +48,22 @@ export function QuoteFolderMobileList({
   onConvert,
   onRemindDeposit,
   onArchive,
+  selection,
+  savedTags = [],
+  onRememberTag,
+  onRemoveSavedTag,
 }: QuoteFolderMobileListProps) {
   return (
-    <Stack spacing={1}>
+    <Stack spacing={1} sx={documentFolderMobileListSx}>
       {quotes.map((quote) => {
         const rowHighlight = highlightRows[String(quote.id)]
+        const quoteId = String(quote.id)
+        const selected = selection?.isSelected(quoteId) ?? false
         return (
           <Card
             key={quote.id}
             variant="outlined"
+            className={documentFolderTableRowClass}
             sx={
               [
                 {
@@ -58,17 +74,44 @@ export function QuoteFolderMobileList({
                 },
                 getRealtimeRowSx(rowHighlight),
                 !quote.seenAt ? documentFolderUnreadRowSx : {},
+                selection
+                  ? documentFolderBulkRowSx(selected, selection.selectionActive)
+                  : {},
               ] as SxProps<Theme>
             }
           >
+            <Stack direction="row" alignItems="stretch">
+              {selection && (
+                <Box
+                  sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 0, m: 0, width: 32 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DocumentFolderRowCheckbox
+                    checked={selected}
+                    visible={selection.selectionActive}
+                    onToggle={() => selection.toggle(quoteId)}
+                    inputProps={{ 'aria-label': `Sélectionner ${quote.number}` }}
+                  />
+                </Box>
+              )}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+            <DocumentFolderListRowRail
+              kind="quote"
+              layout="card"
+              item={quote}
+              onUpdate={(patch) => onPatchFlags(quote.id, patch)}
+              tagsSlot={{
+                tags: quote.tags ?? [],
+                onChange: (tags) => onPatchFlags(quote.id, { tags }),
+                savedTags,
+                onRememberTag,
+                onRemoveSavedTag,
+              }}
+            />
+              </Box>
+            </Stack>
             <Box sx={{ px: 1.5, py: 1.25 }}>
               <Stack direction="row" spacing={1} alignItems="flex-start">
-                <DocumentFolderRowActions
-                  starred={!!quote.starred}
-                  important={!!quote.important}
-                  compact
-                  onUpdate={(patch) => onPatchFlags(quote.id, patch)}
-                />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Stack
                     direction="row"
@@ -82,6 +125,9 @@ export function QuoteFolderMobileList({
                       </Typography>
                       <Typography variant="caption" color="text.secondary" noWrap display="block">
                         {quote.client?.name ?? `Client #${quote.clientId}`}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap display="block">
+                        {quote.client?.email ?? '—'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {formatDate(quote.date)}

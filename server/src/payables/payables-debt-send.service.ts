@@ -94,6 +94,10 @@ export class PayablesDebtSendService {
 		});
 
 		await recordPayableDebtEmailSent(this.prisma, debt.id);
+		await this.prisma.payableDebt.update({
+			where: { id: debtId },
+			data: { sentAt: new Date() },
+		});
 
 		const copyRecipients = this.documentCopies.buildCopyRecipients(dto, to, senderEmail);
 		for (const copyTo of copyRecipients) {

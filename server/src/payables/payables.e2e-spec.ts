@@ -309,6 +309,47 @@ describe('Payables e2e', () => {
 			.expect(400);
 	});
 
+	it('GET /payables/debts — dossiers brouillons et envoyés', async () => {
+		const creditor = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/creditors')
+			.send({ name: 'Dossiers' })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/debts')
+			.send({ creditorId: creditor.id, label: 'Brouillon', totalAmount: 10 })
+			.expect(201);
+
+		const sentDebt = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/debts')
+			.send({ creditorId: creditor.id, label: 'Envoyée', totalAmount: 20 })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/payables/debts/${sentDebt.id}/send`)
+			.send({ email: 'dossier@test.local' })
+			.expect(201);
+
+		const brouillons = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/payables/debts?folder=brouillons&includeFolderCounts=true')
+			.expect(200)
+			.then(
+				(r: {
+					body: {
+						debts: Array<{ label: string }>;
+						folderCounts: { brouillons: number; envoyes: number };
+					};
+				}) => r.body,
+			);
+
+		expect(brouillons.debts).toHaveLength(1);
+		expect(brouillons.debts[0].label).toBe('Brouillon');
+		expect(brouillons.folderCounts.brouillons).toBe(1);
+		expect(brouillons.folderCounts.envoyes).toBe(1);
+	});
+
 	it('GET /public/dettes/:token — vue publique sans auth', async () => {
 		const creditor = await authenticatedRequest(app, testUser.cookies)
 			.post('/api/payables/creditors')

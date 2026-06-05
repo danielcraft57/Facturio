@@ -7,6 +7,7 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
 import ContentCopy from '@mui/icons-material/ContentCopy'
 import Payments from '@mui/icons-material/Payments'
 import CancelIcon from '@mui/icons-material/Cancel'
+import ArchiveIcon from '@mui/icons-material/Archive'
 import type { PayableDebtRow } from '../../../services/payables'
 import { canCancelPayableDebt, canRecordPayablePayment } from '../payableDebtPaymentValidation'
 
@@ -17,6 +18,7 @@ export type PayableDebtRowActionsHandlers = {
   onCopyLink: () => void
   onRecordPayment: () => void
   onCancelDebt?: () => void
+  onArchive?: () => void
 }
 
 type Props = PayableDebtRowActionsHandlers & {
@@ -36,6 +38,7 @@ export function PayableDebtRowActionsMenu({
   onCopyLink,
   onRecordPayment,
   onCancelDebt,
+  onArchive,
 }: Props) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null)
   const close = () => setAnchor(null)
@@ -106,6 +109,20 @@ export function PayableDebtRowActionsMenu({
               <Payments fontSize="small" />
             </ListItemIcon>
             <ListItemText>Régler</ListItemText>
+          </MenuItem>
+        )}
+        {onArchive && (
+          <MenuItem
+            onClick={() => {
+              close()
+              onArchive()
+            }}
+            disabled={busy}
+          >
+            <ListItemIcon>
+              <ArchiveIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Archiver</ListItemText>
           </MenuItem>
         )}
         {canCancelPayableDebt(debt.status) && onCancelDebt && (

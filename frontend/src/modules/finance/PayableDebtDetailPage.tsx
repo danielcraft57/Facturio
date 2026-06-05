@@ -83,6 +83,11 @@ export function PayableDebtDetailPage() {
 
   useEffect(() => {
     if (!Number.isFinite(debtId)) return
+    void payablesService.updateDebtFlags(debtId, { markSeen: true }).catch(() => undefined)
+  }, [debtId])
+
+  useEffect(() => {
+    if (!Number.isFinite(debtId)) return
     initialLoadDone.current = false
     void loadDebt()
   }, [debtId, loadDebt])
@@ -162,7 +167,7 @@ export function PayableDebtDetailPage() {
   if (error || !debt) {
     return (
       <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-        <Button startIcon={<ArrowBack />} onClick={() => navigate('/finance/dettes')} sx={{ mb: 2 }}>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate('/dettes/inbox')} sx={{ mb: 2 }}>
           Retour aux dettes
         </Button>
         <Alert severity="error">{error || 'Dette introuvable'}</Alert>
@@ -181,12 +186,13 @@ export function PayableDebtDetailPage() {
         .filter(Boolean)
         .join('\n')
     : undefined
-  const canPay = debt.balance > 0.01 && debt.status !== 'CANCELLED'
+  const canPay = canRecordPayablePayment(debt.status, debt.balance)
+  const canCancel = canCancelPayableDebt(debt.status)
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-        <IconButton onClick={() => navigate('/finance/dettes')} aria-label="Retour">
+        <IconButton onClick={() => navigate('/dettes/inbox')} aria-label="Retour">
           <ArrowBack />
         </IconButton>
         <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>

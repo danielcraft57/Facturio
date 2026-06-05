@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Button,
   TextField,
@@ -66,6 +66,8 @@ export function CreateQuoteDialog({
 }: CreateQuoteDialogProps) {
   const productsStore = useProductsStore()
   const toast = useToast()
+  const submitInFlightRef = useRef(false)
+  const [submitInFlight, setSubmitInFlight] = useState(false)
   const [clients, setClients] = useState<ClientOption[]>([])
   const [loading, setLoading] = useState(false)
   const [clientQuery, setClientQuery] = useState('')
@@ -79,6 +81,12 @@ export function CreateQuoteDialog({
     newClientEmail: '',
     lines: [{ description: '', quantity: 1, unitPrice: 0, taxRate: 0.2 }],
   })
+
+  useEffect(() => {
+    if (!open) return
+    submitInFlightRef.current = false
+    setSubmitInFlight(false)
+  }, [open])
 
   useEffect(() => {
     if (open) {
@@ -252,25 +260,32 @@ export function CreateQuoteDialog({
   }
 
   const handleSubmit = async () => {
-    const clientId = (await resolveClientId()) ?? formData.clientId
-    const filledLines = filterProductLinesForSubmit(formData.lines)
-    if (!clientId || filledLines.length === 0 || filledLines.some((l) => Number(l.unitPrice) < 0)) {
-      return
-    }
+    if (submitInFlightRef.current || submitting) return
+    submitInFlightRef.current = true
+    setSubmitInFlight(true)
+    try {
+      const clientId = (await resolveClientId()) ?? formData.clientId
+      const filledLines = filterProductLinesForSubmit(formData.lines)
+      if (!clientId || filledLines.length === 0 || filledLines.some((l) => Number(l.unitPrice) < 0)) {
+        return
+      }
 
-    const lines = await ensureProductsLinked(filledLines)
-    onSubmit({
-      clientId,
-      expiryDate: formData.expiryDate || undefined,
-      lines: lines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
-        productId: productId ?? undefined,
-        description: description.trim(),
-        quantity: 1,
-        unitPrice: Math.round(Number(unitPrice)),
-        taxRate: Number(taxRate),
-      })),
-    })
-    onClose()
+      const lines = await ensureProductsLinked(filledLines)
+      await onSubmit({
+        clientId,
+        expiryDate: formData.expiryDate || undefined,
+        lines: lines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
+          productId: productId ?? undefined,
+          description: description.trim(),
+          quantity: 1,
+          unitPrice: Math.round(Number(unitPrice)),
+          taxRate: Number(taxRate),
+        })),
+      })
+    } finally {
+      submitInFlightRef.current = false
+      setSubmitInFlight(false)
+    }
   }
 
   const clientOptions: FinanceClientOption[] = clients.map((c) => ({
@@ -345,8 +360,10 @@ export function CreateQuoteDialog({
       Boolean(formData.newClientName?.trim()) &&
       isClientEmail(formData.newClientEmail ?? ''))
 
+  const submitBusy = submitting || submitInFlight
+
   const submitDisabled =
-    submitting ||
+    submitBusy ||
     clientFormSaving ||
     !clientReady ||
     filterProductLinesForSubmit(formData.lines).length === 0
@@ -356,25 +373,25 @@ export function CreateQuoteDialog({
     <FinanceFormDialogShell
       open={open}
       onClose={onClose}
-      closeDisabled={submitting}
+      closeDisabled={submitBusy}
       title="Nouveau devis"
       subtitle="Client, validité, lignes HT et taux de TVA (décimal, ex. 0,2 = 20 %)."
       icon={<Description />}
       actions={
         <>
-          <Button onClick={onClose} disabled={submitting} sx={financeOutlinedButtonSx}>
+          <Button onClick={onClose} disabled={submitBusy} sx={financeOutlinedButtonSx}>
             Annuler
           </Button>
           <Button
             variant="contained"
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             disabled={submitDisabled}
             sx={financePrimaryButtonSx}
             startIcon={
-              submitting ? <CircularProgress size={18} color="inherit" /> : undefined
+              submitBusy ? <CircularProgress size={18} color="inherit" /> : undefined
             }
           >
-            {submitting ? 'Création…' : 'Créer le devis'}
+            {submitBusy ? 'Création…' : 'Créer le devis'}
           </Button>
         </>
       }

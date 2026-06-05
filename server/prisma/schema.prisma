@@ -651,6 +651,13 @@ model PayableDebt {
   status         PayableDebtStatus   @default(OPEN)
   notes          String?
   publicToken    String?             @unique
+  archivedAt     DateTime?
+  starred        Boolean             @default(false)
+  important      Boolean             @default(false)
+  snoozedUntil   DateTime?
+  seenAt         DateTime?
+  sentAt         DateTime?
+  tags           String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -662,6 +669,12 @@ model PayableDebt {
   @@index([creditorId])
   @@index([status])
   @@index([publicToken])
+  @@index([archivedAt])
+  @@index([starred])
+  @@index([important])
+  @@index([seenAt])
+  @@index([sentAt])
+  @@index([organizationId, archivedAt, createdAt])
 }
 
 model PayableDebtPayment {

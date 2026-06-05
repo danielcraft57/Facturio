@@ -52,7 +52,7 @@ export function AppTopNav() {
 
       <Button
         component={RouterLink}
-        to="/factures/inbox"
+        to="/factures/inbox?create=1"
         variant="contained"
         size="small"
         startIcon={<AddIcon sx={{ fontSize: 18 }} />}

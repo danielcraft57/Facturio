@@ -1,6 +1,8 @@
 import { apiClient } from './api'
 import { unwrapApiPayload } from './clients'
 import type { EmailEngagement } from '../modules/documents/documentEmailEngagement'
+import type { DocumentFolder, DocumentFolderCounts } from '../types/documentFolders'
+import type { DocumentFlags } from '../types/documentFolders'
 
 export type PayableDebtRow = {
   id: number
@@ -18,6 +20,32 @@ export type PayableDebtRow = {
   publicToken?: string | null
   createdAt: string
   emailEngagement: EmailEngagement | null
+  archivedAt?: string | null
+  starred?: boolean
+  important?: boolean
+  snoozedUntil?: string | null
+  seenAt?: string | null
+  sentAt?: string | null
+  tags?: string[]
+}
+
+export type PayablesDebtsListPage = {
+  debts: PayableDebtRow[]
+  total: number
+  page: number
+  pageSize: number
+  folderCounts?: DocumentFolderCounts
+}
+
+export function parsePayablesDebtsListPage(raw: unknown): PayablesDebtsListPage {
+  const payload = unwrapApiPayload(raw) as Record<string, unknown>
+  return {
+    debts: (payload.debts as PayableDebtRow[]) ?? [],
+    total: Number(payload.total ?? 0),
+    page: Number(payload.page ?? 1),
+    pageSize: Number(payload.limit ?? payload.pageSize ?? 30),
+    folderCounts: payload.folderCounts as DocumentFolderCounts | undefined,
+  }
 }
 
 export type PayableDebtPayment = {
@@ -74,6 +102,38 @@ export const payablesService = {
   async getSummary(): Promise<PayablesData> {
     const res = await apiClient.get<PayablesData>('/payables')
     return unwrapApiPayload(res) as PayablesData
+  },
+
+  async listDebts(params: {
+    page?: number
+    limit?: number
+    folder?: DocumentFolder
+    search?: string
+    includeFolderCounts?: boolean
+  }): Promise<PayablesDebtsListPage> {
+    const res = await apiClient.get('/payables/debts', { params })
+    return parsePayablesDebtsListPage(res)
+  },
+
+  async getArchivedDebts(): Promise<{ groups: unknown[]; total: number }> {
+    const res = await apiClient.get('/payables/debts/archives')
+    return unwrapApiPayload(res) as { groups: unknown[]; total: number }
+  },
+
+  async updateDebtFlags(debtId: number, patch: DocumentFlags): Promise<PayableDebtRow> {
+    const res = await apiClient.patch<PayableDebtRow>(`/payables/debts/${debtId}/flags`, patch)
+    apiClient.invalidateCache('/payables')
+    return unwrapApiPayload(res) as PayableDebtRow
+  },
+
+  async archiveDebt(debtId: number): Promise<void> {
+    await apiClient.post(`/payables/debts/${debtId}/archive`, {})
+    apiClient.invalidateCache('/payables')
+  },
+
+  async restoreDebt(debtId: number): Promise<void> {
+    await apiClient.post(`/payables/debts/${debtId}/restore`, {})
+    apiClient.invalidateCache('/payables')
   },
 
   async getDebt(id: number): Promise<PayableDebtDetail> {

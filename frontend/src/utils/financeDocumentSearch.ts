@@ -239,6 +239,40 @@ const QUOTE_STATUS_SYNONYMS: Record<string, string[]> = {
   EXPIRED: ['expire', 'expiré', 'expirée', 'perime', 'périmé'],
 }
 
+export function buildPayableDebtSearchEntry(
+  debt: {
+    id: number
+    label: string
+    status: string
+    totalAmount: number
+    balance: number
+    creditorName: string
+  },
+  statusLabel: string,
+): { option: FinanceSearchOptionBase; searchable: SearchableDocument } {
+  const amountStr = String(debt.totalAmount)
+  const searchText = [
+    debt.label,
+    'dette',
+    debt.creditorName,
+    debt.status,
+    statusLabel,
+    amountStr,
+    amountStr.replace('.', ','),
+    String(debt.balance),
+  ].join(' ')
+
+  const option: FinanceSearchOptionBase = {
+    id: String(debt.id),
+    label: debt.label,
+    sublabel: `${debt.creditorName} · ${statusLabel} · ${formatAmountFr(debt.totalAmount)}`,
+    searchText,
+    amount: debt.totalAmount,
+  }
+
+  return { option, searchable: { searchText, amount: debt.totalAmount } }
+}
+
 export function buildQuoteSearchEntry(
   quote: {
     id: string

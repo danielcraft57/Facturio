@@ -1,4 +1,5 @@
 import { DEFAULT_KEYWORDS, DEFAULT_OG_IMAGE, DEFAULT_SEO } from '../config/seo'
+import { DOCUMENT_FOLDER_LABELS, isDocumentFolder } from '../types/documentFolders'
 import { SITE_DESCRIPTION } from '../modules/marketing/constants/siteContent'
 import type { SeoPayload, RobotsDirective } from './seoTypes'
 
@@ -130,6 +131,14 @@ const APP_ROUTES: Record<string, RouteSeo> = {
   '/abonnements': { title: 'Abonnements', description: 'Abonnements récurrents et facturation.' },
   '/declarations': { title: 'Déclarations', description: 'Déclarations et obligations.' },
   '/comptabilite': { title: 'Comptabilité', description: 'Suivi comptable simplifié.' },
+  '/creances': {
+    title: 'Créances',
+    description: 'Factures clients impayées et relances.',
+  },
+  '/dettes': {
+    title: 'Dettes',
+    description: 'Créanciers et remboursements (reconnaissance de dette).',
+  },
   '/finance/creances': {
     title: 'Créances',
     description: 'Factures clients impayées et relances.',
@@ -177,7 +186,7 @@ function titleForDynamicPath(path: string): RouteSeo | null {
       description: 'Consultez le détail de cette dette partagée.',
     }
   }
-  if (/^\/finance\/dettes\/voir\/[^/]+$/.test(path)) {
+  if (/^\/dettes\/voir\/[^/]+$/.test(path) || /^\/finance\/dettes\/voir\/[^/]+$/.test(path)) {
     return { title: 'Détail de la dette', description: 'Créancier, solde et remboursements.' }
   }
   if (/^\/factures\/[^/]+\/edit$/.test(path)) {
@@ -212,6 +221,17 @@ function titleForDynamicPath(path: string): RouteSeo | null {
   if (facturesFolder && !['archives', 'archive'].includes(facturesFolder[1])) {
     const label = folderLabels[facturesFolder[1]] ?? facturesFolder[1]
     return { title: `Factures — ${label}`, description: `Factures : ${label}.` }
+  }
+
+  if (path === '/dettes/archives' || path === '/finance/dettes/archives') {
+    return { title: 'Archives — Dettes', description: 'Dettes archivées par période.' }
+  }
+
+  const dettesFolder = path.match(/^\/dettes\/([^/]+)$/) ?? path.match(/^\/finance\/dettes\/([^/]+)$/)
+  if (dettesFolder && dettesFolder[1] !== 'voir') {
+    const key = dettesFolder[1]
+    const label = isDocumentFolder(key) ? DOCUMENT_FOLDER_LABELS[key] : key
+    return { title: `Dettes — ${label}`, description: `Dettes : ${label}.` }
   }
 
   return null

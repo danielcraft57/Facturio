@@ -1,4 +1,4 @@
-import { useState, type MouseEvent, type KeyboardEvent } from 'react'
+import { useEffect, useState, type MouseEvent, type KeyboardEvent } from 'react'
 import {
   Autocomplete,
   Badge,
@@ -30,6 +30,8 @@ type DocumentTagsEditorProps = {
   savedTags?: string[]
   onRememberTag?: (tag: string) => void | Promise<void>
   onRemoveSavedTag?: (tag: string) => void | Promise<void>
+  /** Garde le panneau rail ouvert tant que le popover tags est affiché. */
+  onPopoverOpenChange?: (open: boolean) => void
 }
 
 function tagBg(label: string) {
@@ -285,9 +287,14 @@ export function DocumentTagsEditor({
   savedTags = [],
   onRememberTag,
   onRemoveSavedTag,
+  onPopoverOpenChange,
 }: DocumentTagsEditorProps) {
   const [anchorPos, setAnchorPos] = useState<AnchorPosition | null>(null)
   const resolvedLayout = layout ?? (compact ? 'icon' : 'field')
+
+  useEffect(() => {
+    onPopoverOpenChange?.(anchorPos !== null)
+  }, [anchorPos, onPopoverOpenChange])
 
   const openPopover = (e: MouseEvent<Element>) => {
     e.stopPropagation()

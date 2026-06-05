@@ -111,6 +111,7 @@ export const useQuotesStore = create<QuotesState>()(
       },
 
       createQuote: async (data: CreateQuoteData) => {
+        if (get().isCreating) return null;
         set({ isCreating: true });
         try {
           const res = await quoteService.createQuote(data);

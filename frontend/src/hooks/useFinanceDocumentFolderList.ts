@@ -118,7 +118,6 @@ export function useFinanceDocumentFolderList<T>(
     setItems([])
     setTotal(0)
     const withCounts = !debouncedSearch.trim()
-    if (withCounts) setCountsReady(false)
     void fetchPage({
       page: 1,
       append: false,

@@ -3,6 +3,7 @@ import { isDocumentFolder } from '../../../types/documentFolders'
 import { isEntityId } from '../../../utils/entityId'
 import { InvoicesPage } from '../../invoices/InvoicesPage'
 import { QuotesPage } from '../../quotes/QuotesPage'
+import { PayablesPage } from '../../finance/PayablesPage'
 
 /** Redirection création depuis /factures/new ou /devis/new */
 function NewDocumentRedirect({ resource }: { resource: 'factures' | 'devis' }) {
@@ -41,4 +42,18 @@ export function DevisSegmentRoute() {
   }
 
   return <Navigate to="/devis/inbox" replace />
+}
+
+export function DettesSegmentRoute() {
+  const { folder } = useParams<{ folder: string }>()
+
+  if (!folder) return <Navigate to="/dettes/inbox" replace />
+  if (folder === 'archive') return <Navigate to="/dettes/archives" replace />
+  if (isDocumentFolder(folder)) return <PayablesPage />
+
+  if (isEntityId(folder)) {
+    return <Navigate to={`/dettes/voir/${folder}`} replace />
+  }
+
+  return <Navigate to="/dettes/inbox" replace />
 }

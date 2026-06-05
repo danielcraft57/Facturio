@@ -1,10 +1,24 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	Get,
+	Param,
+	ParseIntPipe,
+	Patch,
+	Post,
+	Query,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SendDocumentEmailDto } from '../common/dto/send-document-email.dto';
 import { CreatePayableCreditorDto } from './dto/create-payable-creditor.dto';
 import { CreatePayableDebtDto } from './dto/create-payable-debt.dto';
 import { CreatePayableDebtPaymentDto } from './dto/create-payable-debt-payment.dto';
 import { SendPayableDebtPaymentNoticeDto } from './dto/send-payable-debt-payment-notice.dto';
+import {
+	PayableDebtListQueryDto,
+	UpdatePayableDebtDocumentFlagsDto,
+} from './dto/payable-debt-document-folder.dto';
 import { buildPublicPayableDebtUrl } from '../common/public-app-url';
 import { PayablesDebtSendService } from './payables-debt-send.service';
 import { PayablesService } from './payables.service';
@@ -39,9 +53,46 @@ export class PayablesController {
 		return this.payables.createDebt(user.organizationId, body);
 	}
 
+	@Get('debts')
+	findAllDebts(
+		@Query() query: PayableDebtListQueryDto,
+		@CurrentUser() user: { organizationId?: number },
+	) {
+		return this.payables.findAllDebts(user.organizationId, query);
+	}
+
+	@Get('folder-counts')
+	getFolderCounts(@CurrentUser() user: { organizationId?: number }) {
+		return this.payables.getFolderCounts(user.organizationId);
+	}
+
+	@Get('debts/archives')
+	findArchivedDebts(@CurrentUser() user: { organizationId?: number }) {
+		return this.payables.findArchivedGrouped(user.organizationId);
+	}
+
 	@Get('debts/:id')
 	findDebt(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { organizationId?: number }) {
 		return this.payables.findOneDebt(user.organizationId, id);
+	}
+
+	@Patch('debts/:id/flags')
+	updateDebtFlags(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() body: UpdatePayableDebtDocumentFlagsDto,
+		@CurrentUser() user: { organizationId?: number },
+	) {
+		return this.payables.updateDocumentFlags(user.organizationId, id, body);
+	}
+
+	@Post('debts/:id/archive')
+	archiveDebt(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { organizationId?: number }) {
+		return this.payables.archiveDebt(user.organizationId, id);
+	}
+
+	@Post('debts/:id/restore')
+	restoreDebt(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { organizationId?: number }) {
+		return this.payables.restoreDebt(user.organizationId, id);
 	}
 
 	@Post('debts/:id/cancel')

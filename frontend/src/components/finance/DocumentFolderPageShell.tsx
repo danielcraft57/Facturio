@@ -1,17 +1,20 @@
 import type { ReactNode } from 'react'
 import { Box, Fade, LinearProgress, Stack, Typography } from '@mui/material'
 import { DocumentFolderSidebar, DocumentFolderMobileMenuButton } from './DocumentFolderSidebar'
-import { DocumentFolderSidebarSkeleton } from '../loading/DocumentFolderSidebarSkeleton'
 import type { DocumentFolder, DocumentFolderCounts } from '../../types/documentFolders'
 import {
+  documentFolderLayoutRowSx,
   documentFolderPageMainSx,
-  documentFolderSidebarSx,
   documentFolderToolbarSx,
   documentFolderToolbarFiltersSx,
 } from './documentFolderStyles'
 
 export type DocumentFolderPageShellProps = {
-  resource?: 'factures' | 'devis'
+  resource?: 'factures' | 'devis' | 'dettes'
+  /** Préfixe de route sidebar (ex. `/dettes`). */
+  folderBasePath?: string
+  /** Dossiers masqués dans la sidebar. */
+  excludeFolders?: import('../../types/documentFolders').DocumentFolder[]
   title: string
   subtitle: string
   /** Sidebar personnalisée (ex. clients). Sinon sidebar factures/devis. */
@@ -38,6 +41,8 @@ export type DocumentFolderPageShellProps = {
 
 export function DocumentFolderPageShell({
   resource = 'factures',
+  folderBasePath,
+  excludeFolders,
   title,
   subtitle,
   sidebar,
@@ -57,7 +62,7 @@ export function DocumentFolderPageShell({
   countsLoading = false,
 }: DocumentFolderPageShellProps) {
   const showProgress = loading && !initialLoading
-  const sidebarCountsLoading = countsLoading || initialLoading
+  const sidebarCountsLoading = countsLoading
   const folderKey = contentKey ?? activeFolder
 
   const sidebarNode =
@@ -65,6 +70,8 @@ export function DocumentFolderPageShell({
     (counts && onNew ? (
       <DocumentFolderSidebar
         resource={resource}
+        basePath={folderBasePath}
+        excludeFolders={excludeFolders}
         counts={counts}
         activeFolder={activeFolder}
         onNew={onNew}
@@ -113,21 +120,8 @@ export function DocumentFolderPageShell({
         <Box sx={documentFolderToolbarFiltersSx}>{filters}</Box>
       </Box>
 
-      <Box sx={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
-        {sidebarNode && (
-          <Box
-            sx={{
-              display: initialLoading ? { xs: 'block', md: 'none' } : 'contents',
-            }}
-          >
-            {sidebarNode}
-          </Box>
-        )}
-        {initialLoading && !sidebar && (
-          <Box sx={{ ...documentFolderSidebarSx, display: { xs: 'none', md: 'flex' } }}>
-            <DocumentFolderSidebarSkeleton />
-          </Box>
-        )}
+      <Box sx={documentFolderLayoutRowSx}>
+        {sidebarNode}
 
         <Box sx={{ ...documentFolderPageMainSx, position: 'relative' }}>
           {showProgress && (

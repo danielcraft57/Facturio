@@ -25,14 +25,14 @@ describe('payablesService', () => {
       summary: { totalOutstanding: 114.52, creditorCount: 1, debtCount: 1 },
       creditors: [],
       debts: [],
-    })
+    } as never)
     const data = await payablesService.getSummary()
     expect(apiClient.get).toHaveBeenCalledWith('/payables')
     expect(data.summary.totalOutstanding).toBe(114.52)
   })
 
   it('POST paiement partiel et invalide le cache', async () => {
-    vi.mocked(apiClient.post).mockResolvedValue({ id: 1, balance: 114.52, status: 'PARTIAL' })
+    vi.mocked(apiClient.post).mockResolvedValue({ id: 1, balance: 114.52, status: 'PARTIAL' } as never)
     await payablesService.recordPayment(1, { amount: 50 })
     expect(apiClient.post).toHaveBeenCalledWith('/payables/debts/1/payments', { amount: 50 })
     expect(apiClient.invalidateCache).toHaveBeenCalledWith('/payables')
@@ -43,7 +43,7 @@ describe('payablesService', () => {
       emailSent: true,
       sentTo: 'creancier@test.fr',
       publicToken: 'abc',
-    })
+    } as never)
     const res = await payablesService.sendPaymentNotice(2, {
       paymentAmount: 50,
       email: 'creancier@test.fr',

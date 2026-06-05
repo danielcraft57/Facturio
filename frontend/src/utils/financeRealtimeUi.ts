@@ -115,7 +115,7 @@ export function buildNotificationFromRealtime(detail: FinanceRealtimeDetail) {
       title: cfg.title,
       message: cfg.message(label),
       category: 'invoice' as const,
-      href: '/finance/dettes',
+      href: '/dettes/inbox',
     }
   }
 
@@ -126,7 +126,7 @@ export function buildNotificationFromRealtime(detail: FinanceRealtimeDetail) {
       ? detail.resource === 'invoices'
         ? `/factures/${detail.id}`
         : detail.resource === 'payables'
-          ? '/finance/dettes'
+          ? '/dettes/inbox'
           : `/devis`
       : undefined
 

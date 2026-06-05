@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Button,
   TextField,
@@ -101,6 +101,8 @@ export function CreateInvoiceDialog({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const productsStore = useProductsStore()
   const toast = useToast()
+  const submitInFlightRef = useRef(false)
+  const [submitInFlight, setSubmitInFlight] = useState(false)
 
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
@@ -108,6 +110,12 @@ export function CreateInvoiceDialog({
   const [willCreateClient, setWillCreateClient] = useState(false)
   const [clientQuery, setClientQuery] = useState('')
   const [createClientError, setCreateClientError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    submitInFlightRef.current = false
+    setSubmitInFlight(false)
+  }, [open])
 
   useEffect(() => {
     if (open) {
@@ -260,57 +268,66 @@ export function CreateInvoiceDialog({
   }
 
   const handleSubmit = async () => {
-    const email = formData.clientEmail?.trim()
-    const filledItems = filterProductLinesForSubmit(formData.items)
-    if (
-      !email ||
-      filledItems.length === 0 ||
-      filledItems.some((item) => item.unitPrice < 0)
-    ) {
-      return
-    }
-    if (willCreateClient && !formData.newClientName?.trim()) {
-      return
-    }
-    const items = await ensureProductsLinked(filledItems)
+    if (submitInFlightRef.current || submitting) return
+    submitInFlightRef.current = true
+    setSubmitInFlight(true)
+    try {
+      const email = formData.clientEmail?.trim()
+      const filledItems = filterProductLinesForSubmit(formData.items)
+      if (
+        !email ||
+        filledItems.length === 0 ||
+        filledItems.some((item) => item.unitPrice < 0)
+      ) {
+        return
+      }
+      if (willCreateClient && !formData.newClientName?.trim()) {
+        return
+      }
+      const items = await ensureProductsLinked(filledItems)
 
-    const payload: CreateInvoiceData = {
-      ...formData,
-      clientEmail: email,
-      clientId: formData.clientId || undefined,
-      items: items.map((it) => ({
-        ...it,
-        quantity: 1,
-        unitPrice: Math.round(Number(it.unitPrice) || 0),
-      })),
-      currency: 'EUR',
+      const payload: CreateInvoiceData = {
+        ...formData,
+        clientEmail: email,
+        clientId: formData.clientId || undefined,
+        items: items.map((it) => ({
+          ...it,
+          quantity: 1,
+          unitPrice: Math.round(Number(it.unitPrice) || 0),
+        })),
+        currency: 'EUR',
+      }
+      await onSubmit(payload)
+    } finally {
+      submitInFlightRef.current = false
+      setSubmitInFlight(false)
     }
-    await onSubmit(payload)
   }
 
   const { subtotal, taxTotal, total } = calculateTotals()
 
   const currencySymbol = '€'
+  const submitBusy = submitting || submitInFlight
 
   return (
     <FinanceFormDialogShell
       open={open}
       onClose={onClose}
-      closeDisabled={submitting}
+      closeDisabled={submitBusy}
       fullScreen={isMobile}
       title="Nouvelle facture"
       subtitle="Client, lignes, échéances et options de règlement."
       icon={<ReceiptLong />}
       actions={
         <>
-          <Button onClick={onClose} disabled={submitting} sx={financeOutlinedButtonSx}>
+          <Button onClick={onClose} disabled={submitBusy} sx={financeOutlinedButtonSx}>
             Annuler
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             variant="contained"
             disabled={
-              submitting ||
+              submitBusy ||
               !(formData.clientEmail?.trim() || formData.clientId) ||
               (willCreateClient && !formData.newClientName?.trim()) ||
               filterProductLinesForSubmit(formData.items).length === 0 ||
@@ -318,10 +335,10 @@ export function CreateInvoiceDialog({
             }
             sx={financePrimaryButtonSx}
             startIcon={
-              submitting ? <CircularProgress size={18} color="inherit" /> : undefined
+              submitBusy ? <CircularProgress size={18} color="inherit" /> : undefined
             }
           >
-            {submitting ? 'Création…' : 'Créer la facture'}
+            {submitBusy ? 'Création…' : 'Créer la facture'}
           </Button>
         </>
       }
