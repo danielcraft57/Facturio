@@ -10,7 +10,11 @@ import type { FinanceRealtimeDetail } from '../types/realtime'
 
 function dispatchDetail(detail: FinanceRealtimeDetail) {
   const name =
-    detail.resource === 'invoices' ? 'facturio:invoice-realtime' : 'facturio:quote-realtime'
+    detail.resource === 'invoices'
+      ? 'facturio:invoice-realtime'
+      : detail.resource === 'payables'
+        ? 'facturio:payables-realtime'
+        : 'facturio:quote-realtime'
   window.dispatchEvent(new CustomEvent(name, { detail }))
 }
 
@@ -52,7 +56,6 @@ export function FinanceRealtimeBridge() {
         markQuotesStale()
         void fetchQuotes()
       }
-
       dispatchDetail(detail)
 
       const notif = buildNotificationFromRealtime(detail)

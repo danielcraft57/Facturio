@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "Facturio",
+    "slug": "facturio-mobile",
+    "version": "0.1.0",
+    "description": "Créez, envoyez et suivez vos factures depuis mobile et tablette.",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "facturio",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#002D3D"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "fr.danielcraft.facturio",
+      "infoPlist": {
+        "CFBundleDisplayName": "Facturio"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#002D3D",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "fr.danielcraft.facturio",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "Facturio",
+      "shortName": "Facturio",
+      "description": "Facturation simple, rapide et professionnelle",
+      "themeColor": "#002D3D",
+      "backgroundColor": "#F1F5F9",
+      "bundler": "metro",
+      "output": "static",
+      "lang": "fr"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#002D3D",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

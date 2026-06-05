@@ -177,7 +177,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
           <Tooltip title="Nouvelle facture">
             <IconButton
               component={RouterLink}
-              to="/factures/inbox"
+              to="/factures/inbox?create=1"
               color="inherit"
               aria-label="nouvelle facture"
               sx={{

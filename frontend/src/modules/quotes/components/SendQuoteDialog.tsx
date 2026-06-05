@@ -87,7 +87,7 @@ export function SendQuoteDialog({ open, quote, onClose, onSend, sending = false 
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth disableRestoreFocus>
       <DialogTitle>Envoyer le devis par email</DialogTitle>
       <DialogContent>
         {quote && (

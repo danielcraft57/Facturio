@@ -48,7 +48,11 @@ const FOLDER_ICONS: Record<DocumentFolder, React.ReactNode> = {
 }
 
 type DocumentFolderSidebarProps = {
-  resource: 'factures' | 'devis'
+  resource: 'factures' | 'devis' | 'dettes'
+  /** Préfixe de route (ex. `/dettes`). Par défaut `/${resource}`. */
+  basePath?: string
+  /** Dossiers masqués (ex. pas d’« Important » sur les dettes). */
+  excludeFolders?: DocumentFolder[]
   counts: DocumentFolderCounts
   activeFolder: DocumentFolder
   onNew: () => void
@@ -88,6 +92,8 @@ function FolderCountBadge({
 
 function SidebarContent({
   resource,
+  basePath,
+  excludeFolders = [],
   counts,
   activeFolder,
   onNew,
@@ -95,7 +101,7 @@ function SidebarContent({
   onNavigate,
   countsLoading = false,
 }: DocumentFolderSidebarProps & { onNavigate?: () => void }) {
-  const base = `/${resource}`
+  const base = basePath ?? `/${resource}`
   const location = useLocation()
   const archivesActive = location.pathname.endsWith('/archives')
   const archiveCount = counts.archives ?? 0
@@ -118,7 +124,7 @@ function SidebarContent({
       </Box>
 
       <List dense sx={{ flex: 1, px: 0.75, py: 0.5 }}>
-        {DOCUMENT_FOLDERS.map((folder) => {
+        {DOCUMENT_FOLDERS.filter((f) => !excludeFolders.includes(f)).map((folder) => {
           const count = counts[folder] ?? 0
           const selected = activeFolder === folder && !archivesActive
           return (

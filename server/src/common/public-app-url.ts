@@ -25,3 +25,7 @@ export function buildPublicInvoiceUrl(publicToken: string): string {
 export function buildPublicQuoteUrl(publicToken: string): string {
 	return `${resolvePublicAppBaseUrl()}/public/devis/${publicToken}`;
 }
+
+export function buildPublicPayableDebtUrl(publicToken: string): string {
+	return `${resolvePublicAppBaseUrl()}/dette/${publicToken}`;
+}

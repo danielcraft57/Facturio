@@ -118,7 +118,7 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
       <Box sx={{ px: 2, py: 1.5, flexShrink: 0 }}>
         <Button
           component={RouterLink}
-          to="/factures/inbox"
+          to="/factures/inbox?create=1"
           variant="contained"
           fullWidth
           startIcon={<AddIcon />}

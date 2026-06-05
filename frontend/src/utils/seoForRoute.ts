@@ -1,4 +1,5 @@
 import { DEFAULT_KEYWORDS, DEFAULT_OG_IMAGE, DEFAULT_SEO } from '../config/seo'
+import { DOCUMENT_FOLDER_LABELS, isDocumentFolder } from '../types/documentFolders'
 import { SITE_DESCRIPTION } from '../modules/marketing/constants/siteContent'
 import type { SeoPayload, RobotsDirective } from './seoTypes'
 
@@ -14,6 +15,7 @@ const PRIVATE_PREFIXES = [
   '/abonnements',
   '/declarations',
   '/comptabilite',
+  '/finance',
   '/parametres',
   '/installation',
   '/inscription/confirmation',
@@ -34,7 +36,7 @@ function robotsForPath(path: string): RobotsDirective {
   if (AUTH_PREFIXES.some((p) => path === p || path.startsWith(p))) {
     return 'noindex, follow'
   }
-  if (path.startsWith('/public/') || path.startsWith('/facture/')) {
+  if (path.startsWith('/public/') || path.startsWith('/facture/') || path.startsWith('/dette/')) {
     return 'noindex, nofollow'
   }
   return 'index, follow'
@@ -129,6 +131,22 @@ const APP_ROUTES: Record<string, RouteSeo> = {
   '/abonnements': { title: 'Abonnements', description: 'Abonnements récurrents et facturation.' },
   '/declarations': { title: 'Déclarations', description: 'Déclarations et obligations.' },
   '/comptabilite': { title: 'Comptabilité', description: 'Suivi comptable simplifié.' },
+  '/creances': {
+    title: 'Créances',
+    description: 'Factures clients impayées et relances.',
+  },
+  '/dettes': {
+    title: 'Dettes',
+    description: 'Créanciers et remboursements (reconnaissance de dette).',
+  },
+  '/finance/creances': {
+    title: 'Créances',
+    description: 'Factures clients impayées et relances.',
+  },
+  '/finance/dettes': {
+    title: 'Dettes',
+    description: 'Créanciers et remboursements (reconnaissance de dette).',
+  },
   '/parametres': { title: 'Paramètres', description: 'Paramètres de votre compte et organisation.' },
   '/parametres/entreprise': { title: 'Entreprise', description: 'Identité légale et coordonnées de facturation.' },
   '/parametres/abonnement': { title: 'Abonnement', description: 'Formule et facturation de votre compte.' },
@@ -162,6 +180,15 @@ function titleForDynamicPath(path: string): RouteSeo | null {
   if (path.startsWith('/facture/') || path.startsWith('/public/factures/')) {
     return { title: 'Facture en ligne', description: 'Consultez ou réglez cette facture.' }
   }
+  if (path.startsWith('/dette/')) {
+    return {
+      title: 'Reconnaissance de dette',
+      description: 'Consultez le détail de cette dette partagée.',
+    }
+  }
+  if (/^\/dettes\/voir\/[^/]+$/.test(path) || /^\/finance\/dettes\/voir\/[^/]+$/.test(path)) {
+    return { title: 'Détail de la dette', description: 'Créancier, solde et remboursements.' }
+  }
   if (/^\/factures\/[^/]+\/edit$/.test(path)) {
     return { title: 'Modifier la facture', description: 'Édition d’une facture.' }
   }
@@ -194,6 +221,17 @@ function titleForDynamicPath(path: string): RouteSeo | null {
   if (facturesFolder && !['archives', 'archive'].includes(facturesFolder[1])) {
     const label = folderLabels[facturesFolder[1]] ?? facturesFolder[1]
     return { title: `Factures — ${label}`, description: `Factures : ${label}.` }
+  }
+
+  if (path === '/dettes/archives' || path === '/finance/dettes/archives') {
+    return { title: 'Archives — Dettes', description: 'Dettes archivées par période.' }
+  }
+
+  const dettesFolder = path.match(/^\/dettes\/([^/]+)$/) ?? path.match(/^\/finance\/dettes\/([^/]+)$/)
+  if (dettesFolder && dettesFolder[1] !== 'voir') {
+    const key = dettesFolder[1]
+    const label = isDocumentFolder(key) ? DOCUMENT_FOLDER_LABELS[key] : key
+    return { title: `Dettes — ${label}`, description: `Dettes : ${label}.` }
   }
 
   return null

@@ -4,14 +4,17 @@ import PeopleIcon from '@mui/icons-material/People'
 import DescriptionIcon from '@mui/icons-material/Description'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
-import SearchIcon from '@mui/icons-material/Search'
 import LocalAtmIcon from '@mui/icons-material/LocalAtm'
 import AutorenewIcon from '@mui/icons-material/Autorenew'
 import GavelIcon from '@mui/icons-material/Gavel'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import CreditScoreIcon from '@mui/icons-material/CreditScore'
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
+import { CREANCES_PATH, DETTES_INBOX } from './encoursPaths'
+
+export type NavItemSection = 'activity' | 'encours'
 
 export type NavItem = {
   to: string
@@ -19,6 +22,8 @@ export type NavItem = {
   description?: string
   icon: ReactNode
   badge?: string
+  /** Regroupement dans le mega-menu Commercial. */
+  section?: NavItemSection
 }
 
 export type NavFeatured = {
@@ -26,6 +31,7 @@ export type NavFeatured = {
   description: string
   to: string
   cta: string
+  secondaryCta?: { label: string; to: string }
   icon: ReactNode
   accent: 'navy' | 'emerald' | 'amber'
 }
@@ -50,12 +56,12 @@ export const navGroups: NavGroup[] = [
   {
     id: 'commercial',
     label: 'Commercial',
-    overview: 'Clients, devis, factures et catalogue — le cœur de votre activité.',
-    overviewCta: { label: 'Voir les factures', to: '/factures/inbox' },
+    overview: 'Clients, devis, factures et catalogue — encours à part.',
+    overviewCta: { label: 'Factures', to: '/factures/inbox' },
     featured: {
       title: 'Créer une facture',
-      description: 'Émettez et envoyez une facture en quelques clics, avec relance intégrée.',
-      to: '/factures/inbox',
+      description: 'Émission rapide avec relances intégrées.',
+      to: '/factures/inbox?create=1',
       cta: 'Nouvelle facture',
       icon: <AddCircleOutlineIcon />,
       accent: 'navy',
@@ -64,14 +70,16 @@ export const navGroups: NavGroup[] = [
       {
         to: '/clients/inbox',
         label: 'Clients',
-        description: 'Carnet, contacts et historique',
+        description: 'Carnet acheteurs (≠ créanciers des dettes)',
         icon: <PeopleIcon fontSize="small" />,
+        section: 'activity',
       },
       {
         to: '/devis/inbox',
         label: 'Devis',
         description: 'Propositions commerciales',
         icon: <DescriptionIcon fontSize="small" />,
+        section: 'activity',
       },
       {
         to: '/factures/inbox',
@@ -79,32 +87,42 @@ export const navGroups: NavGroup[] = [
         description: 'Émission, envoi et relances',
         icon: <ReceiptLongIcon fontSize="small" />,
         badge: 'Relances',
+        section: 'activity',
       },
       {
         to: '/produits',
         label: 'Produits',
         description: 'Catalogue et tarifs',
         icon: <Inventory2Icon fontSize="small" />,
+        section: 'activity',
       },
       {
-        to: '/prospection',
-        label: 'Prospection',
-        description: 'Pipeline et prospects',
-        icon: <SearchIcon fontSize="small" />,
+        to: CREANCES_PATH,
+        label: 'Créances',
+        description: 'Factures impayées par vos clients',
+        icon: <CreditScoreIcon fontSize="small" />,
+        section: 'encours',
+      },
+      {
+        to: DETTES_INBOX,
+        label: 'Dettes',
+        description: 'Montants dus à vos créanciers',
+        icon: <AccountBalanceWalletIcon fontSize="small" />,
+        section: 'encours',
       },
     ],
   },
   {
     id: 'finance',
     label: 'Finance',
-    overview: 'Fiscalité, abonnements, déclarations et suivi comptable.',
-    overviewCta: { label: 'Ouvrir la comptabilité', to: '/comptabilite' },
+    overview: 'Obligations fiscales et comptabilité.',
+    overviewCta: { label: 'Comptabilité', to: '/comptabilite' },
     featured: {
-      title: 'Suivi financier',
-      description: 'Consolidez taxes, déclarations et indicateurs en un seul espace.',
+      title: 'Comptabilité',
+      description: 'Grand livre, rapports et suivi comptable.',
       to: '/comptabilite',
-      cta: 'Tableau finance',
-      icon: <TrendingUpIcon />,
+      cta: 'Ouvrir',
+      icon: <AccountBalanceIcon />,
       accent: 'emerald',
     },
     items: [
@@ -155,6 +173,10 @@ export function isNavActive(pathname: string, to: string): boolean {
   if (to.startsWith('/factures')) return pathname.startsWith('/factures')
   if (to.startsWith('/devis')) return pathname.startsWith('/devis')
   if (to.startsWith('/clients')) return pathname.startsWith('/clients')
+  if (to === CREANCES_PATH) {
+    return pathname === CREANCES_PATH || pathname.startsWith(`${CREANCES_PATH}/`)
+  }
+  if (to.startsWith('/dettes')) return pathname.startsWith('/dettes')
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 

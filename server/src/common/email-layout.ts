@@ -155,6 +155,20 @@ export function emailParagraph(text: string): string {
 	return `<p style="margin:0 0 14px;color:${EMAIL_BRAND.text};font-size:15px;">${text}</p>`;
 }
 
+/** Encadré mentions juridiques (liste à puces, lisible dans les clients mail). */
+export function emailLegalSection(title: string, items: string[]): string {
+	const lis = items
+		.map(
+			(item) =>
+				`<li style="margin:0 0 8px;color:${EMAIL_BRAND.textMuted};font-size:12px;line-height:1.55;">${item}</li>`,
+		)
+		.join('');
+	return `<div style="margin:20px 0 0;padding:16px 18px;background:${EMAIL_BRAND.bgMuted};border:1px solid ${EMAIL_BRAND.border};border-radius:12px;">
+<p style="margin:0 0 10px;font-size:12px;font-weight:700;color:${EMAIL_BRAND.text};letter-spacing:0.04em;text-transform:uppercase;">${title}</p>
+<ul style="margin:0;padding-left:18px;">${lis}</ul>
+</div>`;
+}
+
 export function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, '&amp;')
@@ -170,6 +184,7 @@ export function renderSimpleFacturioEmail(options: {
 	headerVariant?: EmailHeaderVariant;
 	bodyHtml: string;
 	footerHtml?: string;
+	trackPixel?: string;
 }): string {
 	return renderFacturioEmailLayout({
 		title: options.title,
@@ -177,6 +192,7 @@ export function renderSimpleFacturioEmail(options: {
 		headerVariant: options.headerVariant ?? 'default',
 		contentHtml: options.bodyHtml,
 		footerHtml: options.footerHtml ?? '',
+		trackPixel: options.trackPixel,
 	});
 }
 

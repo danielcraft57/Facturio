@@ -70,7 +70,10 @@ export const documentFolderPageMainSx: SxProps<Theme> = (theme) => ({
   overflow: 'auto',
   overflowX: 'hidden',
   scrollbarGutter: 'stable',
-  p: { xs: 1.5, sm: 2, md: 3 },
+  pt: { xs: 1.5, sm: 2, md: 2 },
+  pr: { xs: 1.5, sm: 2, md: 3 },
+  pb: { xs: 1.5, sm: 2, md: 3 },
+  pl: { xs: 1.5, sm: 2, md: 0.5 },
   bgcolor: theme.palette.mode === 'dark' ? 'background.default' : alpha(FOLDER_NAVY, 0.02),
   ...(typeof documentFolderScrollbarSx === 'function'
     ? documentFolderScrollbarSx(theme)
@@ -85,6 +88,18 @@ export const documentFolderSidebarSx: SxProps<Theme> = {
   bgcolor: (t) => (t.palette.mode === 'dark' ? alpha('#fff', 0.02) : '#fff'),
   display: { xs: 'none', md: 'flex' },
   flexDirection: 'column',
+  borderRadius: 2,
+}
+
+/** Sidebar + zone liste : espacement horizontal entre les deux. */
+export const documentFolderLayoutRowSx: SxProps<Theme> = {
+  display: 'flex',
+  flex: 1,
+  minHeight: 0,
+  position: 'relative',
+  mt: { xs: 0.75, md: 1.5 },
+  gap: { xs: 0, md: 2.5 },
+  alignItems: 'stretch',
 }
 
 export const documentFolderNewButtonSx: SxProps<Theme> = {
@@ -123,7 +138,10 @@ export const documentFolderFilterGridSx: SxProps<Theme> = {
   alignItems: 'center',
 }
 
-export const documentFolderTableCardSx: SxProps<Theme> = financeCardSx
+export const documentFolderTableCardSx = [
+  financeCardSx,
+  { display: 'flex', flexDirection: 'column' },
+] as SxProps<Theme>
 
 export const documentFolderTableCardWrapSx: SxProps<Theme> = {
   width: '100%',
@@ -131,14 +149,63 @@ export const documentFolderTableCardWrapSx: SxProps<Theme> = {
   minWidth: 0,
 }
 
+/** Tableau bord à bord : barre de statut collée au bord gauche de la carte. */
+export const documentFolderTableCardContentSx: SxProps<Theme> = {
+  p: '0 !important',
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  '&:last-child': { pb: '0 !important' },
+}
+
+export const documentFolderTableCardContentPaddedSx: SxProps<Theme> = {
+  px: { xs: 1, sm: 1.5, md: 2 },
+  py: { xs: 1, sm: 1.5, md: 2 },
+}
+
+/** Rayon intérieur aligné sur `financeCardSx` (borderRadius 2.5). */
+export const documentFolderCardInnerRadius = (theme: Theme) =>
+  typeof theme.shape.borderRadius === 'number' ? theme.shape.borderRadius * 2.5 : 10
+
+/** Pied de carte (charger plus, vide) — continu avec le tableau, sans effet flottant. */
+export const documentFolderTableCardFooterSx: SxProps<Theme> = (theme) => {
+  const innerRadius = documentFolderCardInnerRadius(theme)
+  return {
+    borderTop: `1px solid ${alpha(FOLDER_NAVY, theme.palette.mode === 'dark' ? 0.14 : 0.08)}`,
+    bgcolor: theme.palette.mode === 'dark' ? alpha('#fff', 0.02) : alpha(FOLDER_NAVY, 0.015),
+    px: { xs: 1, sm: 1.5, md: 2 },
+    py: { xs: 1.25, sm: 1.5 },
+    borderBottomLeftRadius: innerRadius,
+    borderBottomRightRadius: innerRadius,
+  }
+}
+
 /** Défilement horizontal uniquement (colonnes masquées sur petit écran) — pas de hauteur max. */
 export const documentFolderTableContainerSx: SxProps<Theme> = (theme) => {
   const thumb = alpha(FOLDER_NAVY, theme.palette.mode === 'dark' ? 0.38 : 0.2)
+  const innerRadius = documentFolderCardInnerRadius(theme)
   return {
     width: '100%',
     maxWidth: '100%',
+    m: 0,
+    p: 0,
+    flex: '1 1 auto',
+    bgcolor: 'background.paper',
+    borderTopLeftRadius: innerRadius,
+    borderTopRightRadius: innerRadius,
+    '& .MuiTable-root': {
+      width: '100%',
+      minWidth: '100%',
+    },
+    '& .MuiTableHead-root .MuiTableCell-head:first-of-type': {
+      borderTopLeftRadius: innerRadius,
+    },
+    '& .MuiTableHead-root .MuiTableCell-head:last-of-type': {
+      borderTopRightRadius: innerRadius,
+    },
     overflowX: 'auto',
-    overflowY: 'visible',
+    overflowY: 'hidden',
     WebkitOverflowScrolling: 'touch',
     scrollbarWidth: 'thin',
     scrollbarColor: `${thumb} transparent`,
@@ -157,7 +224,9 @@ export const documentFolderBulkCellClass = 'doc-folder-bulk-cell'
 
 export const documentFolderTableSx: SxProps<Theme> = {
   width: '100%',
+  minWidth: '100%',
   tableLayout: 'fixed',
+  borderCollapse: 'collapse',
   '& .MuiTableCell-root': {
     px: { md: 1, lg: 1.25 },
     py: { md: 1, lg: 1.25 },
@@ -166,8 +235,20 @@ export const documentFolderTableSx: SxProps<Theme> = {
   },
   [`& .MuiTableCell-root.${documentFolderBulkCellClass}`]: {
     px: 0,
-    py: { md: 1, lg: 1.25 },
+    py: 0,
     overflow: 'visible',
+    verticalAlign: 'middle',
+  },
+  '& .MuiTableCell-root.doc-folder-rail-cell': {
+    px: 0,
+    py: 0,
+    overflow: 'visible',
+    textOverflow: 'clip',
+    verticalAlign: 'middle',
+    borderLeft: 'none',
+  },
+  '& tr.document-folder-table-row:hover': {
+    bgcolor: (t) => alpha(FOLDER_NAVY, t.palette.mode === 'dark' ? 0.06 : 0.025),
   },
   '& .doc-folder-col-amount': {
     overflow: 'visible',
@@ -187,15 +268,28 @@ export const folderColHideBelowXl: SxProps<Theme> = {
 export const documentFolderBulkCheckboxClass = 'doc-folder-bulk-cb'
 
 export const documentFolderBulkCheckboxSx: SxProps<Theme> = {
-  p: 0.35,
+  p: 0,
+  m: 0,
   transition: 'opacity 0.15s ease',
+  color: (t) => alpha(t.palette.text.primary, 0.42),
+  '&.Mui-checked': {
+    color: 'primary.main',
+  },
 }
 
-export const documentFolderTableHeadSx: SxProps<Theme> = {
-  [`&:hover .${documentFolderBulkCheckboxClass}`]: {
-    opacity: 1,
-    pointerEvents: 'auto',
-  },
+export const documentFolderTableHeadSx: SxProps<Theme> = (theme) => {
+  const headBg = theme.palette.mode === 'dark' ? alpha('#fff', 0.04) : alpha('#0f172a', 0.03)
+  const headBorder = `1px solid ${alpha('#0f172a', 0.1)}`
+  return {
+    [`&:hover .${documentFolderBulkCheckboxClass}`]: {
+      opacity: 1,
+      pointerEvents: 'auto',
+    },
+    '& .MuiTableCell-head.doc-folder-rail-cell, & .MuiTableCell-head.doc-folder-bulk-cell': {
+      bgcolor: headBg,
+      borderBottom: headBorder,
+    },
+  }
 }
 
 export const documentFolderColInvoiceSx: SxProps<Theme> = {
@@ -205,7 +299,7 @@ export const documentFolderColInvoiceSx: SxProps<Theme> = {
 }
 
 export const documentFolderColClientSx: SxProps<Theme> = {
-  width: '28%',
+  width: 'auto',
   minWidth: 140,
 }
 
@@ -227,42 +321,77 @@ export const documentFolderColDueSx: SxProps<Theme> = {
 }
 
 export const documentFolderColActionsSx = (expanded: boolean): SxProps<Theme> => ({
-  width: expanded ? 188 : 52,
-  minWidth: expanded ? 188 : 52,
-  maxWidth: expanded ? 188 : 52,
+  width: expanded ? '16%' : '9%',
+  minWidth: expanded ? 148 : 44,
+  whiteSpace: 'nowrap',
   px: { md: 0.5, lg: 0.75 },
 })
 
-export const documentFolderPageSubtitle = (resource: 'factures' | 'devis') =>
-  resource === 'factures'
-    ? 'Documents émis — les plus récents en premier'
-    : 'Devis émis — les plus récents en premier'
-
-export const documentFolderUnreadRowSx: SxProps<Theme> = {
-  bgcolor: alpha('#3b82f6', 0.04),
-  borderLeft: `3px solid ${alpha('#3b82f6', 0.55)}`,
+/** Colonnes liste clients (statut = rail, pas de colonne dédiée). */
+export const clientFolderColClientSx: SxProps<Theme> = {
+  width: 'auto',
+  minWidth: 160,
+  pl: { md: 0.75, lg: 1 },
 }
 
-/** Desktop : case + suivi / important — colonne fixe étroite. */
+export const clientFolderColContactSx: SxProps<Theme> = {
+  ...folderColHideBelowLg,
+  width: '22%',
+  minWidth: 140,
+}
+
+export const clientFolderColRevenueSx: SxProps<Theme> = {
+  ...documentFolderColAmountSx,
+  width: '14%',
+}
+
+export const clientFolderColLastInvoiceSx: SxProps<Theme> = {
+  ...folderColHideBelowXl,
+  width: '12%',
+  minWidth: 108,
+}
+
+export const clientFolderColSirenSx: SxProps<Theme> = {
+  ...folderColHideBelowXl,
+  width: '11%',
+  minWidth: 96,
+}
+
+export const clientFolderTableBodyCellSx: SxProps<Theme> = {
+  verticalAlign: 'middle',
+}
+
+/** Scroll horizontal uniquement si le contenu dépasse (pas de minWidth > 100%). */
+export const clientFolderTableScrollSx: SxProps<Theme> = {
+  minWidth: 0,
+}
+
+export const documentFolderPageSubtitle = (resource: 'factures' | 'devis' | 'dettes') => {
+  if (resource === 'factures') return 'Documents émis — les plus récents en premier'
+  if (resource === 'dettes') return 'Dettes enregistrées — les plus récentes en premier'
+  return 'Devis émis — les plus récents en premier'
+}
+
+export const documentFolderUnreadRowSx: SxProps<Theme> = {
+  bgcolor: 'transparent',
+}
+
+/** Colonne bulk (avant le rail), sans marge ni padding, case centrée. */
 export const documentFolderBulkLeadCellSx: SxProps<Theme> = {
-  width: 76,
-  maxWidth: 76,
-  minWidth: 76,
-  pl: 0.5,
-  pr: 0,
+  width: 32,
+  maxWidth: 32,
+  minWidth: 32,
+  p: 0,
   whiteSpace: 'nowrap',
   verticalAlign: 'middle',
+  textAlign: 'center',
   '&.MuiTableCell-paddingCheckbox': {
-    width: 76,
-    paddingLeft: 4,
-    paddingRight: 0,
+    width: 32,
+    p: 0,
   },
-  '& .MuiIconButton-root': {
-    p: 0.35,
-    ml: -0.35,
-  },
-  '& .doc-folder-bulk-cb': {
-    mr: -0.25,
+  '& .MuiCheckbox-root': {
+    p: 0,
+    m: 0,
   },
 }
 

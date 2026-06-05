@@ -162,6 +162,7 @@ L'application inclut des données de démonstration réalistes pour :
 ## Prochaines étapes
 
 Voir le fichier `ROADMAP.md` pour le planning détaillé des prochaines fonctionnalités.
+Pour les effets visuels premium web (animations, micro-interactions, fluidité), voir `UX_WOW_ROADMAP.md`.
 
 ## Contribution
 

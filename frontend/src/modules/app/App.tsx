@@ -56,6 +56,8 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { InvoiceDetailPage } from '../invoices/InvoiceDetailPage'
 import { QuoteDetailPage } from '../quotes/QuoteDetailPage'
+import { PublicPayableDebtPage } from '../finance/PublicPayableDebtPage'
+import { PayableDebtDetailPage } from '../finance/PayableDebtDetailPage'
 
 // Lazy loading des pages pour optimiser les performances
 const DashboardPage = lazy(() => import('../dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -67,6 +69,9 @@ const FacturesSegmentRouteLazy = lazy(() =>
 )
 const DevisSegmentRouteLazy = lazy(() =>
   import('./routes/documentFolderRoutes').then((m) => ({ default: m.DevisSegmentRoute })),
+)
+const DettesSegmentRouteLazy = lazy(() =>
+  import('./routes/documentFolderRoutes').then((m) => ({ default: m.DettesSegmentRoute })),
 )
 const ArchivesPage = lazy(() => import('../archives/ArchivesPage').then(m => ({ default: m.ArchivesPage })))
 const InvoicesArchivePage = lazy(() =>
@@ -87,6 +92,15 @@ const TaxesPage = lazy(() => import('../taxes/TaxesPage').then(m => ({ default: 
 const SubscriptionsPage = lazy(() => import('../subscriptions/SubscriptionsPage').then(m => ({ default: m.SubscriptionsPage })))
 const FilingsPage = lazy(() => import('../filings/FilingsPage').then(m => ({ default: m.FilingsPage })))
 const AccountingPage = lazy(() => import('../accounting/AccountingPage').then(m => ({ default: m.AccountingPage })))
+const ReceivablesPage = lazy(() =>
+  import('../finance/ReceivablesPage').then((m) => ({ default: m.ReceivablesPage })),
+)
+const PayablesPage = lazy(() =>
+  import('../finance/PayablesPage').then((m) => ({ default: m.PayablesPage })),
+)
+const PayablesArchivePage = lazy(() =>
+  import('../finance/PayablesArchivePage').then((m) => ({ default: m.PayablesArchivePage })),
+)
 const SettingsLayout = lazy(() => import('../account/SettingsLayout').then(m => ({ default: m.SettingsLayout })))
 const SettingsIndexPage = lazy(() =>
   import('../account/pages/SettingsIndexPage').then(m => ({ default: m.SettingsIndexPage })),
@@ -312,6 +326,14 @@ export function App() {
                 }
               />
               <Route
+                path="/dette/:token"
+                element={
+                  <PublicLayout>
+                    <PublicPayableDebtPage />
+                  </PublicLayout>
+                }
+              />
+              <Route
                 path="/public/factures/:token"
                 element={<LegacyPublicInvoiceRedirect />}
               />
@@ -477,6 +499,60 @@ export function App() {
                 }
               />
               <Route
+                path="/creances"
+                element={
+                  <PrivateRouteWrapper>
+                    <ReceivablesPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route path="/dettes" element={<Navigate to="/dettes/inbox" replace />} />
+              <Route
+                path="/dettes/archive"
+                element={<Navigate to="/dettes/archives" replace />}
+              />
+              <Route
+                path="/dettes/archives"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={<DocumentFolderRouteFallback resource="dettes" />}>
+                      <PayablesArchivePage />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/dettes/voir/:id"
+                element={
+                  <PrivateRouteWrapper>
+                    <PayableDebtDetailPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/dettes/:folder"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={<DocumentFolderRouteFallback resource="dettes" />}>
+                      <DettesSegmentRouteLazy />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route path="/finance/creances" element={<Navigate to="/creances" replace />} />
+              <Route path="/commercial/creances" element={<Navigate to="/creances" replace />} />
+              <Route path="/finance/dettes" element={<Navigate to="/dettes/inbox" replace />} />
+              <Route path="/commercial/dettes" element={<Navigate to="/dettes/inbox" replace />} />
+              <Route path="/finance/dettes/archives" element={<Navigate to="/dettes/archives" replace />} />
+              <Route
+                path="/commercial/dettes/archives"
+                element={<Navigate to="/dettes/archives" replace />}
+              />
+              <Route path="/finance/dettes/voir/:id" element={<LegacyDetteVoirRedirect />} />
+              <Route path="/commercial/dettes/voir/:id" element={<LegacyDetteVoirRedirect />} />
+              <Route path="/finance/dettes/:folder" element={<LegacyDetteFolderRedirect />} />
+              <Route path="/commercial/dettes/:folder" element={<LegacyDetteFolderRedirect />} />
+              <Route
                 path="/parametres"
                 element={
                   <PrivateRouteWrapper>
@@ -527,4 +603,13 @@ export function App() {
   )
 }
 
+function LegacyDetteVoirRedirect() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/dettes/voir/${id ?? ''}`} replace />
+}
+
+function LegacyDetteFolderRedirect() {
+  const { folder } = useParams<{ folder: string }>()
+  return <Navigate to={`/dettes/${folder ?? 'inbox'}`} replace />
+}
 

@@ -3,19 +3,26 @@ import { DocumentFolderSidebarSkeleton } from './DocumentFolderSidebarSkeleton'
 import { ClientFolderSidebarSkeleton } from './ClientFolderSidebarSkeleton'
 import { DocumentFolderContentSkeleton } from './DocumentFolderContentSkeleton'
 import {
+  documentFolderLayoutRowSx,
   documentFolderPageMainSx,
   documentFolderToolbarFiltersSx,
   documentFolderToolbarSx,
 } from '../finance/documentFolderStyles'
 
 type DocumentFolderRouteFallbackProps = {
-  resource: 'factures' | 'devis' | 'clients'
+  resource: 'factures' | 'devis' | 'dettes' | 'clients'
 }
 
 /** Fallback Suspense (chunk JS) — même structure que la page dossiers. */
 export function DocumentFolderRouteFallback({ resource }: DocumentFolderRouteFallbackProps) {
   const label =
-    resource === 'factures' ? 'factures' : resource === 'devis' ? 'devis' : 'clients'
+    resource === 'factures'
+      ? 'factures'
+      : resource === 'devis'
+        ? 'devis'
+        : resource === 'dettes'
+          ? 'dettes'
+          : 'clients'
   const SidebarSkeleton =
     resource === 'clients' ? ClientFolderSidebarSkeleton : DocumentFolderSidebarSkeleton
 
@@ -39,7 +46,7 @@ export function DocumentFolderRouteFallback({ resource }: DocumentFolderRouteFal
         </Box>
       </Box>
 
-      <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <Box sx={documentFolderLayoutRowSx}>
         <SidebarSkeleton />
         <Box sx={documentFolderPageMainSx}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>

@@ -13,12 +13,10 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Chip,
   useTheme,
   useMediaQuery,
   CircularProgress,
   Alert,
-  Checkbox,
 } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
 import {
@@ -60,12 +58,24 @@ import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInv
 import { useRealtimeRowHighlight } from '../../hooks/useRealtimeRowHighlight'
 import { resolveInvoiceDisplayStatus } from './invoiceDisplayStatus'
 import { getRealtimeRowSx } from '../../utils/realtimeRowHighlight'
-import { DocumentFolderRowActions } from '../../components/finance/DocumentFolderRowActions'
+import {
+  buildDocumentFolderListRowRail,
+  documentFolderRailCellClass,
+  documentFolderTableRowClass,
+  DocumentFolderBulkTableBodyCell,
+  DocumentFolderBulkTableHeaderCell,
+  DocumentFolderRailTableHeaderCell,
+  getDocumentFolderRailHeaderRowSx,
+  getDocumentFolderRailTableCellSx,
+} from '../../components/finance/DocumentFolderListRowRail'
 import { DocumentFolderRowCheckbox } from '../../components/finance/DocumentFolderRowCheckbox'
 import { DocumentFolderBulkBar } from '../../components/finance/DocumentFolderBulkBar'
 import { useDocumentFolderSelection } from '../../hooks/useDocumentFolderSelection'
 import { runBulkArchive } from '../../utils/bulkArchive'
-import { DocumentTagsEditor } from '../../components/finance/DocumentTagsEditor'
+import {
+  useDocumentFolderNewRowMotion,
+  useDocumentFolderRowMotion,
+} from '../../hooks/useDocumentFolderRowMotion'
 import { useUserDocumentTags } from '../../services/userDocumentTags'
 import {
   isDocumentFolder,
@@ -77,12 +87,13 @@ import {
   documentFolderPageSubtitle,
   documentFolderTableCardSx,
   documentFolderTableCardWrapSx,
+  documentFolderTableCardContentSx,
+  documentFolderTableCardContentPaddedSx,
+  documentFolderTableCardFooterSx,
   documentFolderTableContainerSx,
   documentFolderTableSx,
   documentFolderUnreadRowSx,
   documentFolderBulkRowSx,
-  documentFolderBulkLeadCellSx,
-  documentFolderBulkCellClass,
   documentFolderTableHeadSx,
   documentFolderColInvoiceSx,
   documentFolderColClientSx,
@@ -90,9 +101,16 @@ import {
   documentFolderColAmountSx,
   documentFolderColDueSx,
   documentFolderColActionsSx,
-  documentFolderBulkCheckboxSx,
-  documentFolderBulkCheckboxClass,
 } from '../../components/finance/documentFolderStyles'
+import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell'
+import { DocumentFolderStatusChip } from '../../components/finance/DocumentFolderStatusChip'
+import { useDocumentFolderCreateDialog } from '../../hooks/useDocumentFolderCreateDialog'
+import {
+  folderCountsAfterArchive,
+  folderCountsAfterInboxCreate,
+} from '../../utils/documentFolderListMutations'
+import { patchInvoiceFromRealtimeDetail } from '../../utils/financeRealtimeListPatch'
+import type { FinanceRealtimeDetail } from '../../types/realtime'
 
 export function InvoicesPage() {
   const { folder: folderParam } = useParams<{ folder?: string }>()
@@ -121,8 +139,16 @@ export function InvoicesPage() {
     loadMore,
     refresh,
     setItems,
+    removeItemsById,
+    prependItems,
+    patchItemById,
+    bumpFolderCounts,
   } = useInvoicesFolderList(activeFolder, debouncedSearch)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const {
+    open: createDialogOpen,
+    openDialog: openCreateDialog,
+    close: closeCreateDialog,
+  } = useDocumentFolderCreateDialog()
   const [creating, setCreating] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
@@ -133,6 +159,7 @@ export function InvoicesPage() {
   const [bulkArchiving, setBulkArchiving] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const highlightRows = useRealtimeRowHighlight('invoices')
+  const rowMotion = useDocumentFolderRowMotion()
 
   const lastToastError = useRef<string | null>(null)
   useEffect(() => {
@@ -144,27 +171,24 @@ export function InvoicesPage() {
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
 
-  useEffect(() => {
-    if (searchParams.get('create') !== '1') return
-    setCreateDialogOpen(true)
-    const next = new URLSearchParams(searchParams)
-    next.delete('create')
-    setSearchParams(next, { replace: true })
-  }, [searchParams, setSearchParams])
-
   const patchDocumentFlags = useOptimisticDocumentFlagsPatch<Invoice>(
     setItems,
-    (id, patch) => invoiceService.updateDocumentFlags(id, patch),
+    (id, patch) => invoiceService.updateDocumentFlags(String(id), patch),
     (message) => toast.error(message),
   )
 
   useEffect(() => {
-    const onRealtime = () => {
-      void refreshRef.current()
+    const onRealtime = (ev: Event) => {
+      const detail = (ev as CustomEvent<FinanceRealtimeDetail>).detail
+      if (!detail?.id) return
+      patchItemById(detail.id, (inv) => patchInvoiceFromRealtimeDetail(inv, detail))
+      if (detail.action === 'created' || detail.action === 'deleted') {
+        void refreshRef.current()
+      }
     }
     window.addEventListener('facturio:invoice-realtime', onRealtime)
     return () => window.removeEventListener('facturio:invoice-realtime', onRealtime)
-  }, [])
+  }, [patchItemById])
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -196,6 +220,11 @@ export function InvoicesPage() {
     )
   }, [invoices, debouncedSearch])
 
+  useDocumentFolderNewRowMotion(
+    displayedInvoices.map((inv) => inv.id),
+    rowMotion,
+  )
+
   const selection = useDocumentFolderSelection(
     displayedInvoices,
     `${activeFolder}-${debouncedSearch}`,
@@ -208,16 +237,22 @@ export function InvoicesPage() {
   }
 
   const contentKey = `${activeFolder}-${debouncedSearch}`
+  const createInvoiceInFlightRef = useRef(false)
 
   const handleCreateInvoice = async (data: CreateInvoiceData) => {
+    if (creating || createInvoiceInFlightRef.current) return
+    createInvoiceInFlightRef.current = true
     try {
       setCreating(true)
       const response = await invoiceService.createInvoiceFromApi(toCreateInvoiceApiBody(data))
       const created = normalizeInvoiceFromApi(
         unwrapApiPayload<Record<string, unknown>>(response)
       )
-      setCreateDialogOpen(false)
-      await refresh()
+      closeCreateDialog()
+      if (activeFolder === 'inbox' && !debouncedSearch.trim()) {
+        prependItems([created])
+        bumpFolderCounts(folderCountsAfterInboxCreate(!created.seenAt))
+      }
       toast.success(`Facture ${created.number} créée`)
 
       const clientEmail = data.clientEmail?.trim()
@@ -233,6 +268,7 @@ export function InvoicesPage() {
       throw err
     } finally {
       setCreating(false)
+      createInvoiceInFlightRef.current = false
     }
   }
 
@@ -261,8 +297,14 @@ export function InvoicesPage() {
         href: `/factures/${invoiceToSend.id}`,
       })
       setSendDialogOpen(false)
+      const sentId = invoiceToSend.id
       setInvoiceToSend(null)
-      await refresh()
+      patchItemById(sentId, (inv) => ({
+        ...inv,
+        status: inv.status === 'draft' ? 'sent' : inv.status,
+        sentAt: new Date().toISOString(),
+        emailSent: true,
+      }))
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi")
     } finally {
@@ -301,13 +343,25 @@ export function InvoicesPage() {
   }
 
   const handleArchiveConfirm = async () => {
-    if (archiveTargetIds.length === 0) return
+    const idsToArchive = archiveTargetIds
+    if (idsToArchive.length === 0) return
+    setArchiveDialogOpen(false)
+    setArchiveTargetIds([])
+    selection.clear()
     try {
       setBulkArchiving(true)
-      const { succeeded, failed } = await runBulkArchive(archiveTargetIds, (id) =>
-        invoiceService.archiveInvoice(id),
+      const { succeeded, failed, succeededIds } = await rowMotion.runArchiveWithRailExit(
+        idsToArchive,
+        () =>
+          runBulkArchive(idsToArchive, (id) => invoiceService.archiveInvoice(id)),
       )
       apiClient.invalidateCache('/invoices')
+      if (succeededIds.length > 0) {
+        removeItemsById(succeededIds)
+        if (!debouncedSearch.trim()) {
+          bumpFolderCounts(folderCountsAfterArchive(activeFolder, succeededIds.length))
+        }
+      }
       if (failed === 0) {
         toast.success(
           succeeded === 1
@@ -326,10 +380,6 @@ export function InvoicesPage() {
           href: '/factures/archives',
         })
       }
-      setArchiveDialogOpen(false)
-      setArchiveTargetIds([])
-      selection.clear()
-      await refresh()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de l'archivage")
     } finally {
@@ -379,7 +429,7 @@ export function InvoicesPage() {
     subtitle: documentFolderPageSubtitle('factures'),
     counts: folderCounts,
     activeFolder,
-    onNew: () => setCreateDialogOpen(true),
+    onNew: openCreateDialog,
     newLabel: 'Nouvelle facture',
     mobileNavOpen,
     onMobileNavOpen: () => setMobileNavOpen(true),
@@ -407,9 +457,18 @@ export function InvoicesPage() {
           resourceLabel="factures"
         />
       ) : (
-      <Card sx={[documentFolderTableCardSx, documentFolderTableCardWrapSx] as SxProps<Theme>}>
-        <CardContent sx={{ p: { xs: 1, sm: 1.5, md: 2 }, '&:last-child': { pb: { xs: 1, md: 2 } } }}>
+      <Card
+        sx={
+          [
+            documentFolderTableCardSx,
+            documentFolderTableCardWrapSx,
+            rowMotion.getMotionClipSx(),
+          ] as SxProps<Theme>
+        }
+      >
+        <CardContent sx={documentFolderTableCardContentSx}>
           {isNarrow ? (
+            <Box sx={[documentFolderTableCardContentPaddedSx, rowMotion.getMotionClipSx()] as SxProps<Theme>}>
             <InvoiceFolderMobileList
               invoices={displayedInvoices}
               highlightRows={highlightRows}
@@ -432,46 +491,34 @@ export function InvoicesPage() {
               selection={selection}
               onArchive={(inv) => openArchiveDialog([inv.id])}
               onDownload={handleDownloadPdf}
+              savedTags={savedTags}
+              onRememberTag={rememberTag}
+              onRemoveSavedTag={removeFromLibrary}
+              getRowMotionSx={rowMotion.getMotionSx}
             />
+            </Box>
           ) : (
-          <TableContainer sx={documentFolderTableContainerSx}>
+          <TableContainer
+            sx={[documentFolderTableContainerSx, rowMotion.getMotionClipSx()] as SxProps<Theme>}
+          >
             <Table
               size="small"
               sx={[financeTableSx, documentFolderTableSx] as SxProps<Theme>}
             >
-              <colgroup>
-                <col style={{ width: 76 }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '28%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '13%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: isWideActions ? 188 : 52 }} />
-              </colgroup>
               <TableHead sx={[financeTableHeadSx, documentFolderTableHeadSx] as SxProps<Theme>}>
-                <TableRow>
-                  <TableCell
-                    padding="checkbox"
-                    className={documentFolderBulkCellClass}
-                    sx={documentFolderBulkLeadCellSx}
-                  >
-                    <Checkbox
-                      className={documentFolderBulkCheckboxClass}
-                      size="small"
-                      checked={selection.allVisibleSelected}
-                      indeterminate={selection.someVisibleSelected}
-                      onChange={() => {
+                <TableRow sx={getDocumentFolderRailHeaderRowSx()}>
+                  <DocumentFolderBulkTableHeaderCell
+                    bulkHeader={{
+                      allVisibleSelected: selection.allVisibleSelected,
+                      someVisibleSelected: selection.someVisibleSelected,
+                      selectionActive: selection.selectionActive,
+                      onToggleAll: () => {
                         if (selection.allVisibleSelected) selection.clear()
                         else selection.selectAllVisible()
-                      }}
-                      sx={{
-                        ...documentFolderBulkCheckboxSx,
-                        opacity: selection.selectionActive ? 1 : 0,
-                        pointerEvents: selection.selectionActive ? 'auto' : 'none',
-                      }}
-                      inputProps={{ 'aria-label': 'Tout sélectionner sur la page' }}
-                    />
-                  </TableCell>
+                      },
+                    }}
+                  />
+                  <DocumentFolderRailTableHeaderCell />
                   <TableCell sx={documentFolderColInvoiceSx}>N° Facture</TableCell>
                   <TableCell sx={documentFolderColClientSx}>Client</TableCell>
                   <TableCell sx={documentFolderColStatusSx}>Statut</TableCell>
@@ -488,6 +535,18 @@ export function InvoicesPage() {
                 {displayedInvoices.map((invoice) => {
                   const busy = actionLoadingId === invoice.id
                   const rowHighlight = highlightRows[invoice.id]
+                  const railParts = buildDocumentFolderListRowRail({
+                    kind: 'invoice',
+                    item: invoice,
+                    onUpdate: (patch) => patchDocumentFlags(invoice.id, patch),
+                    tagsSlot: {
+                      tags: invoice.tags ?? [],
+                      onChange: (tags) => patchDocumentFlags(invoice.id, { tags }),
+                      savedTags,
+                      onRememberTag: rememberTag,
+                      onRemoveSavedTag: removeFromLibrary,
+                    },
+                  })
                   const canSend =
                     invoice.status === 'draft' ||
                     invoice.status === 'sent' ||
@@ -497,50 +556,36 @@ export function InvoicesPage() {
                     <TableRow
                       key={invoice.id}
                       hover
+                      className={documentFolderTableRowClass}
                       sx={
                         [
-                          getRealtimeRowSx(rowHighlight),
+                          railParts.rowAccentSx,
                           !invoice.seenAt ? documentFolderUnreadRowSx : {},
                           documentFolderBulkRowSx(
                             selection.isSelected(invoice.id),
                             selection.selectionActive,
                           ),
+                          getRealtimeRowSx(rowHighlight),
+                          rowMotion.getMotionSx(invoice.id),
                         ] as SxProps<Theme>
                       }
                     >
+                      <DocumentFolderBulkTableBodyCell>
+                        <DocumentFolderRowCheckbox
+                          checked={selection.isSelected(invoice.id)}
+                          visible={selection.selectionActive}
+                          onToggle={() => selection.toggle(invoice.id)}
+                          inputProps={{ 'aria-label': `Sélectionner ${invoice.number}` }}
+                        />
+                      </DocumentFolderBulkTableBodyCell>
                       <TableCell
-                        padding="checkbox"
-                        className={documentFolderBulkCellClass}
-                        sx={documentFolderBulkLeadCellSx}
+                        className={documentFolderRailCellClass}
+                        sx={getDocumentFolderRailTableCellSx({ withTags: true })}
                       >
-                        <Stack direction="row" alignItems="center" spacing={0} sx={{ ml: -0.25 }}>
-                          <DocumentFolderRowCheckbox
-                            checked={selection.isSelected(invoice.id)}
-                            visible={selection.selectionActive}
-                            onToggle={() => selection.toggle(invoice.id)}
-                            inputProps={{ 'aria-label': `Sélectionner ${invoice.number}` }}
-                          />
-                          <DocumentFolderRowActions
-                            starred={!!invoice.starred}
-                            important={!!invoice.important}
-                            compact
-                            onUpdate={(patch) => patchDocumentFlags(invoice.id, patch)}
-                          />
-                        </Stack>
+                        {railParts.rail}
                       </TableCell>
                       <TableCell sx={documentFolderColInvoiceSx}>
-                        <Box sx={{ minHeight: 22, mb: 0.35, minWidth: 0, maxWidth: '100%' }}>
-                          <DocumentTagsEditor
-                            layout="inline"
-                            tags={invoice.tags ?? []}
-                            onChange={(tags) => patchDocumentFlags(invoice.id, { tags })}
-                            maxVisible={1}
-                            savedTags={savedTags}
-                            onRememberTag={rememberTag}
-                            onRemoveSavedTag={removeFromLibrary}
-                          />
-                        </Box>
-                        <Typography variant="body2" fontWeight={invoice.seenAt ? 500 : 700} noWrap>
+                        <Typography variant="body2" fontWeight={invoice.seenAt ? 600 : 700} noWrap>
                           {invoice.number}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" noWrap display="block">
@@ -548,28 +593,19 @@ export function InvoicesPage() {
                         </Typography>
                       </TableCell>
                       <TableCell sx={documentFolderColClientSx}>
-                        <Typography variant="body2" fontWeight={500} noWrap>
-                          {invoice.client.name}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          noWrap
-                          display="block"
-                          sx={{ display: { md: 'none', xl: 'block' } }}
-                        >
-                          {invoice.client.email}
-                        </Typography>
+                        <DocumentFolderPartyCell
+                          name={invoice.client.name}
+                          email={invoice.client.email}
+                          emphasize={!invoice.seenAt}
+                        />
                       </TableCell>
                       <TableCell sx={documentFolderColStatusSx}>
                         {(() => {
                           const display = resolveInvoiceDisplayStatus(invoice)
                           return (
-                            <Chip
+                            <DocumentFolderStatusChip
                               label={display.label}
                               color={display.color}
-                              size="small"
-                              sx={{ fontWeight: 600, borderRadius: 1.5, maxWidth: '100%' }}
                             />
                           )
                         })()}
@@ -610,7 +646,7 @@ export function InvoicesPage() {
           )}
 
           {displayedInvoices.length === 0 && !loading && (
-            <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+            <Box sx={[documentFolderTableCardContentPaddedSx, { textAlign: 'center', py: 4, color: 'text.secondary' }] as SxProps<Theme>}>
               <Typography variant="body1">
                 {searchTerm.trim()
                   ? 'Aucune facture ne correspond à la recherche'
@@ -619,6 +655,7 @@ export function InvoicesPage() {
             </Box>
           )}
 
+          <Box sx={documentFolderTableCardFooterSx}>
           <DocumentFolderBulkBar
             count={selection.selectedCount}
             resourceLabel="facture"
@@ -633,13 +670,14 @@ export function InvoicesPage() {
             loading={loadingMore}
             onLoadMore={loadMore}
           />
+          </Box>
         </CardContent>
       </Card>
       )}
 
       <CreateInvoiceDialog
         open={createDialogOpen}
-        onClose={() => !creating && setCreateDialogOpen(false)}
+        onClose={() => !creating && closeCreateDialog()}
         onSubmit={handleCreateInvoice}
         submitting={creating}
         defaultClientId={defaultClientId}
@@ -663,7 +701,7 @@ export function InvoicesPage() {
         }
         confirmText="Archiver"
         loading={bulkArchiving}
-        onConfirm={handleArchiveConfirm}
+        onConfirm={() => void handleArchiveConfirm()}
         onClose={() => {
           if (bulkArchiving) return
           setArchiveDialogOpen(false)

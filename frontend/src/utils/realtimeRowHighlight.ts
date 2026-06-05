@@ -36,7 +36,9 @@ export function getRealtimeRowSx(tone: RealtimeHighlightTone | undefined): SxPro
       '--rt-glow': alpha(main, 0.45),
       animation: `${slideIn} 0.45s ease-out, ${pulse} 1.6s ease-out 2`,
       backgroundColor: alpha(main, tone === 'updated' ? 0.1 : 0.16),
-      borderLeft: `4px solid ${main}`,
+      '& > .MuiTableCell-root:first-of-type': {
+        borderLeft: `4px solid ${main}`,
+      },
       transition: 'background-color 0.6s ease',
     }
   }

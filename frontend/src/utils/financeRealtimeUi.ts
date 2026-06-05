@@ -83,22 +83,63 @@ const QUOTE_LABELS: Record<string, { title: string; message: (n: string) => stri
   },
 }
 
+const PAYABLE_EMAIL_LABELS: Record<string, { title: string; message: (n: string) => string; type: 'success' | 'info' | 'warning' | 'error' }> = {
+  EMAIL_SENT: {
+    title: 'Dette envoyée',
+    message: (n) => `Reconnaissance de dette « ${n} » envoyée par email.`,
+    type: 'info',
+  },
+  EMAIL_OPENED: {
+    title: 'Email dette ouvert',
+    message: (n) => `Le créancier a ouvert l’email pour « ${n} ».`,
+    type: 'info',
+  },
+  EMAIL_CLICKED: {
+    title: 'Lien dette cliqué',
+    message: (n) => `Le créancier a cliqué le lien pour « ${n} ».`,
+    type: 'success',
+  },
+}
+
 export function buildNotificationFromRealtime(detail: FinanceRealtimeDetail) {
   const label = detail.number || (detail.id != null ? `#${detail.id}` : 'Document')
+
+  if (detail.resource === 'payables' && detail.status) {
+    const cfg = PAYABLE_EMAIL_LABELS[detail.status] ?? {
+      title: 'Dette mise à jour',
+      message: (n: string) => `${n} a été mise à jour.`,
+      type: 'info' as const,
+    }
+    return {
+      type: cfg.type,
+      title: cfg.title,
+      message: cfg.message(label),
+      category: 'invoice' as const,
+      href: '/dettes/inbox',
+    }
+  }
+
   const map = detail.resource === 'invoices' ? INVOICE_LABELS : QUOTE_LABELS
   const cfg = map[detail.action] ?? map.updated
   const href =
     detail.id != null
       ? detail.resource === 'invoices'
         ? `/factures/${detail.id}`
-        : `/devis`
+        : detail.resource === 'payables'
+          ? '/dettes/inbox'
+          : `/devis`
       : undefined
 
   return {
     type: cfg.type,
     title: cfg.title,
     message: cfg.message(label),
-    category: detail.resource === 'invoices' ? ('invoice' as const) : ('quote' as const),
+    category:
+      detail.resource === 'invoices'
+        ? ('invoice' as const)
+        : detail.resource === 'quotes'
+          ? ('quote' as const)
+          : ('invoice' as const),
     href,
   }
 }

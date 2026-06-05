@@ -42,6 +42,12 @@ jobs:
           NODE_ENV: test
           DATABASE_URL: file:./test.db
 
+      - name: Finance module unit tests (créances & dettes)
+        run: npm run test:unit:finance
+        env:
+          NODE_ENV: test
+          DATABASE_URL: file:./test.db
+
       - name: Build
         run: npm run build
 
@@ -72,6 +78,12 @@ jobs:
 
       - name: E2E tests
         run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          DATABASE_URL: file:./test.db
+
+      - name: Finance module E2E (créances & dettes)
+        run: npm run test:e2e:finance
         env:
           NODE_ENV: test
           DATABASE_URL: file:./test.db

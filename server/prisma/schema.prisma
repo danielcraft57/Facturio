@@ -85,6 +85,8 @@ model Organization {
   taxDeductions               TaxDeduction[]
   taxSimulations              TaxSimulation[]
   users                       User[]
+  payableCreditors            PayableCreditor[]
+  payableDebts                PayableDebt[]
 
   @@index([siret])
   @@index([siren])
@@ -614,6 +616,80 @@ model Payment {
   refunds   Refund[]
 }
 
+enum PayableDebtStatus {
+  OPEN
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+/// Personne ou entité à qui l'organisation doit de l'argent (famille, fournisseur informel, etc.).
+model PayableCreditor {
+  id             Int           @id @default(autoincrement())
+  organizationId Int
+  name           String
+  email          String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  debts          PayableDebt[]
+
+  @@index([organizationId])
+}
+
+/// Dette à régler (montant initial + solde restant).
+model PayableDebt {
+  id             Int                 @id @default(autoincrement())
+  organizationId Int
+  creditorId     Int
+  label          String
+  totalAmount    Decimal             @default(0)
+  balance        Decimal             @default(0)
+  currency       String              @default("EUR")
+  dueDate        DateTime?
+  status         PayableDebtStatus   @default(OPEN)
+  notes          String?
+  publicToken    String?             @unique
+  archivedAt     DateTime?
+  starred        Boolean             @default(false)
+  important      Boolean             @default(false)
+  snoozedUntil   DateTime?
+  seenAt         DateTime?
+  sentAt         DateTime?
+  tags           String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creditor       PayableCreditor     @relation(fields: [creditorId], references: [id], onDelete: Cascade)
+  payments       PayableDebtPayment[]
+  emailEvents    EmailEvent[]
+
+  @@index([organizationId])
+  @@index([creditorId])
+  @@index([status])
+  @@index([publicToken])
+  @@index([archivedAt])
+  @@index([starred])
+  @@index([important])
+  @@index([seenAt])
+  @@index([sentAt])
+  @@index([organizationId, archivedAt, createdAt])
+}
+
+model PayableDebtPayment {
+  id        Int         @id @default(autoincrement())
+  debtId    Int
+  amount    Decimal     @default(0)
+  date      DateTime    @default(now())
+  method    String?
+  notes     String?
+  createdAt DateTime    @default(now())
+  debt      PayableDebt @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@index([debtId])
+}
+
 enum RefundStatus {
   PENDING
   COMPLETED
@@ -650,15 +726,17 @@ model Counter {
 }
 
 model EmailEvent {
-  id         Int      @id @default(autoincrement())
-  quoteId    String?
-  invoiceId  String?
-  type       String
-  providerId String?
-  meta       Json?
-  createdAt  DateTime @default(now())
-  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
-  quote      Quote?   @relation(fields: [quoteId], references: [id])
+  id            Int          @id @default(autoincrement())
+  quoteId       String?
+  invoiceId     String?
+  payableDebtId Int?
+  type          String
+  providerId    String?
+  meta          Json?
+  createdAt     DateTime     @default(now())
+  invoice       Invoice?     @relation(fields: [invoiceId], references: [id])
+  quote         Quote?       @relation(fields: [quoteId], references: [id])
+  payableDebt   PayableDebt? @relation(fields: [payableDebtId], references: [id], onDelete: Cascade)
 }
 
 model QuoteView {

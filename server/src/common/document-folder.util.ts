@@ -8,7 +8,7 @@ export type DocumentFolder =
 	| 'envoyes'
 	| 'brouillons';
 
-export type DocumentResource = 'invoice' | 'quote';
+export type DocumentResource = 'invoice' | 'quote' | 'payable_debt';
 
 export const DOCUMENT_FOLDERS: DocumentFolder[] = [
 	'inbox',
@@ -57,6 +57,9 @@ export function buildDocumentFolderWhere(
 		case 'important':
 			return { important: true };
 		case 'envoyes':
+			if (resource === 'payable_debt') {
+				return { sentAt: { not: null } };
+			}
 			if (resource === 'quote') {
 				return {
 					OR: [{ status: 'SENT' }, { sentAt: { not: null } }],
@@ -64,6 +67,9 @@ export function buildDocumentFolderWhere(
 			}
 			return { status: { in: ['SENT', 'OVERDUE', 'PAID'] } };
 		case 'brouillons':
+			if (resource === 'payable_debt') {
+				return { sentAt: null, status: 'OPEN' };
+			}
 			return { status: 'DRAFT' };
 		default:
 			return {};
@@ -71,5 +77,8 @@ export function buildDocumentFolderWhere(
 }
 
 export function documentFolderOrderBy(resource: DocumentResource) {
+	if (resource === 'payable_debt') {
+		return [{ sentAt: 'desc' as const }, { createdAt: 'desc' as const }];
+	}
 	return [{ sentAt: 'desc' as const }, { createdAt: 'desc' as const }];
 }
