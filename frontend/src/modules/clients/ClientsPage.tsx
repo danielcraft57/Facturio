@@ -36,6 +36,7 @@ import {
   ClientFolderMobileMenuButton,
 } from '../../components/finance/ClientFolderSidebar'
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
+import { DocumentFolderInitialLoader } from '../../components/loading/DocumentFolderInitialLoader'
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton'
 import {
   financeTableHeadSx,
@@ -111,6 +112,8 @@ export function ClientsPage() {
     total,
     loading,
     loadingMore,
+    coldLoading,
+    folderLoading,
     error,
     setError,
     folderCounts,
@@ -173,7 +176,6 @@ export function ClientsPage() {
   }, [clients, debouncedSearch])
 
   const contentKey = `${activeFolder}-${debouncedSearch}`
-  const initialLoading = loading && clients.length === 0
 
   const handleExportClients = async () => {
     try {
@@ -382,7 +384,7 @@ export function ClientsPage() {
       headerExtra={headerExtra}
       contentKey={contentKey}
       loading={loading}
-      initialLoading={initialLoading}
+      initialLoading={coldLoading}
       countsLoading={!countsReady}
     >
       {error && (
@@ -391,12 +393,16 @@ export function ClientsPage() {
         </Alert>
       )}
 
-      {initialLoading ? (
+      {coldLoading ? (
+        <DocumentFolderInitialLoader
+          resource="clients"
+          rows={8}
+          variant={isNarrow ? 'cards' : 'table'}
+        />
+      ) : folderLoading ? (
         <DocumentFolderContentSkeleton
           rows={8}
           variant={isNarrow ? 'cards' : 'table'}
-          initial
-          resourceLabel="clients"
         />
       ) : (
         <Card sx={[documentFolderTableCardSx, documentFolderTableCardWrapSx] as SxProps<Theme>}>

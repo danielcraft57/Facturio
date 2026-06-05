@@ -44,6 +44,7 @@ import {
   financeTableHeadSx,
   financeTableSx,
 } from '../../components/finance/financeStyles'
+import { DocumentFolderInitialLoader } from '../../components/loading/DocumentFolderInitialLoader'
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton'
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
@@ -132,6 +133,8 @@ export function InvoicesPage() {
     total,
     loading,
     loadingMore,
+    coldLoading,
+    folderLoading,
     error,
     setError,
     folderCounts,
@@ -438,8 +441,6 @@ export function InvoicesPage() {
     />
   )
 
-  const initialLoading = loading && invoices.length === 0
-
   const shellProps = {
     resource: 'factures' as const,
     title: DOCUMENT_FOLDER_LABELS[activeFolder],
@@ -454,7 +455,7 @@ export function InvoicesPage() {
     filters: folderFilters,
     contentKey,
     loading,
-    initialLoading,
+    initialLoading: coldLoading,
     countsLoading: !countsReady,
   }
 
@@ -466,12 +467,16 @@ export function InvoicesPage() {
         </Alert>
       )}
 
-      {initialLoading ? (
+      {coldLoading ? (
+        <DocumentFolderInitialLoader
+          resource="factures"
+          rows={8}
+          variant={isNarrow ? 'cards' : 'table'}
+        />
+      ) : folderLoading ? (
         <DocumentFolderContentSkeleton
           rows={8}
           variant={isNarrow ? 'cards' : 'table'}
-          initial
-          resourceLabel="factures"
         />
       ) : (
       <Card

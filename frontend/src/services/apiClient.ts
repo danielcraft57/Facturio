@@ -6,6 +6,7 @@ import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl';
 class ApiClient {
   private static instance: ApiClient;
   private axiosInstance: AxiosInstance;
+  private cache = new Map<string, { data: ApiResponse<unknown>; timestamp: number; ttl: number }>();
 
   private constructor() {
     const baseURL = resolveApiBaseUrl();
@@ -65,6 +66,40 @@ class ApiClient {
         return Promise.reject(error);
       }
     );
+  }
+
+  private cacheKey(url: string): string {
+    return `${this.axiosInstance.defaults.baseURL ?? ''}${url}`;
+  }
+
+  peekCached<T>(url: string): ApiResponse<T> | null {
+    const cached = this.cache.get(this.cacheKey(url));
+    if (cached && Date.now() - cached.timestamp < cached.ttl) {
+      return cached.data as ApiResponse<T>;
+    }
+    return null;
+  }
+
+  async getCached<T>(url: string, ttl = 2 * 60 * 1000): Promise<ApiResponse<T>> {
+    const key = this.cacheKey(url);
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < cached.ttl) {
+      return cached.data as ApiResponse<T>;
+    }
+
+    const response = await this.get<T>(url);
+    this.cache.set(key, { data: response, timestamp: Date.now(), ttl });
+    return response;
+  }
+
+  invalidateCache(pattern?: string): void {
+    if (pattern) {
+      for (const key of this.cache.keys()) {
+        if (key.includes(pattern)) this.cache.delete(key);
+      }
+      return;
+    }
+    this.cache.clear();
   }
 
   public async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {

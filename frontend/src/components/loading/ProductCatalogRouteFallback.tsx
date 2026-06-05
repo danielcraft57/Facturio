@@ -1,8 +1,7 @@
-import { Box, Skeleton, Stack } from '@mui/material'
+import { Box, Grid, Skeleton, Stack } from '@mui/material'
 import { financePagePadding } from '../finance/financeStyles'
-import { ProductCatalogInitialLoader } from './ProductCatalogInitialLoader'
 
-/** Fallback Suspense (chunk JS) — même structure que ProductsPage. */
+/** Fallback Suspense (chunk JS) — squelette seul, sans popin (évite le doublon avec ProductsPage). */
 export function ProductCatalogRouteFallback() {
   return (
     <Box sx={{ p: financePagePadding }}>
@@ -20,7 +19,13 @@ export function ProductCatalogRouteFallback() {
         <Skeleton variant="rounded" width={36} height={36} animation="wave" />
       </Stack>
 
-      <ProductCatalogInitialLoader initial />
+      <Grid container spacing={2}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+            <Skeleton variant="rounded" height={320} animation="wave" />
+          </Grid>
+        ))}
+      </Grid>
     </Box>
   )
 }

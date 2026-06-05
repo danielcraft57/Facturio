@@ -1,7 +1,37 @@
+import { apiClient } from '../services/api'
 import { invoiceService, parseInvoicesListPage } from '../services/invoices'
 import type { Invoice } from '../services/invoices'
 import type { DocumentFolder } from '../types/documentFolders'
-import { useFinanceDocumentFolderList } from './useFinanceDocumentFolderList'
+import {
+  FINANCE_DOCUMENT_PAGE_SIZE,
+  useFinanceDocumentFolderList,
+  type FinanceFolderListPage,
+} from './useFinanceDocumentFolderList'
+
+function readInvoicesBootPage(
+  folder: DocumentFolder,
+  search: string,
+): FinanceFolderListPage<Invoice> | null {
+  const trimmed = search.trim()
+  const cached = apiClient.peekCached(
+    invoiceService.buildListUrl({
+      folder,
+      page: 1,
+      limit: FINANCE_DOCUMENT_PAGE_SIZE,
+      search: trimmed || undefined,
+      includeFolderCounts: !trimmed,
+    }),
+  )
+  if (!cached) return null
+  const parsed = parseInvoicesListPage(cached)
+  return {
+    items: parsed.invoices,
+    total: parsed.total,
+    page: parsed.page,
+    pageSize: parsed.pageSize,
+    folderCounts: parsed.folderCounts,
+  }
+}
 
 export function useInvoicesFolderList(activeFolder: DocumentFolder, debouncedSearch: string) {
   const result = useFinanceDocumentFolderList<Invoice>(
@@ -25,6 +55,8 @@ export function useInvoicesFolderList(activeFolder: DocumentFolder, debouncedSea
       }
     },
     'Erreur lors du chargement des factures',
+    readInvoicesBootPage,
+    'factures',
   )
 
   return {

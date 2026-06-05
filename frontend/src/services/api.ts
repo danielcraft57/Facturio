@@ -200,6 +200,16 @@ class ApiClient {
   // Cache simple en mémoire
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>()
 
+  /** Lecture synchrone du cache mémoire (warm après login / navigation). */
+  peekCached<T = any>(url: string): ApiResponse<T> | null {
+    const cacheKey = `${this.client.defaults.baseURL}${url}`
+    const cached = this.cache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < cached.ttl) {
+      return cached.data
+    }
+    return null
+  }
+
   async getCached<T = any>(url: string, ttl = 5 * 60 * 1000): Promise<ApiResponse<T>> {
     const cacheKey = `${this.client.defaults.baseURL}${url}`
     const cached = this.cache.get(cacheKey)

@@ -45,6 +45,8 @@ import {
 } from '../../services/receivables'
 import { invoiceService } from '../../services/invoices'
 import { financeKpiGridSize } from './financePageLayout'
+import { WorkspacePreparationDialog } from '../../components/loading/WorkspacePreparationDialog'
+import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
 const AGING_ORDER: ReceivableAgingBucket[] = [
   'not_due',
@@ -197,9 +199,11 @@ export function ReceivablesPage() {
   }, [data])
 
   const byKind = data?.summary.byKind ?? { standard: 0, deposit: 0, remainder: 0 }
+  const initialLoading = loading && data === null
 
   return (
     <Box sx={{ p: financePagePadding }}>
+      <WorkspacePreparationDialog open={initialLoading} resource="creances" />
       <PageHeader
         title="Créances clients"
         subtitle="Factures impayées — acompte à l'acceptation, solde J+30 à l'envoi, relances auto chaque matin"
@@ -331,9 +335,15 @@ export function ReceivablesPage() {
           <Tab label="Par facture" />
         </Tabs>
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
+          initialLoading ? (
+            <Box sx={{ p: 2 }}>
+              <TablePageSkeleton rows={8} showHeader={false} />
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress />
+            </Box>
+          )
         ) : tab === 0 ? (
           <TableContainer>
             <Table size="small" sx={financeTableSx}>

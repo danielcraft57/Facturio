@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { apiClient } from '../services/api'
 import {
   clientService,
   parseClientsListPage,
@@ -6,6 +7,10 @@ import {
   type ClientFolder,
   type ClientFolderCounts,
 } from '../services/clients'
+import {
+  isFolderListSessionWarmed,
+  markFolderListSessionWarmed,
+} from '../utils/folderListSession'
 
 export const CLIENTS_PAGE_SIZE = 30
 
@@ -23,16 +28,39 @@ type FetchOpts = {
   append: boolean
   withCounts?: boolean
   search?: string
+  silent?: boolean
+}
+
+function readClientsBootPage(folder: ClientFolder, search: string) {
+  const trimmed = search.trim()
+  const cached = apiClient.peekCached(
+    clientService.buildListUrl({
+      folder,
+      page: 1,
+      limit: CLIENTS_PAGE_SIZE,
+      search: trimmed || undefined,
+      includeFolderCounts: !trimmed,
+    }),
+  )
+  if (!cached) return null
+  return parseClientsListPage(cached)
 }
 
 export function useClientsFolderList(activeFolder: ClientFolder, debouncedSearch: string) {
-  const [clients, setClients] = useState<Client[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const initialBoot = readClientsBootPage(activeFolder, debouncedSearch)
+
+  const [clients, setClients] = useState<Client[]>(() => {
+    if (initialBoot) markFolderListSessionWarmed('clients')
+    return initialBoot?.clients ?? []
+  })
+  const [total, setTotal] = useState(() => initialBoot?.total ?? 0)
+  const [loading, setLoading] = useState(() => !initialBoot)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [folderCounts, setFolderCounts] = useState<ClientFolderCounts>(EMPTY_COUNTS)
-  const [countsReady, setCountsReady] = useState(false)
+  const [folderCounts, setFolderCounts] = useState<ClientFolderCounts>(() =>
+    initialBoot?.folderCounts ? { ...EMPTY_COUNTS, ...initialBoot.folderCounts } : EMPTY_COUNTS,
+  )
+  const [countsReady, setCountsReady] = useState(() => !!initialBoot?.folderCounts)
   const fetchGen = useRef(0)
   const currentPage = useRef(1)
 
@@ -43,8 +71,10 @@ export function useClientsFolderList(activeFolder: ClientFolder, debouncedSearch
       const gen = ++fetchGen.current
       const isFirst = opts.page === 1 && !opts.append
 
-      if (isFirst) setLoading(true)
-      else setLoadingMore(true)
+      if (!opts.silent) {
+        if (isFirst) setLoading(true)
+        else setLoadingMore(true)
+      }
 
       try {
         if (isFirst) setError(null)
@@ -72,12 +102,14 @@ export function useClientsFolderList(activeFolder: ClientFolder, debouncedSearch
         } else if (opts.withCounts) {
           setCountsReady(true)
         }
+
+        if (isFirst) markFolderListSessionWarmed('clients')
       } catch (err) {
         if (gen !== fetchGen.current) return
         setError(err instanceof Error ? err.message : 'Erreur lors du chargement des clients')
         console.error('Clients error:', err)
       } finally {
-        if (gen === fetchGen.current) {
+        if (!opts.silent && gen === fetchGen.current) {
           setLoading(false)
           setLoadingMore(false)
         }
@@ -106,9 +138,32 @@ export function useClientsFolderList(activeFolder: ClientFolder, debouncedSearch
 
   useEffect(() => {
     fetchGen.current += 1
+    const withCounts = !debouncedSearch.trim()
+    const cached = readClientsBootPage(activeFolder, debouncedSearch)
+
+    if (cached) {
+      setClients(cached.clients)
+      setTotal(cached.total)
+      if (cached.folderCounts) {
+        setFolderCounts({ ...EMPTY_COUNTS, ...cached.folderCounts })
+        setCountsReady(true)
+      } else if (withCounts) {
+        setCountsReady(false)
+      }
+      markFolderListSessionWarmed('clients')
+      setLoading(false)
+      void fetchPage({
+        page: 1,
+        append: false,
+        withCounts,
+        search: debouncedSearch,
+        silent: true,
+      })
+      return
+    }
+
     setClients([])
     setTotal(0)
-    const withCounts = !debouncedSearch.trim()
     if (withCounts) setCountsReady(false)
     void fetchPage({
       page: 1,
@@ -116,7 +171,8 @@ export function useClientsFolderList(activeFolder: ClientFolder, debouncedSearch
       withCounts,
       search: debouncedSearch,
     })
-  }, [activeFolder, debouncedSearch, fetchPage])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchPage stable pour activeFolder
+  }, [activeFolder, debouncedSearch])
 
   const patchClientById = useCallback(
     (id: string, patch: Partial<Client> | ((client: Client) => Client)) => {
@@ -146,12 +202,18 @@ export function useClientsFolderList(activeFolder: ClientFolder, debouncedSearch
     setTotal((prev) => Math.max(0, prev - 1))
   }, [])
 
+  const moduleReady = isFolderListSessionWarmed('clients')
+  const coldLoading = loading && clients.length === 0 && !moduleReady
+  const folderLoading = loading && clients.length === 0 && moduleReady
+
   return {
     clients,
     setClients,
     total,
     loading,
     loadingMore,
+    coldLoading,
+    folderLoading,
     error,
     setError,
     folderCounts,

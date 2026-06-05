@@ -8,6 +8,9 @@ import { useToast } from './useToast'
 import { buildNotificationFromRealtime, buildRealtimeDetail } from '../utils/financeRealtimeUi'
 import type { FinanceRealtimeDetail } from '../types/realtime'
 import { apiClient } from '../services/api'
+import { ApiClient } from '../services/apiClient'
+
+const quotesApiClient = ApiClient.getInstance()
 
 function dispatchDetail(detail: FinanceRealtimeDetail) {
   const name =
@@ -77,6 +80,7 @@ export function FinanceRealtimeBridge() {
       if (detail.resource === 'quotes') {
         apiClient.invalidateCache('/devis')
         apiClient.invalidateCache('/quotes')
+        quotesApiClient.invalidateCache('/devis')
         h.markQuotesStale()
         void h.fetchQuotes()
       }

@@ -209,10 +209,9 @@ export function toCreateClientPayload(data: {
 export class ClientService {
   private baseUrl = '/clients'
 
-  // Récupérer la liste des clients avec filtres
-  async getClients(filters: ClientFilters = {}): Promise<ApiResponse<ClientListResponse>> {
+  buildListUrl(filters: ClientFilters = {}): string {
     const params = new URLSearchParams()
-    
+
     if (filters.search) params.append('search', filters.search)
     if (filters.folder) params.append('folder', filters.folder)
     if (filters.status) params.append('status', filters.status)
@@ -223,9 +222,12 @@ export class ClientService {
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder)
 
     const queryString = params.toString()
-    const url = queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl
+    return queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl
+  }
 
-    return apiClient.get<ClientListResponse>(url)
+  // Récupérer la liste des clients avec filtres
+  async getClients(filters: ClientFilters = {}): Promise<ApiResponse<ClientListResponse>> {
+    return apiClient.getCached<ClientListResponse>(this.buildListUrl(filters), 2 * 60 * 1000)
   }
 
   async getFolderCounts(): Promise<ApiResponse<ClientFolderCounts>> {

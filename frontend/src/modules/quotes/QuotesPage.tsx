@@ -81,6 +81,7 @@ import {
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch';
 import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell';
 import { DocumentFolderStatusChip } from '../../components/finance/DocumentFolderStatusChip';
+import { DocumentFolderInitialLoader } from '../../components/loading/DocumentFolderInitialLoader';
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import {
@@ -129,6 +130,8 @@ export function QuotesPage() {
     total,
     loading,
     loadingMore,
+    coldLoading,
+    folderLoading,
     folderCounts,
     countsReady,
     hasMore,
@@ -202,7 +205,6 @@ export function QuotesPage() {
   );
 
   const contentKey = `${activeFolder}-${debouncedSearch}`;
-  const initialLoading = loading && quotes.length === 0;
 
   const selection = useDocumentFolderSelection(
     displayedQuotes,
@@ -403,15 +405,19 @@ export function QuotesPage() {
       filters={folderFilters}
       contentKey={contentKey}
       loading={loading}
-      initialLoading={initialLoading}
+      initialLoading={coldLoading}
       countsLoading={!countsReady}
     >
-      {initialLoading ? (
+      {coldLoading ? (
+        <DocumentFolderInitialLoader
+          resource="devis"
+          rows={8}
+          variant={isNarrow ? 'cards' : 'table'}
+        />
+      ) : folderLoading ? (
         <DocumentFolderContentSkeleton
           rows={8}
           variant={isNarrow ? 'cards' : 'table'}
-          initial
-          resourceLabel="devis"
         />
       ) : (
         <Card
