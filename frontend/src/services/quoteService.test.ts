@@ -3,6 +3,7 @@ import { ApiClient } from './apiClient'
 
 const mockClient = {
   get: vi.fn(),
+  getCached: vi.fn(),
   post: vi.fn(),
   patch: vi.fn(),
   delete: vi.fn(),
@@ -23,7 +24,7 @@ describe('quoteService', () => {
   })
 
   it('appelle l\'API pour getQuotes', async () => {
-    mockClient.get.mockResolvedValue({
+    mockClient.getCached.mockResolvedValue({
       success: true,
       data: { data: [], total: 0, page: 1, limit: 10 },
     })
@@ -31,8 +32,9 @@ describe('quoteService', () => {
 
     await quoteService.getQuotes({ status: 'SENT', search: 'DEV-2025' } as never, 2, 5)
 
-    expect(mockClient.get).toHaveBeenCalledWith(
+    expect(mockClient.getCached).toHaveBeenCalledWith(
       '/devis?status=SENT&search=DEV-2025&page=2&limit=5',
+      2 * 60 * 1000,
     )
   })
 

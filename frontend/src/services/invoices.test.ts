@@ -27,7 +27,7 @@ describe('invoiceService', () => {
   })
 
   it('construit bien l URL pour getInvoices avec filtres', async () => {
-    ;(apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+    ;(apiClient.getCached as ReturnType<typeof vi.fn>).mockResolvedValue({
       success: true,
       data: {
         invoices: [],
@@ -50,8 +50,9 @@ describe('invoiceService', () => {
       sortOrder: 'desc',
     })
 
-    expect(apiClient.get).toHaveBeenCalledWith(
+    expect(apiClient.getCached).toHaveBeenCalledWith(
       '/factures?search=FAC-2025&status=paid&clientId=42&dateFrom=2025-01-01&dateTo=2025-12-31&page=2&limit=50&sortBy=issueDate&sortOrder=desc',
+      2 * 60 * 1000,
     )
   })
 

@@ -121,10 +121,11 @@ describe('Receivables e2e', () => {
 			.then((r: { body: { id: string; total: unknown } }) => r.body);
 
 		const total = Number(invoice.total);
+		const solNumber = `SOL-TEST-${Date.now()}`;
 		await prisma.invoice.update({
 			where: { id: invoice.id },
 			data: {
-				number: 'SOL-TEST-001',
+				number: solNumber,
 				status: 'DRAFT',
 				balance: total,
 				tags: JSON.stringify(['SOLDE_APRES_ACOMPTE', 'PENDING_EMIT']),
@@ -147,6 +148,6 @@ describe('Receivables e2e', () => {
 		expect(res.summary.invoiceCount).toBe(1);
 		expect(res.summary.byKind.remainder).toBeCloseTo(total, 2);
 		expect(res.invoices[0].documentKind).toBe('remainder');
-		expect(res.invoices[0].number).toBe('SOL-TEST-001');
+		expect(res.invoices[0].number).toBe(solNumber);
 	});
 });

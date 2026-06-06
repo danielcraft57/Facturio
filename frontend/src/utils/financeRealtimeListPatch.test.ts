@@ -9,10 +9,15 @@ const baseInvoice: Invoice = {
   balance: 120,
   total: 120,
   clientId: 'c1',
-  clientName: 'Client',
-  date: '2026-01-01',
+  client: { id: 'c1', name: 'Client', email: 'client@example.com' },
+  issueDate: '2026-01-01',
   dueDate: '2026-02-01',
-  lines: [],
+  items: [],
+  subtotal: 100,
+  taxTotal: 20,
+  currency: 'EUR',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
 }
 
 describe('patchInvoiceFromRealtimeDetail', () => {
