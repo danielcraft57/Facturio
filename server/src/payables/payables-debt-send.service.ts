@@ -11,6 +11,7 @@ import {
 	buildEmailOpenTrackUrl,
 } from '../common/email-track.util';
 import { OrganizationsService } from '../organizations/organizations.service';
+import { PayablesService } from './payables.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { resolveEmailIssuerDisplayName } from '../common/email-legal-footer';
@@ -24,6 +25,7 @@ export class PayablesDebtSendService {
 		private readonly organizations: OrganizationsService,
 		private readonly realtime: RealtimeEventsService,
 		private readonly documentCopies: DocumentEmailCopiesService,
+		private readonly payables: PayablesService,
 	) {}
 
 	async ensurePublicToken(debtId: number, organizationId: number): Promise<string> {
@@ -94,10 +96,12 @@ export class PayablesDebtSendService {
 		});
 
 		await recordPayableDebtEmailSent(this.prisma, debt.id);
+		const sentAt = new Date();
 		await this.prisma.payableDebt.update({
 			where: { id: debtId },
-			data: { sentAt: new Date() },
+			data: { sentAt },
 		});
+		await this.payables.postPurchaseOnRecognition(debtId, sentAt);
 
 		const copyRecipients = this.documentCopies.buildCopyRecipients(dto, to, senderEmail);
 		for (const copyTo of copyRecipients) {

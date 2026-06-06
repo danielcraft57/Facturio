@@ -6,7 +6,8 @@ export type ClientFolder =
 	| 'inactifs'
 	| 'prospects'
 	| 'entreprises'
-	| 'particuliers';
+	| 'particuliers'
+	| 'archives';
 
 export const CLIENT_FOLDERS: ClientFolder[] = [
 	'inbox',
@@ -15,6 +16,7 @@ export const CLIENT_FOLDERS: ClientFolder[] = [
 	'prospects',
 	'entreprises',
 	'particuliers',
+	'archives',
 ];
 
 export function isClientFolder(value: string | undefined): value is ClientFolder {
@@ -24,19 +26,23 @@ export function isClientFolder(value: string | undefined): value is ClientFolder
 export function buildClientFolderWhere(
 	folder: ClientFolder | undefined,
 ): Record<string, unknown> {
-	if (!folder || folder === 'inbox') return {};
+	if (folder === 'archives') {
+		return { archivedAt: { not: null } };
+	}
+	const activeOnly = { archivedAt: null };
+	if (!folder || folder === 'inbox') return activeOnly;
 	switch (folder) {
 		case 'actifs':
-			return { status: 'ACTIVE' as ClientStatus };
+			return { ...activeOnly, status: 'ACTIVE' as ClientStatus };
 		case 'inactifs':
-			return { status: 'INACTIVE' as ClientStatus };
+			return { ...activeOnly, status: 'INACTIVE' as ClientStatus };
 		case 'prospects':
-			return { status: 'PROSPECT' as ClientStatus };
+			return { ...activeOnly, status: 'PROSPECT' as ClientStatus };
 		case 'entreprises':
-			return { isCompany: true };
+			return { ...activeOnly, isCompany: true };
 		case 'particuliers':
-			return { isCompany: false };
+			return { ...activeOnly, isCompany: false };
 		default:
-			return {};
+			return activeOnly;
 	}
 }

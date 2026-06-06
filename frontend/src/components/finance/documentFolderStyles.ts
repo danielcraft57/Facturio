@@ -91,6 +91,14 @@ export const documentFolderSidebarSx: SxProps<Theme> = {
   borderRadius: 2,
 }
 
+export const documentFolderSidebarGroupLabelSx: SxProps<Theme> = {
+  fontSize: '0.65rem',
+  fontWeight: 700,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'text.secondary',
+}
+
 /** Sidebar + zone liste : espacement horizontal entre les deux. */
 export const documentFolderLayoutRowSx: SxProps<Theme> = {
   display: 'flex',

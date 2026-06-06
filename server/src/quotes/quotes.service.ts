@@ -11,6 +11,7 @@ import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 import {
 	buildDocumentFolderWhere,
+	computeDocumentFolderCounts,
 	documentFolderOrderBy,
 	parseTagsJson,
 	serializeTagsJson,
@@ -22,6 +23,12 @@ import {
 	buildDepositCommitmentParagraph,
 	buildRemainderCommitmentParagraph,
 } from '../invoices/invoice-deposit.util';
+import {
+	computeInvoiceDueDate,
+	DEFAULT_DEPOSIT_DUE_POLICY,
+	DEFAULT_REMAINDER_DUE_POLICY,
+	DEFAULT_STANDARD_DUE_POLICY,
+} from '../invoices/invoice-due-date.util';
 
 /**
  * Ligne de devis
@@ -586,28 +593,17 @@ export class QuotesService {
 	private async loadFolderCounts(organizationId?: number) {
 		const base: { organizationId?: number; archivedAt: null } = { archivedAt: null };
 		if (organizationId) base.organizationId = organizationId;
-		const now = new Date();
 		const count = (extra: Record<string, unknown>) =>
 			this.prisma.quote.count({ where: { ...base, ...extra } });
 
-		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives] =
-			await Promise.all([
-				count(buildDocumentFolderWhere('inbox', now, 'quote')),
-				count(buildDocumentFolderWhere('nouveau', now, 'quote')),
-				count(buildDocumentFolderWhere('suivi', now, 'quote')),
-				count(buildDocumentFolderWhere('attente', now, 'quote')),
-				count(buildDocumentFolderWhere('important', now, 'quote')),
-				count(buildDocumentFolderWhere('envoyes', now, 'quote')),
-				count(buildDocumentFolderWhere('brouillons', now, 'quote')),
-				this.prisma.quote.count({
-					where: {
-						archivedAt: { not: null },
-						...(organizationId ? { organizationId } : {}),
-					},
-				}),
-			]);
-
-		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives };
+		return computeDocumentFolderCounts(count, 'quote', () =>
+			this.prisma.quote.count({
+				where: {
+					archivedAt: { not: null },
+					...(organizationId ? { organizationId } : {}),
+				},
+			}),
+		);
 	}
 
 	async getFolderCounts(organizationId?: number) {
@@ -1098,12 +1094,19 @@ export class QuotesService {
 			}
 		}
 
-		const defaultDue =
-			quote.expiryDate ??
-			new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-		const dueDateFr = new Date(defaultDue).toLocaleDateString('fr-FR');
-		const depositMention = buildDepositCommitmentParagraph(dueDateFr);
-		const remainderMention = buildRemainderCommitmentParagraph(dueDateFr);
+		const acceptedAt = new Date();
+		const depositDue = computeInvoiceDueDate(DEFAULT_DEPOSIT_DUE_POLICY, {
+			baseDate: acceptedAt,
+			quoteExpiry: quote.expiryDate,
+		});
+		const remainderDue = computeInvoiceDueDate(DEFAULT_REMAINDER_DUE_POLICY, {
+			baseDate: acceptedAt,
+			quoteExpiry: quote.expiryDate,
+		});
+		const depositDueFr = depositDue.toLocaleDateString('fr-FR');
+		const remainderDueFr = remainderDue.toLocaleDateString('fr-FR');
+		const depositMention = buildDepositCommitmentParagraph(depositDueFr);
+		const remainderMention = buildRemainderCommitmentParagraph(remainderDueFr);
 
 		if (!depositInvoice) {
 			depositInvoice = await this.invoices.create(
@@ -1112,7 +1115,7 @@ export class QuotesService {
 					sourceQuoteId: quote.id,
 					status: 'DRAFT',
 					number: await this.invoices.allocateInvoiceNumber('deposit'),
-					dueDate: defaultDue,
+					dueDate: depositDue,
 					legalMention: depositMention,
 					lines: linesDeposit.map((l) => ({
 						productId: undefined,
@@ -1132,7 +1135,7 @@ export class QuotesService {
 					clientId: quote.clientId,
 					status: 'DRAFT',
 					number: await this.invoices.allocateInvoiceNumber('remainder'),
-					dueDate: defaultDue,
+					dueDate: remainderDue,
 					legalMention: remainderMention,
 					lines: linesRemainderRaw.map((l) => ({
 						productId: undefined,
@@ -1273,10 +1276,16 @@ export class QuotesService {
 			}
 		}
 
+		const dueDate = computeInvoiceDueDate(DEFAULT_STANDARD_DUE_POLICY, {
+			baseDate: new Date(),
+			quoteExpiry: quote.expiryDate,
+		});
+
 		return this.invoices.create(
 			{
 				clientId: quote.clientId,
 				sourceQuoteId: quote.id,
+				dueDate,
 				// À l'acceptation, on considère la “vente” comme émise (compta à l'émission).
 				status: 'SENT',
 				lines: quote.lines.map((l) => ({

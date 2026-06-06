@@ -8,10 +8,12 @@ import { CleanupUnverifiedUsersService } from './cleanup-unverified-users.servic
 import { UnverifiedAccountService } from './unverified-account.service';
 import { RateLimitService } from './rate-limit.middleware';
 import { DocumentEmailCopiesService } from './document-email-copies.service';
+import { DocumentAutoArchiveService } from './document-auto-archive.service';
+import { ConfigModule } from '../config/config.module';
 
 @Global()
 @Module({
-	imports: [ScheduleModule.forRoot()],
+	imports: [ScheduleModule.forRoot(), ConfigModule],
 	controllers: [TrackController],
 	providers: [
 		PdfService,
@@ -21,6 +23,7 @@ import { DocumentEmailCopiesService } from './document-email-copies.service';
 		UnverifiedAccountService,
 		RateLimitService,
 		DocumentEmailCopiesService,
+		DocumentAutoArchiveService,
 	],
 	exports: [
 		PdfService,

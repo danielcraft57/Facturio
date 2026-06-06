@@ -6,6 +6,7 @@ import { EmailService } from '../common/email.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { DocumentEmailCopiesService } from '../common/document-email-copies.service';
+import { PayablesService } from './payables.service';
 
 describe('PayablesDebtSendService', () => {
 	let service: PayablesDebtSendService;
@@ -19,6 +20,9 @@ describe('PayablesDebtSendService', () => {
 	};
 	const mockCopies = {
 		buildCopyRecipients: jest.fn().mockReturnValue([]),
+	};
+	const mockPayables = {
+		postPurchaseOnRecognition: jest.fn().mockResolvedValue(undefined),
 	};
 
 	const debtBase = {
@@ -56,6 +60,7 @@ describe('PayablesDebtSendService', () => {
 				{ provide: OrganizationsService, useValue: mockOrganizations },
 				{ provide: RealtimeEventsService, useValue: mockRealtime },
 				{ provide: DocumentEmailCopiesService, useValue: mockCopies },
+				{ provide: PayablesService, useValue: mockPayables },
 			],
 		}).compile();
 

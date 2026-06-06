@@ -1,4 +1,7 @@
-import { IsDateString, IsOptional } from 'class-validator';
+import { IsDateString, IsIn, IsOptional } from 'class-validator';
+import type { ReceivableDocumentKind } from '../receivable-document-kind.util';
+
+const KINDS: ReceivableDocumentKind[] = ['standard', 'deposit', 'remainder'];
 
 export class ReceivablesQueryDto {
 	@IsOptional()
@@ -8,4 +11,8 @@ export class ReceivablesQueryDto {
 	@IsOptional()
 	@IsDateString()
 	end?: string;
+
+	@IsOptional()
+	@IsIn(KINDS)
+	kind?: ReceivableDocumentKind;
 }

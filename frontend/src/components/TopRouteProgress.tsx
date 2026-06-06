@@ -1,8 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, alpha, useTheme } from '@mui/material'
 import { useLocation } from 'react-router-dom'
-
-const MIN_VISIBLE_MS = 260
+import {
+  resolveRouteTransition,
+  routeTransitionDurationMs,
+  type RouteTransitionKind,
+} from '../utils/routeTransition'
 
 /**
  * Barre de progression fixe en haut de l’écran (style NProgress / GitHub).
@@ -14,16 +17,30 @@ export function TopRouteProgress() {
   const [visible, setVisible] = useState(false)
   const [progress, setProgress] = useState(0)
   const timersRef = useRef<number[]>([])
+  const previousPathRef = useRef<string | null>(null)
+  const lastTransitionKindRef = useRef<RouteTransitionKind>('full')
 
   useLayoutEffect(() => {
-    window.scrollTo(0, 0)
-    document.documentElement.scrollTop = 0
-    document.body.scrollTop = 0
+    const kind = resolveRouteTransition(previousPathRef.current, location.pathname)
+    lastTransitionKindRef.current = kind
+    if (kind !== 'none') {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+    previousPathRef.current = location.pathname
   }, [location.pathname, location.search, location.key])
 
   useEffect(() => {
     timersRef.current.forEach((id) => window.clearTimeout(id))
     timersRef.current = []
+
+    const minVisibleMs = routeTransitionDurationMs(lastTransitionKindRef.current)
+    if (minVisibleMs <= 0) {
+      setVisible(false)
+      setProgress(0)
+      return
+    }
 
     setVisible(true)
     setProgress(8)
@@ -33,7 +50,7 @@ export function TopRouteProgress() {
 
     const animate = (now: number) => {
       const elapsed = now - start
-      const ratio = Math.min(elapsed / MIN_VISIBLE_MS, 1)
+      const ratio = Math.min(elapsed / minVisibleMs, 1)
       const eased = 1 - Math.pow(1 - ratio, 2.5)
       setProgress(8 + eased * 82)
       if (ratio < 1) {
@@ -48,9 +65,9 @@ export function TopRouteProgress() {
       const hide = window.setTimeout(() => {
         setVisible(false)
         setProgress(0)
-      }, 220)
+      }, 180)
       timersRef.current.push(hide)
-    }, MIN_VISIBLE_MS)
+    }, minVisibleMs)
 
     timersRef.current.push(finish)
 

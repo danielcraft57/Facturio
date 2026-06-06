@@ -14,6 +14,7 @@ import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 import {
 	buildDocumentFolderWhere,
+	computeDocumentFolderCounts,
 	documentFolderOrderBy,
 	parseTagsJson,
 	serializeTagsJson,
@@ -26,7 +27,12 @@ import {
 	resolveInvoiceDocumentPresentation,
 	type EngagementBreakdown,
 } from './invoice-deposit.util';
+import {
+	computeInvoiceDueDate,
+	DEFAULT_REMAINDER_DUE_POLICY,
+} from './invoice-due-date.util';
 import { resolveEngagementBreakdownForInvoice } from './invoice-engagement-breakdown.util';
+import { notifyLinkedRemainderAfterDepositPaid } from './invoice-deposit-realtime.util';
 import { canAccessInvoiceByPublicToken } from './invoice-public-access.util';
 import { AvoirsService } from '../avoirs/avoirs.service';
 
@@ -827,8 +833,19 @@ export class InvoicesService {
 	async update(id: string, data: UpdateInvoiceInput, organizationId?: number) {
 		await this.findOne(id, organizationId);
 
-		const lines = data.lines ?? [];
-		const invoice = await this.prisma.invoice.findUnique({ where: { id }, include: { client: true } });
+		const invoice = await this.prisma.invoice.findUnique({
+			where: { id },
+			include: { client: true, lines: true },
+		});
+		const lines =
+			data.lines ??
+			(invoice?.lines ?? []).map((l) => ({
+				productId: l.productId,
+				description: l.description,
+				quantity: Number((l.quantity as any)?.toNumber?.() ?? l.quantity),
+				unitPrice: Number((l.unitPrice as any)?.toNumber?.() ?? l.unitPrice),
+				taxRate: Number((l.taxRate as any)?.toNumber?.() ?? l.taxRate),
+			}));
 		const client = invoice?.client;
 		const policy = this.computeVatPolicy({
 			countryCode: client?.countryCode,
@@ -959,31 +976,87 @@ export class InvoicesService {
 		return this.archive(id, organizationId);
 	}
 
+	/**
+	 * Annule une facture (brouillon ou émise) avec écritures comptables si nécessaire.
+	 * Facture émise : contre-passation vente ou solde restant (créance partielle).
+	 */
+	async cancel(id: string, organizationId?: number, _reason?: string) {
+		const invoice = await this.prisma.invoice.findFirst({
+			where: { id, ...(organizationId != null ? { organizationId } : {}) },
+			include: { payments: true },
+		});
+		if (!invoice) throw new NotFoundException('Facture introuvable');
+		if (invoice.status === 'CANCELLED') {
+			throw new BadRequestException('Cette facture est déjà annulée.');
+		}
+		if (invoice.status === 'PAID' && Number(invoice.balance) <= 0.01) {
+			throw new BadRequestException(
+				'Impossible d’annuler une facture soldée : effectuez un remboursement si besoin.',
+			);
+		}
+
+		if (invoice.status === 'DRAFT') {
+			const updated = await this.prisma.invoice.update({
+				where: { id },
+				data: { status: 'CANCELLED', balance: 0 },
+				include: { client: true },
+			});
+			this.notifyInvoice(organizationId, 'updated', id, {
+				number: updated.number,
+				status: 'CANCELLED',
+			});
+			return updated;
+		}
+
+		if (!this.isEmittedInvoiceStatus(invoice.status)) {
+			throw new BadRequestException('Seules les factures brouillon ou émises peuvent être annulées.');
+		}
+
+		const balance = Number(invoice.balance);
+		if (balance <= 0.01) {
+			throw new BadRequestException('Aucun solde à annuler sur cette facture.');
+		}
+
+		await this.postSaleOnEmission(id);
+
+		const total = Number(invoice.total);
+		const hasPayments = invoice.payments.length > 0;
+		try {
+			if (!hasPayments && balance >= total - 0.01) {
+				await this.accounting.contraInvoiceSale(id);
+			} else {
+				await this.accounting.postInvoiceReceivableCancelRemaining(id);
+			}
+		} catch (err) {
+			this.logger.warn(`Compta annulation facture ${id}: ${(err as Error).message}`);
+		}
+
+		const updated = await this.prisma.invoice.update({
+			where: { id },
+			data: { status: 'CANCELLED', balance: 0 },
+			include: { client: true, lines: true, payments: true },
+		});
+		this.notifyInvoice(organizationId, 'updated', id, {
+			number: updated.number,
+			status: 'CANCELLED',
+		});
+		return updated;
+	}
+
 	private async loadFolderCounts(organizationId?: number) {
 		const base: { organizationId?: number; archivedAt: null } = { archivedAt: null };
 		if (organizationId) base.organizationId = organizationId;
-		const now = new Date();
 		const count = (extra: Record<string, unknown>) =>
 			this.prisma.invoice.count({ where: { ...base, ...extra } });
 
-		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives] =
-			await Promise.all([
-				count(buildDocumentFolderWhere('inbox', now, 'invoice')),
-				count(buildDocumentFolderWhere('nouveau', now, 'invoice')),
-				count(buildDocumentFolderWhere('suivi', now, 'invoice')),
-				count(buildDocumentFolderWhere('attente', now, 'invoice')),
-				count(buildDocumentFolderWhere('important', now, 'invoice')),
-				count(buildDocumentFolderWhere('envoyes', now, 'invoice')),
-				count(buildDocumentFolderWhere('brouillons', now, 'invoice')),
-				this.prisma.invoice.count({
-					where: {
-						archivedAt: { not: null },
-						...(organizationId ? { organizationId } : {}),
-					},
-				}),
-			]);
-
-		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives };
+		return computeDocumentFolderCounts(count, 'invoice', () =>
+			this.prisma.invoice.count({
+				where: {
+					archivedAt: { not: null },
+					...(organizationId ? { organizationId } : {}),
+				},
+			}),
+		);
 	}
 
 	async getFolderCounts(organizationId?: number) {
@@ -1095,12 +1168,16 @@ export class InvoicesService {
 			});
 		}
 
+		const becamePaid = after.balance <= 0.01 && !wasFullyPaid;
 		this.notifyInvoice(
 			organizationId,
-			after.balance <= 0.01 && !wasFullyPaid ? 'paid' : 'updated',
+			becamePaid ? 'paid' : 'updated',
 			id,
 			{ number: invoice.number, status: after.balance <= 0.01 ? 'PAID' : invoice.status },
 		);
+		if (becamePaid) {
+			void notifyLinkedRemainderAfterDepositPaid(this.prisma, this.realtime, invoice);
+		}
 
 		// Retourner le paiement en nombre pour .toBe(250)
 		return { ...payment, amount: (payment.amount as any)?.toNumber?.() ?? Number(payment.amount) } as any;
@@ -1372,13 +1449,19 @@ export class InvoicesService {
 		const tagsWithoutPending = serializeTagsJson(
 			tags.filter((t) => t !== 'PENDING_EMIT'),
 		);
+		const isRemainder = tags.includes('SOLDE_APRES_ACOMPTE');
+		const sentAt = new Date();
+		const dueDateOnSend = isRemainder
+			? computeInvoiceDueDate(DEFAULT_REMAINDER_DUE_POLICY, { baseDate: sentAt })
+			: undefined;
 		const updated = await this.prisma.invoice.update({
 			where: { id },
 			data: {
 				publicToken: token,
-				sentAt: new Date(),
+				sentAt,
 				status: nextStatus,
 				tags: tagsWithoutPending,
+				...(dueDateOnSend ? { dueDate: dueDateOnSend } : {}),
 			},
 			include: { lines: true, client: true }
 		});

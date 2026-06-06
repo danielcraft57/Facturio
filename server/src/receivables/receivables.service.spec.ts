@@ -4,6 +4,7 @@ import { ReceivablesService } from './receivables.service';
 describe('ReceivablesService', () => {
 	const prisma = {
 		invoice: { findMany: jest.fn() },
+		emailEvent: { findMany: jest.fn().mockResolvedValue([]) },
 	} as any;
 
 	const service = new ReceivablesService(prisma);
@@ -47,5 +48,51 @@ describe('ReceivablesService', () => {
 		expect(res.summary.invoiceCount).toBe(1);
 		expect(res.summary.clientCount).toBe(1);
 		expect(res.clients[0].totalBalance).toBe(120);
+	});
+
+	it('inclut le solde après acompte en brouillon', async () => {
+		prisma.invoice.findMany.mockResolvedValue([
+			{
+				id: 'sol1',
+				number: 'SOL-2026-001',
+				clientId: 'c1',
+				sourceQuoteId: 'q1',
+				tags: JSON.stringify(['SOLDE_APRES_ACOMPTE', 'PENDING_EMIT']),
+				date: new Date('2026-03-01'),
+				dueDate: new Date('2026-04-01'),
+				total: 900,
+				balance: 900,
+				status: 'DRAFT',
+				client: { id: 'c1', name: 'Client', email: 'c@test.com' },
+			},
+		]);
+
+		const res = await service.getReceivables(1);
+		expect(res.summary.invoiceCount).toBe(1);
+		expect(res.invoices[0].documentKind).toBe('remainder');
+		expect(res.summary.byKind.remainder).toBe(900);
+	});
+
+	it('expose documentKind standard par défaut', async () => {
+		prisma.invoice.findMany.mockResolvedValue([
+			{
+				id: 'inv1',
+				number: 'FAC-1',
+				clientId: 'c1',
+				sourceQuoteId: null,
+				tags: null,
+				archivedAt: null,
+				date: new Date('2026-01-10'),
+				dueDate: new Date('2026-02-01'),
+				total: 100,
+				balance: 100,
+				status: 'SENT',
+				client: { id: 'c1', name: 'Acme', email: 'a@test.com' },
+			},
+		]);
+
+		const res = await service.getReceivables(1);
+		expect(res.invoices[0].documentKind).toBe('standard');
+		expect(res.summary.byKind.standard).toBe(100);
 	});
 });

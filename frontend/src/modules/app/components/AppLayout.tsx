@@ -29,7 +29,8 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import AddIcon from '@mui/icons-material/Add'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { prefetchFinanceRouteChunks } from '../../../utils/prefetchFinanceRoutes'
 import { useAuthStore } from '../../../stores/authStore'
 import { AppTopNav } from './AppTopNav'
 import { AppMobileNav } from './AppMobileNav'
@@ -52,6 +53,10 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const { user, logout } = useAuthStore()
+
+  useEffect(() => {
+    prefetchFinanceRouteChunks()
+  }, [])
 
   const handleLogout = async () => {
     setUserMenuAnchor(null)

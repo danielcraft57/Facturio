@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { AccountingService } from '../accounting/accounting.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePayableCreditorDto } from './dto/create-payable-creditor.dto';
 import type { CreatePayableDebtDto } from './dto/create-payable-debt.dto';
@@ -11,6 +12,8 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import {
 	buildDocumentFolderWhere,
+	type DocumentFolder,
+	DOCUMENT_FOLDERS,
 	documentFolderOrderBy,
 	parseTagsJson,
 	serializeTagsJson,
@@ -78,11 +81,23 @@ export type PayablesSummaryResponse = {
 
 @Injectable()
 export class PayablesService {
+	private readonly logger = new Logger(PayablesService.name);
+
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly organizations: OrganizationsService,
 		private readonly realtime: RealtimeEventsService,
+		private readonly accounting: AccountingService,
 	) {}
+
+	/** Écriture achat 622/401 — idempotente (envoi ou 1er paiement). */
+	async postPurchaseOnRecognition(debtId: number, date?: Date): Promise<void> {
+		try {
+			await this.accounting.postPayableDebtPurchase({ debtId, date });
+		} catch (err) {
+			this.logger.warn(`Compta achat dette ${debtId}: ${(err as Error).message}`);
+		}
+	}
 
 	private assertOrg(organizationId?: number): number {
 		if (organizationId == null) throw new BadRequestException('Organisation requise');
@@ -150,12 +165,15 @@ export class PayablesService {
 		const skip = (page - 1) * pageSize;
 		const now = new Date();
 
+		const folderWhere = buildDocumentFolderWhere(q.folder, now, 'payable_debt');
 		const where: Record<string, unknown> = {
 			organizationId: orgId,
 			archivedAt: null,
-			status: { not: 'CANCELLED' },
+			...folderWhere,
 		};
-		Object.assign(where, buildDocumentFolderWhere(q.folder, now, 'payable_debt'));
+		if (q.folder !== 'status_cancelled' && !('status' in folderWhere)) {
+			where.status = { not: 'CANCELLED' };
+		}
 
 		if (q.search?.trim()) {
 			const term = q.search.trim();
@@ -197,31 +215,33 @@ export class PayablesService {
 		};
 	}
 
-	private async loadFolderCounts(organizationId: number) {
-		const base = {
+	private payableDebtCountWhere(organizationId: number, folder: DocumentFolder, now = new Date()) {
+		const folderWhere = buildDocumentFolderWhere(folder, now, 'payable_debt');
+		const where: Record<string, unknown> = {
 			organizationId,
 			archivedAt: null,
-			status: { not: 'CANCELLED' as const },
+			...folderWhere,
 		};
+		if (folder !== 'status_cancelled' && !('status' in folderWhere)) {
+			where.status = { not: 'CANCELLED' };
+		}
+		return where;
+	}
+
+	private async loadFolderCounts(organizationId: number) {
 		const now = new Date();
-		const count = (extra: Record<string, unknown>) =>
-			this.prisma.payableDebt.count({ where: { ...base, ...extra } });
-
-		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives] =
-			await Promise.all([
-				count(buildDocumentFolderWhere('inbox', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('nouveau', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('suivi', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('attente', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('important', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('envoyes', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('brouillons', now, 'payable_debt')),
-				this.prisma.payableDebt.count({
-					where: { organizationId, archivedAt: { not: null } },
-				}),
-			]);
-
-		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives };
+		const counts = await Promise.all(
+			DOCUMENT_FOLDERS.map(async (folder) => {
+				const count = await this.prisma.payableDebt.count({
+					where: this.payableDebtCountWhere(organizationId, folder, now) as never,
+				});
+				return [folder, count] as const;
+			}),
+		);
+		const archives = await this.prisma.payableDebt.count({
+			where: { organizationId, archivedAt: { not: null } },
+		});
+		return { ...Object.fromEntries(counts), archives };
 	}
 
 	async getFolderCounts(organizationId: number | undefined) {
@@ -426,15 +446,28 @@ export class PayablesService {
 			);
 		}
 
-		await this.prisma.payableDebtPayment.create({
+		const paymentDate = dto.date ? new Date(dto.date) : new Date();
+		const payment = await this.prisma.payableDebtPayment.create({
 			data: {
 				debtId,
 				amount,
-				date: dto.date ? new Date(dto.date) : new Date(),
+				date: paymentDate,
 				method: dto.method?.trim() || null,
 				notes: dto.notes?.trim() || null,
 			},
 		});
+
+		await this.postPurchaseOnRecognition(debtId, paymentDate);
+		try {
+			await this.accounting.postPayableDebtPayment({
+				debtId,
+				paymentId: payment.id,
+				amount,
+				date: paymentDate,
+			});
+		} catch (err) {
+			this.logger.warn(`Compta paiement dette ${debtId}#${payment.id}: ${(err as Error).message}`);
+		}
 
 		const updated = await this.syncDebtBalance(debtId, orgId);
 		const row = this.mapDebt(updated);
@@ -450,6 +483,7 @@ export class PayablesService {
 		const orgId = this.assertOrg(organizationId);
 		const debt = await this.prisma.payableDebt.findFirst({
 			where: { id: debtId, organizationId: orgId },
+			include: { payments: true },
 		});
 		if (!debt) throw new NotFoundException('Dette introuvable');
 		if (debt.status === 'CANCELLED') {
@@ -459,6 +493,18 @@ export class PayablesService {
 			throw new BadRequestException(
 				'Impossible d’annuler une dette soldée : l’historique des remboursements est conservé.',
 			);
+		}
+
+		const remaining = Number(debt.balance);
+		try {
+			if (debt.payments.length === 0) {
+				await this.accounting.contraPayableDebtPurchase(debtId);
+			} else if (remaining > BALANCE_EPSILON) {
+				await this.postPurchaseOnRecognition(debtId);
+				await this.accounting.postPayableDebtCancelRemaining(debtId, remaining);
+			}
+		} catch (err) {
+			this.logger.warn(`Compta annulation dette ${debtId}: ${(err as Error).message}`);
 		}
 
 		const updated = await this.prisma.payableDebt.update({

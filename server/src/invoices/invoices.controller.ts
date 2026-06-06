@@ -124,6 +124,15 @@ export class InvoicesController {
 		return this.refunds.createForInvoice(id, body, user.organizationId);
 	}
 
+	@Post(':id/cancel')
+	cancelInvoice(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Body() body: { reason?: string },
+		@CurrentUser() user: any,
+	) {
+		return this.invoices.cancel(id, user.organizationId, body?.reason);
+	}
+
 	@Post(':id/cancel-deposit')
 	cancelDeposit(
 		@Param('id', ParseEntityIdPipe) id: string,

@@ -24,7 +24,7 @@ describe('clientService', () => {
   })
 
   it('appelle l API pour lister les clients avec les bons paramètres', async () => {
-    ;(apiClient.get as any).mockResolvedValue({
+    ;(apiClient.getCached as any).mockResolvedValue({
       success: true,
       data: {
         clients: [],
@@ -44,8 +44,9 @@ describe('clientService', () => {
       sortOrder: 'asc',
     })
 
-    expect(apiClient.get).toHaveBeenCalledWith(
+    expect(apiClient.getCached).toHaveBeenCalledWith(
       '/clients?search=acme&status=active&page=2&limit=20&sortBy=name&sortOrder=asc',
+      2 * 60 * 1000,
     )
     expect(res.success).toBe(true)
   })

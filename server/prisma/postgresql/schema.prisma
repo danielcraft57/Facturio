@@ -351,6 +351,7 @@ model Client {
   taxRateOverride   TaxRate?       @relation("ClientTaxOverride", fields: [taxRateOverrideId], references: [id])
   countryCode       String? // ISO 3166-1 alpha-2
   status            ClientStatus   @default(ACTIVE)
+  archivedAt        DateTime?
   organizationId    Int?
   organization      Organization?  @relation(fields: [organizationId], references: [id])
   preferredTechnologies Json?
@@ -370,6 +371,8 @@ model Client {
   @@index([organizationId, createdAt])
   @@index([organizationId, status, createdAt])
   @@index([organizationId, isCompany, createdAt])
+  @@index([archivedAt])
+  @@index([organizationId, archivedAt, createdAt])
 }
 
 model Invoice {

@@ -100,7 +100,12 @@ export function patchInvoiceFromRealtimeDetail(
   }
 
   if (detail.action === 'paid') {
-    return { ...invoice, status: 'paid', paidAt: invoice.paidAt ?? new Date().toISOString() }
+    return {
+      ...invoice,
+      status: 'paid',
+      balance: 0,
+      paidAt: invoice.paidAt ?? new Date().toISOString(),
+    }
   }
 
   const status = detail.status?.toLowerCase()

@@ -205,4 +205,78 @@ describe('Invoices e2e', () => {
 			})
 			.expect(400);
 	});
+
+	it('annule un brouillon sans écriture comptable', async () => {
+		const client = await prisma.client.create({
+			data: {
+				id: generateEntityId(),
+				name: 'Cancel Draft',
+				email: uniqueEmail('cancel-draft@test.local'),
+				isCompany: true,
+				countryCode: 'FR',
+				organizationId: testUser.organizationId,
+			},
+		});
+
+		const invoice = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
+			.send({
+				clientId: client.id,
+				organizationId: testUser.organizationId,
+				lines: [{ description: 'Presta', quantity: 1, unitPrice: 100 }],
+			})
+			.expect(201)
+			.then((r: { body: { id: string; status: string } }) => r.body);
+
+		const cancelled = await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/invoices/${invoice.id}/cancel`)
+			.send({ reason: 'Erreur saisie' })
+			.expect(201)
+			.then((r: { body: { status: string; balance: number } }) => r.body);
+
+		expect(cancelled.status).toBe('CANCELLED');
+		expect(Number(cancelled.balance)).toBe(0);
+	});
+
+	it('annule une facture émise avec contre-passation VENTE', async () => {
+		const client = await prisma.client.create({
+			data: {
+				id: generateEntityId(),
+				name: 'Cancel Sent',
+				email: uniqueEmail('cancel-sent@test.local'),
+				isCompany: true,
+				countryCode: 'FR',
+				organizationId: testUser.organizationId,
+			},
+		});
+
+		const invoice = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
+			.send({
+				clientId: client.id,
+				organizationId: testUser.organizationId,
+				lines: [{ description: 'Presta émise', quantity: 1, unitPrice: 100, taxRate: 0.2 }],
+			})
+			.expect(201)
+			.then((r: { body: { id: string; number: string } }) => r.body);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/invoices/${invoice.id}/send`)
+			.send({ email: uniqueEmail('cancel-sent-send@test.local') })
+			.expect(201);
+
+		const vente = await prisma.journalEntry.findFirst({
+			where: { reference: `VENTE ${invoice.number}` },
+		});
+		expect(vente).toBeTruthy();
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/invoices/${invoice.id}/cancel`)
+			.expect(201);
+
+		const cancelEntry = await prisma.journalEntry.findFirst({
+			where: { reference: `ANNUL VENTE ${invoice.number}` },
+		});
+		expect(cancelEntry).toBeTruthy();
+	});
 });

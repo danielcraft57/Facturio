@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Box, Button, CircularProgress, Alert } from '@mui/material'
+import { Box, Button, Alert } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '../../components/finance/PageHeader'
 import { ArchiveGroupedView } from '../../components/finance/ArchiveGroupedView'
@@ -12,6 +12,8 @@ import type { ArchiveYearGroup } from '../../types/archives'
 import type { PayableDebtRow } from '../../services/payables'
 import { formatCurrency } from '../../utils/formatters'
 import { useToast } from '../../components/useToast'
+import { WorkspacePreparationDialog } from '../../components/loading/WorkspacePreparationDialog'
+import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
 function debtToArchiveRow(d: PayableDebtRow): ArchiveRow {
   return {
@@ -76,8 +78,11 @@ export function PayablesArchivePage() {
     }
   }
 
+  const initialLoading = loading && groups.length === 0 && !error
+
   return (
     <Box sx={{ p: financePagePadding }}>
+      <WorkspacePreparationDialog open={initialLoading} resource="archives-dettes" />
       <PageHeader
         title="Archives — Dettes"
         subtitle="Dettes archivées par année et par mois (aucune suppression définitive)."
@@ -101,9 +106,7 @@ export function PayablesArchivePage() {
       )}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <TablePageSkeleton rows={10} showHeader={false} />
       ) : (
         <ArchiveGroupedView
           groups={groups}

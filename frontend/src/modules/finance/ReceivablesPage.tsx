@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { FinanceRealtimeDetail } from '../../types/realtime'
+import { scheduleDebounced } from '../../utils/scheduleDebounced'
+import { Link as RouterLink } from 'react-router-dom'
+import { openClientView } from '../../utils/openDocumentView'
 import {
   Alert,
   Box,
@@ -35,12 +38,16 @@ import {
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import {
   AGING_BUCKET_LABELS,
+  RECEIVABLE_DOCUMENT_KIND_LABELS,
   receivablesService,
   type ReceivableAgingBucket,
+  type ReceivableDocumentKind,
   type ReceivablesData,
 } from '../../services/receivables'
 import { invoiceService } from '../../services/invoices'
 import { financeKpiGridSize } from './financePageLayout'
+import { WorkspacePreparationDialog } from '../../components/loading/WorkspacePreparationDialog'
+import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
 const AGING_ORDER: ReceivableAgingBucket[] = [
   'not_due',
@@ -50,14 +57,23 @@ const AGING_ORDER: ReceivableAgingBucket[] = [
   'days_90_plus',
 ]
 
+const KIND_FILTERS: Array<{ value: ReceivableDocumentKind | 'all'; label: string }> = [
+  { value: 'all', label: 'Toutes' },
+  { value: 'deposit', label: 'Acomptes' },
+  { value: 'remainder', label: 'Soldes' },
+  { value: 'standard', label: 'Factures' },
+]
+
 function KpiCard({
   label,
   value,
   gradient,
+  subtitle,
 }: {
   label: string
   value: string
   gradient: string
+  subtitle?: string
 }) {
   return (
     <Card
@@ -75,6 +91,11 @@ function KpiCard({
         <Typography variant="h5" sx={{ fontWeight: 800, mt: 0.5 }}>
           {value}
         </Typography>
+        {subtitle && (
+          <Typography variant="caption" sx={{ opacity: 0.85, display: 'block', mt: 0.5 }}>
+            {subtitle}
+          </Typography>
+        )}
       </CardContent>
     </Card>
   )
@@ -86,15 +107,22 @@ function agingChipColor(bucket: ReceivableAgingBucket): 'default' | 'warning' | 
   return 'warning'
 }
 
+function documentKindChipColor(kind: ReceivableDocumentKind): 'default' | 'primary' | 'secondary' {
+  if (kind === 'deposit') return 'primary'
+  if (kind === 'remainder') return 'secondary'
+  return 'default'
+}
+
 export function ReceivablesPage() {
-  const navigate = useNavigate()
   const [data, setData] = useState<ReceivablesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState(0)
+  const [kindFilter, setKindFilter] = useState<ReceivableDocumentKind | 'all'>('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [remindingId, setRemindingId] = useState<string | null>(null)
+  const [bulkReminding, setBulkReminding] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -103,6 +131,7 @@ export function ReceivablesPage() {
       const res = await receivablesService.getReceivables({
         ...(startDate ? { start: startDate } : {}),
         ...(endDate ? { end: endDate } : {}),
+        ...(kindFilter !== 'all' ? { kind: kindFilter } : {}),
       })
       setData(res)
     } catch (err: unknown) {
@@ -110,11 +139,24 @@ export function ReceivablesPage() {
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate])
+  }, [startDate, endDate, kindFilter])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const loadRef = useRef(load)
+  loadRef.current = load
+
+  useEffect(() => {
+    const onRealtime = (ev: Event) => {
+      const detail = (ev as CustomEvent<FinanceRealtimeDetail>).detail
+      if (detail?.id == null) return
+      scheduleDebounced(() => void loadRef.current())
+    }
+    window.addEventListener('facturio:invoice-realtime', onRealtime)
+    return () => window.removeEventListener('facturio:invoice-realtime', onRealtime)
+  }, [])
 
   const handleRemind = async (invoiceId: string) => {
     if (!window.confirm('Envoyer une relance par email pour cette facture ?')) return
@@ -129,26 +171,65 @@ export function ReceivablesPage() {
     }
   }
 
+  const handleBulkRemind = async () => {
+    if (
+      !window.confirm(
+        'Relancer toutes les créances en retard éligibles ? (≥ 3 j après échéance, pas de relance depuis 7 j)',
+      )
+    ) {
+      return
+    }
+    setBulkReminding(true)
+    try {
+      const result = await receivablesService.remindOverdue()
+      if (result.errors.length) {
+        setError(`${result.sent} relance(s) envoyée(s). ${result.errors.join(' · ')}`)
+      }
+      await load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors des relances groupées')
+    } finally {
+      setBulkReminding(false)
+    }
+  }
+
   const overdueCount = useMemo(() => {
     if (!data) return 0
     return data.invoices.filter((i) => i.agingBucket !== 'not_due').length
   }, [data])
 
+  const byKind = data?.summary.byKind ?? { standard: 0, deposit: 0, remainder: 0 }
+  const initialLoading = loading && data === null
+
   return (
     <Box sx={{ p: financePagePadding }}>
+      <WorkspacePreparationDialog open={initialLoading} resource="creances" />
       <PageHeader
         title="Créances clients"
-        subtitle="Clients qui vous doivent (factures impayées) — pas les créanciers des dettes"
+        subtitle="Factures impayées — acompte à l'acceptation, solde J+30 à l'envoi, relances auto chaque matin"
         actions={
-          <Button
-            variant="outlined"
-            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <Refresh />}
-            onClick={() => void load()}
-            disabled={loading}
-            sx={financeOutlinedButtonSx}
-          >
-            Actualiser
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              startIcon={
+                bulkReminding ? <CircularProgress size={18} color="inherit" /> : <Email />
+              }
+              onClick={() => void handleBulkRemind()}
+              disabled={bulkReminding || loading}
+              sx={financeOutlinedButtonSx}
+            >
+              Relancer les retards
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <Refresh />}
+              onClick={() => void load()}
+              disabled={loading}
+              sx={financeOutlinedButtonSx}
+            >
+              Actualiser
+            </Button>
+          </Stack>
         }
       />
 
@@ -160,7 +241,7 @@ export function ReceivablesPage() {
 
       <Card sx={{ mb: 3, ...financeCardSx }}>
         <CardContent>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
             <TextField
               label="Factures depuis"
               type="date"
@@ -179,6 +260,17 @@ export function ReceivablesPage() {
               fullWidth
               sx={{ maxWidth: 220 }}
             />
+            <Tabs
+              value={kindFilter}
+              onChange={(_, v: ReceivableDocumentKind | 'all') => setKindFilter(v)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{ minHeight: 40 }}
+            >
+              {KIND_FILTERS.map((f) => (
+                <Tab key={f.value} value={f.value} label={f.label} sx={{ minHeight: 40, py: 0 }} />
+              ))}
+            </Tabs>
           </Stack>
         </CardContent>
       </Card>
@@ -193,16 +285,18 @@ export function ReceivablesPage() {
         </Grid>
         <Grid size={financeKpiGridSize}>
           <KpiCard
-            label="Clients débiteurs"
-            value={String(data?.summary.clientCount ?? 0)}
+            label="Acomptes dus"
+            value={formatCurrency(byKind.deposit)}
             gradient={financeKpiGradients.clients}
+            subtitle="Échéance : jour de l'acceptation"
           />
         </Grid>
         <Grid size={financeKpiGridSize}>
           <KpiCard
-            label="Factures ouvertes"
-            value={String(data?.summary.invoiceCount ?? 0)}
+            label="Soldes dus"
+            value={formatCurrency(byKind.remainder)}
             gradient={financeKpiGradients.conversion}
+            subtitle="Échéance : J+30 à l'envoi"
           />
         </Grid>
         <Grid size={financeKpiGridSize}>
@@ -210,6 +304,7 @@ export function ReceivablesPage() {
             label="En retard"
             value={String(overdueCount)}
             gradient={financeKpiGradients.revenue}
+            subtitle={`${data?.summary.invoiceCount ?? 0} facture(s) ouverte(s)`}
           />
         </Grid>
       </Grid>
@@ -240,9 +335,15 @@ export function ReceivablesPage() {
           <Tab label="Par facture" />
         </Tabs>
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
+          initialLoading ? (
+            <Box sx={{ p: 2 }}>
+              <TablePageSkeleton rows={8} showHeader={false} />
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress />
+            </Box>
+          )
         ) : tab === 0 ? (
           <TableContainer>
             <Table size="small" sx={financeTableSx}>
@@ -267,10 +368,20 @@ export function ReceivablesPage() {
                     <TableRow key={c.clientId} hover>
                       <TableCell>
                         <Link
-                          component={RouterLink}
-                          to={`/clients/${c.clientId}`}
+                          component="button"
+                          type="button"
+                          onClick={() => openClientView(c.clientId)}
                           underline="hover"
                           fontWeight={600}
+                          sx={{
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            p: 0,
+                            font: 'inherit',
+                            color: 'primary.main',
+                            textAlign: 'left',
+                          }}
                         >
                           {c.clientName}
                         </Link>
@@ -291,7 +402,7 @@ export function ReceivablesPage() {
                         <Button
                           size="small"
                           endIcon={<OpenInNew fontSize="inherit" />}
-                          onClick={() => navigate(`/clients/${c.clientId}`)}
+                          onClick={() => openClientView(c.clientId)}
                         >
                           Fiche
                         </Button>
@@ -308,6 +419,7 @@ export function ReceivablesPage() {
               <TableHead sx={financeTableHeadSx}>
                 <TableRow>
                   <TableCell>Facture</TableCell>
+                  <TableCell>Type</TableCell>
                   <TableCell>Client</TableCell>
                   <TableCell>Échéance</TableCell>
                   <TableCell>Ancienneté</TableCell>
@@ -318,7 +430,7 @@ export function ReceivablesPage() {
               <TableBody>
                 {(data?.invoices ?? []).length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                       Aucune facture impayée
                     </TableCell>
                   </TableRow>
@@ -334,17 +446,47 @@ export function ReceivablesPage() {
                         >
                           {inv.number}
                         </Link>
+                        {inv.quoteId && (
+                          <Typography variant="caption" display="block" color="text.secondary">
+                            Devis lié
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          label={RECEIVABLE_DOCUMENT_KIND_LABELS[inv.documentKind]}
+                          color={documentKindChipColor(inv.documentKind)}
+                          variant="outlined"
+                        />
                       </TableCell>
                       <TableCell>
                         <Link
-                          component={RouterLink}
-                          to={`/clients/${inv.clientId}`}
+                          component="button"
+                          type="button"
+                          onClick={() => openClientView(inv.clientId)}
                           underline="hover"
+                          sx={{
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            p: 0,
+                            font: 'inherit',
+                            color: 'primary.main',
+                            textAlign: 'left',
+                          }}
                         >
                           {inv.clientName}
                         </Link>
                       </TableCell>
-                      <TableCell>{inv.dueDate ? formatDate(inv.dueDate) : formatDate(inv.date)}</TableCell>
+                      <TableCell>
+                        {inv.dueDate ? formatDate(inv.dueDate) : formatDate(inv.date)}
+                        {inv.lastReminderAt && (
+                          <Typography variant="caption" display="block" color="text.secondary">
+                            Relancé {formatDate(inv.lastReminderAt)}
+                          </Typography>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Chip
                           size="small"
@@ -356,22 +498,20 @@ export function ReceivablesPage() {
                         {formatCurrency(inv.balance)}
                       </TableCell>
                       <TableCell align="right">
-                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                          <Button
-                            size="small"
-                            startIcon={
-                              remindingId === inv.id ? (
-                                <CircularProgress size={14} color="inherit" />
-                              ) : (
-                                <Email fontSize="inherit" />
-                              )
-                            }
-                            onClick={() => void handleRemind(inv.id)}
-                            disabled={remindingId === inv.id || inv.status === 'DRAFT'}
-                          >
-                            Relancer
-                          </Button>
-                        </Stack>
+                        <Button
+                          size="small"
+                          startIcon={
+                            remindingId === inv.id ? (
+                              <CircularProgress size={14} color="inherit" />
+                            ) : (
+                              <Email fontSize="inherit" />
+                            )
+                          }
+                          onClick={() => void handleRemind(inv.id)}
+                          disabled={remindingId === inv.id || inv.status === 'DRAFT'}
+                        >
+                          Relancer
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

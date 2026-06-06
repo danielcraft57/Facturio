@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Box, Button, CircularProgress, Alert } from '@mui/material'
+import { Box, Button, Alert } from '@mui/material'
 import ArchiveIcon from '@mui/icons-material/Archive'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '../../components/finance/PageHeader'
@@ -12,6 +12,8 @@ import type { ArchiveYearGroup } from '../../types/archives'
 import { invoiceToArchiveRow } from '../archives/archiveMappers'
 import { useToast } from '../../components/useToast'
 import { apiClient } from '../../services/api'
+import { WorkspacePreparationDialog } from '../../components/loading/WorkspacePreparationDialog'
+import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
 export function InvoicesArchivePage() {
   const navigate = useNavigate()
@@ -69,8 +71,11 @@ export function InvoicesArchivePage() {
     }
   }
 
+  const initialLoading = loading && groups.length === 0 && !error
+
   return (
     <Box sx={{ p: financePagePadding }}>
+      <WorkspacePreparationDialog open={initialLoading} resource="archives-factures" />
       <PageHeader
         title="Archives — Factures"
         subtitle="Factures archivées par année et par mois (aucune suppression définitive)."
@@ -102,9 +107,7 @@ export function InvoicesArchivePage() {
       )}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
+        <TablePageSkeleton rows={10} showHeader={false} />
       ) : (
         <ArchiveGroupedView
           groups={groups}

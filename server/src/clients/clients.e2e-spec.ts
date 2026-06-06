@@ -52,7 +52,7 @@ describe('Clients e2e', () => {
 	// TESTS UNITAIRES - CRUD BASIQUE
 	// ========================================
 
-	it('create -> list -> get -> update -> delete', async () => {
+	it('create -> list -> get -> update -> archive (DELETE)', async () => {
 		// CREATE avec un email unique pour éviter les collisions entre runs
 		const created = await authenticatedRequest(app, testUser.cookies)
 			.post('/api/clients')
@@ -89,7 +89,7 @@ describe('Clients e2e', () => {
 
 		expect(updated.name).toBe('Updated Client');
 
-		// DELETE
+		// DELETE archive (plus de suppression physique)
 		await authenticatedRequest(app, testUser.cookies)
 			.delete(`/api/clients/${created.id}`)
 			.expect(200);
@@ -98,10 +98,14 @@ describe('Clients e2e', () => {
 			.get('/api/clients')
 			.expect(200)
 			.then((r: any) => r.body);
-		// La base peut contenir d'autres clients créés par d'autres tests,
-		// on vérifie simplement que celui qu'on vient de supprimer n'est plus là.
-		const deleted = finalList.items.find((c: any) => c.id === created.id);
-		expect(deleted).toBeUndefined();
+		const archived = finalList.items.find((c: any) => c.id === created.id);
+		expect(archived).toBeUndefined();
+
+		const stillThere = await authenticatedRequest(app, testUser.cookies)
+			.get(`/api/clients/${created.id}`)
+			.expect(200)
+			.then((r: any) => r.body);
+		expect(stillThere.archivedAt).toBeTruthy();
 	});
 
 	// ========================================
