@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FinanceRealtimeDetail } from '../../types/realtime'
 import { scheduleDebounced } from '../../utils/scheduleDebounced'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
+import { openClientView } from '../../utils/openDocumentView'
 import {
   Alert,
   Box,
@@ -113,7 +114,6 @@ function documentKindChipColor(kind: ReceivableDocumentKind): 'default' | 'prima
 }
 
 export function ReceivablesPage() {
-  const navigate = useNavigate()
   const [data, setData] = useState<ReceivablesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -368,10 +368,20 @@ export function ReceivablesPage() {
                     <TableRow key={c.clientId} hover>
                       <TableCell>
                         <Link
-                          component={RouterLink}
-                          to={`/clients/${c.clientId}`}
+                          component="button"
+                          type="button"
+                          onClick={() => openClientView(c.clientId)}
                           underline="hover"
                           fontWeight={600}
+                          sx={{
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            p: 0,
+                            font: 'inherit',
+                            color: 'primary.main',
+                            textAlign: 'left',
+                          }}
                         >
                           {c.clientName}
                         </Link>
@@ -392,7 +402,7 @@ export function ReceivablesPage() {
                         <Button
                           size="small"
                           endIcon={<OpenInNew fontSize="inherit" />}
-                          onClick={() => navigate(`/clients/${c.clientId}`)}
+                          onClick={() => openClientView(c.clientId)}
                         >
                           Fiche
                         </Button>
@@ -452,9 +462,19 @@ export function ReceivablesPage() {
                       </TableCell>
                       <TableCell>
                         <Link
-                          component={RouterLink}
-                          to={`/clients/${inv.clientId}`}
+                          component="button"
+                          type="button"
+                          onClick={() => openClientView(inv.clientId)}
                           underline="hover"
+                          sx={{
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            p: 0,
+                            font: 'inherit',
+                            color: 'primary.main',
+                            textAlign: 'left',
+                          }}
                         >
                           {inv.clientName}
                         </Link>

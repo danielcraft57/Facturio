@@ -11,6 +11,7 @@ import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 import {
 	buildDocumentFolderWhere,
+	computeDocumentFolderCounts,
 	documentFolderOrderBy,
 	parseTagsJson,
 	serializeTagsJson,
@@ -592,28 +593,17 @@ export class QuotesService {
 	private async loadFolderCounts(organizationId?: number) {
 		const base: { organizationId?: number; archivedAt: null } = { archivedAt: null };
 		if (organizationId) base.organizationId = organizationId;
-		const now = new Date();
 		const count = (extra: Record<string, unknown>) =>
 			this.prisma.quote.count({ where: { ...base, ...extra } });
 
-		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives] =
-			await Promise.all([
-				count(buildDocumentFolderWhere('inbox', now, 'quote')),
-				count(buildDocumentFolderWhere('nouveau', now, 'quote')),
-				count(buildDocumentFolderWhere('suivi', now, 'quote')),
-				count(buildDocumentFolderWhere('attente', now, 'quote')),
-				count(buildDocumentFolderWhere('important', now, 'quote')),
-				count(buildDocumentFolderWhere('envoyes', now, 'quote')),
-				count(buildDocumentFolderWhere('brouillons', now, 'quote')),
-				this.prisma.quote.count({
-					where: {
-						archivedAt: { not: null },
-						...(organizationId ? { organizationId } : {}),
-					},
-				}),
-			]);
-
-		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives };
+		return computeDocumentFolderCounts(count, 'quote', () =>
+			this.prisma.quote.count({
+				where: {
+					archivedAt: { not: null },
+					...(organizationId ? { organizationId } : {}),
+				},
+			}),
+		);
 	}
 
 	async getFolderCounts(organizationId?: number) {

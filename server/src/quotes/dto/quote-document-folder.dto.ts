@@ -1,11 +1,11 @@
 import { IsArray, IsBoolean, IsIn, IsOptional, IsString, IsISO8601 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ListQueryDto } from '../../common/dto/list-query.dto';
-import type { DocumentFolder } from '../../common/document-folder.util';
+import { DOCUMENT_FOLDERS, type DocumentFolder } from '../../common/document-folder.util';
 
 export class QuoteListQueryDto extends ListQueryDto {
 	@IsOptional()
-	@IsIn(['inbox', 'nouveau', 'suivi', 'attente', 'important', 'envoyes', 'brouillons'])
+	@IsIn(DOCUMENT_FOLDERS)
 	folder?: DocumentFolder;
 
 	@IsOptional()

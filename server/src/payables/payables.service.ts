@@ -12,6 +12,8 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import {
 	buildDocumentFolderWhere,
+	type DocumentFolder,
+	DOCUMENT_FOLDERS,
 	documentFolderOrderBy,
 	parseTagsJson,
 	serializeTagsJson,
@@ -163,12 +165,15 @@ export class PayablesService {
 		const skip = (page - 1) * pageSize;
 		const now = new Date();
 
+		const folderWhere = buildDocumentFolderWhere(q.folder, now, 'payable_debt');
 		const where: Record<string, unknown> = {
 			organizationId: orgId,
 			archivedAt: null,
-			status: { not: 'CANCELLED' },
+			...folderWhere,
 		};
-		Object.assign(where, buildDocumentFolderWhere(q.folder, now, 'payable_debt'));
+		if (q.folder !== 'status_cancelled' && !('status' in folderWhere)) {
+			where.status = { not: 'CANCELLED' };
+		}
 
 		if (q.search?.trim()) {
 			const term = q.search.trim();
@@ -210,31 +215,33 @@ export class PayablesService {
 		};
 	}
 
-	private async loadFolderCounts(organizationId: number) {
-		const base = {
+	private payableDebtCountWhere(organizationId: number, folder: DocumentFolder, now = new Date()) {
+		const folderWhere = buildDocumentFolderWhere(folder, now, 'payable_debt');
+		const where: Record<string, unknown> = {
 			organizationId,
 			archivedAt: null,
-			status: { not: 'CANCELLED' as const },
+			...folderWhere,
 		};
+		if (folder !== 'status_cancelled' && !('status' in folderWhere)) {
+			where.status = { not: 'CANCELLED' };
+		}
+		return where;
+	}
+
+	private async loadFolderCounts(organizationId: number) {
 		const now = new Date();
-		const count = (extra: Record<string, unknown>) =>
-			this.prisma.payableDebt.count({ where: { ...base, ...extra } });
-
-		const [inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives] =
-			await Promise.all([
-				count(buildDocumentFolderWhere('inbox', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('nouveau', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('suivi', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('attente', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('important', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('envoyes', now, 'payable_debt')),
-				count(buildDocumentFolderWhere('brouillons', now, 'payable_debt')),
-				this.prisma.payableDebt.count({
-					where: { organizationId, archivedAt: { not: null } },
-				}),
-			]);
-
-		return { inbox, nouveau, suivi, attente, important, envoyes, brouillons, archives };
+		const counts = await Promise.all(
+			DOCUMENT_FOLDERS.map(async (folder) => {
+				const count = await this.prisma.payableDebt.count({
+					where: this.payableDebtCountWhere(organizationId, folder, now) as never,
+				});
+				return [folder, count] as const;
+			}),
+		);
+		const archives = await this.prisma.payableDebt.count({
+			where: { organizationId, archivedAt: { not: null } },
+		});
+		return { ...Object.fromEntries(counts), archives };
 	}
 
 	async getFolderCounts(organizationId: number | undefined) {
