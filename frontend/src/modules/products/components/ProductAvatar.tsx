@@ -2,7 +2,7 @@ import { Avatar, Box } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { Product } from '../../../types/product';
 import { getIconByName } from '../constants/productIconOptions';
-import { resolveProductImageUrl } from '../utils/productVisual';
+import { getProductIconGradientCss, resolveProductImageUrl } from '../utils/productVisual';
 
 type Props = {
   product: Pick<Product, 'name' | 'visualType' | 'iconName' | 'imageData'>;
@@ -12,6 +12,7 @@ type Props = {
 export function ProductAvatar({ product, size = 40 }: Props) {
   const imageUrl = resolveProductImageUrl(product);
   const icon = getIconByName(product.iconName || 'box');
+  const iconGradient = getProductIconGradientCss(product);
 
   if (imageUrl) {
     return (
@@ -31,8 +32,9 @@ export function ProductAvatar({ product, size = 40 }: Props) {
         width: size,
         height: size,
         borderRadius: 1.5,
-        bgcolor: 'primary.main',
-        color: 'primary.contrastText',
+        bgcolor: iconGradient ? 'transparent' : 'primary.main',
+        background: iconGradient ?? undefined,
+        color: '#fff',
       }}
     >
       {icon ? (

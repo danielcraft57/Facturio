@@ -1,6 +1,7 @@
 import { Box, Typography, Divider } from '@mui/material';
 import type { MouseEvent } from 'react';
 import type { Product } from '../../../types/product';
+import type { RealtimeHighlightTone } from '../../../types/realtime';
 import { groupProductsBySection } from '../constants/danielCraftCatalog';
 import { ProductCatalogGrid } from './ProductCatalogGrid';
 
@@ -11,9 +12,18 @@ type Props = {
   onCardClick?: (product: Product) => void;
   mode?: 'catalog' | 'compact' | 'list';
   highlightProductId?: number | null;
+  highlightTone?: RealtimeHighlightTone;
 };
 
-export function ProductCatalogSections({ products, loading, onMenu, onCardClick, mode = 'catalog', highlightProductId }: Props) {
+export function ProductCatalogSections({
+  products,
+  loading,
+  onMenu,
+  onCardClick,
+  mode = 'catalog',
+  highlightProductId,
+  highlightTone,
+}: Props) {
   if (loading) {
     return <ProductCatalogGrid products={[]} loading onMenu={onMenu} onCardClick={onCardClick} mode={mode} />;
   }
@@ -36,6 +46,7 @@ export function ProductCatalogSections({ products, loading, onMenu, onCardClick,
             onCardClick={onCardClick}
             mode={mode}
             highlightProductId={highlightProductId}
+            highlightTone={highlightTone}
           />
           {index < sections.length - 1 && <Divider sx={{ mt: mode === 'compact' ? 2.5 : 4 }} />}
         </Box>

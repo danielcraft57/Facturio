@@ -1,6 +1,22 @@
 import type { Product, ProductVisualType } from '../../../types/product';
 import { getLibraryImageData } from '../constants/productVisualLibrary';
 
+export const ICON_GRADIENT_PREFIX = 'icon-gradient:';
+
+export function parseIconGradient(imageData?: string | null): [string, string] | null {
+  if (!imageData?.startsWith(ICON_GRADIENT_PREFIX)) return null;
+  const parts = imageData.slice(ICON_GRADIENT_PREFIX.length).split(',');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  return [parts[0], parts[1]];
+}
+
+export function getProductIconGradientCss(product: Pick<Product, 'visualType' | 'imageData'>): string | null {
+  if (product.visualType !== 'icon') return null;
+  const gradient = parseIconGradient(product.imageData);
+  if (!gradient) return null;
+  return `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`;
+}
+
 export function resolveProductImageUrl(product: Pick<Product, 'visualType' | 'imageData'>): string | undefined {
   if (product.visualType === 'library' && product.imageData?.startsWith('library:')) {
     return getLibraryImageData(product.imageData);

@@ -7,6 +7,7 @@ import { AccountingService } from '../accounting/accounting.service';
 import { buildPublicQuoteUrl } from '../common/public-app-url';
 import { attachListEmailEngagementFlags, getQuoteEmailEngagement } from '../common/email-engagement.util';
 import { InvoicesService } from '../invoices/invoices.service';
+import { ProductsService } from '../products/products.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 import {
@@ -23,18 +24,33 @@ import {
 	buildRemainderCommitmentParagraph,
 } from '../invoices/invoice-deposit.util';
 
+type ResolvedQuoteLine = {
+	productId?: number;
+	description: string;
+	quantity: number;
+	unitPrice: number;
+	taxRate?: number;
+};
+
 /**
  * Ligne de devis
  */
 export interface QuoteLineDto {
 	/** Référence produit (optionnel, pour devis par sélection de produits) */
 	productId?: number | null;
-	/** Description de la ligne */
-	description: string;
+	/**
+	 * SKU catalogue : réutilise le produit de l’organisation ou le crée si absent.
+	 * Nécessite description (ou productName) + unitPrice lors de la création.
+	 */
+	productSku?: string | null;
+	/** Nom du produit à créer si productSku inconnu (sinon description ou SKU) */
+	productName?: string | null;
+	/** Description de la ligne (déduite du produit si productId / productSku fourni) */
+	description?: string;
 	/** Quantité */
 	quantity: number;
-	/** Prix unitaire (HT) */
-	unitPrice: number;
+	/** Prix unitaire HT (déduit du produit si productId fourni) */
+	unitPrice?: number;
 	/** Taux de TVA (ex: 0.2 pour 20%) */
 	taxRate?: number;
 }
@@ -124,6 +140,7 @@ export class QuotesService {
 		private readonly prisma: PrismaService,
 		private readonly accounting: AccountingService,
 		private readonly invoices: InvoicesService,
+		private readonly products: ProductsService,
 		private readonly realtime: RealtimeEventsService,
 	) {}
 
@@ -412,12 +429,124 @@ export class QuotesService {
 		let subtotal = 0;
 		let tax = 0;
 		for (const l of lines) {
-			const base = l.quantity * l.unitPrice;
+			const unitPrice = l.unitPrice ?? 0;
+			const base = l.quantity * unitPrice;
 			const rate = l.taxRate ?? 0;
 			subtotal += base;
 			tax += base * rate;
 		}
 		return { subtotal, tax, total: subtotal + tax };
+	}
+
+	private async findProductForQuoteLine(productId: number, organizationId?: number) {
+		if (organizationId != null) {
+			const orgProduct = await this.prisma.product.findFirst({
+				where: { id: productId, organizationId },
+				include: { defaultTaxRate: true },
+			});
+			if (orgProduct) return orgProduct;
+
+			const orgClone = await this.prisma.product.findFirst({
+				where: { organizationId, templateProductId: productId },
+				include: { defaultTaxRate: true },
+			});
+			if (orgClone) return orgClone;
+		}
+
+		return this.prisma.product.findFirst({
+			where: { id: productId, organizationId: null },
+			include: { defaultTaxRate: true },
+		});
+	}
+
+	private async resolveQuoteLines(
+		lines: QuoteLineDto[],
+		organizationId?: number,
+	): Promise<ResolvedQuoteLine[]> {
+		const resolved: ResolvedQuoteLine[] = [];
+
+		for (const line of lines) {
+			if (line.quantity <= 0) {
+				throw new BadRequestException('Quantite invalide');
+			}
+
+			let description = line.description?.trim() ?? '';
+			let unitPrice = line.unitPrice;
+			let taxRate = line.taxRate;
+			let productId = line.productId ?? undefined;
+			const productSku = line.productSku?.trim() ?? '';
+
+			if (productId != null && productSku) {
+				throw new BadRequestException('Utilisez productId ou productSku sur une ligne, pas les deux');
+			}
+
+			if (productId != null) {
+				const product = await this.findProductForQuoteLine(productId, organizationId);
+				if (!product) {
+					throw new BadRequestException(`Produit avec l'ID ${productId} introuvable`);
+				}
+				productId = product.id;
+				if (!description) description = product.name;
+				if (unitPrice == null || Number.isNaN(Number(unitPrice))) {
+					unitPrice = product.unitPrice != null ? Number(product.unitPrice) : 0;
+				}
+				if (taxRate == null && product.defaultTaxRate?.rate != null) {
+					taxRate = Number(product.defaultTaxRate.rate);
+				}
+			} else if (productSku) {
+				if (organizationId == null) {
+					throw new BadRequestException('productSku requiert une organisation');
+				}
+				const existing = await this.products.findBySku(productSku, organizationId);
+				if (!existing) {
+					const createName =
+						line.productName?.trim() || description || productSku;
+					if (!createName) {
+						throw new BadRequestException(
+							'Description ou productName requis pour créer le produit (productSku inconnu)',
+						);
+					}
+					if (unitPrice == null || Number.isNaN(Number(unitPrice))) {
+						throw new BadRequestException(
+							'unitPrice requis pour créer le produit (productSku inconnu)',
+						);
+					}
+				}
+				const product = await this.products.findOrCreateBySku(productSku, organizationId, {
+					name: line.productName?.trim() || description || productSku,
+					unitPrice: unitPrice != null ? Number(unitPrice) : undefined,
+					description: description || undefined,
+				});
+				productId = product.id;
+				if (!description) description = product.name;
+				if (unitPrice == null || Number.isNaN(Number(unitPrice))) {
+					unitPrice = product.unitPrice != null ? Number(product.unitPrice) : 0;
+				}
+				if (taxRate == null && product.defaultTaxRate?.rate != null) {
+					taxRate = Number(product.defaultTaxRate.rate);
+				}
+			}
+
+			if (!description) {
+				throw new BadRequestException('Description de ligne requise (ou productId valide)');
+			}
+			if (unitPrice == null || Number.isNaN(Number(unitPrice))) {
+				throw new BadRequestException('Prix unitaire requis');
+			}
+			if (unitPrice < 0) {
+				throw new BadRequestException('Prix unitaire invalide');
+			}
+
+			resolved.push({
+				productId,
+				description,
+				quantity: line.quantity,
+				unitPrice: Number(unitPrice),
+				taxRate: taxRate ?? 0,
+			});
+		}
+
+		return resolved;
 	}
 
 	/**
@@ -449,56 +578,56 @@ export class QuotesService {
 	 * @throws {BadRequestException} Si validation échoue
 	 */
 	async create(data: CreateQuoteDto, organizationId?: number) {
-		// Validation
-		if (!data.clientId) {
+		const clientId = String(data.clientId ?? '').trim();
+		if (!clientId) {
 			throw new BadRequestException('Client requis');
 		}
-		const lines = data.lines ?? [];
-		if (lines.length === 0) {
+		const rawLines = data.lines ?? [];
+		if (rawLines.length === 0) {
 			throw new BadRequestException('Au moins une ligne est requise');
 		}
-		for (const l of lines) {
-			if (l.quantity <= 0) throw new BadRequestException('Quantite invalide');
-			if (l.unitPrice < 0) throw new BadRequestException('Prix unitaire invalide');
-		}
-		
-		// Vérifier que le client existe
+
 		const client = await this.prisma.client.findUnique({
-			where: { id: data.clientId },
-			select: { organizationId: true }
+			where: { id: clientId },
+			select: { organizationId: true },
 		});
 		if (!client) {
-			throw new NotFoundException(`Client avec l'ID ${data.clientId} introuvable`);
+			throw new NotFoundException(`Client avec l'ID ${clientId} introuvable`);
 		}
-		
-		// Récupérer l'organizationId depuis le client si non fourni
+
 		let orgId = organizationId;
 		if (!orgId) {
 			if (client.organizationId !== null) {
 				orgId = client.organizationId;
 			}
 		}
-		
-		// S'assurer qu'on a un organizationId valide
+
 		if (!orgId) {
 			throw new BadRequestException('OrganizationId requis. Le client doit être associé à une organisation.');
 		}
-		
-		// Vérifier que l'organisation existe
+
+		if (
+			client.organizationId != null &&
+			client.organizationId !== orgId
+		) {
+			throw new BadRequestException('Ce client n\'appartient pas à votre organisation');
+		}
+
 		const organization = await this.prisma.organization.findUnique({
-			where: { id: orgId }
+			where: { id: orgId },
 		});
 		if (!organization) {
 			throw new NotFoundException(`Organisation avec l'ID ${orgId} introuvable`);
 		}
-		
+
+		const lines = await this.resolveQuoteLines(rawLines, orgId);
 		const totals = this.computeTotals(lines);
 		const number = data.number ?? (await this.nextQuoteNumber());
 		const created = await this.prisma.quote.create({
 			data: {
 				id: generateEntityId(),
 				number,
-				clientId: data.clientId,
+				clientId,
 				organizationId: orgId,
 				expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
 				status: data.status ?? QuoteStatus.DRAFT,
@@ -506,18 +635,18 @@ export class QuotesService {
 				tax: totals.tax,
 				total: totals.total,
 				lines: {
-					create: lines.map(l => ({
+					create: lines.map((l) => ({
 						productId: l.productId ?? undefined,
 						description: l.description,
 						quantity: l.quantity,
 						unitPrice: l.unitPrice,
 						taxRate: l.taxRate ?? 0,
 						taxAmount: l.quantity * l.unitPrice * (l.taxRate ?? 0),
-						total: l.quantity * l.unitPrice * (1 + (l.taxRate ?? 0))
-					}))
-				}
+						total: l.quantity * l.unitPrice * (1 + (l.taxRate ?? 0)),
+					})),
+				},
 			},
-			include: { lines: true, client: true }
+			include: { lines: true, client: true },
 		});
 		this.notifyQuote(orgId, 'created', created.id, {
 			number: created.number,
@@ -676,8 +805,11 @@ export class QuotesService {
 	 * @throws {NotFoundException} Si devis non trouvé
 	 */
 	async update(id: string, data: UpdateQuoteDto, organizationId?: number) {
-		await this.findOne(id, organizationId);
-		const lines = data.lines ?? [];
+		const existing = await this.findOne(id, organizationId);
+		const orgId = organizationId ?? existing.organizationId ?? undefined;
+		const rawLines = data.lines ?? [];
+		const lines =
+			rawLines.length > 0 ? await this.resolveQuoteLines(rawLines, orgId) : [];
 		const totals = this.computeTotals(lines);
 		const updated = await this.prisma.quote.update({
 			where: { id },
@@ -691,18 +823,18 @@ export class QuotesService {
 				total: totals.total,
 				lines: {
 					deleteMany: {},
-					create: lines.map(l => ({
+					create: lines.map((l) => ({
 						productId: l.productId ?? undefined,
 						description: l.description,
 						quantity: l.quantity,
 						unitPrice: l.unitPrice,
 						taxRate: l.taxRate ?? 0,
 						taxAmount: l.quantity * l.unitPrice * (l.taxRate ?? 0),
-						total: l.quantity * l.unitPrice * (1 + (l.taxRate ?? 0))
-					}))
-				}
+						total: l.quantity * l.unitPrice * (1 + (l.taxRate ?? 0)),
+					})),
+				},
 			},
-			include: { lines: true, client: true }
+			include: { lines: true, client: true },
 		});
 		if (data.status === QuoteStatus.REJECTED || data.status === QuoteStatus.EXPIRED) {
 			try { await this.contraOffBalanceForQuote(updated.number); } catch (_) {}

@@ -3,6 +3,7 @@ import { Grid, Skeleton, Typography, Alert } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBoxOpen } from '@fortawesome/free-solid-svg-icons';
 import type { Product } from '../../../types/product';
+import type { RealtimeHighlightTone } from '../../../types/realtime';
 import { ProductCatalogCard } from './ProductCatalogCard';
 
 type Props = {
@@ -12,9 +13,18 @@ type Props = {
   onCardClick?: (product: Product) => void;
   mode?: 'catalog' | 'compact' | 'list';
   highlightProductId?: number | null;
+  highlightTone?: RealtimeHighlightTone;
 };
 
-export function ProductCatalogGrid({ products, loading, onMenu, onCardClick, mode = 'catalog', highlightProductId }: Props) {
+export function ProductCatalogGrid({
+  products,
+  loading,
+  onMenu,
+  onCardClick,
+  mode = 'catalog',
+  highlightProductId,
+  highlightTone,
+}: Props) {
   if (loading) {
     return (
       <Grid container spacing={2}>
@@ -59,6 +69,7 @@ export function ProductCatalogGrid({ products, loading, onMenu, onCardClick, mod
             onClick={onCardClick}
             mode={mode}
             highlight={highlightProductId === product.id}
+            highlightTone={highlightProductId === product.id ? highlightTone : undefined}
           />
         </Grid>
       ))}

@@ -18,7 +18,7 @@ import type { RealtimeHighlightTone } from '../../../types/realtime';
 import { getRealtimeRowSx } from '../../../utils/realtimeRowHighlight';
 import { ProductAvatar } from './ProductAvatar';
 import { PURPOSE_LABELS, CATEGORY_LABELS, KIND_LABELS } from '../constants/productLabels';
-import { resolveProductImageUrl } from '../utils/productVisual';
+import { resolveProductImageUrl, getProductIconGradientCss } from '../utils/productVisual';
 import { downloadDataUrl } from '../utils/generateProductImage';
 
 type Props = {
@@ -27,17 +27,26 @@ type Props = {
   onClick?: (product: Product) => void;
   mode?: 'catalog' | 'compact' | 'list';
   highlight?: boolean;
+  highlightTone?: RealtimeHighlightTone;
 };
 
-export function ProductCatalogCard({ product, onMenu, onClick, mode = 'catalog', highlight = false }: Props) {
+export function ProductCatalogCard({
+  product,
+  onMenu,
+  onClick,
+  mode = 'catalog',
+  highlight = false,
+  highlightTone,
+}: Props) {
   const imageUrl = resolveProductImageUrl(product);
+  const iconGradient = getProductIconGradientCss(product);
   const [imageBroken, setImageBroken] = useState(false);
   const price = Number(product.unitPrice ?? 0);
   const details = (product.details || []).slice(0, mode === 'catalog' ? 3 : mode === 'compact' ? 1 : 2);
   const showVisualImage = Boolean(imageUrl && !imageBroken);
   const isList = mode === 'list';
   const isCompact = mode === 'compact';
-  const highlightTone: RealtimeHighlightTone | undefined = highlight ? 'created' : undefined;
+  const rowTone: RealtimeHighlightTone | undefined = highlight ? (highlightTone ?? 'created') : undefined;
 
   useEffect(() => {
     setImageBroken(false);
@@ -61,7 +70,7 @@ export function ProductCatalogCard({ product, onMenu, onClick, mode = 'catalog',
         borderColor: highlight ? 'success.main' : 'divider',
         borderRadius: 2.5,
         transition: 'box-shadow 0.25s ease, transform 0.2s ease, border-color 0.35s ease',
-        ...getRealtimeRowSx(highlightTone),
+        ...getRealtimeRowSx(rowTone),
         '&:hover': onClick
           ? {
               transform: highlight ? undefined : 'translateY(-2px)',
@@ -79,7 +88,8 @@ export function ProductCatalogCard({ product, onMenu, onClick, mode = 'catalog',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: showVisualImage ? 'transparent' : 'primary.main',
+          bgcolor: showVisualImage || iconGradient ? 'transparent' : 'primary.main',
+          background: !showVisualImage && iconGradient ? iconGradient : undefined,
           borderRadius: isList ? '12px 0 0 12px' : '12px 12px 0 0',
           overflow: 'hidden',
         }}

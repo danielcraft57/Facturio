@@ -1,4 +1,4 @@
-export type RealtimeResource = 'invoices' | 'quotes' | 'payables';
+export type RealtimeResource = 'invoices' | 'quotes' | 'payables' | 'products';
 
 export type RealtimeAction = 'created' | 'updated' | 'deleted' | 'sent' | 'paid';
 

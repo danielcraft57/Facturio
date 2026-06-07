@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
@@ -30,6 +31,10 @@ describe('ProductsService', () => {
 		getClientCatalogProductIds: jest.fn().mockResolvedValue([]),
 	};
 
+	const mockRealtime = {
+		emit: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -41,6 +46,10 @@ describe('ProductsService', () => {
 				{
 					provide: CatalogPersonalizationService,
 					useValue: mockCatalogPersonalization,
+				},
+				{
+					provide: RealtimeEventsService,
+					useValue: mockRealtime,
 				},
 			],
 		}).compile();
@@ -61,21 +70,60 @@ describe('ProductsService', () => {
 
 			const expected = {
 				id: 1,
-				...dto,
+				name: dto.name,
+				sku: dto.sku,
+				unitPrice: dto.unitPrice,
+				visualType: 'icon',
+				iconName: 'rocket',
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				defaultTaxRate: null
+				defaultTaxRate: null,
 			};
 
 			mockPrismaService.product.create.mockResolvedValue(expected);
 
-			const result = await service.create(dto);
+			const result = await service.create(
+				{ ...dto, iconName: 'rocket', visualType: 'icon' },
+				2,
+			);
 
 			expect(result).toEqual(expected);
 			expect(mockPrismaService.product.create).toHaveBeenCalledWith({
-				data: { ...dto, organizationId: null },
+				data: expect.objectContaining({
+					name: dto.name,
+					sku: dto.sku,
+					unitPrice: dto.unitPrice,
+					visualType: 'icon',
+					iconName: 'rocket',
+					imageData: expect.stringMatching(/^icon-gradient:/),
+					organizationId: 2,
+				}),
 				include: { defaultTaxRate: true },
 			});
+			expect(mockRealtime.emit).toHaveBeenCalledWith(2, 'products', 'created', '1', {
+				number: dto.name,
+			});
+		});
+
+		it('assigne un visuel aléatoire si rien n\'est fourni', async () => {
+			mockPrismaService.product.create.mockImplementation(({ data }) =>
+				Promise.resolve({
+					id: 2,
+					...data,
+					defaultTaxRate: null,
+				}),
+			);
+
+			await service.create({ name: 'Sans visuel' });
+
+			const call = mockPrismaService.product.create.mock.calls[0][0];
+			expect(['icon', 'library']).toContain(call.data.visualType);
+			if (call.data.visualType === 'icon') {
+				expect(call.data.iconName).toBeTruthy();
+				expect(call.data.imageData).toMatch(/^icon-gradient:/);
+			} else {
+				expect(call.data.imageData).toMatch(/^library:/);
+			}
 		});
 	});
 
@@ -175,6 +223,56 @@ describe('ProductsService', () => {
 				expect.objectContaining({
 					orderBy: { name: 'asc' }
 				})
+			);
+		});
+	});
+
+	describe('findOrCreateBySku', () => {
+		it('retourne le produit existant sans créer', async () => {
+			const existing = {
+				id: 5,
+				sku: 'SKU-1',
+				name: 'Existant',
+				unitPrice: 100,
+				defaultTaxRate: null,
+			};
+			mockPrismaService.product.findFirst.mockResolvedValue(existing);
+
+			const result = await service.findOrCreateBySku('SKU-1', 11, {
+				name: 'Neuf',
+				unitPrice: 200,
+			});
+
+			expect(result).toEqual(existing);
+			expect(mockPrismaService.product.create).not.toHaveBeenCalled();
+		});
+
+		it('crée le produit si le SKU est inconnu', async () => {
+			mockPrismaService.product.findFirst.mockResolvedValue(null);
+			mockPrismaService.product.create.mockResolvedValue({
+				id: 6,
+				sku: 'SKU-NEW',
+				name: 'Neuf',
+				unitPrice: 200,
+				visualType: 'icon',
+				iconName: 'box',
+				defaultTaxRate: null,
+			});
+
+			const result = await service.findOrCreateBySku('SKU-NEW', 11, {
+				name: 'Neuf',
+				unitPrice: 200,
+			});
+
+			expect(result.id).toBe(6);
+			expect(mockPrismaService.product.create).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({
+						sku: 'SKU-NEW',
+						name: 'Neuf',
+						organizationId: 11,
+					}),
+				}),
 			);
 		});
 	});

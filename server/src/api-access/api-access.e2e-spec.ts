@@ -43,9 +43,13 @@ describe('API publique (api-access)', () => {
 				permissions: [
 					'clients.read',
 					'clients.write',
+					'produits.read',
+					'produits.write',
 					'factures.read',
 					'factures.write',
 					'factures.send',
+					'devis.read',
+					'devis.write',
 				],
 			})
 			.expect(201)
@@ -104,6 +108,120 @@ describe('API publique (api-access)', () => {
 
 		expect(sendRes.emailSent).toBe(true);
 		expect(sendRes.alreadyPaid).toBe(true);
+	});
+
+	it('crée un produit rattaché à l’organisation du jeton', async () => {
+		const sku = `E2E-API-${Date.now()}`;
+		const product = await request(app.getHttpServer())
+			.post('/api/public/produits')
+			.set(bearer())
+			.send({
+				name: 'Produit API e2e',
+				sku,
+				kind: 'SERVICE',
+				unitPrice: 42,
+			})
+			.expect(201)
+			.then((r: { body: { id: number; organizationId: number | null } }) => r.body);
+
+		expect(product.organizationId).toBe(testUser.organizationId);
+
+		const row = await prisma.product.findUnique({ where: { id: product.id } });
+		expect(row?.organizationId).toBe(testUser.organizationId);
+		expect(row?.visualType).toBeTruthy();
+		expect(['icon', 'library']).toContain(row?.visualType);
+		if (row?.visualType === 'icon') {
+			expect(row.iconName).toBeTruthy();
+			expect(row?.imageData).toMatch(/^icon-gradient:/);
+		}
+		if (row?.visualType === 'library') {
+			expect(row?.imageData).toMatch(/^library:/);
+		}
+	});
+
+	it('crée un produit icône explicite avec dégradé', async () => {
+		const product = await request(app.getHttpServer())
+			.post('/api/public/produits')
+			.set(bearer())
+			.send({
+				name: 'Produit icône fixe',
+				sku: `E2E-ICON-${Date.now()}`,
+				kind: 'SERVICE',
+				visualType: 'icon',
+				iconName: 'robot',
+			})
+			.expect(201)
+			.then((r: { body: { iconName: string; imageData: string } }) => r.body);
+
+		expect(product.iconName).toBe('robot');
+		expect(product.imageData).toMatch(/^icon-gradient:/);
+	});
+
+	it('crée un produit bibliothèque explicite', async () => {
+		const product = await request(app.getHttpServer())
+			.post('/api/public/produits')
+			.set(bearer())
+			.send({
+				name: 'Produit bibliothèque',
+				sku: `E2E-LIB-${Date.now()}`,
+				visualType: 'library',
+				imageData: 'library:seo',
+			})
+			.expect(201)
+			.then((r: { body: { visualType: string; imageData: string } }) => r.body);
+
+		expect(product.visualType).toBe('library');
+		expect(product.imageData).toBe('library:seo');
+	});
+
+	it('crée un devis avec productSku (get-or-create) puis réutilise le SKU', async () => {
+		const email = uniqueEmail('devis-sku');
+		const client = await request(app.getHttpServer())
+			.post('/api/public/clients')
+			.set(bearer())
+			.send({ name: 'Client devis SKU', email, countryCode: 'FR' })
+			.expect(201)
+			.then((r: { body: { id: string } }) => r.body);
+
+		const sku = `E2E-DEVIS-SKU-${Date.now()}`;
+
+		const quote1 = await request(app.getHttpServer())
+			.post('/api/public/devis')
+			.set(bearer())
+			.send({
+				clientId: client.id,
+				lines: [
+					{
+						productSku: sku,
+						description: 'Ligne get-or-create e2e',
+						quantity: 1,
+						unitPrice: 500,
+						taxRate: 0.2,
+					},
+				],
+			})
+			.expect(201)
+			.then((r: { body: { id: string; lines: Array<{ productId: number; unitPrice: number }> } }) => r.body);
+
+		expect(quote1.lines[0]?.productId).toBeTruthy();
+		const productId = quote1.lines[0]!.productId;
+
+		const productRow = await prisma.product.findUnique({ where: { id: productId } });
+		expect(productRow?.sku).toBe(sku);
+		expect(productRow?.organizationId).toBe(testUser.organizationId);
+
+		const quote2 = await request(app.getHttpServer())
+			.post('/api/public/devis')
+			.set(bearer())
+			.send({
+				clientId: client.id,
+				lines: [{ productSku: sku, quantity: 1, taxRate: 0.2 }],
+			})
+			.expect(201)
+			.then((r: { body: { lines: Array<{ productId: number; unitPrice: number }> } }) => r.body);
+
+		expect(quote2.lines[0]?.productId).toBe(productId);
+		expect(Number(quote2.lines[0]?.unitPrice)).toBe(500);
 	});
 
 	it('scope manquant → 403', async () => {

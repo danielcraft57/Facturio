@@ -93,32 +93,36 @@ export class PublicApiController {
 	// ——— Produits ———
 	@Get('produits')
 	@RequireApiScopes('produits.read')
-	listProducts(@Query() query: ListProductsQueryDto) {
-		return this.products.findAll(query);
+	listProducts(@Query() query: ListProductsQueryDto, @ApiOrganizationId() orgId: number) {
+		return this.products.findAll(query, orgId);
 	}
 
 	@Get('produits/:id')
 	@RequireApiScopes('produits.read')
-	getProduct(@Param('id', ParseIntPipe) id: number) {
-		return this.products.findOne(id);
+	getProduct(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+		return this.products.findOne(id, orgId);
 	}
 
 	@Post('produits')
 	@RequireApiScopes('produits.write')
-	createProduct(@Body() data: CreateProductDto) {
-		return this.products.create(data);
+	createProduct(@Body() data: CreateProductDto, @ApiOrganizationId() orgId: number) {
+		return this.products.create(data, orgId);
 	}
 
 	@Patch('produits/:id')
 	@RequireApiScopes('produits.write')
-	updateProduct(@Param('id', ParseIntPipe) id: number, @Body() data: UpdateProductDto) {
-		return this.products.update(id, data);
+	updateProduct(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() data: UpdateProductDto,
+		@ApiOrganizationId() orgId: number,
+	) {
+		return this.products.update(id, data, orgId);
 	}
 
 	@Delete('produits/:id')
 	@RequireApiScopes('produits.write')
-	removeProduct(@Param('id', ParseIntPipe) id: number) {
-		return this.products.remove(id);
+	removeProduct(@Param('id', ParseIntPipe) id: number, @ApiOrganizationId() orgId: number) {
+		return this.products.remove(id, orgId);
 	}
 
 	// ——— Factures ———

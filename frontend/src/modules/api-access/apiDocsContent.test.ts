@@ -26,9 +26,17 @@ describe('apiDocsContent', () => {
 
   it('référence les scopes factures', () => {
     const scopes = API_SCOPES_REFERENCE.map((s) => s.id)
-    expect(scopes).toContain('factures.send')
-    expect(scopes).toContain('factures.write')
-  })
+		expect(scopes).toContain('factures.send')
+		expect(scopes).toContain('devis.write')
+	})
+
+	it('documente les parcours devis productSku et import catalogue', () => {
+    const ids = API_DOC_SECTIONS.map((s) => s.id)
+    expect(ids).toContain('catalog-import')
+		const devis = API_DOC_SECTIONS.find((s) => s.id === 'devis')
+		expect(devis?.body).toContain('productSku')
+		expect(devis?.exampleBody).toContain('productSku')
+	})
 
   it('normalise une base /v1 vers /api', () => {
     expect(normalizeApiBaseUrl('https://api.facturio.com/v1')).toBe('https://api.facturio.com/api')
@@ -40,6 +48,7 @@ describe('apiDocsContent', () => {
   it('chaque section avec exampleBody a un exampleCurl cohérent', () => {
     const pathBySection: Record<string, string> = {
       clients: '/public/clients',
+      produits: '/public/produits',
       factures: '/public/factures',
       devis: '/public/devis',
       'paid-externe': '/public/factures',

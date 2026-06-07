@@ -91,6 +91,48 @@ export const API_WORKFLOWS = [
       'POST /api/public/factures/:id/send — le client reçoit le PDF ; lien Stripe si configuré.',
     ],
   },
+  {
+    id: 'quote-send',
+    title: 'Devis + envoi email (accepter / refuser)',
+    steps: [
+      'Jeton avec devis.read, devis.write, devis.send et clients.read ou clients.write.',
+      'POST /api/public/clients (ou réutiliser un clientId string existant).',
+      'POST /api/public/devis — clientId (string), lines[] (voir parcours ci-dessous).',
+      'POST /api/public/devis/:id/send — le client reçoit le PDF avec liens accepter / refuser.',
+    ],
+  },
+  {
+    id: 'quote-product-id',
+    title: 'Devis avec produit catalogue (productId)',
+    steps: [
+      'Jeton avec devis.write (+ clients.read ou clients.write pour le client).',
+      'Lister ou créer un produit : GET /api/public/produits ou POST /api/public/produits.',
+      'POST /api/public/devis — lines: [{ "productId": 42, "quantity": 1 }] (description et unitPrice optionnels, déduits du catalogue).',
+      'Le productId doit exister dans votre organisation (jeton Paramètres → API).',
+    ],
+  },
+  {
+    id: 'quote-product-sku',
+    title: 'Devis avec produit get-or-create (productSku) + envoi',
+    steps: [
+      'Jeton avec devis.write, devis.send (+ clients.read ou clients.write).',
+      'POST /api/public/devis — lines: [{ "productSku": "AUDIT-WP", "description": "Audit WordPress", "quantity": 1, "unitPrice": 890, "taxRate": 0.2 }].',
+      '1er appel : produit créé dans le catalogue (visuel aléatoire) + ligne de devis liée.',
+      'POST /api/public/devis/:id/send — PDF par email ; le client reçoit les liens accepter / refuser (publicToken).',
+      '2e devis avec le même productSku : réutilise le produit (prix catalogue si unitPrice omis).',
+      'Script complet : scripts/windows/test-devis-produit.ps1 (-Action Full = envoi + acceptation).',
+    ],
+  },
+  {
+    id: 'catalog-import',
+    title: 'Import catalogue (nombreux produits)',
+    steps: [
+      'Préférer POST /api/products en session (JWT) pour un import massif sans rate limit API publique.',
+      'Via API publique : POST /api/public/produits — espacer les appels (60 req / IP / 15 min sur /api/public/*).',
+      'Recherche avant création : GET /api/public/produits?search=MON-SKU pour éviter les doublons.',
+      'Visuel omis → icône + dégradé ou image bibliothèque tirés au hasard.',
+    ],
+  },
 ] as const
 
 /** Sections affichées dans l’onglet Référence (sommaire + contenu). */
@@ -104,11 +146,15 @@ export const API_DOC_SECTIONS: ApiDocSection[] = [
 • Auth : Authorization: Bearer fact_… (jetons dans Paramètres → API — Jetons)
 • Format : JSON UTF-8
 
-En local : base http://localhost:5173/api (proxy Vite → backend :3000). Copiez frontend/env.development.example vers .env. En production : https://votre-domaine/api.
+Plan requis : Pro (ou supérieur). Les jetons sur un compte Free renvoient une erreur d’auth.
+
+En local : http://localhost:3000/api (backend direct) ou http://localhost:5173/api (proxy Vite). Jeton de démo après seed : fact_seed_dev_demo_do_not_use_in_prod (organisation seed en Pro).
+
+Rate limit : 60 requêtes / IP / 15 min sur les routes /api/public/* (import catalogue : espacer les appels ou utiliser POST /api/products en session).
 
 Les pages client (/public/invoices/:token, etc.) sont distinctes et ne utilisent pas le jeton API.
 
-L’application web (tableaux de bord Factures / Devis) se met à jour en temps réel via SSE : GET /api/realtime/stream (session JWT, hors jeton API).`,
+L’application web (Factures, Devis, Catalogue produits) se met à jour en temps réel via SSE : GET /api/realtime/stream (session JWT, hors jeton API). Un produit créé ou modifié via l’API déclenche toast + notification + rafraîchissement du catalogue.`,
   },
   {
     id: 'auth',
@@ -218,6 +264,17 @@ Exemple : GET /public/clients?page=1&pageSize=50&search=acme`,
     id: 'produits',
     title: 'Produits',
     scopes: ['produits.read', 'produits.write'],
+    body: `Les produits créés via l’API sont rattachés à l’organisation du jeton (comme dans l’app web). Utilisez un jeton créé dans Paramètres → API sur le même compte que votre session.
+
+Visuel (si visualType / iconName / imageData omis) : tirage aléatoire entre
+• icône Font Awesome + dégradé de couleur (stocké en imageData: "icon-gradient:#…,#…")
+• visuel bibliothèque (imageData: "library:web", "library:seo", etc.)
+
+Forcer : visualType "icon" + iconName optionnel, ou visualType "library" + imageData "library:…".
+
+Recherche : GET /public/produits?search=MON-SKU (contient, pas égalité stricte).
+
+Script de test : scripts/windows/test-produit.ps1.`,
     endpoints: [
       {
         method: 'GET',
@@ -232,11 +289,20 @@ Exemple : GET /public/clients?page=1&pageSize=50&search=acme`,
         path: '/public/produits',
         scope: 'produits.write',
         desc: 'Créer',
-        requestBody: '{ "name", "unitPrice", "kind": "SERVICE" }',
+        requestBody: '{ "name", "unitPrice", "kind": "SERVICE", "iconName" (optionnel), "visualType" (optionnel) }',
       },
       { method: 'PATCH', path: '/public/produits/:id', scope: 'produits.write', desc: 'Modifier' },
       { method: 'DELETE', path: '/public/produits/:id', scope: 'produits.write', desc: 'Supprimer' },
     ],
+    exampleBody: `{
+  "name": "Audit performance",
+  "sku": "AUDIT-PERF-API",
+  "kind": "SERVICE",
+  "unitPrice": 890,
+  "category": "DEV",
+  "description": "Analyse Lighthouse et recommandations"
+}`,
+    exampleCurl: { method: 'POST', path: '/public/produits' },
   },
   {
     id: 'factures',
@@ -308,7 +374,18 @@ Voir aussi la section « Paiement externe + envoi email » pour le parcours comp
   {
     id: 'devis',
     title: 'Devis',
-    scopes: ['devis.read', 'devis.write', 'devis.send'],
+    scopes: ['devis.read', 'devis.write', 'devis.send', 'clients.read', 'clients.write'],
+    body: `clientId est une chaîne (ex. "kl644kqh8r"), pas un entier.
+
+Lignes — trois modes (un seul identifiant produit par ligne) :
+
+1. Manuelle : description + unitPrice + quantity (+ taxRate).
+2. Catalogue par ID : productId seul (+ quantity) — nom et prix déduits du produit de votre organisation.
+3. Get-or-create par SKU : productSku + description (ou productName) + unitPrice lors de la 1re occurrence ; le produit est créé dans le catalogue si le SKU est inconnu (visuel aléatoire). Les appels suivants avec le même SKU réutilisent le produit (unitPrice optionnel = prix catalogue).
+
+Ne pas combiner productId et productSku sur la même ligne.
+
+Scripts : scripts/windows/test-devis.ps1 (envoi / accept), test-devis-produit.ps1 (productSku + envoi), test-produit.ps1.`,
     endpoints: [
       { method: 'GET', path: '/public/devis', scope: 'devis.read', desc: 'Liste' },
       { method: 'GET', path: '/public/devis/:id', scope: 'devis.read', desc: 'Détail' },
@@ -317,7 +394,8 @@ Voir aussi la section « Paiement externe + envoi email » pour le parcours comp
         path: '/public/devis',
         scope: 'devis.write',
         desc: 'Créer',
-        requestBody: '{ "clientId", "lines", "expiryDate" }',
+        requestBody:
+          '{ "clientId", "expiryDate", "lines": [{ productId | productSku+description+unitPrice | description+unitPrice, "quantity", "taxRate" }] }',
       },
       { method: 'PATCH', path: '/public/devis/:id', scope: 'devis.write', desc: 'Modifier' },
       {
@@ -347,13 +425,39 @@ Voir aussi la section « Paiement externe + envoi email » pour le parcours comp
       },
     ],
     exampleBody: `{
-  "clientId": 1,
+  "clientId": "kl644kqh8r",
   "expiryDate": "2026-07-15",
   "lines": [
-    { "description": "Développement", "quantity": 1, "unitPrice": 2500, "taxRate": 0.2 }
+    {
+      "productSku": "DEV-SITE-VITRINE",
+      "description": "Site vitrine WordPress",
+      "quantity": 1,
+      "unitPrice": 3200,
+      "taxRate": 0.2
+    }
   ]
 }`,
-    exampleCurl: { method: 'POST', path: '/public/devis' },
+    exampleCurl: {
+      method: 'POST',
+      path: '/public/devis',
+      sendExample: {
+        path: '/public/devis/:id/send',
+        body: '{}',
+      },
+    },
+    workflow: API_WORKFLOWS.find(w => w.id === 'quote-product-sku') ?? API_WORKFLOWS[2],
+  },
+  {
+    id: 'catalog-import',
+    title: 'Import catalogue',
+    body: `Pour synchroniser un catalogue externe (prestations, SKU e-commerce…) :
+
+• Recherche : GET /public/produits?search=SKU avant POST pour limiter les doublons.
+• Création unitaire : POST /public/produits (visuel aléatoire si omis).
+• Import massif : préférer l’API session POST /api/products (pas de rate limit 60/15 min).
+• Devis sans produit préalable : productSku sur POST /public/devis (get-or-create, voir section Devis).`,
+    scopes: ['produits.read', 'produits.write', 'devis.write'],
+    workflow: API_WORKFLOWS.find(w => w.id === 'catalog-import'),
   },
 ]
 

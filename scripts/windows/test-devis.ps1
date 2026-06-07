@@ -27,7 +27,7 @@
 param(
 	[string]$BaseUrl = "http://localhost:3000/api",
 	[string]$Token = $env:FACTURIO_API_TOKEN,
-	[int]$ClientId = 0,
+	[string]$ClientId = "",
 	[string]$ClientEmail = "",
 	[ValidateSet("SendOnly", "Accept", "Reject", "Full")]
 	[string]$Action = "Full",
@@ -107,7 +107,7 @@ function Resolve-ClientId {
 			countryCode = "FR"
 		}
 		Write-Host "  client créé id=$($client.id) email=$($script:ClientEmail)" -ForegroundColor Green
-		return [int]$client.id
+		return "$($client.id)"
 	} catch {
 		$body = Get-ErrorBody $_
 		if ($body.statusCode -ne 403) { throw }
@@ -136,7 +136,7 @@ function Resolve-ClientId {
 
 		$script:ClientEmail = "$($pick.email)"
 		Write-Host "  client réutilisé id=$($pick.id) email=$($script:ClientEmail)" -ForegroundColor Green
-		return [int]$pick.id
+		return "$($pick.id)"
 	}
 }
 

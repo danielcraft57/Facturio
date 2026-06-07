@@ -99,6 +99,7 @@ export async function seedDefaultUser(prisma: PrismaClient): Promise<void> {
 	const org = await prisma.organization.create({
 		data: {
 			name: 'Facturio',
+			saasPlan: 'PRO',
 			companyType: 'B2B',
 			address: process.env.COMPANY_ADDRESS || '57000 Metz, France',
 			siret: process.env.COMPANY_SIRET || null,
@@ -141,11 +142,15 @@ export async function seedApiAccessToken(prisma: PrismaClient, organizationId: n
 			tokenHash,
 			permissions: JSON.stringify([
 				'clients.read',
+				'clients.write',
+				'produits.read',
+				'produits.write',
 				'factures.read',
 				'factures.write',
 				'factures.send',
 				'devis.read',
 				'devis.write',
+				'devis.send',
 			]),
 		},
 	});

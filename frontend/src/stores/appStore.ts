@@ -62,7 +62,7 @@ export interface Notification {
   duration?: number;
   timestamp: Date;
   read?: boolean;
-  category?: 'invoice' | 'quote' | 'client' | 'payment' | 'system';
+  category?: 'invoice' | 'quote' | 'product' | 'client' | 'payment' | 'system';
   href?: string;
 }
 

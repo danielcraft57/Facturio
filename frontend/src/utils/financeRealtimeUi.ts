@@ -55,6 +55,24 @@ const INVOICE_LABELS: Record<string, { title: string; message: (n: string) => st
   },
 }
 
+const PRODUCT_LABELS: Record<string, { title: string; message: (n: string) => string; type: 'success' | 'info' | 'warning' | 'error' }> = {
+  created: {
+    title: 'Nouveau produit',
+    message: (n) => `« ${n} » a été ajouté au catalogue.`,
+    type: 'success',
+  },
+  updated: {
+    title: 'Produit mis à jour',
+    message: (n) => `« ${n} » a été modifié.`,
+    type: 'info',
+  },
+  deleted: {
+    title: 'Produit supprimé',
+    message: (n) => `« ${n} » a été retiré du catalogue.`,
+    type: 'warning',
+  },
+}
+
 const QUOTE_LABELS: Record<string, { title: string; message: (n: string) => string; type: 'success' | 'info' | 'warning' | 'error' }> = {
   created: {
     title: 'Nouveau devis',
@@ -119,7 +137,12 @@ export function buildNotificationFromRealtime(detail: FinanceRealtimeDetail) {
     }
   }
 
-  const map = detail.resource === 'invoices' ? INVOICE_LABELS : QUOTE_LABELS
+  const map =
+    detail.resource === 'invoices'
+      ? INVOICE_LABELS
+      : detail.resource === 'products'
+        ? PRODUCT_LABELS
+        : QUOTE_LABELS
   const cfg = map[detail.action] ?? map.updated
   const href =
     detail.id != null
@@ -127,8 +150,12 @@ export function buildNotificationFromRealtime(detail: FinanceRealtimeDetail) {
         ? `/factures/${detail.id}`
         : detail.resource === 'payables'
           ? '/dettes/inbox'
-          : `/devis`
-      : undefined
+          : detail.resource === 'products'
+            ? '/produits'
+            : `/devis`
+      : detail.resource === 'products'
+        ? '/produits'
+        : undefined
 
   return {
     type: cfg.type,
@@ -139,7 +166,9 @@ export function buildNotificationFromRealtime(detail: FinanceRealtimeDetail) {
         ? ('invoice' as const)
         : detail.resource === 'quotes'
           ? ('quote' as const)
-          : ('invoice' as const),
+          : detail.resource === 'products'
+            ? ('product' as const)
+            : ('invoice' as const),
     href,
   }
 }

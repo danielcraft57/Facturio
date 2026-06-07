@@ -14,7 +14,9 @@ function dispatchDetail(detail: FinanceRealtimeDetail) {
       ? 'facturio:invoice-realtime'
       : detail.resource === 'payables'
         ? 'facturio:payables-realtime'
-        : 'facturio:quote-realtime'
+        : detail.resource === 'products'
+          ? 'facturio:products-realtime'
+          : 'facturio:quote-realtime'
   window.dispatchEvent(new CustomEvent(name, { detail }))
 }
 

@@ -1,8 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
+import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import type { RealtimeAction } from '../realtime/realtime.types';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { resolveVisualOnCreate } from './product-visual.utils';
 
 type ProductWriteDto = CreateProductDto | UpdateProductDto;
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
@@ -23,6 +26,7 @@ export class ProductsService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly catalogPersonalization: CatalogPersonalizationService,
+		private readonly realtime: RealtimeEventsService,
 	) {}
 
 	/**
@@ -40,14 +44,61 @@ export class ProductsService {
 		};
 	}
 
-	create(data: CreateProductDto, organizationId?: number) {
-		return this.prisma.product.create({
+	async create(data: CreateProductDto, organizationId?: number) {
+		const visual = resolveVisualOnCreate(data);
+		const product = await this.prisma.product.create({
 			data: {
 				...this.toPrismaData(data),
+				...visual,
 				organizationId: organizationId ?? null,
 			},
 			include: { defaultTaxRate: true },
 		});
+		this.notifyProduct(organizationId, 'created', product.id, product.name);
+		return product;
+	}
+
+	/** Produit catalogue de l’organisation par SKU exact (insensible à la casse côté appelant si besoin). */
+	async findBySku(sku: string, organizationId: number) {
+		const normalized = sku.trim();
+		if (!normalized) return null;
+		return this.prisma.product.findFirst({
+			where: { organizationId, sku: normalized },
+			include: { defaultTaxRate: true },
+		});
+	}
+
+	/**
+	 * Résout un produit par SKU dans l’organisation, ou le crée avec les champs fournis.
+	 * Utilisé par les lignes de devis (productSku) sans appel produits séparé.
+	 */
+	async findOrCreateBySku(
+		sku: string,
+		organizationId: number,
+		data: Pick<CreateProductDto, 'name' | 'unitPrice' | 'kind' | 'description'>,
+	) {
+		const existing = await this.findBySku(sku, organizationId);
+		if (existing) return existing;
+		return this.create(
+			{
+				name: data.name,
+				sku: sku.trim(),
+				kind: data.kind ?? 'SERVICE',
+				unitPrice: data.unitPrice,
+				description: data.description,
+			},
+			organizationId,
+		);
+	}
+
+	private notifyProduct(
+		organizationId: number | null | undefined,
+		action: RealtimeAction,
+		productId: number,
+		name: string,
+	) {
+		if (!organizationId) return;
+		this.realtime.emit(organizationId, 'products', action, String(productId), { number: name });
 	}
 
 	private orgProductWhere(organizationId?: number): Prisma.ProductWhereInput {
@@ -166,11 +217,13 @@ export class ProductsService {
 	 */
 	async update(id: number, data: UpdateProductDto, organizationId?: number) {
 		await this.assertOrgProduct(id, organizationId);
-		return this.prisma.product.update({
+		const product = await this.prisma.product.update({
 			where: { id },
 			data: this.toPrismaData(data),
 			include: { defaultTaxRate: true },
 		});
+		this.notifyProduct(organizationId, 'updated', product.id, product.name);
+		return product;
 	}
 
 	/**
@@ -181,8 +234,9 @@ export class ProductsService {
 	 * @throws {NotFoundException} Si produit non trouvé
 	 */
 	async remove(id: number, organizationId?: number) {
-		await this.assertOrgProduct(id, organizationId);
+		const existing = await this.assertOrgProduct(id, organizationId);
 		await this.prisma.product.delete({ where: { id } });
+		this.notifyProduct(organizationId, 'deleted', id, existing.name);
 		return { success: true };
 	}
 }

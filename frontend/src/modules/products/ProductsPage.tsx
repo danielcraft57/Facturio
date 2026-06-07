@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import {
   Box,
   TextField,
@@ -38,6 +38,8 @@ import { ProductCatalogInitialLoader } from '../../components/loading/ProductCat
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useToast } from '../../components/useToast';
 import type { CreateProductData, UpdateProductData } from '../../types/product';
+import type { FinanceRealtimeDetail, RealtimeHighlightTone } from '../../types/realtime';
+import { HIGHLIGHT_DURATION_MS } from '../../utils/financeRealtimeUi';
 
 const PRODUCT_DISPLAY_MODE_KEY = 'facturio-products-display-mode';
 
@@ -89,6 +91,7 @@ export function ProductsPage() {
   const [productMenuAnchor, setProductMenuAnchor] = useState<null | HTMLElement>(null);
   const [productMenuRow, setProductMenuRow] = useState<Product | null>(null);
   const [highlightProductId, setHighlightProductId] = useState<number | null>(null);
+  const [highlightTone, setHighlightTone] = useState<RealtimeHighlightTone | undefined>(undefined);
 
   const [saving, setSaving] = useState(false);
   const [createProductOpen, setCreateProductOpen] = useState(false);
@@ -127,10 +130,32 @@ export function ProductsPage() {
       .map((x) => x.p);
   }, [products, debouncedSearch]);
 
-  const flashHighlight = (productId: number) => {
+  const flashHighlight = (productId: number, tone: RealtimeHighlightTone = 'created') => {
     setHighlightProductId(productId);
-    window.setTimeout(() => setHighlightProductId(null), 2600);
+    setHighlightTone(tone);
+    window.setTimeout(() => {
+      setHighlightProductId(null);
+      setHighlightTone(undefined);
+    }, HIGHLIGHT_DURATION_MS[tone] ?? 2600);
   };
+
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+
+  useEffect(() => {
+    const onRealtime = (ev: Event) => {
+      const detail = (ev as CustomEvent<FinanceRealtimeDetail>).detail;
+      if (!detail) return;
+      void refreshRef.current();
+      productsStore.markAsStale();
+      const productId = detail.id != null ? Number(detail.id) : NaN;
+      if (!Number.isNaN(productId)) {
+        flashHighlight(productId, detail.tone);
+      }
+    };
+    window.addEventListener('facturio:products-realtime', onRealtime);
+    return () => window.removeEventListener('facturio:products-realtime', onRealtime);
+  }, [productsStore]);
 
   const syncStoreCache = () => {
     productsStore.markAsStale();
@@ -169,7 +194,7 @@ export function ProductsPage() {
       }
       patchProduct(updated);
       setEditingProduct(null);
-      flashHighlight(updated.id);
+      flashHighlight(updated.id, 'updated');
       toast.success(`Produit « ${updated.name} » mis à jour`);
       await refresh();
       syncStoreCache();
@@ -378,6 +403,7 @@ export function ProductsPage() {
                   onCardClick={setEditingProduct}
                   mode={displayMode}
                   highlightProductId={highlightProductId}
+                  highlightTone={highlightTone}
                 />
               </Box>
             </Fade>
