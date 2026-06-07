@@ -84,9 +84,8 @@ export const navGroups: NavGroup[] = [
       {
         to: '/factures/inbox',
         label: 'Factures',
-        description: 'Émission, envoi et relances',
+        description: 'Émission et envoi',
         icon: <ReceiptLongIcon fontSize="small" />,
-        badge: 'Relances',
         section: 'activity',
       },
       {

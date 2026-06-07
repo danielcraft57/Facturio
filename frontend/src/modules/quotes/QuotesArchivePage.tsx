@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Box, Button, CircularProgress, Alert } from '@mui/material'
+import { Box, Button, Alert } from '@mui/material'
 import ArchiveIcon from '@mui/icons-material/Archive'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '../../components/finance/PageHeader'
@@ -13,6 +13,8 @@ import type { ArchiveYearGroup } from '../../types/archives'
 import { quoteToArchiveRow } from '../archives/archiveMappers'
 import type { Quote } from '../../types/quote'
 import { useToast } from '../../components/useToast'
+import { WorkspacePreparationDialog } from '../../components/loading/WorkspacePreparationDialog'
+import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
 export function QuotesArchivePage() {
   const toast = useToast()
@@ -67,8 +69,11 @@ export function QuotesArchivePage() {
     }
   }
 
+  const initialLoading = loading && groups.length === 0 && !error
+
   return (
     <Box sx={{ p: financePagePadding }}>
+      <WorkspacePreparationDialog open={initialLoading} resource="archives-devis" />
       <PageHeader
         title="Archives — Devis"
         subtitle="Devis archivés par année et par mois (aucune suppression définitive)."
@@ -100,9 +105,7 @@ export function QuotesArchivePage() {
       )}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
+        <TablePageSkeleton rows={10} showHeader={false} />
       ) : (
         <ArchiveGroupedView
           groups={groups}

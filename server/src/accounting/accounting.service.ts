@@ -358,6 +358,30 @@ export class AccountingService {
 		return refundId != null ? `REMBOURSEMENT ${invoiceNumber}#${refundId}` : `REMBOURSEMENT ${invoiceNumber}`;
 	}
 
+	private payableDebtPurchaseReference(debtId: number): string {
+		return `ACHAT DET-${debtId}`;
+	}
+
+	private payableDebtPaymentReference(debtId: number, paymentId: number): string {
+		return `PAIEMENT DET-${debtId}#${paymentId}`;
+	}
+
+	private payableDebtCancelReference(debtId: number): string {
+		return `ANNUL ACHAT DET-${debtId}`;
+	}
+
+	private payableDebtCancelRemainingReference(debtId: number): string {
+		return `ANNUL SOLDE ACHAT DET-${debtId}`;
+	}
+
+	private invoiceSaleCancelReference(invoiceNumber: string): string {
+		return `ANNUL VENTE ${invoiceNumber}`;
+	}
+
+	private invoiceReceivableCancelRemainingReference(invoiceNumber: string): string {
+		return `ANNUL SOLDE VENTE ${invoiceNumber}`;
+	}
+
 	private async entryExists(reference: string): Promise<boolean> {
 		const found = await this.prisma.journalEntry.findFirst({
 			where: { reference, status: 'POSTED' }
@@ -585,8 +609,6 @@ export class AccountingService {
 		const subtotal = Number((invoice.subtotal as any)?.toNumber?.() ?? invoice.subtotal);
 		const tax = Number((invoice.tax as any)?.toNumber?.() ?? invoice.tax);
 		const total = Number((invoice.total as any)?.toNumber?.() ?? invoice.total);
-		const journal = await this.prisma.journal.findUnique({ where: { code: 'VE' } });
-		if (!journal) throw new BadRequestException('Journal VE manquant');
 		const tags = parseTagsJson(invoice.tags);
 		const isDeposit = tags.includes('ACOMPTE_10');
 		const isRemainder = tags.includes('SOLDE_APRES_ACOMPTE');
@@ -602,7 +624,7 @@ export class AccountingService {
 						: 'Prestations de services',
 			},
 			{ accountCode: params.vatCollectedAccountCode ?? '44571', credit: tax, description: 'TVA collectée 20 %' },
-		];
+		].filter((l) => (l.debit ?? 0) > 0 || (l.credit ?? 0) > 0);
 		const memo = isDeposit
 			? `Facture d'acompte ${invoice.number}`
 			: isRemainder
@@ -701,8 +723,8 @@ export class AccountingService {
 		const lines = [
 			{ accountCode: params.expenseAccountCode ?? '622', description: params.memo, debit: base },
 			{ accountCode: params.vatDeductibleAccountCode ?? '44566', description: 'TVA déductible', debit: vat },
-			{ accountCode: params.vendorAccountCode ?? '401', description: 'Fournisseur', credit: total }
-		];
+			{ accountCode: params.vendorAccountCode ?? '401', description: 'Fournisseur', credit: total },
+		].filter((l) => (l.debit ?? 0) > 0 || (l.credit ?? 0) > 0);
 		return this.postEntry({
 			journalCode: params.journalCode ?? 'OD',
 			date: params.date as any,
@@ -731,6 +753,185 @@ export class AccountingService {
 			reference: params.reference,
 			memo: params.memo,
 			lines
+		});
+	}
+
+	/** Dette fournisseur / créancier : 622/44566/401 — à l'envoi ou avant le 1er paiement (idempotent). */
+	async postPayableDebtPurchase(params: {
+		debtId: number;
+		date?: Date | string;
+		/** Taux TVA déductible (0 par défaut — prêt familial, dette sans TVA). */
+		taxRate?: number;
+	}) {
+		const debt = await this.prisma.payableDebt.findUnique({
+			where: { id: params.debtId },
+			include: { creditor: true },
+		});
+		if (!debt) throw new BadRequestException('Dette introuvable');
+
+		const reference = this.payableDebtPurchaseReference(debt.id);
+		if (await this.entryExists(reference)) return null;
+
+		const total = Number((debt.totalAmount as any)?.toNumber?.() ?? debt.totalAmount);
+		const rate = params.taxRate ?? 0;
+		const base =
+			rate > 0 ? Number((total / (1 + rate)).toFixed(2)) : Number(total.toFixed(2));
+		const memo = `Dette — ${debt.label} (${debt.creditor.name})`;
+
+		return this.postServicePurchase({
+			reference,
+			amountExclTax: base,
+			taxRate: rate,
+			date: params.date ?? debt.sentAt ?? debt.createdAt,
+			memo,
+		});
+	}
+
+	/** Paiement d'une dette : 401/512 (idempotent par paiement). */
+	async postPayableDebtPayment(params: {
+		debtId: number;
+		paymentId: number;
+		amount: number;
+		date?: Date | string;
+	}) {
+		const debt = await this.prisma.payableDebt.findUnique({
+			where: { id: params.debtId },
+			include: { creditor: true },
+		});
+		if (!debt) throw new BadRequestException('Dette introuvable');
+
+		const reference = this.payableDebtPaymentReference(debt.id, params.paymentId);
+		if (await this.entryExists(reference)) return null;
+
+		return this.postServicePayment({
+			reference,
+			amount: params.amount,
+			date: params.date,
+			memo: `Paiement dette — ${debt.label}`,
+		});
+	}
+
+	/** Contre-passation de l'achat dette (annulation sans paiement enregistré). */
+	async contraPayableDebtPurchase(debtId: number): Promise<void> {
+		const purchaseRef = this.payableDebtPurchaseReference(debtId);
+		const entry = await this.prisma.journalEntry.findFirst({
+			where: { reference: purchaseRef, status: 'POSTED' },
+			include: { lines: { include: { account: true } } },
+			orderBy: { id: 'desc' },
+		});
+		if (!entry) return;
+
+		const cancelRef = this.payableDebtCancelReference(debtId);
+		if (await this.entryExists(cancelRef)) return;
+
+		const lines = entry.lines.map((l) => ({
+			accountCode: l.account.code,
+			debit: Number((l.credit as any)?.toNumber?.() ?? l.credit) || 0,
+			credit: Number((l.debit as any)?.toNumber?.() ?? l.debit) || 0,
+			description: `Annulation ${l.description || ''}`.trim(),
+		}));
+
+		await this.postEntry({
+			journalCode: 'OD',
+			reference: cancelRef,
+			memo: 'Contre-passation dette annulée',
+			lines,
+		});
+	}
+
+	/** Annulation du solde restant d'une dette déjà partiellement payée : 401/622. */
+	async postPayableDebtCancelRemaining(debtId: number, remainingAmount?: number): Promise<void> {
+		const debt = await this.prisma.payableDebt.findUnique({
+			where: { id: debtId },
+			include: { creditor: true },
+		});
+		if (!debt) throw new BadRequestException('Dette introuvable');
+
+		const remaining = Number(
+			remainingAmount ?? (debt.balance as any)?.toNumber?.() ?? debt.balance,
+		);
+		if (remaining <= 0.01) return;
+
+		const reference = this.payableDebtCancelRemainingReference(debtId);
+		if (await this.entryExists(reference)) return;
+
+		const memo = `Annulation solde dette — ${debt.label} (${debt.creditor.name})`;
+		await this.postEntry({
+			journalCode: 'OD',
+			reference,
+			memo,
+			lines: [
+				{ accountCode: '401', description: memo, debit: remaining },
+				{ accountCode: '622', description: memo, credit: remaining },
+			],
+		});
+	}
+
+	/** Contre-passation vente facture émise sans encaissement (idempotent). */
+	async contraInvoiceSale(invoiceId: string): Promise<void> {
+		const invoice = await this.prisma.invoice.findUnique({ where: { id: invoiceId } });
+		if (!invoice) throw new BadRequestException('Facture introuvable');
+
+		const saleRef = this.saleReference(invoice.number);
+		const entry = await this.prisma.journalEntry.findFirst({
+			where: { reference: saleRef, status: 'POSTED' },
+			include: { lines: { include: { account: true } } },
+			orderBy: { id: 'desc' },
+		});
+		if (!entry) return;
+
+		const cancelRef = this.invoiceSaleCancelReference(invoice.number);
+		if (await this.entryExists(cancelRef)) return;
+
+		const lines = entry.lines.map((l) => ({
+			accountCode: l.account.code,
+			debit: Number((l.credit as any)?.toNumber?.() ?? l.credit) || 0,
+			credit: Number((l.debit as any)?.toNumber?.() ?? l.debit) || 0,
+			description: `Annulation ${l.description || ''}`.trim(),
+		}));
+
+		await this.postEntry({
+			journalCode: 'VE',
+			reference: cancelRef,
+			memo: `Contre-passation facture ${invoice.number}`,
+			lines,
+		});
+	}
+
+	/** Annulation du solde créance restant (facture partiellement payée) : 706/44571/411. */
+	async postInvoiceReceivableCancelRemaining(invoiceId: string): Promise<void> {
+		const invoice = await this.prisma.invoice.findUnique({ where: { id: invoiceId } });
+		if (!invoice) throw new BadRequestException('Facture introuvable');
+
+		const balance = Number((invoice.balance as any)?.toNumber?.() ?? invoice.balance);
+		if (balance <= 0.01) return;
+
+		const reference = this.invoiceReceivableCancelRemainingReference(invoice.number);
+		if (await this.entryExists(reference)) return;
+
+		const total = Number((invoice.total as any)?.toNumber?.() ?? invoice.total);
+		const subtotal = Number((invoice.subtotal as any)?.toNumber?.() ?? invoice.subtotal);
+		const tax = Number((invoice.tax as any)?.toNumber?.() ?? invoice.tax);
+		const ratio = total > 0 ? balance / total : 1;
+		let revSubtotal = Number((subtotal * ratio).toFixed(2));
+		let revTax = Number((tax * ratio).toFixed(2));
+		const sum = Number((revSubtotal + revTax).toFixed(2));
+		if (sum !== balance) {
+			revTax = Number((balance - revSubtotal).toFixed(2));
+		}
+
+		const memo = `Annulation solde créance — facture ${invoice.number}`;
+		const lines = [
+			{ accountCode: '706', description: memo, debit: revSubtotal },
+			{ accountCode: '44571', description: 'TVA annulée', debit: revTax },
+			{ accountCode: '411', description: memo, credit: balance },
+		].filter((l) => (l.debit ?? 0) > 0 || (l.credit ?? 0) > 0);
+
+		await this.postEntry({
+			journalCode: 'VE',
+			reference,
+			memo,
+			lines,
 		});
 	}
 

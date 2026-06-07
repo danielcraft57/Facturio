@@ -19,7 +19,13 @@ describe('receivablesService', () => {
 
   it('appelle GET /receivables sans filtre', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
-      summary: { totalOutstanding: 0, clientCount: 0, invoiceCount: 0, aging: {} },
+      summary: {
+        totalOutstanding: 0,
+        clientCount: 0,
+        invoiceCount: 0,
+        aging: {},
+        byKind: { standard: 0, deposit: 0, remainder: 0 },
+      },
       clients: [],
       invoices: [],
     } as never)
@@ -31,7 +37,13 @@ describe('receivablesService', () => {
 
   it('appelle GET /receivables avec période', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
-      summary: { totalOutstanding: 120, clientCount: 1, invoiceCount: 1, aging: {} },
+      summary: {
+        totalOutstanding: 120,
+        clientCount: 1,
+        invoiceCount: 1,
+        aging: {},
+        byKind: { standard: 120, deposit: 0, remainder: 0 },
+      },
       clients: [],
       invoices: [],
     } as never)

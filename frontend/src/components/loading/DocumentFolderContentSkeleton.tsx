@@ -10,7 +10,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Typography,
 } from '@mui/material'
 import {
   documentFolderTableCardSx,
@@ -23,9 +22,6 @@ export type DocumentFolderContentSkeletonProps = {
   rows?: number
   /** Affichage type tableau (desktop) ou cartes (mobile). */
   variant?: 'table' | 'cards'
-  /** Premier chargement (F5) : message explicite. */
-  initial?: boolean
-  resourceLabel?: string
 }
 
 function TableRowSkeleton({ index }: { index: number }) {
@@ -83,23 +79,10 @@ function CardRowSkeleton({ index }: { index: number }) {
 export function DocumentFolderContentSkeleton({
   rows = 8,
   variant = 'table',
-  initial = false,
-  resourceLabel = 'documents',
 }: DocumentFolderContentSkeletonProps) {
-  const label = resourceLabel
-
   return (
     <Card sx={documentFolderTableCardSx}>
       <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-        {initial && (
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 2 }}>
-            <Skeleton variant="circular" width={10} height={10} animation="wave" />
-            <Typography variant="body2" color="text.secondary" fontWeight={500}>
-              Chargement des {label}…
-            </Typography>
-          </Stack>
-        )}
-
         {variant === 'table' ? (
           <TableContainer sx={documentFolderTableContainerSx}>
             <Table size="small" sx={documentFolderTableSx}>

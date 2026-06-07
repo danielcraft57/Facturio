@@ -25,6 +25,7 @@ import { DocumentFolderPageShell } from '../../components/finance/DocumentFolder
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
 import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell'
 import { DocumentFolderStatusChip } from '../../components/finance/DocumentFolderStatusChip'
+import { DocumentFolderInitialLoader } from '../../components/loading/DocumentFolderInitialLoader'
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton'
 import { DocumentFolderLoadMore } from '../../components/finance/DocumentFolderLoadMore'
 import {
@@ -121,6 +122,8 @@ export function PayablesPage() {
     total,
     loading,
     loadingMore,
+    coldLoading,
+    folderLoading,
     error,
     setError,
     folderCounts,
@@ -187,7 +190,6 @@ export function PayablesPage() {
   )
 
   const contentKey = `${activeFolder}-${debouncedSearch}`
-  const initialLoading = loading && debts.length === 0
 
   const selection = useDocumentFolderSelection(
     displayedDebts,
@@ -350,7 +352,7 @@ export function PayablesPage() {
       filters={folderFilters}
       contentKey={contentKey}
       loading={loading}
-      initialLoading={initialLoading}
+      initialLoading={coldLoading}
       countsLoading={!countsReady}
     >
       {error && (
@@ -359,12 +361,16 @@ export function PayablesPage() {
         </Alert>
       )}
 
-      {initialLoading ? (
+      {coldLoading ? (
+        <DocumentFolderInitialLoader
+          resource="dettes"
+          rows={8}
+          variant={isNarrow ? 'cards' : 'table'}
+        />
+      ) : folderLoading ? (
         <DocumentFolderContentSkeleton
           rows={8}
           variant={isNarrow ? 'cards' : 'table'}
-          initial
-          resourceLabel="dettes"
         />
       ) : (
         <Card

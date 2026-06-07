@@ -209,10 +209,9 @@ export function toCreateClientPayload(data: {
 export class ClientService {
   private baseUrl = '/clients'
 
-  // Récupérer la liste des clients avec filtres
-  async getClients(filters: ClientFilters = {}): Promise<ApiResponse<ClientListResponse>> {
+  buildListUrl(filters: ClientFilters = {}): string {
     const params = new URLSearchParams()
-    
+
     if (filters.search) params.append('search', filters.search)
     if (filters.folder) params.append('folder', filters.folder)
     if (filters.status) params.append('status', filters.status)
@@ -223,9 +222,12 @@ export class ClientService {
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder)
 
     const queryString = params.toString()
-    const url = queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl
+    return queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl
+  }
 
-    return apiClient.get<ClientListResponse>(url)
+  // Récupérer la liste des clients avec filtres
+  async getClients(filters: ClientFilters = {}): Promise<ApiResponse<ClientListResponse>> {
+    return apiClient.getCached<ClientListResponse>(this.buildListUrl(filters), 2 * 60 * 1000)
   }
 
   async getFolderCounts(): Promise<ApiResponse<ClientFolderCounts>> {
@@ -285,14 +287,22 @@ export class ClientService {
     return { data: client, success: true }
   }
 
-  // Supprimer un client
-  async deleteClient(id: string): Promise<ApiResponse<void>> {
-    const response = await apiClient.delete<void>(`${this.baseUrl}/${id}`)
-    
-    // Invalider les caches
+  /** Archive un client (conserve factures, devis et historique). */
+  async archiveClient(id: string): Promise<ApiResponse<{ success?: boolean; archivedAt?: string }>> {
+    const response = await apiClient.post<{ success?: boolean; archivedAt?: string }>(
+      `${this.baseUrl}/${id}/archive`,
+      {},
+    )
     apiClient.invalidateCache('/clients')
     apiClient.invalidateCache(`/clients/${id}`)
-    
+    return response
+  }
+
+  /** @deprecated Préférer archiveClient — DELETE archive côté API. */
+  async deleteClient(id: string): Promise<ApiResponse<void>> {
+    const response = await apiClient.delete<void>(`${this.baseUrl}/${id}`)
+    apiClient.invalidateCache('/clients')
+    apiClient.invalidateCache(`/clients/${id}`)
     return response
   }
 

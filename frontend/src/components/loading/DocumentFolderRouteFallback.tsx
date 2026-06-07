@@ -1,4 +1,4 @@
-import { Box, Skeleton, Stack, Typography } from '@mui/material'
+import { Box, Skeleton, Stack } from '@mui/material'
 import { DocumentFolderSidebarSkeleton } from './DocumentFolderSidebarSkeleton'
 import { ClientFolderSidebarSkeleton } from './ClientFolderSidebarSkeleton'
 import { DocumentFolderContentSkeleton } from './DocumentFolderContentSkeleton'
@@ -15,14 +15,6 @@ type DocumentFolderRouteFallbackProps = {
 
 /** Fallback Suspense (chunk JS) — même structure que la page dossiers. */
 export function DocumentFolderRouteFallback({ resource }: DocumentFolderRouteFallbackProps) {
-  const label =
-    resource === 'factures'
-      ? 'factures'
-      : resource === 'devis'
-        ? 'devis'
-        : resource === 'dettes'
-          ? 'dettes'
-          : 'clients'
   const SidebarSkeleton =
     resource === 'clients' ? ClientFolderSidebarSkeleton : DocumentFolderSidebarSkeleton
 
@@ -49,15 +41,7 @@ export function DocumentFolderRouteFallback({ resource }: DocumentFolderRouteFal
       <Box sx={documentFolderLayoutRowSx}>
         <SidebarSkeleton />
         <Box sx={documentFolderPageMainSx}>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-            Préparation de l&apos;espace {label}…
-          </Typography>
-          <DocumentFolderContentSkeleton
-            rows={8}
-            variant="table"
-            initial
-            resourceLabel={label}
-          />
+          <DocumentFolderContentSkeleton rows={8} variant="table" />
         </Box>
       </Box>
     </Box>

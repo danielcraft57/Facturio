@@ -55,17 +55,17 @@ export default function ClientsScreen() {
   }, [])
 
   const confirmDelete = (client: Client) => {
-    Alert.alert('Supprimer le client', `Supprimer « ${client.name} » ?`, [
+    Alert.alert('Archiver le client', `Archiver « ${client.name} » ? Les factures et devis sont conservés.`, [
       { text: 'Annuler', style: 'cancel' },
       {
-        text: 'Supprimer',
+        text: 'Archiver',
         style: 'destructive',
         onPress: async () => {
           try {
             await clientsService.delete(client.id)
             setClients((prev) => prev.filter((c) => c.id !== client.id))
             setTotal((t) => Math.max(0, t - 1))
-            setFeedback('Client supprimé.')
+            setFeedback('Client archivé.')
             await notifySuccess()
           } catch (e) {
             setFeedback(e instanceof Error ? e.message : 'Suppression impossible.')

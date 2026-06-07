@@ -20,6 +20,7 @@ import { Link as RouterLink, useLocation } from 'react-router-dom'
 import type { NavFeatured, NavGroup, NavItem } from '../config/navConfig'
 import { isGroupActive, isNavActive } from '../config/navConfig'
 import { topNavItemSx } from './topNavItemStyles'
+import { prefetchFinanceRouteFromPath } from '../../../utils/prefetchFinanceRoutes'
 
 /** Au-dessus de l’AppBar (drawer+2) et des panneaux latéraux. */
 const MEGA_MENU_Z_INDEX = 1500
@@ -95,6 +96,8 @@ function MegaMenuItem({
       component={RouterLink}
       to={item.to}
       onClick={onNavigate}
+      onMouseEnter={() => prefetchFinanceRouteFromPath(item.to)}
+      onFocus={() => prefetchFinanceRouteFromPath(item.to)}
       sx={{
         display: 'flex',
         gap: 1.25,

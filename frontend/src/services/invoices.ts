@@ -282,10 +282,9 @@ export function toUpdateInvoiceApiBody(
 export class InvoiceService {
   private baseUrl = '/invoices'
 
-  // Récupérer la liste des factures avec filtres
-  async getInvoices(filters: InvoiceFilters = {}): Promise<ApiResponse<InvoiceListResponse>> {
+  buildListUrl(filters: InvoiceFilters = {}): string {
     const params = new URLSearchParams()
-    
+
     if (filters.search) params.append('search', filters.search)
     if (filters.folder) params.append('folder', filters.folder)
     if (filters.tag) params.append('tag', filters.tag)
@@ -300,9 +299,13 @@ export class InvoiceService {
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder)
 
     const queryString = params.toString()
-    const url = queryString ? `/factures?${queryString}` : '/factures'
+    return queryString ? `/factures?${queryString}` : '/factures'
+  }
 
-    return apiClient.get<InvoiceListResponse>(url)
+  // Récupérer la liste des factures avec filtres
+  async getInvoices(filters: InvoiceFilters = {}): Promise<ApiResponse<InvoiceListResponse>> {
+    const url = this.buildListUrl(filters)
+    return apiClient.getCached<InvoiceListResponse>(url, 2 * 60 * 1000)
   }
 
   async getFolderCounts(): Promise<ApiResponse<DocumentFolderCounts>> {

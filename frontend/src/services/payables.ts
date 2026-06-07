@@ -98,7 +98,26 @@ export type PayableCreditor = {
   notes: string | null
 }
 
+function buildDebtsListUrl(params: {
+  page?: number
+  limit?: number
+  folder?: DocumentFolder
+  search?: string
+  includeFolderCounts?: boolean
+}): string {
+  const sp = new URLSearchParams()
+  if (params.folder) sp.append('folder', params.folder)
+  if (params.search) sp.append('search', params.search)
+  if (params.page) sp.append('page', String(params.page))
+  if (params.limit) sp.append('limit', String(params.limit))
+  if (params.includeFolderCounts) sp.append('includeFolderCounts', '1')
+  const qs = sp.toString()
+  return qs ? `/payables/debts?${qs}` : '/payables/debts'
+}
+
 export const payablesService = {
+  buildDebtsListUrl,
+
   async getSummary(): Promise<PayablesData> {
     const res = await apiClient.get<PayablesData>('/payables')
     return unwrapApiPayload(res) as PayablesData
@@ -111,7 +130,7 @@ export const payablesService = {
     search?: string
     includeFolderCounts?: boolean
   }): Promise<PayablesDebtsListPage> {
-    const res = await apiClient.get('/payables/debts', { params })
+    const res = await apiClient.getCached(buildDebtsListUrl(params), 2 * 60 * 1000)
     return parsePayablesDebtsListPage(res)
   },
 

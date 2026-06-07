@@ -9,6 +9,12 @@ import {
 	type ReceivableAgingBucket,
 	type ReceivableAgingTotals,
 } from './receivables-aging.util';
+import {
+	type ReceivableDocumentKind,
+	resolveReceivableDocumentKind,
+	resolveReceivableQuoteId,
+} from './receivable-document-kind.util';
+import { buildReceivableInvoiceWhere } from './receivables-invoice-filter.util';
 
 export type ReceivableInvoiceRow = {
 	id: string;
@@ -22,6 +28,9 @@ export type ReceivableInvoiceRow = {
 	status: string;
 	daysPastDue: number;
 	agingBucket: ReceivableAgingBucket;
+	documentKind: ReceivableDocumentKind;
+	quoteId: string | null;
+	lastReminderAt: string | null;
 };
 
 export type ReceivableClientRow = {
@@ -34,18 +43,27 @@ export type ReceivableClientRow = {
 	aging: ReceivableAgingTotals;
 };
 
+export type ReceivablesByKindTotals = Record<ReceivableDocumentKind, number>;
+
 export type ReceivablesResponse = {
 	summary: {
 		totalOutstanding: number;
 		clientCount: number;
 		invoiceCount: number;
 		aging: ReceivableAgingTotals;
+		byKind: ReceivablesByKindTotals;
 	};
 	clients: ReceivableClientRow[];
 	invoices: ReceivableInvoiceRow[];
 };
 
 const BALANCE_EPSILON = 0.01;
+
+const EMPTY_BY_KIND: ReceivablesByKindTotals = {
+	standard: 0,
+	deposit: 0,
+	remainder: 0,
+};
 
 @Injectable()
 export class ReceivablesService {
@@ -56,28 +74,36 @@ export class ReceivablesService {
 
 		const start = query?.start ? new Date(query.start) : undefined;
 		const end = query?.end ? new Date(query.end) : undefined;
+		const kindFilter = query?.kind;
 
 		const invoices = await this.prisma.invoice.findMany({
-			where: {
-				organizationId,
-				archivedAt: null,
-				status: { notIn: ['DRAFT', 'CANCELLED'] },
-				...(start || end
-					? {
-							date: {
-								...(start ? { gte: start } : {}),
-								...(end ? { lte: end } : {}),
-							},
-						}
-					: {}),
-			},
+			where: buildReceivableInvoiceWhere(organizationId, { start, end }) as never,
 			include: {
 				client: { select: { id: true, name: true, email: true } },
 			},
 			orderBy: [{ dueDate: 'asc' }, { date: 'desc' }],
 		});
 
+		const openIds = invoices
+			.filter((inv) => Number(inv.balance ?? 0) > BALANCE_EPSILON)
+			.map((inv) => inv.id);
+
+		const reminderEvents = openIds.length
+			? await this.prisma.emailEvent.findMany({
+					where: { invoiceId: { in: openIds }, type: 'reminder' },
+					orderBy: { createdAt: 'desc' },
+					select: { invoiceId: true, createdAt: true },
+				})
+			: [];
+
+		const lastReminderByInvoice = new Map<string, Date>();
+		for (const ev of reminderEvents) {
+			if (!ev.invoiceId || lastReminderByInvoice.has(ev.invoiceId)) continue;
+			lastReminderByInvoice.set(ev.invoiceId, ev.createdAt);
+		}
+
 		const summaryAging: ReceivableAgingTotals = { ...EMPTY_AGING_TOTALS };
+		const byKind: ReceivablesByKindTotals = { ...EMPTY_BY_KIND };
 		const openRows: ReceivableInvoiceRow[] = [];
 		const clientMap = new Map<string, ReceivableClientRow>();
 
@@ -85,9 +111,13 @@ export class ReceivablesService {
 			const balance = Number(inv.balance ?? 0);
 			if (balance <= BALANCE_EPSILON) continue;
 
+			const documentKind = resolveReceivableDocumentKind(inv.tags);
+			if (kindFilter && documentKind !== kindFilter) continue;
+
 			const referenceDate = inv.dueDate ?? inv.date;
 			const bucket = receivableAgingBucket(referenceDate);
 			const pastDue = daysPastDue(referenceDate);
+			const lastReminder = lastReminderByInvoice.get(inv.id);
 
 			const row: ReceivableInvoiceRow = {
 				id: inv.id,
@@ -101,10 +131,14 @@ export class ReceivablesService {
 				status: inv.status,
 				daysPastDue: pastDue,
 				agingBucket: bucket,
+				documentKind,
+				quoteId: resolveReceivableQuoteId(inv.tags, inv.sourceQuoteId),
+				lastReminderAt: lastReminder?.toISOString() ?? null,
 			};
 			openRows.push(row);
 
 			addToAgingTotals(summaryAging, bucket, balance);
+			byKind[documentKind] = Number((byKind[documentKind] + balance).toFixed(2));
 
 			let clientRow = clientMap.get(inv.clientId);
 			if (!clientRow) {
@@ -137,6 +171,7 @@ export class ReceivablesService {
 				clientCount: clients.length,
 				invoiceCount: openRows.length,
 				aging: summaryAging,
+				byKind,
 			},
 			clients,
 			invoices: openRows,

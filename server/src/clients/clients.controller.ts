@@ -32,6 +32,11 @@ export class ClientsController {
 		return this.clients.getFolderCounts(user.organizationId);
 	}
 
+	@Get('archives')
+	findArchived(@CurrentUser() user: any) {
+		return this.clients.findArchivedGrouped(user.organizationId);
+	}
+
 	@Get(':id/finance')
 	getFinance(
 		@Param('id', ParseEntityIdPipe) id: string,
@@ -73,9 +78,19 @@ export class ClientsController {
 		return this.clients.update(id, data, user.organizationId);
 	}
 
+	@Post(':id/archive')
+	archive(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
+		return this.clients.archive(id, user.organizationId);
+	}
+
+	@Post(':id/restore')
+	restore(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
+		return this.clients.restore(id, user.organizationId);
+	}
+
 	@Delete(':id')
 	remove(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
-		return this.clients.remove(id, user.organizationId);
+		return this.clients.archive(id, user.organizationId);
 	}
 }
 

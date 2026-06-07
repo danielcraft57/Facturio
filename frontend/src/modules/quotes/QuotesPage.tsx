@@ -81,6 +81,7 @@ import {
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch';
 import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell';
 import { DocumentFolderStatusChip } from '../../components/finance/DocumentFolderStatusChip';
+import { DocumentFolderInitialLoader } from '../../components/loading/DocumentFolderInitialLoader';
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import {
@@ -104,6 +105,7 @@ import {
   patchQuoteFromRealtimeDetail,
   patchQuoteWithInvoiceId,
 } from '../../utils/financeRealtimeListPatch';
+import { scheduleDebounced } from '../../utils/scheduleDebounced';
 import type { FinanceRealtimeDetail } from '../../types/realtime';
 
 export function QuotesPage() {
@@ -128,11 +130,14 @@ export function QuotesPage() {
     total,
     loading,
     loadingMore,
+    coldLoading,
+    folderLoading,
     folderCounts,
     countsReady,
     hasMore,
     loadMore,
     refresh,
+    refreshSilent,
     setItems,
     removeItemsById,
     bumpFolderCounts,
@@ -152,14 +157,27 @@ export function QuotesPage() {
   const rowMotion = useDocumentFolderRowMotion();
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
+  const refreshSilentRef = useRef(refreshSilent);
+  refreshSilentRef.current = refreshSilent;
 
   useEffect(() => {
     const onRealtime = (ev: Event) => {
       const detail = (ev as CustomEvent<FinanceRealtimeDetail>).detail;
-      if (!detail?.id) return;
+      if (detail?.id == null) return;
       patchItemById(detail.id, (q) => patchQuoteFromRealtimeDetail(q, detail));
-      if (detail.action === 'created' || detail.action === 'deleted') {
+      const action = detail.action;
+      if (action === 'created' || action === 'deleted') {
         void refreshRef.current();
+        return;
+      }
+      const status = detail.status?.toUpperCase();
+      const folderMove =
+        action === 'sent' ||
+        action === 'paid' ||
+        (action === 'updated' &&
+          (status === 'ACCEPTED' || status === 'REJECTED' || status === 'EXPIRED'));
+      if (folderMove) {
+        scheduleDebounced(() => void refreshSilentRef.current());
       }
     };
     window.addEventListener('facturio:quote-realtime', onRealtime);
@@ -187,7 +205,6 @@ export function QuotesPage() {
   );
 
   const contentKey = `${activeFolder}-${debouncedSearch}`;
-  const initialLoading = loading && quotes.length === 0;
 
   const selection = useDocumentFolderSelection(
     displayedQuotes,
@@ -388,15 +405,19 @@ export function QuotesPage() {
       filters={folderFilters}
       contentKey={contentKey}
       loading={loading}
-      initialLoading={initialLoading}
+      initialLoading={coldLoading}
       countsLoading={!countsReady}
     >
-      {initialLoading ? (
+      {coldLoading ? (
+        <DocumentFolderInitialLoader
+          resource="devis"
+          rows={8}
+          variant={isNarrow ? 'cards' : 'table'}
+        />
+      ) : folderLoading ? (
         <DocumentFolderContentSkeleton
           rows={8}
           variant={isNarrow ? 'cards' : 'table'}
-          initial
-          resourceLabel="devis"
         />
       ) : (
         <Card

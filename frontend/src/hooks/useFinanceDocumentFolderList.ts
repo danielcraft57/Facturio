@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DocumentFolder, DocumentFolderCounts } from '../types/documentFolders'
 import { normalizeDocumentFolderCounts } from '../types/documentFolders'
+import {
+  isFolderListSessionWarmed,
+  markFolderListSessionWarmed,
+} from '../utils/folderListSession'
 
 export const FINANCE_DOCUMENT_PAGE_SIZE = 30
 
@@ -27,6 +31,30 @@ type FetchOpts = {
   append: boolean
   withCounts?: boolean
   search?: string
+  /** Rafraîchissement temps réel / cache sans spinner. */
+  silent?: boolean
+}
+
+type BootPageReader<T> = (
+  folder: DocumentFolder,
+  search: string,
+) => FinanceFolderListPage<T> | null
+
+function applyBootPage<T>(
+  boot: FinanceFolderListPage<T>,
+  setters: {
+    setItems: (items: T[]) => void
+    setTotal: (total: number) => void
+    setFolderCounts: (counts: DocumentFolderCounts) => void
+    setCountsReady: (ready: boolean) => void
+  },
+) {
+  setters.setItems(boot.items)
+  setters.setTotal(boot.total)
+  if (boot.folderCounts) {
+    setters.setFolderCounts(normalizeDocumentFolderCounts(boot.folderCounts))
+    setters.setCountsReady(true)
+  }
 }
 
 export function useFinanceDocumentFolderList<T>(
@@ -34,18 +62,31 @@ export function useFinanceDocumentFolderList<T>(
   debouncedSearch: string,
   fetchListPage: (opts: FinanceFolderListFetchOpts) => Promise<FinanceFolderListPage<T>>,
   defaultError: string,
+  readBootPage?: BootPageReader<T>,
+  moduleKey?: string,
 ) {
-  const [items, setItems] = useState<T[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const initialBoot = readBootPage?.(activeFolder, debouncedSearch) ?? null
+
+  const [items, setItems] = useState<T[]>(() => {
+    if (initialBoot && moduleKey) markFolderListSessionWarmed(moduleKey)
+    return initialBoot?.items ?? []
+  })
+  const [total, setTotal] = useState(() => initialBoot?.total ?? 0)
+  const [loading, setLoading] = useState(() => !initialBoot)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [folderCounts, setFolderCounts] = useState<DocumentFolderCounts>(EMPTY_COUNTS)
-  const [countsReady, setCountsReady] = useState(false)
+  const [folderCounts, setFolderCounts] = useState<DocumentFolderCounts>(() =>
+    initialBoot?.folderCounts
+      ? normalizeDocumentFolderCounts(initialBoot.folderCounts)
+      : EMPTY_COUNTS,
+  )
+  const [countsReady, setCountsReady] = useState(() => !!initialBoot?.folderCounts)
   const fetchGen = useRef(0)
   const currentPage = useRef(1)
   const fetchListPageRef = useRef(fetchListPage)
+  const readBootPageRef = useRef(readBootPage)
   fetchListPageRef.current = fetchListPage
+  readBootPageRef.current = readBootPage
 
   const hasMore = items.length < total
 
@@ -54,8 +95,10 @@ export function useFinanceDocumentFolderList<T>(
       const gen = ++fetchGen.current
       const isFirst = opts.page === 1 && !opts.append
 
-      if (isFirst) setLoading(true)
-      else setLoadingMore(true)
+      if (!opts.silent) {
+        if (isFirst) setLoading(true)
+        else setLoadingMore(true)
+      }
 
       try {
         if (isFirst) setError(null)
@@ -80,18 +123,20 @@ export function useFinanceDocumentFolderList<T>(
         } else if (opts.withCounts) {
           setCountsReady(true)
         }
+
+        if (isFirst && moduleKey) markFolderListSessionWarmed(moduleKey)
       } catch (err) {
         if (gen !== fetchGen.current) return
         setError(err instanceof Error ? err.message : defaultError)
         console.error(defaultError, err)
       } finally {
-        if (gen === fetchGen.current) {
+        if (!opts.silent && gen === fetchGen.current) {
           setLoading(false)
           setLoadingMore(false)
         }
       }
     },
-    [activeFolder, defaultError],
+    [activeFolder, defaultError, moduleKey],
   )
 
   const refresh = useCallback(async () => {
@@ -100,6 +145,16 @@ export function useFinanceDocumentFolderList<T>(
       append: false,
       withCounts: true,
       search: debouncedSearch,
+    })
+  }, [fetchPage, debouncedSearch])
+
+  const refreshSilent = useCallback(async () => {
+    await fetchPage({
+      page: 1,
+      append: false,
+      withCounts: true,
+      search: debouncedSearch,
+      silent: true,
     })
   }, [fetchPage, debouncedSearch])
 
@@ -159,12 +214,28 @@ export function useFinanceDocumentFolderList<T>(
     })
   }, [])
 
-  // fetchListPage tenu en ref : évite boucle si le callback parent est recréé à chaque render
   useEffect(() => {
     fetchGen.current += 1
+    const withCounts = !debouncedSearch.trim()
+    const cached = readBootPageRef.current?.(activeFolder, debouncedSearch) ?? null
+
+    if (cached) {
+      applyBootPage(cached, { setItems, setTotal, setFolderCounts, setCountsReady })
+      if (moduleKey) markFolderListSessionWarmed(moduleKey)
+      setLoading(false)
+      void fetchPage({
+        page: 1,
+        append: false,
+        withCounts,
+        search: debouncedSearch,
+        silent: true,
+      })
+      return
+    }
+
     setItems([])
     setTotal(0)
-    const withCounts = !debouncedSearch.trim()
+    if (withCounts) setCountsReady(false)
     void fetchPage({
       page: 1,
       append: false,
@@ -174,12 +245,18 @@ export function useFinanceDocumentFolderList<T>(
   // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchPage stable via fetchListPageRef
   }, [activeFolder, debouncedSearch])
 
+  const moduleReady = moduleKey ? isFolderListSessionWarmed(moduleKey) : false
+  const coldLoading = loading && items.length === 0 && !moduleReady
+  const folderLoading = loading && items.length === 0 && moduleReady
+
   return {
     items,
     setItems,
     total,
     loading,
     loadingMore,
+    coldLoading,
+    folderLoading,
     error,
     setError,
     folderCounts,
@@ -187,6 +264,7 @@ export function useFinanceDocumentFolderList<T>(
     hasMore,
     loadMore,
     refresh,
+    refreshSilent,
     removeItemsById,
     prependItems,
     patchItemById,

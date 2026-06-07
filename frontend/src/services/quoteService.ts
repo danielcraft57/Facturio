@@ -124,9 +124,9 @@ export function parseQuotesListPage(response: unknown): QuotesListPageResult {
 class QuoteService {
   private apiClient = ApiClient.getInstance();
 
-  async getQuotes(filters?: QuoteFilters, page = 1, limit = 10): Promise<ApiResponse<QuoteListResponse>> {
+  buildListUrl(filters?: QuoteFilters, page = 1, limit = 10): string {
     const params = new URLSearchParams();
-    
+
     if (filters?.folder) params.append('folder', filters.folder);
     if (filters?.tag) params.append('tag', filters.tag);
     if (filters?.status) params.append('status', filters.status);
@@ -139,7 +139,14 @@ class QuoteService {
     params.append('page', page.toString());
     params.append('limit', limit.toString());
 
-    return this.apiClient.get<QuoteListResponse>(`/devis?${params.toString()}`);
+    return `/devis?${params.toString()}`;
+  }
+
+  async getQuotes(filters?: QuoteFilters, page = 1, limit = 10): Promise<ApiResponse<QuoteListResponse>> {
+    return this.apiClient.getCached<QuoteListResponse>(
+      this.buildListUrl(filters, page, limit),
+      2 * 60 * 1000,
+    );
   }
 
   async getFolderCounts(): Promise<ApiResponse<DocumentFolderCounts>> {

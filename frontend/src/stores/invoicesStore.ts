@@ -71,7 +71,6 @@ export const useInvoicesStore = create<InvoicesState>()(
 
       // Actions
       fetchInvoices: async (filters?: Partial<InvoiceFilters>) => {
-        if (get().isLoading) return;
         const state = get();
         const newFilters = { ...state.filters, ...filters };
         const page = newFilters.page ?? state.pagination.page;

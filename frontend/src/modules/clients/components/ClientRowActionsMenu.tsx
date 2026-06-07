@@ -73,7 +73,7 @@ export function ClientRowActionsMenu({
       <ListItemIcon>
         <DeleteIcon fontSize="small" color="error" />
       </ListItemIcon>
-      <ListItemText>Supprimer</ListItemText>
+      <ListItemText>Archiver</ListItemText>
     </MenuItem>,
   ]
 
@@ -96,7 +96,7 @@ export function ClientRowActionsMenu({
             <ReceiptLongIcon fontSize="small" />
           </IconButton>
         )}
-        <IconButton size="small" title="Supprimer" color="error" onClick={onDelete}>
+        <IconButton size="small" title="Archiver" color="error" onClick={onDelete}>
           <DeleteIcon fontSize="small" />
         </IconButton>
       </Stack>

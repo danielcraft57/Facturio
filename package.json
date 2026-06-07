@@ -1,6 +1,6 @@
 {
   "name": "Facturio",
-  "version": "1.3.10",
+  "version": "1.3.11",
   "private": true,
   "description": "Application de facturation complète",
   "scripts": {

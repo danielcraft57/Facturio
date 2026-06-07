@@ -9,6 +9,7 @@ import {
 	type ClientFolder,
 } from './client-folder.util';
 import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
+import { groupByYearAndMonth } from '../common/archive-group.util';
 
 /**
  * Service de gestion des clients
@@ -152,6 +153,7 @@ export class ClientsService {
 					countryCode: true,
 					isCompany: true,
 					status: true,
+					archivedAt: true,
 					createdAt: true,
 					updatedAt: true,
 					_count: { select: { invoices: true, quotes: true } },
@@ -199,7 +201,7 @@ export class ClientsService {
 				where: { ...base, ...buildClientFolderWhere(folder) } as any,
 			});
 
-		const [inbox, actifs, inactifs, prospects, entreprises, particuliers] =
+		const [inbox, actifs, inactifs, prospects, entreprises, particuliers, archives] =
 			await Promise.all([
 				count('inbox'),
 				count('actifs'),
@@ -207,9 +209,10 @@ export class ClientsService {
 				count('prospects'),
 				count('entreprises'),
 				count('particuliers'),
+				count('archives'),
 			]);
 
-		return { inbox, actifs, inactifs, prospects, entreprises, particuliers };
+		return { inbox, actifs, inactifs, prospects, entreprises, particuliers, archives };
 	}
 
 	/** CA payé + dernière facture (page courante) — groupBy Prisma (compatible SQLite/Postgres, évite bug Decimal→BigInt du raw SQL). */
@@ -299,18 +302,63 @@ export class ClientsService {
 		return this.prisma.client.update({ where: { id }, data: cleanData });
 	}
 
+	/** Archive un client (aucune suppression — factures et devis conservés). */
+	async archive(id: string, organizationId?: number) {
+		const client = await this.findOne(id, organizationId);
+		if (client.archivedAt) {
+			return { success: true, alreadyArchived: true, archivedAt: client.archivedAt };
+		}
+		const updated = await this.prisma.client.update({
+			where: { id },
+			data: { archivedAt: new Date(), status: 'INACTIVE' },
+		});
+		return { success: true, archivedAt: updated.archivedAt };
+	}
+
+	/** Restaure un client archivé dans la liste active. */
+	async restore(id: string, organizationId?: number) {
+		const client = await this.findOne(id, organizationId);
+		if (!client.archivedAt) {
+			return { success: true, alreadyActive: true };
+		}
+		await this.prisma.client.update({
+			where: { id },
+			data: { archivedAt: null, status: 'ACTIVE' },
+		});
+		return { success: true };
+	}
+
+	/** Clients archivés groupés par année et mois. */
+	async findArchivedGrouped(organizationId?: number) {
+		const where: { archivedAt: { not: null }; organizationId?: number } = {
+			archivedAt: { not: null },
+		};
+		if (organizationId) where.organizationId = organizationId;
+		const items = await this.prisma.client.findMany({
+			where,
+			orderBy: { updatedAt: 'desc' },
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				companyName: true,
+				isCompany: true,
+				status: true,
+				archivedAt: true,
+				updatedAt: true,
+			},
+		});
+		return {
+			groups: groupByYearAndMonth(items, (c) => c.archivedAt ?? c.updatedAt),
+			total: items.length,
+		};
+	}
+
 	/**
-	 * Supprime un client
-	 * 
-	 * @param id - ID du client
-	 * @param organizationId - ID de l'organisation (vérification multi-tenant)
-	 * @returns Confirmation de suppression
-	 * @throws {NotFoundException} Si client non trouvé
+	 * @deprecated Utiliser archive — conserve DELETE pour compatibilité API.
 	 */
 	async remove(id: string, organizationId?: number) {
-		await this.findOne(id, organizationId);
-		await this.prisma.client.delete({ where: { id } });
-		return { success: true };
+		return this.archive(id, organizationId);
 	}
 }
 

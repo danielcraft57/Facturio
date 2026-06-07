@@ -350,6 +350,144 @@ describe('Payables e2e', () => {
 		expect(brouillons.folderCounts.envoyes).toBe(1);
 	});
 
+	it('compta — achat OD à l’envoi et paiement BQ 401/512', async () => {
+		const creditor = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/creditors')
+			.send({ name: 'Fournisseur compta', email: 'fournisseur.compta@test.local' })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		const debt = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/debts')
+			.send({ creditorId: creditor.id, label: 'Facture fournisseur', totalAmount: 120 })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/payables/debts/${debt.id}/send`)
+			.send({ email: 'fournisseur.compta@test.local' })
+			.expect(201);
+
+		const purchase = await prisma.journalEntry.findFirst({
+			where: { reference: `ACHAT DET-${debt.id}` },
+			include: { lines: { include: { account: true } }, journal: true },
+		});
+		expect(purchase).toBeTruthy();
+		expect(purchase!.journal.code).toBe('OD');
+		expect(purchase!.lines.map((l) => l.account.code).sort()).toEqual(['401', '622'].sort());
+		const credit401 = purchase!.lines.find((l) => l.account.code === '401')!.credit;
+		expect(Number((credit401 as { toNumber?: () => number })?.toNumber?.() ?? credit401)).toBe(120);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/payables/debts/${debt.id}/payments`)
+			.send({ amount: 50, method: 'Virement' })
+			.expect(201);
+
+		const paymentRow = await prisma.payableDebtPayment.findFirst({
+			where: { debtId: debt.id },
+			orderBy: { id: 'desc' },
+		});
+		expect(paymentRow).toBeTruthy();
+
+		const paymentEntry = await prisma.journalEntry.findFirst({
+			where: { reference: `PAIEMENT DET-${debt.id}#${paymentRow!.id}` },
+			include: { lines: { include: { account: true } }, journal: true },
+		});
+		expect(paymentEntry).toBeTruthy();
+		expect(paymentEntry!.journal.code).toBe('BQ');
+		expect(paymentEntry!.lines.map((l) => l.account.code).sort()).toEqual(['401', '512'].sort());
+	});
+
+	it('compta — paiement sans envoi déclenche l’achat puis le règlement', async () => {
+		const creditor = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/creditors')
+			.send({ name: 'Famille compta' })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		const debt = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/debts')
+			.send({ creditorId: creditor.id, label: 'Prêt sans envoi', totalAmount: 164.52 })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/payables/debts/${debt.id}/payments`)
+			.send({ amount: 50 })
+			.expect(201);
+
+		const purchase = await prisma.journalEntry.findFirst({
+			where: { reference: `ACHAT DET-${debt.id}` },
+		});
+		expect(purchase).toBeTruthy();
+
+		const paymentRow = await prisma.payableDebtPayment.findFirst({
+			where: { debtId: debt.id },
+		});
+		const paymentEntry = await prisma.journalEntry.findFirst({
+			where: { reference: `PAIEMENT DET-${debt.id}#${paymentRow!.id}` },
+		});
+		expect(paymentEntry).toBeTruthy();
+	});
+
+	it('compta — annulation partielle : solde 401/622', async () => {
+		const creditor = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/creditors')
+			.send({ name: 'Partiel annul' })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		const debt = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/debts')
+			.send({ creditorId: creditor.id, label: 'Dette partielle', totalAmount: 100 })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/payables/debts/${debt.id}/payments`)
+			.send({ amount: 30 })
+			.expect(201);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/payables/debts/${debt.id}/cancel`)
+			.expect(201);
+
+		const cancelRemaining = await prisma.journalEntry.findFirst({
+			where: { reference: `ANNUL SOLDE ACHAT DET-${debt.id}` },
+			include: { lines: { include: { account: true } } },
+		});
+		expect(cancelRemaining).toBeTruthy();
+		expect(cancelRemaining!.lines.map((l) => l.account.code).sort()).toEqual(['401', '622'].sort());
+	});
+
+	it('compta — annulation contre-passe l’achat si aucun paiement', async () => {
+		const creditor = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/creditors')
+			.send({ name: 'Annul compta', email: 'annul.compta@test.local' })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		const debt = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/payables/debts')
+			.send({ creditorId: creditor.id, label: 'À annuler compta', totalAmount: 80 })
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/payables/debts/${debt.id}/send`)
+			.send({ email: 'annul.compta@test.local' })
+			.expect(201);
+
+		await authenticatedRequest(app, testUser.cookies)
+			.post(`/api/payables/debts/${debt.id}/cancel`)
+			.expect(201);
+
+		const cancelEntry = await prisma.journalEntry.findFirst({
+			where: { reference: `ANNUL ACHAT DET-${debt.id}` },
+		});
+		expect(cancelEntry).toBeTruthy();
+	});
+
 	it('GET /public/dettes/:token — vue publique sans auth', async () => {
 		const creditor = await authenticatedRequest(app, testUser.cookies)
 			.post('/api/payables/creditors')

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Box, Fade, LinearProgress, Stack, Typography } from '@mui/material'
+import { Box, LinearProgress, Stack, Typography } from '@mui/material'
 import { DocumentFolderSidebar, DocumentFolderMobileMenuButton } from './DocumentFolderSidebar'
 import type { DocumentFolder, DocumentFolderCounts } from '../../types/documentFolders'
 import {
@@ -63,7 +63,6 @@ export function DocumentFolderPageShell({
 }: DocumentFolderPageShellProps) {
   const showProgress = loading && !initialLoading
   const sidebarCountsLoading = countsLoading
-  const folderKey = contentKey ?? activeFolder
 
   const sidebarNode =
     sidebar ??
@@ -137,24 +136,18 @@ export function DocumentFolderPageShell({
             />
           )}
 
-          <Fade
-            key={folderKey}
-            in
-            timeout={{ enter: initialLoading ? 0 : 280, exit: 160 }}
+          <Box
+            sx={{
+              minWidth: 0,
+              maxWidth: '100%',
+              pt: showProgress ? 0.5 : 0,
+              opacity: showProgress ? 0.65 : 1,
+              transition: 'opacity 0.22s ease',
+              pointerEvents: loading ? 'none' : 'auto',
+            }}
           >
-            <Box
-              sx={{
-                minWidth: 0,
-                maxWidth: '100%',
-                pt: showProgress ? 0.5 : 0,
-                opacity: showProgress ? 0.65 : 1,
-                transition: 'opacity 0.22s ease',
-                pointerEvents: loading ? 'none' : 'auto',
-              }}
-            >
-              {children}
-            </Box>
-          </Fade>
+            {children}
+          </Box>
         </Box>
       </Box>
     </Box>

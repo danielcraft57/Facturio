@@ -108,4 +108,46 @@ describe('Receivables e2e', () => {
 		expect(res.invoices[0].daysPastDue).toBeGreaterThan(0);
 		expect(res.invoices[0].agingBucket).not.toBe('not_due');
 	});
+
+	it('GET /receivables — solde après acompte en brouillon', async () => {
+		const invoice = await authenticatedRequest(app, testUser.cookies)
+			.post('/api/invoices')
+			.send({
+				clientId,
+				applyClientCredits: false,
+				lines: [{ description: 'Solde mission', quantity: 1, unitPrice: 450, taxRate: 0.2 }],
+			})
+			.expect(201)
+			.then((r: { body: { id: string; total: unknown } }) => r.body);
+
+		const total = Number(invoice.total);
+		const solNumber = `SOL-TEST-${Date.now()}`;
+		await prisma.invoice.update({
+			where: { id: invoice.id },
+			data: {
+				number: solNumber,
+				status: 'DRAFT',
+				balance: total,
+				tags: JSON.stringify(['SOLDE_APRES_ACOMPTE', 'PENDING_EMIT']),
+				dueDate: new Date('2026-07-01'),
+			},
+		});
+
+		const res = await authenticatedRequest(app, testUser.cookies)
+			.get('/api/receivables?kind=remainder')
+			.expect(200)
+			.then(
+				(r: {
+					body: {
+						summary: { invoiceCount: number; byKind: { remainder: number } };
+						invoices: Array<{ documentKind: string; number: string }>;
+					};
+				}) => r.body,
+			);
+
+		expect(res.summary.invoiceCount).toBe(1);
+		expect(res.summary.byKind.remainder).toBeCloseTo(total, 2);
+		expect(res.invoices[0].documentKind).toBe('remainder');
+		expect(res.invoices[0].number).toBe(solNumber);
+	});
 });
