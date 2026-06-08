@@ -4,6 +4,7 @@ import {
   API_SCOPES_REFERENCE,
   buildCurlExample,
   formatDocUrl,
+  getApiDocSectionColor,
   normalizeApiBaseUrl,
 } from './apiDocsContent'
 
@@ -26,17 +27,20 @@ describe('apiDocsContent', () => {
 
   it('référence les scopes factures', () => {
     const scopes = API_SCOPES_REFERENCE.map((s) => s.id)
-		expect(scopes).toContain('factures.send')
-		expect(scopes).toContain('devis.write')
-	})
+    expect(scopes).toContain('factures.send')
+    expect(scopes).toContain('devis.write')
+  })
 
-	it('documente les parcours devis productSku et import catalogue', () => {
+  it('documente les parcours devis productSku et import catalogue', () => {
     const ids = API_DOC_SECTIONS.map((s) => s.id)
     expect(ids).toContain('catalog-import')
-		const devis = API_DOC_SECTIONS.find((s) => s.id === 'devis')
-		expect(devis?.body).toContain('productSku')
-		expect(devis?.exampleBody).toContain('productSku')
-	})
+    expect(ids).toContain('livrables')
+    const devis = API_DOC_SECTIONS.find((s) => s.id === 'devis')
+    expect(devis?.body).toContain('productSku')
+    expect(devis?.exampleBody).toContain('productSku')
+    const livrables = API_DOC_SECTIONS.find((s) => s.id === 'livrables')
+    expect(livrables?.endpoints?.[0]?.path).toBe('/public/produits/livrables/catalog')
+  })
 
   it('normalise une base /v1 vers /api', () => {
     expect(normalizeApiBaseUrl('https://api.facturio.com/v1')).toBe('https://api.facturio.com/api')
@@ -63,5 +67,11 @@ describe('apiDocsContent', () => {
     const auth = API_DOC_SECTIONS.find((s) => s.id === 'auth')
     expect(auth?.exampleBody).toBeUndefined()
     expect(auth?.exampleCurl?.path).toBe('/public')
+  })
+
+  it('associe une couleur à chaque section du sommaire', () => {
+    for (const section of API_DOC_SECTIONS) {
+      expect(getApiDocSectionColor(section.id)).toMatch(/^#[0-9a-f]{6}$/i)
+    }
   })
 })

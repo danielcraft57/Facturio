@@ -55,9 +55,30 @@ export const useProductsStore = create<ProductsState>()(
       ...initialState,
 
       async fetchProducts(filters = {}, page = 1) {
+        const limit = get().pagination.limit;
+        const cached =
+          page === 1 && !Object.keys(filters).length
+            ? productService.peekCatalogCache(undefined, 1, Math.max(limit, 48))
+            : null;
+        if (cached?.data) {
+          const raw: any = cached.data;
+          const rawList = Array.isArray(raw?.items) ? raw.items : [];
+          if (rawList.length > 0) {
+            set({
+              products: rawList.map((p: Record<string, unknown>) => normalizeProductFromApi(p)),
+              pagination: {
+                page: Number(raw?.page ?? 1),
+                limit: Number(raw?.pageSize ?? raw?.limit ?? limit),
+                total: Number(raw?.total ?? rawList.length),
+              },
+              lastFetch: Date.now(),
+              isStale: false,
+            });
+          }
+        }
         set({ isLoading: true });
         try {
-          const res = await productService.getProducts(filters, page, get().pagination.limit);
+          const res = await productService.getProducts(filters, page, limit);
           const raw: any = res?.data ?? res;
           const rawList = Array.isArray(raw?.items) ? raw.items : Array.isArray(raw?.data) ? raw.data : [];
           const list = rawList.map((p: Record<string, unknown>) => normalizeProductFromApi(p));

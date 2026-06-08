@@ -74,6 +74,7 @@ model Organization {
   clients                     Client[]
   invoices                    Invoice[]
   catalogItems                OrganizationCatalogItem[]
+  deliverableCatalogItems     DeliverableCatalogItem[]
   documents                   OrganizationDocument[]
   Pack                        Pack[]
   products                    Product[]
@@ -500,6 +501,22 @@ model Product {
   @@unique([organizationId, sku])
   @@index([organizationId])
   @@index([templateProductId])
+}
+
+/// Livrables réutilisables par organisation (libellé + tarif / durée par défaut).
+model DeliverableCatalogItem {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  label          String
+  labelKey       String
+  defaultAmount  Decimal?
+  defaultHours   Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, labelKey])
+  @@index([organizationId])
 }
 
 /// Catalogue produits personnalisé pour une organisation (ex. après inscription).

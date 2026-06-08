@@ -9,11 +9,14 @@ import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import VpnKeyIcon from '@mui/icons-material/VpnKey'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 
+export type SettingsNavSection = 'compte' | 'facturation' | 'donnees' | 'api'
+
 export type SettingsNavItem = {
   to: string
   label: string
   description: string
   icon: ReactNode
+  section?: SettingsNavSection
   /** Réservé aux plans Pro (API publique) */
   requiresPro?: boolean
 }
@@ -30,42 +33,49 @@ export const settingsNavItems: SettingsNavItem[] = [
     label: 'Entreprise',
     description: 'Identité, SIRET, adresse, contact',
     icon: <BusinessIcon fontSize="small" />,
+    section: 'compte',
   },
   {
     to: '/parametres/abonnement',
     label: 'Abonnement',
     description: 'Plan Free, Pro, quotas',
     icon: <CardMembershipIcon fontSize="small" />,
+    section: 'compte',
   },
   {
     to: '/parametres/facturation-electronique',
     label: 'Réforme 2026',
     description: 'Conformité e-facture & Factur-X',
     icon: <VerifiedUserIcon fontSize="small" />,
+    section: 'facturation',
   },
   {
     to: '/parametres/paiements',
     label: 'Paiements',
     description: 'Stripe sur vos factures',
     icon: <PaymentIcon fontSize="small" />,
+    section: 'facturation',
   },
   {
     to: '/parametres/confidentialite',
     label: 'Confidentialité',
     description: 'Mentions sur pages clients',
     icon: <PrivacyTipIcon fontSize="small" />,
+    section: 'donnees',
   },
   {
     to: '/parametres/donnees',
     label: 'Mes données',
     description: 'Export RGPD & suppression',
     icon: <StorageIcon fontSize="small" />,
+    section: 'donnees',
   },
   {
     to: '/parametres/tokens',
     label: 'API — Jetons',
     description: 'Accès programmatique Bearer (Pro)',
     icon: <VpnKeyIcon fontSize="small" />,
+    section: 'api',
     requiresPro: true,
   },
   {
@@ -73,6 +83,7 @@ export const settingsNavItems: SettingsNavItem[] = [
     label: 'API — Documentation',
     description: 'Endpoints publics REST (Pro)',
     icon: <MenuBookIcon fontSize="small" />,
+    section: 'api',
     requiresPro: true,
   },
 ]

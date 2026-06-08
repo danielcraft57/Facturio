@@ -32,12 +32,24 @@ export function useProductsCatalogList(debouncedSearch: string) {
 
   const refresh = useCallback(async () => {
     const gen = ++fetchGen.current
-    setLoading(true)
     setError(null)
+    const filters: ProductFilters = debouncedSearch.trim()
+      ? { search: debouncedSearch.trim() }
+      : {}
+
+    const cached = debouncedSearch.trim() ? null : productService.peekCatalogCache(undefined, 1, CATALOG_PAGE_SIZE)
+    if (cached && gen === fetchGen.current) {
+      const parsed = parseProductsPage(cached)
+      if (parsed.items.length > 0) {
+        setProducts(parsed.items)
+        setTotal(parsed.total)
+        setLoading(false)
+      }
+    } else {
+      setLoading(true)
+    }
+
     try {
-      const filters: ProductFilters = debouncedSearch.trim()
-        ? { search: debouncedSearch.trim() }
-        : {}
       const res = await productService.getProducts(filters, 1, CATALOG_PAGE_SIZE)
       if (gen !== fetchGen.current) return
       const parsed = parseProductsPage(res)

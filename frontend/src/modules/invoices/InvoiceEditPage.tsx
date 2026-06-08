@@ -87,6 +87,10 @@ export function InvoiceEditPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    void productService.prefetchCatalog(100)
+  }, [])
+
+  useEffect(() => {
     if (!id) return
     void load(id)
     if (productsStore.isStale || productsStore.products.length === 0) {

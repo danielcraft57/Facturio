@@ -154,8 +154,9 @@ model Organization {
 
   preferredTechnologies Json?
   onboardingCompletedAt DateTime?
-  catalogItems          OrganizationCatalogItem[]
-  products              Product[]
+  catalogItems              OrganizationCatalogItem[]
+  deliverableCatalogItems   DeliverableCatalogItem[]
+  products                  Product[]
 
   // Prospection externe (ProspectLab)
   prospectLabApiUrl String?
@@ -639,6 +640,21 @@ model Product {
   @@unique([organizationId, sku])
   @@index([organizationId])
   @@index([templateProductId])
+}
+
+model DeliverableCatalogItem {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  label          String
+  labelKey       String
+  defaultAmount  Decimal?
+  defaultHours   Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, labelKey])
+  @@index([organizationId])
 }
 
 model OrganizationCatalogItem {

@@ -6,10 +6,22 @@ import {
 	IsNumber,
 	IsOptional,
 	IsString,
+	Matches,
+	MaxLength,
 	Min,
+	MinLength,
+	ValidateNested,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ProductKind } from '@prisma/client';
+import { TechStackDto } from './tech-stack.dto';
+import { ProductDeliverableDto } from './product-deliverable.dto';
+import {
+	normalizeProductSku,
+	PRODUCT_SKU_FORMAT_HINT,
+	PRODUCT_SKU_MAX_LENGTH,
+	PRODUCT_SKU_PATTERN,
+} from '../product-sku.util';
 
 /**
  * DTO pour la création d'un produit
@@ -19,9 +31,13 @@ export class CreateProductDto {
 	@IsString()
 	name!: string;
 
-	@IsOptional()
+	@IsNotEmpty({ message: 'sku is required' })
 	@IsString()
-	sku?: string | null;
+	@MinLength(5)
+	@MaxLength(PRODUCT_SKU_MAX_LENGTH)
+	@Matches(PRODUCT_SKU_PATTERN, { message: PRODUCT_SKU_FORMAT_HINT })
+	@Transform(({ value }) => normalizeProductSku(value))
+	sku!: string;
 
 	@IsOptional()
 	@IsEnum(ProductKind)
@@ -65,16 +81,34 @@ export class CreateProductDto {
 
 	@IsOptional()
 	@IsArray()
-	@IsString({ each: true })
+	@ValidateNested({ each: true })
+	@Type(() => ProductDeliverableDto)
 	@Transform(({ value }) => {
 		if (value === undefined || value === null || value === '') return undefined;
-		if (Array.isArray(value)) return value;
+		if (Array.isArray(value)) {
+			return value
+				.map((item) => {
+					if (typeof item === 'string') {
+						const label = item.trim();
+						return label ? { label } : null;
+					}
+					if (item && typeof item === 'object' && 'label' in item) {
+						return item;
+					}
+					return null;
+				})
+				.filter(Boolean);
+		}
 		if (typeof value === 'string') {
-			return value.split(/[\r\n,]+/).map((s: string) => s.trim()).filter(Boolean);
+			return value
+				.split(/[\r\n,]+/)
+				.map((s: string) => s.trim())
+				.filter(Boolean)
+				.map((label: string) => ({ label }));
 		}
 		return value;
 	})
-	details?: string[];
+	details?: ProductDeliverableDto[];
 
 	@IsOptional()
 	@Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : parseInt(value, 10)))
@@ -97,4 +131,9 @@ export class CreateProductDto {
 	@IsOptional()
 	@IsString()
 	imageData?: string | null;
+
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => TechStackDto)
+	techStack?: TechStackDto | null;
 }

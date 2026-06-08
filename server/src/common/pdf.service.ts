@@ -10,6 +10,10 @@ import {
 } from '../invoices/invoice-deposit.util';
 import { resolveEngagementBreakdownForInvoice } from '../invoices/invoice-engagement-breakdown.util';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+	buildProductQuoteLineDisplay,
+	productHasEnrichableContent,
+} from '../products/product-quote-description.util';
 
 /**
  * Génération PDF factures et devis — template corporate (bleu marine / rouge).
@@ -186,14 +190,15 @@ export class PdfService {
 		});
 	}
 
-	generateQuotePdf(quote: any, organization?: any): Promise<Buffer> {
+	async generateQuotePdf(quote: any, organization?: any): Promise<Buffer> {
+		const lines = await this.enrichQuoteLinesForPdf(quote.lines || []);
 		return this.generatePdf({
 			kind: 'devis',
 			number: quote.number,
 			date: quote.createdAt,
 			document: quote,
 			client: quote.client,
-			lines: quote.lines || [],
+			lines,
 			totals: {
 				subtotal: quote.subtotal || 0,
 				tax: quote.tax || 0,
@@ -202,6 +207,43 @@ export class PdfService {
 			organization,
 			expiryDate: quote.expiryDate,
 			pdfTitle: `Devis ${quote.number}`
+		});
+	}
+
+	private async enrichQuoteLinesForPdf(lines: any[]): Promise<any[]> {
+		const productIds = [
+			...new Set(
+				lines
+					.map((l) => l.productId as number | null | undefined)
+					.filter((id): id is number => id != null),
+			),
+		];
+		if (!productIds.length) return lines;
+
+		const products = await this.prisma.product.findMany({
+			where: { id: { in: productIds } },
+			select: {
+				id: true,
+				name: true,
+				description: true,
+				details: true,
+				techStack: true,
+				languages: true,
+			},
+		});
+		const byId = new Map(products.map((p) => [p.id, p]));
+
+		return lines.map((line) => {
+			const productId = line.productId as number | null | undefined;
+			if (!productId) return line;
+			const product = byId.get(productId);
+			if (!product || !productHasEnrichableContent(product)) return line;
+			const quoteLineDisplay = buildProductQuoteLineDisplay(product);
+			return {
+				...line,
+				description: line.description || product.name,
+				quoteLineDisplay,
+			};
 		});
 	}
 

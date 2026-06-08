@@ -3,6 +3,7 @@ import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import { DeliverablesCatalogService } from './deliverables-catalog.service';
 import { NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
@@ -35,6 +36,10 @@ describe('ProductsService', () => {
 		emit: jest.fn(),
 	};
 
+	const mockDeliverablesCatalog = {
+		syncFromDeliverables: jest.fn().mockResolvedValue(undefined),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -50,6 +55,10 @@ describe('ProductsService', () => {
 				{
 					provide: RealtimeEventsService,
 					useValue: mockRealtime,
+				},
+				{
+					provide: DeliverablesCatalogService,
+					useValue: mockDeliverablesCatalog,
 				},
 			],
 		}).compile();

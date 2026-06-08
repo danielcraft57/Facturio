@@ -9,12 +9,14 @@ import AutorenewIcon from '@mui/icons-material/Autorenew'
 import GavelIcon from '@mui/icons-material/Gavel'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
+import BusinessIcon from '@mui/icons-material/Business'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import CreditScoreIcon from '@mui/icons-material/CreditScore'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import { CREANCES_PATH, DETTES_INBOX } from './encoursPaths'
+import { settingsNavItems } from '../../account/settingsNav'
 
-export type NavItemSection = 'activity' | 'encours'
+export type NavItemSection = 'activity' | 'encours' | 'compte' | 'facturation' | 'donnees' | 'api'
 
 export type NavItem = {
   to: string
@@ -43,6 +45,8 @@ export type NavGroup = {
   overviewCta?: { label: string; to: string }
   items: NavItem[]
   featured: NavFeatured
+  /** Panneau dense sans scroll (ex. Paramètres). */
+  layout?: 'default' | 'compact'
 }
 
 export const navDashboard: NavItem = {
@@ -153,6 +157,33 @@ export const navGroups: NavGroup[] = [
   },
 ]
 
+export const navSettingsGroup: NavGroup = {
+  id: 'parametres',
+  layout: 'compact',
+  label: 'Paramètres',
+  overview: 'Compte, entreprise, facturation électronique et préférences.',
+  overviewCta: { label: 'Vue d’ensemble', to: '/parametres' },
+  featured: {
+    title: 'Profil entreprise',
+    description: 'SIRET, adresse et coordonnées de facturation.',
+    to: '/parametres/entreprise',
+    cta: 'Configurer',
+    secondaryCta: { label: 'Abonnement', to: '/parametres/abonnement' },
+    icon: <BusinessIcon />,
+    accent: 'amber',
+  },
+  items: settingsNavItems
+    .filter((item) => item.to !== '/parametres')
+    .map((item) => ({
+      to: item.to,
+      label: item.label,
+      description: item.description,
+      icon: item.icon,
+      section: item.section,
+      badge: item.requiresPro ? 'Pro' : undefined,
+    })),
+}
+
 export const navSettings: NavItem = {
   to: '/parametres',
   label: 'Paramètres',
@@ -180,5 +211,8 @@ export function isNavActive(pathname: string, to: string): boolean {
 }
 
 export function isGroupActive(pathname: string, group: NavGroup): boolean {
+  if (group.id === 'parametres') {
+    return pathname === '/parametres' || pathname.startsWith('/parametres/')
+  }
   return group.items.some((item) => isNavActive(pathname, item.to))
 }

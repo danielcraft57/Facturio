@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
+  alpha,
   Box,
   Button,
   Chip,
@@ -33,8 +34,10 @@ import {
   buildCurlExample,
   formatDocUrl,
   getApiBaseUrl,
+  getApiDocSectionColor,
   type ApiDocSection,
 } from './apiDocsContent'
+import { useApiDocScrollSpy } from './useApiDocScrollSpy'
 
 const methodColors: Record<string, 'default' | 'primary' | 'success' | 'warning' | 'error'> = {
   GET: 'primary',
@@ -254,45 +257,108 @@ function SectionBlock({ section, base }: { section: ApiDocSection; base: string 
   )
 }
 
-function ReferenceNav({ items }: { items: { id: string; label: string }[] }) {
-  const theme = useTheme()
-  const isDesktopNav = useMediaQuery(theme.breakpoints.up('lg'))
+type NavItem = { id: string; label: string; color: string }
 
-  if (isDesktopNav) {
+function ReferenceNav({
+  items,
+  activeId,
+  onSelect,
+}: {
+  items: NavItem[]
+  activeId: string
+  onSelect: (id: string) => void
+}) {
+  const theme = useTheme()
+  const isSidebarNav = useMediaQuery(theme.breakpoints.up('md'))
+  const chipRefs = useRef<Partial<Record<string, HTMLDivElement | null>>>({})
+
+  useEffect(() => {
+    if (isSidebarNav) return
+    chipRefs.current[activeId]?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' })
+  }, [activeId, isSidebarNav])
+
+  if (isSidebarNav) {
     return (
-      <Paper
-        variant="outlined"
+      <Box
         sx={{
-          p: 1.5,
-          borderRadius: 2,
           position: 'sticky',
-          top: 88,
-          maxHeight: 'calc(100vh - 120px)',
-          overflowY: 'auto',
+          top: { md: 80, lg: 88 },
+          alignSelf: 'start',
+          maxHeight: { md: 'calc(100vh - 96px)', lg: 'calc(100vh - 120px)' },
+          zIndex: 1,
         }}
       >
-        <Typography variant="caption" color="text.secondary" sx={{ px: 0.5, display: 'block', mb: 1 }}>
-          Sommaire
-        </Typography>
-        <Stack spacing={0.25}>
-          {items.map((item) => (
-            <Button
-              key={item.id}
-              component="a"
-              href={`#${item.id}`}
-              size="small"
-              sx={{ justifyContent: 'flex-start', textTransform: 'none', fontWeight: 500, py: 0.75 }}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </Stack>
-      </Paper>
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 1.5,
+            borderRadius: 2,
+            maxHeight: 'inherit',
+            overflowY: 'auto',
+          }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ px: 0.5, display: 'block', mb: 1 }}>
+            Sommaire
+          </Typography>
+          <Stack spacing={0.35}>
+            {items.map((item) => {
+              const active = item.id === activeId
+              return (
+                <Button
+                  key={item.id}
+                  onClick={() => onSelect(item.id)}
+                  size="small"
+                  sx={{
+                    justifyContent: 'flex-start',
+                    gap: 1,
+                    textTransform: 'none',
+                    fontWeight: active ? 700 : 500,
+                    py: 0.85,
+                    px: 1,
+                    borderRadius: 1.5,
+                    color: active ? item.color : 'text.secondary',
+                    bgcolor: active ? alpha(item.color, 0.12) : 'transparent',
+                    borderLeft: 3,
+                    borderColor: active ? item.color : 'transparent',
+                    '&:hover': { bgcolor: alpha(item.color, 0.08) },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: '50%',
+                      bgcolor: item.color,
+                      flexShrink: 0,
+                      opacity: active ? 1 : 0.55,
+                      boxShadow: active ? `0 0 0 3px ${alpha(item.color, 0.2)}` : 'none',
+                    }}
+                  />
+                  <Box component="span" sx={{ textAlign: 'left', lineHeight: 1.35 }}>
+                    {item.label}
+                  </Box>
+                </Button>
+              )
+            })}
+          </Stack>
+        </Paper>
+      </Box>
     )
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 1, borderRadius: 2, position: 'sticky', top: { xs: 56, sm: 64 }, zIndex: 2, bgcolor: 'background.paper' }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1,
+        borderRadius: 2,
+        position: 'sticky',
+        top: { xs: 56, sm: 64 },
+        zIndex: 2,
+        alignSelf: 'start',
+        bgcolor: 'background.paper',
+      }}
+    >
       <Typography variant="caption" color="text.secondary" sx={{ px: 0.5, display: 'block', mb: 0.75 }}>
         Aller à
       </Typography>
@@ -307,18 +373,45 @@ function ReferenceNav({ items }: { items: { id: string; label: string }[] }) {
           scrollbarWidth: 'thin',
         }}
       >
-        {items.map((item) => (
-          <Chip
-            key={item.id}
-            component="a"
-            href={`#${item.id}`}
-            label={item.label}
-            clickable
-            size="small"
-            variant="outlined"
-            sx={{ flexShrink: 0, fontWeight: 500, maxWidth: 200 }}
-          />
-        ))}
+        {items.map((item) => {
+          const active = item.id === activeId
+          return (
+            <Chip
+              key={item.id}
+              ref={(el) => {
+                chipRefs.current[item.id] = el
+              }}
+              onClick={() => onSelect(item.id)}
+              label={
+                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ maxWidth: 180 }}>
+                  <Box
+                    sx={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      bgcolor: item.color,
+                      flexShrink: 0,
+                      opacity: active ? 1 : 0.65,
+                    }}
+                  />
+                  <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {item.label}
+                  </Box>
+                </Stack>
+              }
+              clickable
+              size="small"
+              variant={active ? 'filled' : 'outlined'}
+              sx={{
+                flexShrink: 0,
+                fontWeight: active ? 700 : 500,
+                color: active ? item.color : 'text.secondary',
+                bgcolor: active ? alpha(item.color, 0.14) : 'transparent',
+                borderColor: alpha(item.color, active ? 0.5 : 0.35),
+              }}
+            />
+          )
+        })}
       </Box>
     </Paper>
   )
@@ -328,19 +421,24 @@ export function ApiDocsPage() {
   const base = getApiBaseUrl()
   const [tab, setTab] = useState(0)
 
-  const navItems = useMemo(
-    () => [
-      { id: 'overview', label: 'Vue d’ensemble' },
-      ...API_DOC_SECTIONS.filter((s) => s.id !== 'overview').map((s) => ({ id: s.id, label: s.title })),
-    ],
+  const navItems = useMemo<NavItem[]>(
+    () =>
+      API_DOC_SECTIONS.map((s) => ({
+        id: s.id,
+        label: s.title,
+        color: getApiDocSectionColor(s.id),
+      })),
     [],
   )
+
+  const sectionIds = useMemo(() => navItems.map((item) => item.id), [navItems])
+  const { activeId, scrollToSection } = useApiDocScrollSpy(sectionIds, tab === 0)
 
   const tabPanelSx = { minWidth: 0, width: '100%', maxWidth: '100%' } as const
 
   return (
     <ProPlanGate featureLabel="La documentation API">
-    <Box sx={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+    <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
@@ -387,12 +485,12 @@ export function ApiDocsPage() {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', lg: 'minmax(168px, 200px) minmax(0, 1fr)' },
-              gap: 2,
+              gridTemplateColumns: { xs: '1fr', md: 'minmax(148px, 176px) minmax(0, 1fr)' },
+              gap: { xs: 2, md: 1.5, lg: 2 },
               alignItems: 'start',
             }}
           >
-            <ReferenceNav items={navItems} />
+            <ReferenceNav items={navItems} activeId={activeId} onSelect={scrollToSection} />
             <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
               {API_DOC_SECTIONS.map((section) => (
                 <SectionBlock key={section.id} section={section} base={base} />

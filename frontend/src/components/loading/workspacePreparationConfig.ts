@@ -30,6 +30,7 @@ const CONFIG: Record<WorkspacePreparationResource, WorkspacePreparationConfig> =
     title: 'Ouverture de l’espace factures',
     steps: [
       'Chargement des factures…',
+      'Chargement du catalogue produits…',
       'Organisation des dossiers…',
       'Préparation de l’espace factures…',
     ],
@@ -40,6 +41,7 @@ const CONFIG: Record<WorkspacePreparationResource, WorkspacePreparationConfig> =
     title: 'Ouverture de l’espace devis',
     steps: [
       'Chargement des devis…',
+      'Chargement du catalogue produits…',
       'Organisation des dossiers…',
       'Préparation de l’espace devis…',
     ],

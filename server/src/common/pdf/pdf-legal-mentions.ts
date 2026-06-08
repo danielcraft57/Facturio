@@ -13,6 +13,8 @@ export interface LegalFooterContent {
 	issuerLine: string;
 	/** Blocs de texte réglementaire */
 	paragraphs: string[];
+	/** Pied de page court (devis) */
+	compact?: boolean;
 }
 
 const COUNTRY_LABELS: Record<string, string> = {
@@ -34,12 +36,24 @@ export function formatCountryLabel(country?: string | null, countryCode?: string
 	return COUNTRY_LABELS[code] || (code || '');
 }
 
+function normalizeAddressPart(value: unknown): string {
+	if (value == null || value === '') return '';
+	if (Array.isArray(value)) {
+		return value.map(normalizeAddressPart).filter(Boolean).join('\n');
+	}
+	return String(value).trim();
+}
+
 /** Adresse postale lisible (sans code pays seul sur une ligne) */
 export function formatPostalAddress(organization?: any): string {
+	const zipCity = [organization?.zipCode, organization?.city]
+		.filter(Boolean)
+		.map((v) => String(v).trim())
+		.join(' ');
 	const parts = [
-		organization?.address,
-		organization?.address2,
-		[organization?.zipCode, organization?.city].filter(Boolean).join(' ')
+		normalizeAddressPart(organization?.address),
+		normalizeAddressPart(organization?.address2),
+		zipCity,
 	].filter(Boolean);
 	const countryLabel = formatCountryLabel(organization?.country, organization?.countryCode);
 	if (countryLabel && countryLabel !== 'France') {
@@ -147,16 +161,22 @@ export function buildFrenchLegalFooter(ctx: LegalMentionsContext): LegalFooterCo
 	} else {
 		const validity =
 			ctx.expiryDate != null
-				? `Validité : jusqu'au ${new Date(ctx.expiryDate).toLocaleDateString('fr-FR')} inclus.`
-				: "Validité : 30 jours à compter de la date d'émission, sauf mention contraire.";
+				? `Valable jusqu'au ${new Date(ctx.expiryDate).toLocaleDateString('fr-FR')}`
+				: "Valable 30 jours à compter de l'émission";
 		paragraphs.push(
-			`${validity} Prix HT ; TVA en vigueur à la facturation. Acceptation par signature « Bon pour accord », bon de commande ou paiement selon modalités convenues.`,
+			`${validity}. Prix HT, TVA en vigueur à la facturation. Acceptation : bon pour accord, signature ou paiement selon accord.`,
 		);
 		if (isB2C) {
-			paragraphs.push(
-				'Consommateur : droit de rétractation de 14 jours (contrats à distance ou hors établissement), sauf exceptions légales.',
-			);
+			paragraphs.push('Rétractation 14 jours (consommateur), sauf exceptions légales.');
 		}
+		if (customMentions) {
+			paragraphs.push(customMentions);
+		}
+		return {
+			issuerLine: buildIssuerLine(ctx),
+			paragraphs,
+			compact: true,
+		};
 	}
 
 	if (customMentions) {
@@ -165,6 +185,6 @@ export function buildFrenchLegalFooter(ctx: LegalMentionsContext): LegalFooterCo
 
 	return {
 		issuerLine: buildIssuerLine(ctx),
-		paragraphs
+		paragraphs,
 	};
 }

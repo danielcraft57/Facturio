@@ -3,9 +3,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import type { RealtimeAction } from '../realtime/realtime.types';
+import { flattenTechAssembly } from '../catalog/tech-assembly.utils';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { resolveVisualOnCreate } from './product-visual.utils';
+import { normalizeProductSku } from './product-sku.util';
+import { DeliverablesCatalogService } from './deliverables-catalog.service';
+import { parseProductDeliverables } from './product-deliverables.util';
 
 type ProductWriteDto = CreateProductDto | UpdateProductDto;
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
@@ -27,7 +31,18 @@ export class ProductsService {
 		private readonly prisma: PrismaService,
 		private readonly catalogPersonalization: CatalogPersonalizationService,
 		private readonly realtime: RealtimeEventsService,
+		private readonly deliverablesCatalog: DeliverablesCatalogService,
 	) {}
+
+	private async syncDeliverablesCatalog(
+		organizationId: number | null | undefined,
+		details: unknown,
+	) {
+		if (!organizationId || details === undefined) return;
+		const deliverables = parseProductDeliverables(details);
+		if (!deliverables.length) return;
+		await this.deliverablesCatalog.syncFromDeliverables(organizationId, deliverables);
+	}
 
 	/**
 	 * Crée un nouveau produit
@@ -36,10 +51,27 @@ export class ProductsService {
 	 * @returns Produit créé avec taux de TVA par défaut
 	 */
 	private toPrismaData(data: ProductWriteDto) {
-		const { languages, details, ...rest } = data as CreateProductDto;
+		const { languages, details, techStack, sku, ...rest } = data as CreateProductDto;
+		const resolvedLangs =
+			languages !== undefined
+				? languages
+				: techStack !== undefined
+					? flattenTechAssembly(techStack ?? undefined)
+					: undefined;
+		const techStackJson: Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined =
+			techStack === undefined
+				? undefined
+				: techStack == null
+					? Prisma.JsonNull
+					: (techStack as Prisma.InputJsonValue);
+
 		return {
 			...rest,
-			...(languages !== undefined ? { languages: languages ?? [] } : {}),
+			...(sku !== undefined
+				? { sku: sku ? normalizeProductSku(sku) : null }
+				: {}),
+			...(techStackJson !== undefined ? { techStack: techStackJson } : {}),
+			...(resolvedLangs !== undefined ? { languages: resolvedLangs ?? [] } : {}),
 			...(details !== undefined ? { details: details ?? [] } : {}),
 		};
 	}
@@ -54,13 +86,14 @@ export class ProductsService {
 			},
 			include: { defaultTaxRate: true },
 		});
+		await this.syncDeliverablesCatalog(organizationId, data.details);
 		this.notifyProduct(organizationId, 'created', product.id, product.name);
 		return product;
 	}
 
 	/** Produit catalogue de l’organisation par SKU exact (insensible à la casse côté appelant si besoin). */
 	async findBySku(sku: string, organizationId: number) {
-		const normalized = sku.trim();
+		const normalized = normalizeProductSku(sku);
 		if (!normalized) return null;
 		return this.prisma.product.findFirst({
 			where: { organizationId, sku: normalized },
@@ -222,6 +255,7 @@ export class ProductsService {
 			data: this.toPrismaData(data),
 			include: { defaultTaxRate: true },
 		});
+		await this.syncDeliverablesCatalog(organizationId, data.details ?? product.details);
 		this.notifyProduct(organizationId, 'updated', product.id, product.name);
 		return product;
 	}

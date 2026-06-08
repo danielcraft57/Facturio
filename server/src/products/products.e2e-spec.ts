@@ -93,10 +93,10 @@ describe('Products e2e', () => {
 			// Créer des produits de test
 			await prisma.product.createMany({
 				data: [
-					{ name: 'Product 1', sku: 'P1', unitPrice: 100, organizationId: testUser.organizationId },
-					{ name: 'Product 2', sku: 'P2', unitPrice: 200, organizationId: testUser.organizationId },
-					{ name: 'Product 3', sku: 'P3', unitPrice: 300, organizationId: testUser.organizationId },
-					{ name: 'Test Product', sku: 'TEST', unitPrice: 150, organizationId: testUser.organizationId },
+					{ name: 'Product 1', sku: 'TST-P1', unitPrice: 100, organizationId: testUser.organizationId },
+					{ name: 'Product 2', sku: 'TST-P2', unitPrice: 200, organizationId: testUser.organizationId },
+					{ name: 'Product 3', sku: 'TST-P3', unitPrice: 300, organizationId: testUser.organizationId },
+					{ name: 'Test Product', sku: 'TST-SRCH', unitPrice: 150, organizationId: testUser.organizationId },
 				],
 			});
 		});

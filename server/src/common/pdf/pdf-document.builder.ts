@@ -3,7 +3,7 @@ import { parseTagsJson } from '../document-folder.util';
 import { formatPdfCurrency } from './pdf-currency.util';
 import { getHeaderWaveImagePath } from './pdf-assets';
 import { buildFrenchLegalFooter, formatPostalAddress } from './pdf-legal-mentions';
-import { tryEmbedSignatureImage } from './pdf-signature.util';
+import { hasRenderableSignature, tryEmbedSignatureImage } from './pdf-signature.util';
 import {
 	PDF_LAYOUT,
 	PDF_THEME,
@@ -11,6 +11,18 @@ import {
 	type PdfDocumentKind,
 	type PdfTotals
 } from './pdf-theme';
+import {
+	buildDevisTableRowPlans,
+	drawQuoteLineDisplay,
+	measureQuoteLineDisplayHeight,
+	quoteLineUsesAlignedDeliverableRows,
+} from './pdf-line-description.render';
+import {
+	buildEmitterParty,
+	buildRecipientParty,
+	drawPartyBlock,
+} from './pdf-party-block';
+import type { QuoteLineDisplay } from '../../products/product-quote-description.util';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PdfDoc = any;
@@ -36,6 +48,8 @@ export interface BuildPdfDocumentOptions {
  * Construit le contenu visuel d'une facture ou d'un devis (template corporate).
  */
 export class PdfDocumentBuilder {
+	private pageIndex = 1;
+
 	constructor(private readonly logger?: { warn: (msg: string, err?: unknown) => void }) {}
 
 	// Prisma peut renvoyer des Decimal (avec une méthode `toNumber()`).
@@ -44,52 +58,120 @@ export class PdfDocumentBuilder {
 	}
 
 	build(doc: PdfDoc, options: BuildPdfDocumentOptions): void {
-		const { marginX, contentWidth, pageWidth } = PDF_LAYOUT;
+		const { marginX, contentWidth } = PDF_LAYOUT;
+		this.pageIndex = 1;
+		doc.on('pageAdded', () => {
+			this.pageIndex += 1;
+		});
+
 		const headerBottom = this.drawHeader(doc, options);
 		doc.y = headerBottom + PDF_LAYOUT.padSm;
 
-		this.drawClientBlock(doc, options.client, options.kind);
+		this.drawPartiesSection(doc, options);
 		this.drawDocumentMeta(doc, options);
 
-		this.drawLinesTable(doc, options.lines);
+		this.drawLinesTable(doc, options.lines, options.kind);
 		doc.y += PDF_LAYOUT.sectionGap;
 		this.drawTotals(doc, options.totals);
-		doc.y += PDF_LAYOUT.padLg;
 
-		const { blockY, footerBandTop, signatureHeight } = this.prepareClosingSection(doc, options);
-		const leftWidth = contentWidth * 0.58;
-		const rightX = marginX + leftWidth + 16;
-		const rightWidth = contentWidth - leftWidth - 16;
-
-		this.drawPaymentBlock(doc, options, marginX, blockY, leftWidth);
 		const signatureValue =
 			options.signature ?? options.organization?.signature ?? null;
-		const signatureDate = options.signatureDate ?? options.date ?? new Date();
-		this.drawSignatureBox(doc, rightX, blockY, rightWidth, signatureHeight, {
-			date: signatureDate,
-			signature: signatureValue,
-		});
+
+		if (options.kind === 'devis') {
+			this.drawDevisClosing(doc, options, signatureValue);
+		} else {
+			doc.y += PDF_LAYOUT.padLg;
+			const hasSignature = hasRenderableSignature(signatureValue);
+			const { blockY, footerBandTop, signatureHeight } = this.prepareClosingSection(
+				doc,
+				options,
+				hasSignature,
+			);
+
+			if (hasSignature) {
+				const leftWidth = contentWidth * 0.58;
+				const rightX = marginX + leftWidth + 16;
+				const rightWidth = contentWidth - leftWidth - 16;
+				this.drawPaymentBlock(doc, options, marginX, blockY, leftWidth);
+				this.drawSignatureBox(doc, rightX, blockY, rightWidth, signatureHeight, {
+					date: options.signatureDate ?? options.date ?? new Date(),
+					signature: signatureValue,
+				});
+			} else {
+				this.drawPaymentBlock(doc, options, marginX, blockY, contentWidth);
+			}
+
+			doc.save();
+			doc.strokeColor(PDF_THEME.border)
+				.lineWidth(0.5)
+				.moveTo(marginX, footerBandTop - 10)
+				.lineTo(marginX + contentWidth, footerBandTop - 10)
+				.stroke();
+			doc.restore();
+
+			this.drawLegalFooterAt(doc, options, footerBandTop);
+		}
+	}
+
+	/** Paiement + mentions légales en flux (évite une page 2 quasi vide). */
+	private drawDevisClosing(
+		doc: PdfDoc,
+		options: BuildPdfDocumentOptions,
+		signatureValue: string | null | undefined,
+	): void {
+		const { marginX, contentWidth } = PDF_LAYOUT;
+		const hasSignature = hasRenderableSignature(signatureValue);
+		const signatureHeight = hasSignature ? 88 : 0;
+		const paymentHeight = this.estimatePaymentBlockHeight(doc, options);
+		const legalHeight = this.measureLegalFooterHeight(doc, options);
+		const bodyHeight =
+			Math.max(paymentHeight, signatureHeight) + legalHeight + (hasSignature ? 28 : 20);
+
+		doc.y += PDF_LAYOUT.padSm;
+		const maxY = this.getPageMaxY(doc);
+		if (doc.y + bodyHeight > maxY) {
+			doc.addPage();
+			doc.y = (doc.page.margins?.top ?? 72) + PDF_LAYOUT.padSm;
+		}
+
+		const blockY = doc.y;
+		if (hasSignature) {
+			const leftWidth = contentWidth * 0.58;
+			const rightX = marginX + leftWidth + 16;
+			const rightWidth = contentWidth - leftWidth - 16;
+			this.drawPaymentBlock(doc, options, marginX, blockY, leftWidth);
+			this.drawSignatureBox(doc, rightX, blockY, rightWidth, signatureHeight, {
+				date: options.signatureDate ?? options.date ?? new Date(),
+				signature: signatureValue,
+			});
+			doc.y = blockY + Math.max(paymentHeight, signatureHeight) + PDF_LAYOUT.padMd;
+		} else {
+			this.drawPaymentBlock(doc, options, marginX, blockY, contentWidth);
+			doc.y = blockY + paymentHeight + PDF_LAYOUT.padSm;
+		}
 
 		doc.save();
 		doc.strokeColor(PDF_THEME.border)
 			.lineWidth(0.5)
-			.moveTo(marginX, footerBandTop - 10)
-			.lineTo(marginX + contentWidth, footerBandTop - 10)
+			.moveTo(marginX, doc.y)
+			.lineTo(marginX + contentWidth, doc.y)
 			.stroke();
 		doc.restore();
+		doc.y += PDF_LAYOUT.padSm;
 
-		this.drawLegalFooterAt(doc, options, footerBandTop);
+		this.drawLegalFooterInline(doc, options);
 	}
 
 	/** Réserve paiement + signature au-dessus du bandeau légal calé en bas de page. */
 	private prepareClosingSection(
 		doc: PdfDoc,
 		options: BuildPdfDocumentOptions,
+		hasSignature: boolean,
 	): { blockY: number; footerBandTop: number; signatureHeight: number } {
-		const signatureHeight = 88;
+		const signatureHeight = hasSignature ? 88 : 0;
 		const footerHeight = this.measureLegalFooterHeight(doc, options);
 		const paymentHeight = this.estimatePaymentBlockHeight(doc, options);
-		const bodyHeight = Math.max(paymentHeight, signatureHeight) + 24;
+		const bodyHeight = Math.max(paymentHeight, signatureHeight) + (hasSignature ? 20 : 10);
 		const maxY = this.getPageMaxY(doc);
 		let footerBandTop = maxY - footerHeight;
 
@@ -122,27 +204,26 @@ export class PdfDocumentBuilder {
 		this.drawHeaderWaves(doc, pageWidth, headerHeight);
 		this.drawHeaderBackground(doc, pageWidth, headerHeight); // PNG optionnel si présent dans assets/
 
-		const titleX = marginX + PDF_LAYOUT.padSm;
-		doc.fontSize(18)
+		doc.fontSize(17)
 			.fillColor(PDF_THEME.white)
 			.font('Helvetica-Bold')
-			.text(title, titleX, 36, { width: contentWidth * 0.55, lineGap: 2 });
+			.text(title, marginX, 32, { width: contentWidth, align: 'center', lineGap: 2 });
 
 		if (options.date) {
+			doc.save();
+			doc.opacity(0.9);
 			doc.fontSize(9)
 				.fillColor(PDF_THEME.white)
 				.font('Helvetica')
 				.text(
-					`Date : ${new Date(options.date).toLocaleDateString('fr-FR')}`,
-					titleX,
-					64,
-					{ width: contentWidth * 0.5, lineGap: 2 }
+					`Émis le ${new Date(options.date).toLocaleDateString('fr-FR')}`,
+					marginX,
+					56,
+					{ width: contentWidth, align: 'center', lineGap: 2 },
 				);
+			doc.opacity(1);
+			doc.restore();
 		}
-
-		const companyX = pageWidth - marginX - 220;
-		const companyY = 94;
-		this.drawCompanyBlock(doc, options.company, companyX, companyY, 220);
 
 		return PDF_LAYOUT.headerContentBottom;
 	}
@@ -168,7 +249,7 @@ export class PdfDocumentBuilder {
 	private drawHeaderWaves(doc: PdfDoc, pageWidth: number, headerHeight: number): void {
 		const h = headerHeight;
 		doc.save();
-		doc.moveTo(0, 0).lineTo(pageWidth, 0).lineTo(pageWidth, h * 0.5);
+		doc.moveTo(0, 0).lineTo(pageWidth, 0).lineTo(pageWidth, h * 0.55);
 		doc.bezierCurveTo(pageWidth * 0.78, h * 1.02, pageWidth * 0.38, h * 0.32, 0, h * 0.68);
 		doc.lineTo(0, 0).fill(PDF_THEME.navy);
 
@@ -177,65 +258,30 @@ export class PdfDocumentBuilder {
 			.lineTo(pageWidth, h * 0.42)
 			.bezierCurveTo(pageWidth * 0.5, h * 0.15, pageWidth * 0.18, h * 0.52, 0, h * 0.34)
 			.closePath()
-			.fill(PDF_THEME.red);
+			.fill(PDF_THEME.navyMid);
 		doc.restore();
 	}
 
-	private drawCompanyBlock(
-		doc: PdfDoc,
-		company: PdfCompanyInfo,
-		x: number,
-		y: number,
-		width: number
-	): void {
-		let cursorY = y;
+	/** Émetteur (gauche) + client / facturé à (droite) — commun devis & facture. */
+	private drawPartiesSection(doc: PdfDoc, options: BuildPdfDocumentOptions): void {
+		const { marginX, contentWidth } = PDF_LAYOUT;
+		const colGap = 24;
+		const colW = (contentWidth - colGap) / 2;
+		const startY = doc.y;
 
-		if (company.logo) {
-			const embedded = this.tryEmbedLogo(doc, company.logo, x + width - 52, y, 48);
-			if (embedded) cursorY = y + 52;
-		}
+		const emitter = buildEmitterParty(options.company, options.kind);
+		const recipient = buildRecipientParty(options.client, options.kind);
 
-		doc.fontSize(13)
-			.fillColor(PDF_THEME.navy)
-			.font('Helvetica-Bold')
-			.text(company.name, x, cursorY, { width, align: 'right', lineGap: 2 });
+		const embedLogo = (logo: string, x: number, y: number, size: number) =>
+			this.tryEmbedLogo(doc, logo, x, y, size);
 
-		cursorY = doc.y + 4;
-		doc.fontSize(8).fillColor(PDF_THEME.text).font('Helvetica');
+		const leftH = drawPartyBlock(doc, emitter, marginX, startY, colW, embedLogo);
+		const rightH = recipient
+			? drawPartyBlock(doc, recipient, marginX + colW + colGap, startY, colW)
+			: 0;
 
-		if (company.legalForm) {
-			doc.fontSize(7).fillColor(PDF_THEME.textMuted);
-			doc.text(company.legalForm, x, cursorY, { width, align: 'right', lineGap: 1 });
-			cursorY = doc.y + 4;
-			doc.fontSize(8).fillColor(PDF_THEME.text);
-		}
-
-		const contactLines = [
-			company.address,
-			company.phone ? `Tél. : ${company.phone}` : '',
-			company.email,
-			company.website
-		].filter(Boolean);
-
-		for (const line of contactLines) {
-			const lines = line.includes('\n') ? line.split('\n') : [line];
-			for (const part of lines) {
-				doc.text(part, x, cursorY, { width, align: 'right', lineGap: 1 });
-				cursorY = doc.y + 3;
-			}
-		}
-
-		const legalIds = [
-			company.siret ? `SIRET : ${company.siret}` : '',
-			company.rcs,
-			company.vat ? `TVA : ${company.vat}` : ''
-		].filter(Boolean);
-		if (legalIds.length) {
-			doc.fontSize(7).fillColor(PDF_THEME.textMuted);
-			doc.text(legalIds.join(' · '), x, cursorY + 2, { width, align: 'right', lineGap: 1 });
-		}
-
-		doc.x = PDF_LAYOUT.marginX;
+		doc.x = marginX;
+		doc.y = startY + Math.max(leftH, rightH) + PDF_LAYOUT.sectionGap;
 	}
 
 	private tryEmbedLogo(doc: PdfDoc, logo: string, x: number, y: number, size: number): boolean {
@@ -260,62 +306,10 @@ export class PdfDocumentBuilder {
 		return false;
 	}
 
-	private drawClientBlock(doc: PdfDoc, client: any, kind: PdfDocumentKind): void {
-		if (!client) return;
-
-		const { marginX, contentWidth } = PDF_LAYOUT;
-		const clientLabel = kind === 'facture' ? 'Facturé à' : 'Client';
-		const boxY = doc.y;
-		const boxPad = PDF_LAYOUT.padMd;
-		const textW = contentWidth - boxPad * 2;
-		const name = client.name || client.companyName || '—';
-
-		const lines: string[] = [];
-		if (client.address) lines.push(client.address);
-		if (client.email) lines.push(client.email);
-		if (client.phone) lines.push(`Tél. : ${client.phone}`);
-		if (client.isCompany && client.vatNumber) {
-			lines.push(`N° TVA intracommunautaire : ${client.vatNumber}`);
-		}
-		if (client.isCompany && client.siret) lines.push(`SIRET : ${client.siret}`);
-
-		const titleH = 18;
-		const lineH = 14;
-		const boxH = boxPad * 2 + titleH + lines.length * lineH;
-
-		doc.save();
-		doc.roundedRect(marginX, boxY, contentWidth, boxH, 8).fill(PDF_THEME.rowAlt);
-		doc.roundedRect(marginX, boxY, contentWidth, boxH, 8).lineWidth(1);
-		doc.strokeColor(PDF_THEME.border).stroke();
-		doc.restore();
-
-		doc.fontSize(10)
-			.fillColor(PDF_THEME.navy)
-			.font('Helvetica-Bold')
-			.text(`${clientLabel} : `, marginX + boxPad, boxY + boxPad, { continued: true })
-			.font('Helvetica')
-			.fillColor(PDF_THEME.textDark)
-			.text(name, { width: textW });
-
-		doc.fontSize(9).fillColor(PDF_THEME.text).font('Helvetica');
-		let innerY = boxY + boxPad + titleH;
-		for (const line of lines) {
-			doc.text(line, marginX + boxPad, innerY, { width: textW });
-			innerY += lineH;
-		}
-
-		doc.y = boxY + boxH + PDF_LAYOUT.sectionGap;
-	}
-
 	private drawDocumentMeta(doc: PdfDoc, options: BuildPdfDocumentOptions): void {
 		const { marginX, contentWidth } = PDF_LAYOUT;
 		const items: string[] = [];
 
-		if (options.date) {
-			items.push(
-				`Date d'émission : ${new Date(options.date).toLocaleDateString('fr-FR')}`
-			);
-		}
 		if (options.kind === 'facture' && options.document?.dueDate) {
 			items.push(
 				`Date d'échéance : ${new Date(options.document.dueDate).toLocaleDateString('fr-FR')}`
@@ -323,7 +317,7 @@ export class PdfDocumentBuilder {
 		}
 		if (options.kind === 'devis' && options.expiryDate) {
 			items.push(
-				`Validité : jusqu'au ${new Date(options.expiryDate).toLocaleDateString('fr-FR')}`
+				`Valable jusqu'au ${new Date(options.expiryDate).toLocaleDateString('fr-FR')}`,
 			);
 		}
 		if (!items.length) return;
@@ -333,13 +327,13 @@ export class PdfDocumentBuilder {
 			.font('Helvetica')
 			.text(items.join('   ·   '), marginX, doc.y + PDF_LAYOUT.padSm, {
 				width: contentWidth,
-				align: 'right',
-				lineGap: 2
+				align: 'center',
+				lineGap: 2,
 			});
 		doc.y += PDF_LAYOUT.sectionGap;
 	}
 
-	private drawLinesTable(doc: PdfDoc, lines: any[]): void {
+	private drawLinesTable(doc: PdfDoc, lines: any[], kind: PdfDocumentKind = 'facture'): void {
 		if (!lines.length) return;
 
 		const {
@@ -350,8 +344,8 @@ export class PdfDocumentBuilder {
 			tableCellPadX,
 			tableCellPadY
 		} = PDF_LAYOUT;
-		const colDescW = 268;
-		const colUnitW = 106;
+		const colDescW = kind === 'devis' ? 292 : 258;
+		const colUnitW = kind === 'devis' ? 96 : 108;
 		const colTotalW = contentWidth - colDescW - colUnitW - tableCellPadX * 2;
 		const cols = {
 			desc: marginX + tableCellPadX,
@@ -372,56 +366,89 @@ export class PdfDocumentBuilder {
 		doc.font('Helvetica').fontSize(9);
 		const pageBottom = this.getPageContentBottom(doc, 72);
 
+		let visualRowIndex = 0;
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
+			const quoteDisplay = kind === 'devis' ? (line.quoteLineDisplay as QuoteLineDisplay | undefined) : undefined;
 			const description = line.description || '';
-			const descHeight = doc.heightOfString(description, { width: colDescW });
-			const rowH = Math.max(lineHeight, descHeight + tableCellPadY * 2);
+			const useAlignedDeliverables =
+				kind === 'devis' && quoteDisplay && quoteLineUsesAlignedDeliverableRows(quoteDisplay);
 
-			if (rowY + rowH > pageBottom) {
-				doc.strokeColor(PDF_THEME.border)
-					.lineWidth(0.75)
-					.rect(marginX, tableTop, contentWidth, rowY - tableTop)
-					.stroke();
-				doc.addPage();
-				tableTop = (doc.page.margins?.top ?? 72) + PDF_LAYOUT.padSm;
-				rowY = this.drawTableHeader(doc, tableTop, cols, {
-					colDescW,
-					colUnitW,
-					colTotalW,
-					tableHeaderHeight,
-					tableCellPadY,
-					contentWidth,
-					marginX,
-				});
-				doc.font('Helvetica').fontSize(9);
-			}
+			const rowPlans = useAlignedDeliverables
+				? buildDevisTableRowPlans(doc, quoteDisplay, colDescW, tableCellPadY, lineHeight)
+				: null;
 
-			if (i % 2 === 0) {
-				doc.rect(marginX, rowY, contentWidth, rowH).fill(PDF_THEME.rowAlt);
+			const segments = rowPlans ?? [
+				{
+					height: Math.max(
+						lineHeight,
+						(quoteDisplay
+							? measureQuoteLineDisplayHeight(doc, quoteDisplay, colDescW, tableCellPadY)
+							: doc.heightOfString(description, { width: colDescW })) + tableCellPadY * 2,
+					),
+					unitPrice: this.toNumber(line.unitPrice),
+					lineTotal: (() => {
+						const unitPrice = this.toNumber(line.unitPrice);
+						const fromFields = unitPrice * 1;
+						const fromTotal = this.toNumber(line.total);
+						return Number.isFinite(fromFields) ? fromFields : fromTotal;
+					})(),
+					drawDescription: (d: PdfDoc, x: number, y: number, w: number) => {
+						if (quoteDisplay) {
+							drawQuoteLineDisplay(d, quoteDisplay, x, y, w);
+						} else {
+							d.text(description, x, y, { width: w });
+						}
+					},
+				},
+			];
+
+			for (const plan of segments) {
+				const rowH = plan.height;
+
+				if (rowY + rowH > pageBottom) {
+					doc.strokeColor(PDF_THEME.border)
+						.lineWidth(0.75)
+						.rect(marginX, tableTop, contentWidth, rowY - tableTop)
+						.stroke();
+					doc.addPage();
+					tableTop = (doc.page.margins?.top ?? 72) + PDF_LAYOUT.padSm;
+					rowY = this.drawTableHeader(doc, tableTop, cols, {
+						colDescW,
+						colUnitW,
+						colTotalW,
+						tableHeaderHeight,
+						tableCellPadY,
+						contentWidth,
+						marginX,
+					});
+					doc.font('Helvetica').fontSize(9);
+				}
+
+				if (visualRowIndex % 2 === 0) {
+					doc.rect(marginX, rowY, contentWidth, rowH).fill(PDF_THEME.rowAlt);
+				}
+				const cellY = rowY + tableCellPadY;
+				const priceY = rowY + (rowH - 11) / 2;
+				doc.fillColor(PDF_THEME.textDark);
+				plan.drawDescription(doc, cols.desc, cellY, colDescW);
+
+				if (plan.unitPrice != null && Number.isFinite(plan.unitPrice)) {
+					const lineTotal = plan.lineTotal ?? plan.unitPrice;
+					doc.text(this.formatCurrency(plan.unitPrice), cols.unit, priceY, {
+						width: colUnitW,
+						align: 'right',
+						lineBreak: false,
+					}).text(this.formatCurrency(lineTotal), cols.total, priceY, {
+						width: colTotalW,
+						align: 'right',
+						lineBreak: false,
+					});
+				}
+
+				rowY += rowH;
+				visualRowIndex += 1;
 			}
-			const cellY = rowY + tableCellPadY;
-			const unitPrice = this.toNumber(line.unitPrice);
-			const quantity = 1;
-			const lineTotalHtFromFields = unitPrice * quantity;
-			const lineTotalHtFromTotalField = this.toNumber(line.total);
-			const lineTotalHt = Number.isFinite(lineTotalHtFromFields)
-				? lineTotalHtFromFields
-				: lineTotalHtFromTotalField;
-			doc.fillColor(PDF_THEME.textDark)
-				.text(description, cols.desc, cellY, { width: colDescW })
-				.text(this.formatCurrency(unitPrice), cols.unit, cellY, {
-					width: colUnitW,
-					align: 'right',
-					lineBreak: false,
-				})
-				.text(
-					this.formatCurrency(lineTotalHt),
-					cols.total,
-					cellY,
-					{ width: colTotalW, align: 'right', lineBreak: false },
-				);
-			rowY += rowH;
 		}
 
 		doc.strokeColor(PDF_THEME.border)
@@ -429,16 +456,19 @@ export class PdfDocumentBuilder {
 			.rect(marginX, tableTop, contentWidth, rowY - tableTop)
 			.stroke();
 
-		doc
-			.font('Helvetica')
-			.fontSize(7.5)
-			.fillColor(PDF_THEME.textMuted)
-			.text('Montants des lignes exprimés en HT (hors TVA).', marginX, rowY + 4, {
-				width: contentWidth,
-				align: 'left',
-			});
-
-		doc.y = rowY + 20;
+		const hasRichLines = lines.some((line) => line.quoteLineDisplay);
+		if (!hasRichLines) {
+			doc.font('Helvetica')
+				.fontSize(7.5)
+				.fillColor(PDF_THEME.textMuted)
+				.text('Montants des lignes exprimés en HT (hors TVA).', marginX, rowY + 4, {
+					width: contentWidth,
+					align: 'left',
+				});
+			doc.y = rowY + 20;
+		} else {
+			doc.y = rowY + 8;
+		}
 	}
 
 	private drawTableHeader(
@@ -459,7 +489,7 @@ export class PdfDocumentBuilder {
 		doc.save();
 		doc.roundedRect(layout.marginX, tableTop, layout.contentWidth, layout.tableHeaderHeight, radius)
 			.lineWidth(1.5);
-		doc.strokeColor(PDF_THEME.red).stroke();
+		doc.strokeColor(PDF_THEME.highlight).stroke();
 		doc.restore();
 
 		const headerTextY = tableTop + layout.tableCellPadY;
@@ -546,12 +576,13 @@ export class PdfDocumentBuilder {
 		const netAmount = hasCredit
 			? Number(totals.netDue ?? Math.max(0, totals.total - creditApplied))
 			: totals.total;
-		doc.roundedRect(boxX, barY, boxWidth, barH, 15).fill(PDF_THEME.red);
+		doc.roundedRect(boxX, barY, boxWidth, barH, 15).fill(PDF_THEME.navy);
+		const totalTextY = barY + (barH - 11) / 2;
 		doc.fontSize(11)
 			.fillColor(PDF_THEME.white)
 			.font('Helvetica-Bold')
-			.text(netLabel, boxX + 14, barY + 9, { width: 80 })
-			.text(this.formatCurrency(netAmount), boxX + 90, barY + 9, {
+			.text(netLabel, boxX + 14, totalTextY, { width: 80, lineBreak: false })
+			.text(this.formatCurrency(netAmount), boxX + 90, totalTextY, {
 				width: boxWidth - 100,
 				align: 'right',
 				lineBreak: false,
@@ -682,18 +713,21 @@ export class PdfDocumentBuilder {
 		const pad = PDF_LAYOUT.padMd;
 		const lineGap = 3;
 		const textWidth = contentWidth - pad * 2;
-		const titleSize = 6.5;
-		const bodySize = 6.5;
+		const compact = legal.compact === true;
+		const titleSize = compact ? 6 : 6.5;
+		const bodySize = compact ? 6 : 6.5;
 		doc.font('Helvetica-Bold').fontSize(titleSize);
 		let textHeight = pad;
-		textHeight +=
-			doc.heightOfString('Mentions légales et conditions contractuelles', { width: textWidth }) + 4;
+		if (!compact) {
+			textHeight +=
+				doc.heightOfString('Mentions légales et conditions contractuelles', { width: textWidth }) + 4;
+		}
 		doc.font('Helvetica').fontSize(bodySize);
 		textHeight += doc.heightOfString(legal.issuerLine, { width: textWidth, lineGap }) + 4;
 		for (const p of legal.paragraphs) {
 			textHeight += doc.heightOfString(p, { width: textWidth, lineGap }) + 3;
 		}
-		textHeight += 16;
+		textHeight += compact ? 10 : 16;
 		return textHeight + pad;
 	}
 
@@ -716,38 +750,42 @@ export class PdfDocumentBuilder {
 			expiryDate: options.expiryDate,
 		});
 
-		const pad = PDF_LAYOUT.padMd;
-		const fontSize = 6.5;
-		const lineGap = 3;
+		const compact = legal.compact === true;
+		const pad = compact ? PDF_LAYOUT.padSm : PDF_LAYOUT.padMd;
+		const fontSize = compact ? 6 : 6.5;
+		const lineGap = 2;
 		const textWidth = contentWidth - pad * 2;
 
 		doc.save();
 		doc.rect(marginX, bandTop, contentWidth, bandHeight).fill(PDF_THEME.legalBg);
 		doc.restore();
 
-		doc.fontSize(fontSize).fillColor(PDF_THEME.navy).font('Helvetica-Bold');
-		doc.text('Mentions légales et conditions contractuelles', marginX + pad, bandTop + pad, {
-			width: textWidth,
-		});
+		let y = bandTop + pad;
+		if (!compact) {
+			doc.fontSize(fontSize).fillColor(PDF_THEME.navy).font('Helvetica-Bold');
+			doc.text('Mentions légales et conditions contractuelles', marginX + pad, y, {
+				width: textWidth,
+			});
+			y = doc.y + 4;
+		}
 
-		let y = doc.y + 4;
-		doc.font('Helvetica').fontSize(fontSize).fillColor(PDF_THEME.textDark);
-		doc.text(legal.issuerLine, marginX + pad, y, { width: textWidth, lineGap });
-		y = doc.y + 4;
+		doc.font('Helvetica').fontSize(fontSize).fillColor(PDF_THEME.textMuted);
+		doc.text(legal.issuerLine, marginX + pad, y, { width: textWidth, lineGap, align: 'center' });
+		y = doc.y + (compact ? 3 : 4);
 
-		doc.fillColor(PDF_THEME.text);
+		doc.font('Helvetica').fontSize(fontSize).fillColor(PDF_THEME.text);
 		for (const paragraph of legal.paragraphs) {
 			doc.text(paragraph, marginX + pad, y, {
 				width: textWidth,
 				lineGap,
-				align: 'left',
+				align: 'center',
 			});
-			y = doc.y + 3;
+			y = doc.y + 2;
 		}
 
-		const pageLineY = Math.min(y + 8, bandTop + bandHeight - pad - 6);
-		doc.fontSize(6).fillColor(PDF_THEME.textMuted);
-		doc.text(`Page ${doc.page.number} — Document généré par Facturio`, marginX + pad, pageLineY, {
+		const pageLineY = Math.min(y + 6, bandTop + bandHeight - pad - 5);
+		doc.fontSize(5.5).fillColor(PDF_THEME.textMuted);
+		doc.text(`Page ${this.pageIndex} — Facturio`, marginX + pad, pageLineY, {
 			width: textWidth,
 			align: 'center',
 			lineBreak: false,
@@ -755,6 +793,67 @@ export class PdfDocumentBuilder {
 
 		doc.x = marginX;
 		doc.y = bandTop + bandHeight;
+	}
+
+	/** Mentions légales en flux (devis) — évite une page 2 quasi vide. */
+	private drawLegalFooterInline(doc: PdfDoc, options: BuildPdfDocumentOptions): void {
+		const { marginX, contentWidth } = PDF_LAYOUT;
+		const legal = buildFrenchLegalFooter({
+			kind: options.kind,
+			company: options.company,
+			organization: options.organization,
+			document: options.document,
+			expiryDate: options.expiryDate,
+		});
+
+		const compact = legal.compact === true;
+		const pad = compact ? PDF_LAYOUT.padSm : PDF_LAYOUT.padMd;
+		const fontSize = compact ? 6 : 6.5;
+		const lineGap = 2;
+		const textWidth = contentWidth - pad * 2;
+		const startY = doc.y;
+
+		doc.save();
+		doc.rect(marginX, startY, contentWidth, 1).fill(PDF_THEME.legalBg);
+		doc.restore();
+
+		let y = startY + pad;
+		doc.save();
+		doc.rect(marginX, startY, contentWidth, this.measureLegalFooterHeight(doc, options))
+			.fill(PDF_THEME.legalBg);
+		doc.restore();
+
+		if (!compact) {
+			doc.fontSize(fontSize).fillColor(PDF_THEME.navy).font('Helvetica-Bold');
+			doc.text('Mentions légales et conditions contractuelles', marginX + pad, y, {
+				width: textWidth,
+			});
+			y = doc.y + 4;
+		}
+
+		doc.font('Helvetica').fontSize(fontSize).fillColor(PDF_THEME.textMuted);
+		doc.text(legal.issuerLine, marginX + pad, y, { width: textWidth, lineGap, align: 'center' });
+		y = doc.y + (compact ? 3 : 4);
+
+		doc.font('Helvetica').fontSize(fontSize).fillColor(PDF_THEME.text);
+		for (const paragraph of legal.paragraphs) {
+			doc.text(paragraph, marginX + pad, y, {
+				width: textWidth,
+				lineGap,
+				align: 'center',
+			});
+			y = doc.y + 2;
+		}
+
+		doc.fontSize(5.5).fillColor(PDF_THEME.textMuted);
+		doc.text(`Page ${this.pageIndex} — Facturio`, marginX + pad, y + 4, {
+			width: textWidth,
+			align: 'center',
+			lineBreak: false,
+		});
+
+		doc.x = marginX;
+		doc.y = y + 14;
 	}
 
 	private drawSignatureBox(
@@ -767,7 +866,7 @@ export class PdfDocumentBuilder {
 	): void {
 		const radius = 12;
 		doc.roundedRect(x, y, width, height, radius).lineWidth(1.5);
-		doc.strokeColor(PDF_THEME.red).stroke();
+		doc.strokeColor(PDF_THEME.highlight).stroke();
 
 		const sigPad = PDF_LAYOUT.padMd;
 		const dateStr = new Date(opts.date).toLocaleDateString('fr-FR');
@@ -827,21 +926,22 @@ function formatCapital(organization?: any): string | undefined {
 
 /** Extrait les infos société depuis l'organisation ou les variables d'environnement */
 export function resolveCompanyInfo(organization?: any): PdfCompanyInfo {
-	const isEI =
-		organization?.companyStatus === 'AUTO_ENTREPRENEUR' ||
-		organization?.companyStatus === 'MICRO_ENTERPRISE';
-	const nameRaw =
-		organization?.legalName ||
-		organization?.name ||
+	const tradeName = organization?.name?.trim() || '';
+	const personLegal = organization?.legalName?.trim() || '';
+	const displayName =
+		tradeName ||
+		personLegal ||
 		process.env.COMPANY_NAME ||
 		'Votre Entreprise';
-	const name = nameRaw;
+	const legalNameSubtitle =
+		tradeName && personLegal && tradeName !== personLegal ? personLegal : undefined;
 
 	const postal = formatPostalAddress(organization);
 	const envAddress = process.env.COMPANY_ADDRESS ?? '';
 
 	return {
-		name,
+		name: displayName,
+		legalName: legalNameSubtitle,
 		legalForm: formatLegalForm(organization),
 		capital: formatCapital(organization),
 		address: postal || envAddress,

@@ -186,7 +186,7 @@ export function ProductCatalogCard({
           <Box component="ul" sx={{ m: 0, mt: 1, pl: 2.5, color: 'text.secondary' }}>
             {details.map((d, i) => (
               <Typography key={i} component="li" variant="caption">
-                {d}
+                {d.label}
               </Typography>
             ))}
           </Box>

@@ -3,6 +3,7 @@ import {
 	Controller,
 	Delete,
 	Get,
+	NotFoundException,
 	Param,
 	Patch,
 	Post,
@@ -13,6 +14,7 @@ import { ApiBearerGuard, RequireApiScopes } from './guards/api-bearer.guard';
 import { ApiOrganizationId } from './decorators/api-org.decorator';
 import { ClientsService } from '../clients/clients.service';
 import { ProductsService } from '../products/products.service';
+import { DeliverablesCatalogService } from '../products/deliverables-catalog.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { QuotesService, UpdateQuoteDto } from '../quotes/quotes.service';
 import { CreateClientDto } from '../clients/dto/create-client.dto';
@@ -95,6 +97,20 @@ export class PublicApiController {
 	@RequireApiScopes('produits.read')
 	listProducts(@Query() query: ListProductsQueryDto, @ApiOrganizationId() orgId: number) {
 		return this.products.findAll(query, orgId);
+	}
+
+	@Get('produits/sku/:sku')
+	@RequireApiScopes('produits.read')
+	async getProductBySku(@Param('sku') sku: string, @ApiOrganizationId() orgId: number) {
+		const product = await this.products.findBySku(sku, orgId);
+		if (!product) throw new NotFoundException('Produit introuvable');
+		return product;
+	}
+
+	@Get('produits/livrables/catalog')
+	@RequireApiScopes('produits.read')
+	searchDeliverablesCatalog(@Query('q') q: string, @ApiOrganizationId() orgId: number) {
+		return this.deliverablesCatalog.search(orgId, q);
 	}
 
 	@Get('produits/:id')

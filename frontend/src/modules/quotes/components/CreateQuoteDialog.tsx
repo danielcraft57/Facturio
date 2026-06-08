@@ -488,7 +488,7 @@ export function CreateQuoteDialog({
           onRemoveLine={handleRemoveLine}
           onLineChange={(index, field, value) => handleLineChange(index, field, value)}
           onProductPicked={(index, product) => {
-            const label = (product.description ?? product.name ?? '').trim()
+            const label = (product.name ?? '').trim()
             setFormData((prev) => {
               const next = [...prev.lines]
               next[index] = {

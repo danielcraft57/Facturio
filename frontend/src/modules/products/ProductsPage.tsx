@@ -56,7 +56,7 @@ function scoreProduct(p: Product, qTokens: string[]): number {
   const name = (p.name ?? '').toLowerCase();
   const sku = (p.sku ?? '').toLowerCase();
   const desc = (p.description ?? '').toLowerCase();
-  const details = (p.details ?? []).join(' ').toLowerCase();
+  const details = (p.details ?? []).map(d => (typeof d === 'string' ? d : d.label)).join(' ').toLowerCase();
   const cat = (p.category ?? '').toLowerCase();
   const pur = (p.purpose ?? '').toLowerCase();
   const langs = [...(p.languages ?? []), ...Object.values(p.techStack ?? {}).flat()]
