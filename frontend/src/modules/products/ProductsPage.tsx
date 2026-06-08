@@ -59,7 +59,9 @@ function scoreProduct(p: Product, qTokens: string[]): number {
   const details = (p.details ?? []).join(' ').toLowerCase();
   const cat = (p.category ?? '').toLowerCase();
   const pur = (p.purpose ?? '').toLowerCase();
-  const langs = (p.languages ?? []).join(' ').toLowerCase();
+  const langs = [...(p.languages ?? []), ...Object.values(p.techStack ?? {}).flat()]
+    .join(' ')
+    .toLowerCase();
   const hay = `${name} ${sku} ${desc} ${details} ${cat} ${pur} ${langs}`;
 
   let s = 0;

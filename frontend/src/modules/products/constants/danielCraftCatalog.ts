@@ -1,12 +1,15 @@
-/** Aligné sur https://danielcraft.fr/autres-prestations */
+/** Sections catalogue v2 — livrables par stack (aligné dev-products.catalog.ts) */
 
 export type CatalogSectionId =
-  | 'identity'
+  | 'sites'
+  | 'fullstack'
+  | 'cms'
+  | 'python'
+  | 'mobile'
   | 'ai'
-  | 'technical'
-  | 'site'
-  | 'maintenance'
-  | 'offers';
+  | 'devops'
+  | 'security'
+  | 'addons';
 
 export const CATALOG_SECTIONS: {
   id: CatalogSectionId;
@@ -15,72 +18,84 @@ export const CATALOG_SECTIONS: {
   skus: string[];
 }[] = [
   {
-    id: 'offers',
-    label: 'Offres principales',
-    subtitle: 'Sites, applications métier et packs.',
-    skus: ['SITE-VITRINE', 'AUTO-METIER', 'AUDIT-OPTIM', 'PACK-SEO-GOOGLE-CHATGPT'],
+    id: 'sites',
+    label: 'Sites & vitrine',
+    subtitle: 'HTML, WordPress, Next.js, Nuxt.',
+    skus: ['STACK-WEB-STATIC', 'STACK-WP-VITRINE', 'STACK-NEXT-LANDING', 'STACK-NUXT-SITE'],
   },
   {
-    id: 'identity',
-    label: 'Identité & visibilité',
-    subtitle: 'Identité web multi-supports, SEO Google et ChatGPT.',
-    skus: ['IDENTITE-MULTI', 'SEO-BASIQUE', 'SEO-CHATGPT'],
-  },
-  {
-    id: 'ai',
-    label: 'Intelligence artificielle & ChatGPT',
-    subtitle: 'Assistants, automatisation et contenus IA.',
+    id: 'fullstack',
+    label: 'Full-stack & APIs',
+    subtitle: 'React, NestJS, Supabase, GraphQL, Laravel.',
     skus: [
-      'IA-FAQ-SITE',
-      'IA-SUPPORT-EMAIL',
-      'IA-CONTENUS-WEB',
-      'IA-REDACTION-COMMERCIALE',
-      'IA-ANALYSE-DONNEES',
-      'IA-CHATBOT-ECOMMERCE',
-      'IA-AUTOMATISATION-TACHES',
-      'IA-MAINTENANCE-MENSUEL',
-      'IA-EVOLUTION-FEATURE',
-      'IA-AUDIT-USAGE',
+      'STACK-MVP-REACT-NEST',
+      'STACK-NEXT-SUPABASE',
+      'STACK-API-GRAPHQL-TS',
+      'STACK-VUE-DASHBOARD',
+      'STACK-LARAVEL-APP',
     ],
   },
   {
-    id: 'technical',
-    label: 'Technique & intégration',
-    subtitle: 'Architecture, CRM, migrations et API.',
-    skus: ['CONSEIL-ARCHI', 'INTEG-CRM', 'MIGRATION-DONNEES', 'INTEG-API', 'RAPPORT-PERF'],
+    id: 'cms',
+    label: 'E-commerce & CMS',
+    subtitle: 'PrestaShop, Shopify.',
+    skus: ['STACK-PRESTASHOP-BOUTIQUE', 'STACK-SHOPIFY-THEME'],
   },
   {
-    id: 'site',
-    label: 'Site & contenu',
-    subtitle: 'Pages, formulaires et refontes légères.',
-    skus: ['PAGE-SUPP', 'FORM-AVANCE', 'REFONTE-LEGERE', 'MAJ-CONTENU-5H', 'FORMATION-DEMI'],
+    id: 'python',
+    label: 'Python & data',
+    subtitle: 'FastAPI, Django, RAG.',
+    skus: ['STACK-FASTAPI-API', 'STACK-DJANGO-PORTAL', 'STACK-RAG-LANGCHAIN'],
   },
   {
-    id: 'maintenance',
-    label: 'Maintenance & support',
-    subtitle: 'Hébergement, sécurité et accompagnement.',
+    id: 'mobile',
+    label: 'Mobile',
+    subtitle: 'React Native, Flutter.',
+    skus: ['STACK-RN-APP', 'STACK-FLUTTER-APP'],
+  },
+  {
+    id: 'ai',
+    label: 'IA & automatisation',
+    subtitle: 'Chatbots, n8n, Claude.',
+    skus: ['STACK-CHATBOT-WEB', 'STACK-N8N-WORKFLOW', 'STACK-CLAUDE-INTEG'],
+  },
+  {
+    id: 'devops',
+    label: 'DevOps & infra',
+    subtitle: 'Docker, K8s, AWS.',
+    skus: ['STACK-DOCKER-CICD', 'STACK-K8S-DEPLOY', 'STACK-AWS-LIGHT'],
+  },
+  {
+    id: 'security',
+    label: 'Sécurité & audit',
+    subtitle: 'OWASP, pentest.',
+    skus: ['STACK-AUDIT-SECU', 'STACK-PENTEST-APP'],
+  },
+  {
+    id: 'addons',
+    label: 'Add-ons & récurrent',
+    subtitle: 'SEO, pages, maintenance, support.',
     skus: [
-      'MAINT-MENSUEL',
-      'HEBERG-DOMAIN',
-      'BACKUP-SECU',
-      'SSL-CONFIG',
-      'SUPPORT-ABO',
-      'DEPANNAGE-2H',
-      'ACCOMP-H',
-      'SUPPORT-H',
+      'STACK-MAINT-MENSUEL',
+      'STACK-SUPPORT-ABO',
+      'ADDON-SEO-BASIQUE',
+      'ADDON-PAGE-SUPP',
+      'ADDON-DEPANNAGE-2H',
+      'ADDON-ACCOMP-H',
+      'ADDON-FORMATION',
     ],
   },
 ];
 
 const OTHER_SECTION = {
-  id: 'offers' as CatalogSectionId,
-  label: 'Autres prestations',
-  subtitle: 'Produits personnalisés hors catalogue site.',
+  id: 'sites' as CatalogSectionId,
+  label: 'Autres produits',
+  subtitle: 'Produits personnalisés hors catalogue.',
   skus: [] as string[],
 };
 
 export function groupProductsBySection<T extends { sku?: string }>(
-  products: T[]
+  products: T[],
 ): { section: (typeof CATALOG_SECTIONS)[number]; products: T[] }[] {
   const usedIds = new Set<number | string>();
   const grouped: { section: (typeof CATALOG_SECTIONS)[number]; products: T[] }[] = [];

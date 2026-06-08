@@ -1,54 +1,122 @@
 {
-  "version": 1,
+  "version": 2,
   "packs": [
     {
-      "id": "agence-web",
-      "name": "Pack Agence web",
-      "description": "Sites vitrine, refontes, pages et SEO pour agences et freelances web.",
-      "priceHint": "19",
+      "id": "junior-premier-client",
+      "name": "Pack Premier client (junior)",
+      "description": "Site statique, SEO, pages, maintenance — pour facturer votre première mission.",
+      "priceHint": "9",
+      "audience": "junior",
+      "suggestedProfiles": ["student", "freelance", "indie"],
       "skus": [
-        "SITE-VITRINE",
-        "REFONTE-LEGERE",
-        "PAGE-SUPP",
-        "FORM-AVANCE",
-        "SEO-BASIQUE",
-        "PACK-SEO-GOOGLE-CHATGPT",
-        "IDENTITE-MULTI",
-        "FORMATION-DEMI",
-        "MAJ-CONTENU-5H",
-        "DEV-VUE-SPA"
+        "STACK-WEB-STATIC",
+        "ADDON-SEO-BASIQUE",
+        "ADDON-PAGE-SUPP",
+        "STACK-MAINT-MENSUEL",
+        "ADDON-FORMATION",
+        "ADDON-DEPANNAGE-2H"
       ]
     },
     {
-      "id": "automation",
-      "name": "Pack Automatisation",
-      "description": "Intégrations API, CRM, migrations et scripts d'automatisation.",
-      "priceHint": "15",
+      "id": "junior-fullstack-ts",
+      "name": "Pack Full-Stack TypeScript (junior)",
+      "description": "MVP React/Nest, Next+Supabase, Docker CI/CD — stack la plus demandée.",
+      "priceHint": "14",
+      "audience": "junior",
+      "suggestedProfiles": ["student", "freelance", "studio"],
       "skus": [
-        "INTEG-API",
-        "INTEG-CRM",
-        "MIGRATION-DONNEES",
-        "AUTO-METIER",
-        "IA-AUTOMATISATION-TACHES",
-        "DEV-API-REST",
-        "DEV-GRAPHQL",
-        "AUDIT-OPTIM"
+        "STACK-MVP-REACT-NEST",
+        "STACK-NEXT-SUPABASE",
+        "STACK-DOCKER-CICD",
+        "ADDON-SEO-BASIQUE",
+        "ADDON-ACCOMP-H"
       ]
     },
     {
-      "id": "maintenance",
-      "name": "Pack Maintenance & SLA",
-      "description": "Contrats récurrents, hébergement, sauvegardes et support.",
+      "id": "junior-wordpress",
+      "name": "Pack WordPress (junior)",
+      "description": "Site WP, pages, SEO, maintenance — entrée classique du marché.",
       "priceHint": "12",
+      "audience": "junior",
+      "suggestedProfiles": ["student", "freelance"],
       "skus": [
-        "MAINT-MENSUEL",
-        "HEBERG-DOMAIN",
-        "BACKUP-SECU",
-        "SSL-CONFIG",
-        "SUPPORT-ABO",
-        "DEPANNAGE-2H",
-        "SUPPORT-H",
-        "IA-MAINTENANCE-MENSUEL"
+        "STACK-WP-VITRINE",
+        "STACK-WEB-STATIC",
+        "ADDON-SEO-BASIQUE",
+        "STACK-MAINT-MENSUEL",
+        "ADDON-DEPANNAGE-2H"
+      ]
+    },
+    {
+      "id": "junior-python",
+      "name": "Pack Python (junior)",
+      "description": "API FastAPI, portail Django, agent RAG — backend et IA.",
+      "priceHint": "14",
+      "audience": "junior",
+      "suggestedProfiles": ["student", "freelance"],
+      "skus": [
+        "STACK-FASTAPI-API",
+        "STACK-DJANGO-PORTAL",
+        "STACK-RAG-LANGCHAIN",
+        "STACK-N8N-WORKFLOW",
+        "ADDON-ACCOMP-H"
+      ]
+    },
+    {
+      "id": "junior-ia",
+      "name": "Pack IA & no-code (junior)",
+      "description": "Chatbot site, n8n, Claude — monétiser l'IA sans être expert ML.",
+      "priceHint": "13",
+      "audience": "junior",
+      "suggestedProfiles": ["student", "freelance", "indie"],
+      "skus": [
+        "STACK-CHATBOT-WEB",
+        "STACK-N8N-WORKFLOW",
+        "STACK-CLAUDE-INTEG",
+        "ADDON-SEO-BASIQUE"
+      ]
+    },
+    {
+      "id": "pack-agence-web",
+      "name": "Pack Agence web",
+      "description": "Sites, landings Next, Nuxt, SEO et formation client.",
+      "priceHint": "19",
+      "audience": "all",
+      "skus": [
+        "STACK-WEB-STATIC",
+        "STACK-NEXT-LANDING",
+        "STACK-NUXT-SITE",
+        "ADDON-SEO-BASIQUE",
+        "ADDON-PAGE-SUPP",
+        "ADDON-FORMATION"
+      ]
+    },
+    {
+      "id": "pack-automation",
+      "name": "Pack Automatisation",
+      "description": "APIs, n8n, RAG, intégrations IA.",
+      "priceHint": "15",
+      "audience": "all",
+      "skus": [
+        "STACK-N8N-WORKFLOW",
+        "STACK-RAG-LANGCHAIN",
+        "STACK-CLAUDE-INTEG",
+        "STACK-FASTAPI-API",
+        "STACK-API-GRAPHQL-TS"
+      ]
+    },
+    {
+      "id": "pack-maintenance",
+      "name": "Pack Maintenance & SLA",
+      "description": "Contrats récurrents, dépannage, accompagnement.",
+      "priceHint": "12",
+      "audience": "all",
+      "skus": [
+        "STACK-MAINT-MENSUEL",
+        "STACK-SUPPORT-ABO",
+        "ADDON-DEPANNAGE-2H",
+        "ADDON-ACCOMP-H",
+        "STACK-DOCKER-CICD"
       ]
     }
   ]

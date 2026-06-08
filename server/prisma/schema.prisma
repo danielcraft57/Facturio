@@ -469,8 +469,10 @@ model Product {
   purpose                  String?
   /// * Catégorie fonctionnelle (SETUP, THEME, DEV, MAINTENANCE, etc.)
   category                 String?
-  /// * Langages / technos (ex: TypeScript, React, Nest) stockés en JSON array
+  /// * Langages / technos (liste plate dérivée de techStack)
   languages                Json?
+  /// * Assemblage : langages, frontend, backend, CMS, BDD, DevOps, IA, mobile, sécurité
+  techStack                Json?
   /// * Points clés (bullet points) stockés en JSON array
   details                  Json?
   /// * Temps estimé en heures pour la prestation

@@ -1,3 +1,5 @@
+import type { TechStackAssembly } from './techStack';
+
 export type ProductKind = 'SAAS' | 'APP' | 'SERVICE' | 'GOOD';
 export type ProductPurpose = 'WEBSITE' | 'SAAS' | 'ECOMMERCE' | 'SHOWCASE';
 export type ProductCategory =
@@ -26,6 +28,7 @@ export interface Product {
   purpose?: ProductPurpose;
   category?: ProductCategory;
   languages?: string[];
+  techStack?: TechStackAssembly;
   estimatedHours?: number;
   description?: string;
   details?: string[];
@@ -45,6 +48,7 @@ export interface CreateProductData {
   purpose?: ProductPurpose;
   category?: ProductCategory;
   languages?: string[];
+  techStack?: TechStackAssembly;
   estimatedHours?: number;
   description?: string;
   details?: string[];
@@ -62,6 +66,7 @@ export interface UpdateProductData {
   purpose?: ProductPurpose;
   category?: ProductCategory;
   languages?: string[];
+  techStack?: TechStackAssembly;
   estimatedHours?: number;
   description?: string;
   details?: string[];

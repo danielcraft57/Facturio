@@ -5,21 +5,28 @@ describe('CatalogPersonalizationService', () => {
 	const mockProducts = [
 		{
 			id: 1,
-			sku: 'SITE-VITRINE',
+			sku: 'STACK-WEB-STATIC',
 			unitPrice: 490,
 			languages: ['HTML', 'CSS', 'JavaScript'],
+			techStack: { languages: ['HTML', 'CSS', 'JavaScript'] },
 		},
 		{
 			id: 2,
-			sku: 'SEO-BASIQUE',
-			unitPrice: 120,
-			languages: [],
+			sku: 'ADDON-SEO-BASIQUE',
+			unitPrice: 290,
+			languages: ['HTML', 'CSS'],
+			techStack: { languages: ['HTML', 'CSS'] },
 		},
 		{
 			id: 3,
-			sku: 'AUTO-METIER',
-			unitPrice: 1200,
+			sku: 'STACK-MVP-REACT-NEST',
+			unitPrice: 750,
 			languages: ['TypeScript', 'React', 'NestJS', 'Node.js'],
+			techStack: {
+				languages: ['TypeScript'],
+				frontend: ['React'],
+				backend: ['NestJS', 'Node.js'],
+			},
 		},
 	];
 
@@ -34,10 +41,10 @@ describe('CatalogPersonalizationService', () => {
 		const service = createService();
 		const result = await service.computeCatalog(['react', 'typescript', 'html-css']);
 
-		expect(result.skus).toContain('SEO-BASIQUE');
-		expect(result.skus).toContain('SITE-VITRINE');
+		expect(result.skus).toContain('ADDON-SEO-BASIQUE');
+		expect(result.skus).toContain('STACK-WEB-STATIC');
 		expect(result.productIds.length).toBeGreaterThan(0);
-		expect(result.productIds.length).toBeLessThanOrEqual(22);
+		expect(result.productIds.length).toBeLessThanOrEqual(12);
 	});
 
 	it('rejette une sélection trop courte', async () => {

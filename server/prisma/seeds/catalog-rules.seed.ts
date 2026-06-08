@@ -8,18 +8,23 @@ type MatchRulesFile = {
 	rules: { skus: string[] }[];
 };
 
+type CatalogPacksFile = {
+	packs: { id: string; skus: string[] }[];
+};
+
 /**
- * Vérifie que les SKU des règles de matching existent en base (après seedProducts).
+ * Vérifie que les SKU des règles et packs existent en base (après seedProducts).
  */
 export async function seedCatalogRulesValidation(prisma: PrismaClient): Promise<void> {
-	const rulesPath = path.join(__dirname, '..', '..', 'data', 'catalog', 'catalog-match-rules.json');
-	const raw = fs.readFileSync(rulesPath, 'utf-8');
-	const rules = JSON.parse(raw) as MatchRulesFile;
+	const dataDir = path.join(__dirname, '..', '..', 'data', 'catalog');
+	const rules = JSON.parse(fs.readFileSync(path.join(dataDir, 'catalog-match-rules.json'), 'utf-8')) as MatchRulesFile;
+	const packs = JSON.parse(fs.readFileSync(path.join(dataDir, 'catalog-packs.json'), 'utf-8')) as CatalogPacksFile;
 
 	const allSkus = new Set<string>([
 		...rules.alwaysIncludeSkus,
 		...rules.starterProfileSkus,
 		...rules.rules.flatMap((r) => r.skus),
+		...packs.packs.flatMap((p) => p.skus),
 	]);
 
 	const products = await prisma.product.findMany({
@@ -32,6 +37,6 @@ export async function seedCatalogRulesValidation(prisma: PrismaClient): Promise<
 	if (missing.length > 0) {
 		console.warn('[catalog-rules.seed] SKU manquants dans Product:', missing.join(', '));
 	} else {
-		console.log(`[catalog-rules.seed] ${allSkus.size} SKU de règles OK`);
+		console.log(`[catalog-rules.seed] ${allSkus.size} SKU (règles + packs) OK`);
 	}
 }

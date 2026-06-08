@@ -34,12 +34,6 @@ const INSTALL_STEPS = [
 
 const WIZARD_STEPS = ['Bienvenue', 'Profil', 'Stack', 'Validation', 'Installation'] as const
 
-const PACK_LABELS: Record<string, string> = {
-  'agence-web': 'Agence web',
-  automation: 'Automatisation',
-  maintenance: 'Maintenance & SLA',
-}
-
 const STEP_TITLES: Record<number, { title: string; subtitle?: string }> = {
   0: {
     title: 'Bienvenue, développeur·se',
@@ -269,7 +263,7 @@ export function OnboardingInstallPage() {
                 {catalogPacks.map((pack) => (
                   <Chip
                     key={pack.id}
-                    label={`${PACK_LABELS[pack.id] ?? pack.name} · ${pack.priceHint} €`}
+                    label={`${pack.name} · ${pack.priceHint} €`}
                     onClick={() => togglePack(pack.id)}
                     color={selectedPackIds.includes(pack.id) ? 'primary' : 'default'}
                     variant={selectedPackIds.includes(pack.id) ? 'filled' : 'outlined'}

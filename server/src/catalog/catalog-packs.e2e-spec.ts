@@ -56,14 +56,14 @@ describe('Catalog packs e2e', () => {
 
 	it('GET /catalog/packs liste les packs (public)', async () => {
 		const res = await request(app.getHttpServer()).get('/api/catalog/packs').expect(200);
-		expect(res.body.packs?.length).toBeGreaterThanOrEqual(3);
-		expect(res.body.packs.some((p: { id: string }) => p.id === 'agence-web')).toBe(true);
+		expect(res.body.packs?.length).toBeGreaterThanOrEqual(8);
+		expect(res.body.packs.some((p: { id: string }) => p.id === 'junior-fullstack-ts')).toBe(true);
 	});
 
 	it('POST /catalog/packs/:id/install clone les prestations', async () => {
 		const before = await prisma.product.count({ where: { organizationId } });
 		const res = await request(app.getHttpServer())
-			.post('/api/catalog/packs/agence-web/install')
+			.post('/api/catalog/packs/junior-fullstack-ts/install')
 			.set('Authorization', `Bearer ${token}`)
 			.expect(201);
 		expect(res.body.clonedCount).toBeGreaterThan(0);
@@ -71,7 +71,7 @@ describe('Catalog packs e2e', () => {
 		expect(after).toBeGreaterThan(before);
 
 		const again = await request(app.getHttpServer())
-			.post('/api/catalog/packs/agence-web/install')
+			.post('/api/catalog/packs/junior-fullstack-ts/install')
 			.set('Authorization', `Bearer ${token}`)
 			.expect(201);
 		expect(again.body.skippedCount).toBeGreaterThan(0);

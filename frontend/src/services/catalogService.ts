@@ -25,12 +25,16 @@ export type TechStackChoices = {
   categories: TechStackCategory[]
 }
 
+export type CatalogPackAudience = 'all' | 'junior'
+
 export type CatalogPack = {
   id: string
   name: string
   description: string
   priceHint: string
   skus: string[]
+  audience?: CatalogPackAudience
+  suggestedProfiles?: string[]
 }
 
 export type CatalogPackInstallResult = {

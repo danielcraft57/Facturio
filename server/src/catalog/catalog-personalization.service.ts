@@ -8,12 +8,15 @@ import {
 	validateTechnologyIds,
 } from './catalog-data';
 import { getCatalogPackById } from './catalog-packs';
+import { flattenTechAssembly } from './tech-assembly.utils';
+import type { TechStackAssembly } from './tech-assembly.types';
 
 type ProductRow = {
 	id: number;
 	sku: string | null;
 	unitPrice: Prisma.Decimal | null;
 	languages: Prisma.JsonValue;
+	techStack: Prisma.JsonValue;
 };
 
 export type CatalogAssignmentResult = {
@@ -54,7 +57,7 @@ export class CatalogPersonalizationService {
 
 		const products = await this.prisma.product.findMany({
 			where: { sku: { not: null }, organizationId: null },
-			select: { id: true, sku: true, unitPrice: true, languages: true },
+			select: { id: true, sku: true, unitPrice: true, languages: true, techStack: true },
 		});
 
 		return this.rankProducts(products, matchTags, selectedSet, rules);
@@ -74,7 +77,7 @@ export class CatalogPersonalizationService {
 			skuById.set(p.id, p.sku);
 			let score = 0;
 
-			const langs = this.parseLanguages(p.languages);
+			const langs = this.parseProductTechLabels(p);
 			for (const lang of langs) {
 				const norm = lang.toLowerCase();
 				if (matchTags.has(norm)) {
@@ -146,6 +149,13 @@ export class CatalogPersonalizationService {
 		return value.filter((x): x is string => typeof x === 'string');
 	}
 
+	private parseProductTechLabels(product: Pick<ProductRow, 'languages' | 'techStack'>): string[] {
+		if (product.techStack && typeof product.techStack === 'object' && !Array.isArray(product.techStack)) {
+			return flattenTechAssembly(product.techStack as TechStackAssembly);
+		}
+		return this.parseLanguages(product.languages);
+	}
+
 	/**
 	 * Installe le catalogue du compte : clone les modèles globaux, prix modifiables par org.
 	 */
@@ -181,6 +191,7 @@ export class CatalogPersonalizationService {
 					purpose: t.purpose,
 					category: t.category,
 					languages: t.languages ?? [],
+					techStack: t.techStack ?? undefined,
 					details: t.details ?? [],
 					estimatedHours: t.estimatedHours,
 					description: t.description,
@@ -330,6 +341,7 @@ export class CatalogPersonalizationService {
 					purpose: t.purpose,
 					category: t.category,
 					languages: t.languages ?? [],
+					techStack: t.techStack ?? undefined,
 					details: t.details ?? [],
 					estimatedHours: t.estimatedHours,
 					description: t.description,

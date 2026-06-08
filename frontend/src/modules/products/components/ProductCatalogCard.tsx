@@ -18,6 +18,7 @@ import type { RealtimeHighlightTone } from '../../../types/realtime';
 import { getRealtimeRowSx } from '../../../utils/realtimeRowHighlight';
 import { ProductAvatar } from './ProductAvatar';
 import { PURPOSE_LABELS, CATEGORY_LABELS, KIND_LABELS } from '../constants/productLabels';
+import { ProductTechStackChips } from './ProductTechStackChips';
 import { resolveProductImageUrl, getProductIconGradientCss } from '../utils/productVisual';
 import { downloadDataUrl } from '../utils/generateProductImage';
 
@@ -190,12 +191,12 @@ export function ProductCatalogCard({
             ))}
           </Box>
         )}
-        {product.languages && product.languages.length > 0 && !isCompact && (
-          <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: isList ? 0.75 : 1 }}>
-            {product.languages.slice(0, isList ? 6 : 4).map(lang => (
-              <Chip key={lang} label={lang} size="small" variant="outlined" sx={{ height: 22 }} />
-            ))}
-          </Stack>
+        {!isCompact && (
+          <ProductTechStackChips
+            techStack={product.techStack}
+            languages={product.languages}
+            maxPerCategory={isList ? 2 : 3}
+          />
         )}
       </CardContent>
 
