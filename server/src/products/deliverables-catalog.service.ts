@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { normalizeDeliverableLabelKey } from './deliverables-catalog.util';
-import type { ProductDeliverable } from './product-deliverables.util';
+import { parseProductDeliverables, type ProductDeliverable } from './product-deliverables.util';
 
 export type DeliverableCatalogItemDto = {
 	id: number;
@@ -40,6 +40,23 @@ export class DeliverablesCatalogService {
 		});
 
 		return items.map(toDto);
+	}
+
+	/** Indexe les livrables de tous les produits d'une organisation (post-install catalogue). */
+	async syncAllFromOrganizationProducts(organizationId: number): Promise<number> {
+		const products = await this.prisma.product.findMany({
+			where: { organizationId },
+			select: { details: true },
+		});
+
+		let indexed = 0;
+		for (const product of products) {
+			const deliverables = parseProductDeliverables(product.details);
+			if (!deliverables.length) continue;
+			await this.syncFromDeliverables(organizationId, deliverables);
+			indexed += deliverables.length;
+		}
+		return indexed;
 	}
 
 	/** Enregistre ou met à jour les livrables saisis sur un produit. */

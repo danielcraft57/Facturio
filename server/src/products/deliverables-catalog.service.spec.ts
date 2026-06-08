@@ -2,6 +2,9 @@ import { DeliverablesCatalogService } from './deliverables-catalog.service';
 
 describe('DeliverablesCatalogService', () => {
 	const prisma = {
+		product: {
+			findMany: jest.fn(),
+		},
 		deliverableCatalogItem: {
 			findMany: jest.fn(),
 			upsert: jest.fn(),
@@ -65,5 +68,21 @@ describe('DeliverablesCatalogService', () => {
 				defaultHours: 10,
 			},
 		});
+	});
+
+	it('indexe les livrables de tous les produits org après install', async () => {
+		prisma.product.findMany.mockResolvedValue([
+			{ details: ['Thème enfant', 'Back-office'] },
+			{ details: [] },
+		]);
+
+		const count = await service.syncAllFromOrganizationProducts(9);
+
+		expect(prisma.product.findMany).toHaveBeenCalledWith({
+			where: { organizationId: 9 },
+			select: { details: true },
+		});
+		expect(prisma.deliverableCatalogItem.upsert).toHaveBeenCalledTimes(2);
+		expect(count).toBe(2);
 	});
 });

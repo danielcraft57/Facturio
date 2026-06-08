@@ -45,6 +45,19 @@ export type CatalogPackInstallResult = {
   missingSkus: string[]
 }
 
+export type OrganizationCatalog = {
+  productIds: number[]
+  preferredTechnologies: string[]
+}
+
+export type RegenerateOrganizationCatalogResult = {
+  message: string
+  clonedCount: number
+  productIds: number[]
+  skus: string[]
+  matchScores: Record<number, number>
+}
+
 function unwrap<T>(response: { data: unknown }): T {
   const d = response.data
   if (d && typeof d === 'object' && 'data' in (d as object)) {
@@ -98,6 +111,21 @@ class CatalogService {
   async installPack(packId: string): Promise<CatalogPackInstallResult> {
     const res = await apiClient.post<CatalogPackInstallResult>(`/catalog/packs/${packId}/install`, {})
     return unwrapApiPayload<CatalogPackInstallResult>(res)
+  }
+
+  async getOrganizationCatalog(): Promise<OrganizationCatalog> {
+    const res = await apiClient.get<OrganizationCatalog>('/catalog/organization')
+    return unwrap<OrganizationCatalog>(res)
+  }
+
+  async regenerateOrganizationCatalog(
+    technologyIds: string[],
+  ): Promise<RegenerateOrganizationCatalogResult> {
+    const res = await apiClient.post<RegenerateOrganizationCatalogResult>(
+      '/catalog/organization/regenerate',
+      { technologyIds },
+    )
+    return unwrap<RegenerateOrganizationCatalogResult>(res)
   }
 }
 

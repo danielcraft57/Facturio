@@ -46,6 +46,19 @@ export type TechCategoryVisual = {
   label: string
 }
 
+/** Catégories du TechStackPicker (onboarding) → couche assemblage produit. */
+export const PICKER_CATEGORY_TO_ASSEMBLY: Record<string, TechAssemblyCategory> = {
+  languages: 'languages',
+  frontend: 'frontend',
+  backend: 'backend',
+  cms: 'cms',
+  databases: 'databases',
+  devops: 'devops',
+  ai: 'ai',
+  mobile: 'mobile',
+  security: 'security',
+}
+
 export const TECH_CATEGORY_VISUAL: Record<TechAssemblyCategory, TechCategoryVisual> = {
   languages: { Icon: CodeOutlinedIcon, color: '#2563eb', label: 'Langages' },
   frontend: { Icon: WebOutlinedIcon, color: '#0ea5e9', label: 'Frontend' },

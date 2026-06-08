@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../../stores/authStore'
 import {
   Box,
   Button,
+  CircularProgress,
   LinearProgress,
   Typography,
   Alert,
-  List,
-  ListItem,
-  ListItemText,
   Chip,
   Stack,
 } from '@mui/material'
@@ -18,11 +16,17 @@ import { TechStackPicker } from '../../../components/catalog/TechStackPicker'
 import { OnboardingLayout } from '../../onboarding/OnboardingLayout'
 import { OnboardingDevWelcomeStep } from '../../onboarding/steps/OnboardingDevWelcomeStep'
 import { OnboardingDevProfileStep } from '../../onboarding/steps/OnboardingDevProfileStep'
+import { OnboardingCatalogPreviewStep } from '../../onboarding/steps/OnboardingCatalogPreviewStep'
+import {
+  filterSuggestedTechIds,
+  normalizeOnboardingProfileId,
+  resolveOnboardingProfile,
+} from '../../onboarding/onboardingProfiles'
 import {
   onboardingService,
   type OnboardingPreviewProduct,
 } from '../../../services/onboardingService'
-import { catalogService, type CatalogPack } from '../../../services/catalogService'
+import { catalogService, type CatalogPack, type TechStackChoices } from '../../../services/catalogService'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 
 const INSTALL_STEPS = [
@@ -36,12 +40,12 @@ const WIZARD_STEPS = ['Bienvenue', 'Profil', 'Stack', 'Validation', 'Installatio
 
 const STEP_TITLES: Record<number, { title: string; subtitle?: string }> = {
   0: {
-    title: 'Bienvenue, développeur·se',
-    subtitle: 'Facturio n’est pas un logiciel générique : il est conçu pour facturer des prestations techniques.',
+    title: 'Bienvenue sur Facturio',
+    subtitle: 'Facturation pensée pour les prestations web : dev, design, commercial, communication.',
   },
   1: {
     title: 'Votre profil',
-    subtitle: 'Dites-nous qui vous êtes — ensuite on cible votre stack.',
+    subtitle: 'Métier et posture — on adapte les technos et le catalogue à votre pratique.',
   },
   2: {
     title: 'Votre stack technique',
@@ -49,7 +53,7 @@ const STEP_TITLES: Record<number, { title: string; subtitle?: string }> = {
   },
   3: {
     title: 'Valider votre catalogue',
-    subtitle: 'Aperçu des prestations qui seront installées sur votre compte.',
+    subtitle: 'Choisissez les prestations à installer — score et raisons de matching affichés.',
   },
   4: {
     title: 'Installation en cours',
@@ -57,21 +61,26 @@ const STEP_TITLES: Record<number, { title: string; subtitle?: string }> = {
   },
 }
 
-function formatPrice(value: string | number | null | undefined): string {
-  if (value == null) return '—'
-  const n = typeof value === 'string' ? parseFloat(value) : value
-  if (Number.isNaN(n)) return '—'
-  return `${n.toFixed(0)} € HT`
+function resolveReturnPath(raw: string | null, replayMode: boolean): string {
+  if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw
+  return replayMode ? '/produits' : '/dashboard'
 }
 
 export function OnboardingInstallPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const user = useAuthStore((s) => s.user)
+  const [initializing, setInitializing] = useState(true)
+  const [replayMode, setReplayMode] = useState(false)
+  const [existingProductCount, setExistingProductCount] = useState(0)
+  const [returnTo, setReturnTo] = useState('/dashboard')
   const [wizardStep, setWizardStep] = useState(0)
   const [devProfile, setDevProfile] = useState<string | null>(null)
   const [technologyIds, setTechnologyIds] = useState<string[]>([])
   const [techError, setTechError] = useState<string | null>(null)
   const [preview, setPreview] = useState<OnboardingPreviewProduct[]>([])
+  const [selectedProductIds, setSelectedProductIds] = useState<number[]>([])
+  const [techChoices, setTechChoices] = useState<TechStackChoices | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [installing, setInstalling] = useState(false)
@@ -79,25 +88,99 @@ export function OnboardingInstallPage() {
   const [installProgress, setInstallProgress] = useState(0)
   const [catalogPacks, setCatalogPacks] = useState<CatalogPack[]>([])
   const [selectedPackIds, setSelectedPackIds] = useState<string[]>([])
+  const packsSuggestedRef = useRef(false)
 
   useEffect(() => {
     void catalogService.listPacks().then(setCatalogPacks).catch(() => {})
+    void catalogService.getTechChoices().then(setTechChoices).catch(() => {})
   }, [])
 
   useEffect(() => {
-    onboardingService.getStatus().then((s) => {
-      if (s.completed) {
-        if (user?.emailVerified !== true) {
-          navigate('/inscription/confirmation', {
-            replace: true,
-            state: { email: user?.email ?? '', onboardingDone: true },
-          })
-        } else {
-          navigate('/dashboard', { replace: true })
+    let cancelled = false
+    onboardingService
+      .getStatus()
+      .then((s) => {
+        if (cancelled) return
+        const replay = s.completed
+        setReplayMode(replay)
+        setExistingProductCount(s.productCount)
+        setReturnTo(resolveReturnPath(searchParams.get('returnTo'), replay))
+        if (s.devProfile) setDevProfile(normalizeOnboardingProfileId(s.devProfile))
+        if (replay) {
+          if (s.preferredTechnologies.length >= 2) {
+            setTechnologyIds(s.preferredTechnologies)
+            setWizardStep(2)
+          } else {
+            setWizardStep(1)
+          }
         }
-      }
-    }).catch(() => {})
-  }, [navigate])
+      })
+      .catch(() => {
+        if (!cancelled) setReturnTo(resolveReturnPath(searchParams.get('returnTo'), false))
+      })
+      .finally(() => {
+        if (!cancelled) setInitializing(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams])
+
+  const applyProfileToStack = (profileId: string) => {
+    void catalogService.getTechChoices().then((choices) => {
+      const profile = resolveOnboardingProfile(profileId)
+      const allowedCats = new Set(profile?.techCategories ?? choices.categories.map((c) => c.id))
+      const validIds = new Set(
+        choices.categories
+          .filter((c) => allowedCats.has(c.id))
+          .flatMap((c) => c.options.map((o) => o.id)),
+      )
+      const suggested = filterSuggestedTechIds(profileId, validIds)
+      const kept = technologyIds.filter((id) => validIds.has(id))
+      const merged = [...new Set([...suggested, ...kept])].slice(0, choices.maxTotalSelect)
+      setTechnologyIds(
+        merged.length >= choices.minTotalSelect
+          ? merged
+          : suggested.length
+            ? suggested.slice(0, choices.maxTotalSelect)
+            : kept,
+      )
+    })
+  }
+
+  const handleProfileSelect = (profileId: string) => {
+    setDevProfile(profileId)
+    packsSuggestedRef.current = false
+    setSelectedPackIds([])
+    applyProfileToStack(profileId)
+  }
+
+  const visiblePacks = useMemo(() => {
+    if (!devProfile) return catalogPacks
+    return catalogPacks.filter(
+      (pack) =>
+        !pack.suggestedProfiles?.length || pack.suggestedProfiles.includes(devProfile),
+    )
+  }, [catalogPacks, devProfile])
+
+  useEffect(() => {
+    if (wizardStep !== 3 || !devProfile || packsSuggestedRef.current) return
+    const suggested = visiblePacks
+      .filter((pack) => pack.suggestedProfiles?.includes(devProfile))
+      .map((pack) => pack.id)
+    if (suggested.length) {
+      setSelectedPackIds(suggested)
+      packsSuggestedRef.current = true
+    }
+  }, [wizardStep, devProfile, visiblePacks])
+
+  const technologyLabels = useMemo(() => {
+    if (!techChoices) return technologyIds
+    const byId = new Map(
+      techChoices.categories.flatMap((c) => c.options.map((o) => [o.id, o.label] as const)),
+    )
+    return technologyIds.map((id) => byId.get(id) ?? id)
+  }, [techChoices, technologyIds])
 
   const canValidate = technologyIds.length >= 2
   const meta = STEP_TITLES[wizardStep] ?? STEP_TITLES[0]
@@ -115,6 +198,7 @@ export function OnboardingInstallPage() {
     try {
       const res = await onboardingService.preview(technologyIds)
       setPreview(res.products)
+      setSelectedProductIds(res.products.filter((p) => p.suggested).map((p) => p.id))
       setWizardStep(3)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erreur lors de la prévisualisation')
@@ -139,14 +223,20 @@ export function OnboardingInstallPage() {
       setInstallProgress(100)
       window.clearInterval(stepTimer)
       await new Promise((r) => setTimeout(r, 600))
-      if (user?.emailVerified !== true) {
-        navigate('/inscription/confirmation', {
-          replace: true,
-          state: { email: user?.email ?? '', onboardingDone: true, productCount: count },
-        })
-      } else {
-        navigate('/dashboard', { replace: true, state: { onboardingDone: true, productCount: count } })
-      }
+      setInstalling(false)
+      const destination =
+        !replayMode && user?.emailVerified !== true
+          ? '/inscription/confirmation'
+          : returnTo
+      const navState =
+        destination === '/inscription/confirmation'
+          ? { email: user?.email ?? '', onboardingDone: true, productCount: count }
+          : {
+              catalogRegenerated: replayMode,
+              onboardingDone: !replayMode,
+              productCount: count,
+            }
+      navigate(destination, { replace: true, state: navState })
     } catch (e: unknown) {
       window.clearInterval(stepTimer)
       setInstalling(false)
@@ -161,9 +251,25 @@ export function OnboardingInstallPage() {
     )
   }
 
+  const toggleProduct = (id: number) => {
+    setSelectedProductIds((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+    )
+  }
+
+  const selectAllProducts = () => setSelectedProductIds(preview.map((p) => p.id))
+  const selectSuggestedProducts = () =>
+    setSelectedProductIds(preview.filter((p) => p.suggested).map((p) => p.id))
+  const clearProductSelection = () => setSelectedProductIds([])
+
   const handleInstall = () => {
+    if (selectedProductIds.length === 0) return
     void runInstallAnimation(async () => {
-      const res = await onboardingService.install(technologyIds)
+      const res = await onboardingService.install(
+        technologyIds,
+        devProfile,
+        selectedProductIds,
+      )
       let extra = 0
       for (const packId of selectedPackIds) {
         try {
@@ -182,13 +288,43 @@ export function OnboardingInstallPage() {
     [installStepIndex],
   )
 
+  if (initializing) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  const layoutTitle = replayMode && wizardStep >= 2 ? 'Régénérer votre catalogue' : meta.title
+  const layoutSubtitle =
+    replayMode && wizardStep >= 2
+      ? 'Modifiez votre stack : les produits actuels seront remplacés par une nouvelle sélection.'
+      : meta.subtitle
+
   return (
     <OnboardingLayout
       activeStep={wizardStep}
       steps={WIZARD_STEPS}
-      title={meta.title}
-      subtitle={meta.subtitle}
+      title={layoutTitle}
+      subtitle={layoutSubtitle}
     >
+      {replayMode && wizardStep < 4 && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => navigate(returnTo)}>
+              Annuler
+            </Button>
+          }
+        >
+          {existingProductCount > 0
+            ? `Réinstallation : vos ${existingProductCount} produit(s) actuel(s) seront remplacés.`
+            : 'Réinstallation du catalogue à partir de votre stack technique.'}
+        </Alert>
+      )}
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
@@ -200,7 +336,7 @@ export function OnboardingInstallPage() {
       {wizardStep === 1 && (
         <OnboardingDevProfileStep
           selected={devProfile}
-          onSelect={setDevProfile}
+          onSelect={handleProfileSelect}
           onBack={() => setWizardStep(0)}
           onNext={() => setWizardStep(2)}
         />
@@ -210,6 +346,7 @@ export function OnboardingInstallPage() {
         <Box>
           <TechStackPicker
             value={technologyIds}
+            profileId={devProfile}
             onChange={(ids) => {
               setTechnologyIds(ids)
               if (ids.length >= 2) setTechError(null)
@@ -234,53 +371,39 @@ export function OnboardingInstallPage() {
       )}
 
       {wizardStep === 3 && (
-        <Box>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            {preview.length} prestation(s) seront copiées sur votre compte. Vous pourrez ajuster les prix et les
-            descriptions dans Produits.
-          </Alert>
-          <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-            {technologyIds.map((id) => (
-              <Chip key={id} label={id} size="small" color="primary" variant="outlined" />
-            ))}
-          </Stack>
-          <List dense sx={{ maxHeight: 320, overflow: 'auto', bgcolor: 'action.hover', borderRadius: 1, mb: 2 }}>
-            {preview.map((p) => (
-              <ListItem key={p.id} divider>
-                <ListItemText
-                  primary={p.name}
-                  secondary={`${p.sku ?? '—'} · ${formatPrice(p.unitPrice)}`}
-                />
-              </ListItem>
-            ))}
-          </List>
-          {catalogPacks.length > 0 && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                Packs optionnels (en plus de la stack)
-              </Typography>
-              <Stack direction="row" flexWrap="wrap" gap={1}>
-                {catalogPacks.map((pack) => (
-                  <Chip
-                    key={pack.id}
-                    label={`${pack.name} · ${pack.priceHint} €`}
-                    onClick={() => togglePack(pack.id)}
-                    color={selectedPackIds.includes(pack.id) ? 'primary' : 'default'}
-                    variant={selectedPackIds.includes(pack.id) ? 'filled' : 'outlined'}
-                  />
-                ))}
-              </Stack>
-            </Box>
-          )}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <Button variant="outlined" onClick={() => setWizardStep(2)} disabled={installing}>
-              Modifier la stack
-            </Button>
-            <Button variant="contained" size="large" onClick={handleInstall} disabled={installing}>
-              Lancer l&apos;installation
-            </Button>
-          </Stack>
-        </Box>
+        <OnboardingCatalogPreviewStep
+          products={preview}
+          selectedIds={selectedProductIds}
+          technologyLabels={technologyLabels}
+          replayMode={replayMode}
+          installing={installing}
+          onToggle={toggleProduct}
+          onSelectAll={selectAllProducts}
+          onSelectSuggested={selectSuggestedProducts}
+          onClear={clearProductSelection}
+          onBack={() => setWizardStep(2)}
+          onInstall={handleInstall}
+          visiblePacks={
+            visiblePacks.length > 0 ? (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  Packs optionnels{devProfile ? ' adaptés à votre profil' : ''} (en plus de la stack)
+                </Typography>
+                <Stack direction="row" flexWrap="wrap" gap={1}>
+                  {visiblePacks.map((pack) => (
+                    <Chip
+                      key={pack.id}
+                      label={`${pack.name} · ${pack.priceHint} €`}
+                      onClick={() => togglePack(pack.id)}
+                      color={selectedPackIds.includes(pack.id) ? 'primary' : 'default'}
+                      variant={selectedPackIds.includes(pack.id) ? 'filled' : 'outlined'}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            ) : null
+          }
+        />
       )}
 
       {wizardStep === 4 && (

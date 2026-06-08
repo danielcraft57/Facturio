@@ -7,9 +7,9 @@ import * as path from 'node:path';
 describe('dev-products catalog v2', () => {
 	const seedSkus = new Set(DEV_PRODUCTS.map((p) => p.sku));
 
-	it('contient entre 28 et 40 livrables stack', () => {
-		expect(DEV_PRODUCTS.length).toBeGreaterThanOrEqual(28);
-		expect(DEV_PRODUCTS.length).toBeLessThanOrEqual(40);
+	it('contient entre 35 et 48 livrables stack', () => {
+		expect(DEV_PRODUCTS.length).toBeGreaterThanOrEqual(35);
+		expect(DEV_PRODUCTS.length).toBeLessThanOrEqual(48);
 	});
 
 	it('chaque produit a un assemblage techno non vide', () => {

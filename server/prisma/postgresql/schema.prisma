@@ -154,6 +154,7 @@ model Organization {
 
   preferredTechnologies Json?
   onboardingCompletedAt DateTime?
+  devProfile              String?
   catalogItems              OrganizationCatalogItem[]
   deliverableCatalogItems   DeliverableCatalogItem[]
   products                  Product[]

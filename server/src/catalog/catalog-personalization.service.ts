@@ -1,6 +1,7 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, forwardRef } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { DeliverablesCatalogService } from '../products/deliverables-catalog.service';
 import {
 	getCatalogMatchRules,
 	getTechStackChoices,
@@ -8,6 +9,8 @@ import {
 	validateTechnologyIds,
 } from './catalog-data';
 import { getCatalogPackById } from './catalog-packs';
+import { labelCatalogMatchReason } from './catalog-match-labels';
+import { isProductEligibleForStack } from './catalog-stack-eligibility';
 import { flattenTechAssembly } from './tech-assembly.utils';
 import type { TechStackAssembly } from './tech-assembly.types';
 
@@ -23,11 +26,39 @@ export type CatalogAssignmentResult = {
 	productIds: number[];
 	skus: string[];
 	matchScores: Record<number, number>;
+	deliverablesIndexed?: number;
+};
+
+export type ProvisionCatalogOptions = {
+	devProfile?: string;
+	templateProductIds?: number[];
+};
+
+export type CatalogPreviewProduct = {
+	id: number;
+	name: string;
+	sku: string | null;
+	unitPrice: Prisma.Decimal | null;
+	description: string | null;
+	matchScore: number;
+	matchReasons: string[];
+	techLabels: string[];
+	suggested: boolean;
+};
+
+type ProductScoreMeta = {
+	score: number;
+	reasons: string[];
+	ruleMatched: boolean;
 };
 
 @Injectable()
 export class CatalogPersonalizationService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		@Inject(forwardRef(() => DeliverablesCatalogService))
+		private readonly deliverablesCatalog: DeliverablesCatalogService,
+	) {}
 
 	validateSelection(technologyIds: string[]): void {
 		const choices = getTechStackChoices();
@@ -60,7 +91,129 @@ export class CatalogPersonalizationService {
 			select: { id: true, sku: true, unitPrice: true, languages: true, techStack: true },
 		});
 
-		return this.rankProducts(products, matchTags, selectedSet, rules);
+		return this.rankProducts(products, matchTags, selectedSet, rules, rules.maxCatalogItems).result;
+	}
+
+	/** Preview détaillé : scores, raisons et sélection suggérée (jusqu'à 30 lignes). */
+	async buildCatalogPreview(technologyIds: string[]): Promise<{
+		technologyIds: string[];
+		products: CatalogPreviewProduct[];
+		total: number;
+	}> {
+		this.validateSelection(technologyIds);
+		const rules = getCatalogMatchRules();
+		const matchTags = resolveMatchTagsFromOptionIds(technologyIds);
+		const selectedSet = new Set(technologyIds);
+
+		const rows = await this.prisma.product.findMany({
+			where: { sku: { not: null }, organizationId: null },
+			select: {
+				id: true,
+				name: true,
+				sku: true,
+				unitPrice: true,
+				description: true,
+				languages: true,
+				techStack: true,
+			},
+		});
+
+		const ranked = this.rankProducts(rows, matchTags, selectedSet, rules, 30);
+		const byId = new Map(rows.map((p) => [p.id, p]));
+
+		const products: CatalogPreviewProduct[] = ranked.result.productIds
+			.map((id) => {
+				const p = byId.get(id);
+				if (!p) return null;
+				const meta = ranked.matchMeta[id];
+				return {
+					id: p.id,
+					name: p.name,
+					sku: p.sku,
+					unitPrice: p.unitPrice,
+					description: p.description,
+					matchScore: ranked.result.matchScores[id] ?? 0,
+					matchReasons: meta?.reasons ?? [],
+					techLabels: this.parseProductTechLabels(p).slice(0, 8),
+					suggested: this.isSuggestedPreviewProduct(p.sku, meta, rules),
+				};
+			})
+			.filter((p): p is CatalogPreviewProduct => p != null);
+
+		return { technologyIds, products, total: products.length };
+	}
+
+	private isSuggestedPreviewProduct(
+		sku: string | null,
+		meta: ProductScoreMeta | undefined,
+		rules: ReturnType<typeof getCatalogMatchRules>,
+	): boolean {
+		if (!sku || !meta) return false;
+		if (meta.ruleMatched) return true;
+		if (rules.alwaysIncludeSkus.includes(sku) && !meta.ruleMatched) return false;
+		return meta.score >= 14;
+	}
+
+	private scoreProduct(
+		product: ProductRow,
+		matchTags: Set<string>,
+		selectedOptions: Set<string>,
+		rules: ReturnType<typeof getCatalogMatchRules>,
+	): ProductScoreMeta {
+		const assembly =
+			product.techStack && typeof product.techStack === 'object' && !Array.isArray(product.techStack)
+				? (product.techStack as TechStackAssembly)
+				: null;
+		if (!isProductEligibleForStack(assembly, selectedOptions)) {
+			return { score: 0, reasons: [], ruleMatched: false };
+		}
+
+		let score = 0;
+		const reasons: string[] = [];
+		let ruleMatched = false;
+
+		const langs = this.parseProductTechLabels(product);
+		const overlappingTags: string[] = [];
+		for (const lang of langs) {
+			const norm = lang.toLowerCase();
+			if (matchTags.has(norm)) {
+				score += rules.languageOverlapWeight;
+				overlappingTags.push(lang);
+			}
+		}
+		if (overlappingTags.length) {
+			reasons.push(`Technos communes : ${[...new Set(overlappingTags)].slice(0, 4).join(', ')}`);
+		}
+
+		for (const rule of rules.rules) {
+			if (rule.whenAnyOption.some((opt) => selectedOptions.has(opt))) {
+				if (product.sku && rule.skus.includes(product.sku)) {
+					score += rule.weight + rules.ruleMatchBonus;
+					reasons.push(labelCatalogMatchReason(rule.id));
+					ruleMatched = true;
+				}
+			}
+		}
+
+		const price = product.unitPrice ? Number(product.unitPrice) : 9999;
+		if (price <= rules.budgetMaxUnitPrice) {
+			score += rules.budgetFriendlyBonus;
+		}
+		if (product.sku && rules.starterProfileSkus.includes(product.sku)) {
+			score += 2;
+		}
+		if (product.sku && rules.alwaysIncludeSkus.includes(product.sku)) {
+			score += 6;
+			if (!ruleMatched) {
+				reasons.push('Add-on courant (optionnel)');
+			}
+		}
+
+		if (reasons.length === 0 && score > 0) {
+			reasons.push('Pertinence faible — à valider');
+		}
+
+		return { score, reasons, ruleMatched };
 	}
 
 	private rankProducts(
@@ -68,66 +221,34 @@ export class CatalogPersonalizationService {
 		matchTags: Set<string>,
 		selectedOptions: Set<string>,
 		rules: ReturnType<typeof getCatalogMatchRules>,
-	): CatalogAssignmentResult {
-		const scores = new Map<number, number>();
+		maxItems: number,
+	): { result: CatalogAssignmentResult; matchMeta: Record<number, ProductScoreMeta> } {
+		const matchMeta: Record<number, ProductScoreMeta> = {};
 		const skuById = new Map<number, string>();
 
 		for (const p of products) {
 			if (!p.sku) continue;
 			skuById.set(p.id, p.sku);
-			let score = 0;
-
-			const langs = this.parseProductTechLabels(p);
-			for (const lang of langs) {
-				const norm = lang.toLowerCase();
-				if (matchTags.has(norm)) {
-					score += rules.languageOverlapWeight;
-				}
-				for (const tag of matchTags) {
-					if (norm.includes(tag) || tag.includes(norm)) {
-						score += 1;
-					}
-				}
-			}
-
-			for (const rule of rules.rules) {
-				if (rule.whenAnyOption.some((opt) => selectedOptions.has(opt))) {
-					if (rule.skus.includes(p.sku)) {
-						score += rule.weight + rules.ruleMatchBonus;
-					}
-				}
-			}
-
-			const price = p.unitPrice ? Number(p.unitPrice) : 9999;
-			if (price <= rules.budgetMaxUnitPrice) {
-				score += rules.budgetFriendlyBonus;
-			}
-			if (rules.starterProfileSkus.includes(p.sku)) {
-				score += 2;
-			}
-
-			if (scores.has(p.id)) {
-				score = Math.max(scores.get(p.id)!, score);
-			}
-			scores.set(p.id, score);
+			matchMeta[p.id] = this.scoreProduct(p, matchTags, selectedOptions, rules);
 		}
 
-		for (const sku of rules.alwaysIncludeSkus) {
-			const found = products.find((p) => p.sku === sku);
-			if (found) scores.set(found.id, (scores.get(found.id) ?? 0) + 100);
-		}
-
-		const sorted = [...scores.entries()]
+		const sorted = Object.entries(matchMeta)
+			.map(([id, meta]) => [Number(id), meta.score] as const)
 			.filter(([, s]) => s > 0)
 			.sort((a, b) => b[1] - a[1])
-			.slice(0, rules.maxCatalogItems);
+			.slice(0, maxItems);
 
 		if (sorted.length === 0) {
 			const fallback = products
 				.filter((p) => p.sku && rules.starterProfileSkus.includes(p.sku))
-				.slice(0, rules.maxCatalogItems);
+				.slice(0, maxItems);
 			for (const p of fallback) {
 				sorted.push([p.id, 1]);
+				matchMeta[p.id] = {
+					score: 1,
+					reasons: ['Catalogue de démarrage'],
+					ruleMatched: false,
+				};
 			}
 		}
 
@@ -141,7 +262,10 @@ export class CatalogPersonalizationService {
 			if (sku) skus.push(sku);
 		}
 
-		return { productIds, skus, matchScores };
+		return {
+			result: { productIds, skus, matchScores },
+			matchMeta,
+		};
 	}
 
 	private parseLanguages(value: Prisma.JsonValue): string[] {
@@ -163,13 +287,36 @@ export class CatalogPersonalizationService {
 		organizationId: number,
 		technologyIds: string[],
 		source: 'onboarding' | 'manual' = 'onboarding',
-	): Promise<CatalogAssignmentResult & { clonedCount: number }> {
+		options?: ProvisionCatalogOptions,
+	): Promise<CatalogAssignmentResult & { clonedCount: number; deliverablesIndexed: number }> {
 		this.validateSelection(technologyIds);
-		const computed = await this.computeCatalog(technologyIds);
+		const rules = getCatalogMatchRules();
+		const matchTags = resolveMatchTagsFromOptionIds(technologyIds);
+		const selectedSet = new Set(technologyIds);
 
-		const templates = await this.prisma.product.findMany({
-			where: { id: { in: computed.productIds }, organizationId: null },
+		const allProducts = await this.prisma.product.findMany({
+			where: { sku: { not: null }, organizationId: null },
+			select: { id: true, sku: true, unitPrice: true, languages: true, techStack: true },
 		});
+
+		const ranked = this.rankProducts(allProducts, matchTags, selectedSet, rules, 30);
+		const computed = ranked.result;
+
+		let templateIds = computed.productIds;
+		if (options?.templateProductIds?.length) {
+			const allowed = new Set(computed.productIds);
+			templateIds = options.templateProductIds.filter((id) => allowed.has(id));
+			if (templateIds.length === 0) {
+				throw new BadRequestException('Sélectionnez au moins une prestation dans la liste.');
+			}
+		}
+
+		const orderIndex = new Map(templateIds.map((id, index) => [id, index]));
+		const templates = (
+			await this.prisma.product.findMany({
+				where: { id: { in: templateIds }, organizationId: null },
+			})
+		).sort((a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0));
 
 		await this.prisma.organizationCatalogItem.deleteMany({ where: { organizationId } });
 		await this.prisma.product.deleteMany({ where: { organizationId } });
@@ -213,11 +360,15 @@ export class CatalogPersonalizationService {
 			});
 		}
 
+		const deliverablesIndexed =
+			await this.deliverablesCatalog.syncAllFromOrganizationProducts(organizationId);
+
 		await this.prisma.organization.update({
 			where: { id: organizationId },
 			data: {
 				preferredTechnologies: technologyIds as unknown as Prisma.JsonArray,
 				onboardingCompletedAt: new Date(),
+				...(options?.devProfile ? { devProfile: options.devProfile } : {}),
 			},
 		});
 
@@ -226,6 +377,7 @@ export class CatalogPersonalizationService {
 			skus: templates.map((t) => t.sku).filter(Boolean) as string[],
 			matchScores: clonedScores,
 			clonedCount: clonedIds.length,
+			deliverablesIndexed,
 		};
 	}
 

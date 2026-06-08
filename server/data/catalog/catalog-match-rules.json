@@ -1,16 +1,31 @@
 {
-  "version": 2,
+  "version": 3,
   "maxCatalogItems": 12,
   "budgetMaxUnitPrice": 400,
   "alwaysIncludeSkus": ["ADDON-SEO-BASIQUE", "ADDON-PAGE-SUPP", "ADDON-DEPANNAGE-2H"],
   "starterProfileSkus": [
     "STACK-WEB-STATIC",
+    "OFFRE-VITRINE-CLAIR",
     "ADDON-SEO-BASIQUE",
     "ADDON-PAGE-SUPP",
     "STACK-MAINT-MENSUEL",
     "ADDON-FORMATION"
   ],
   "rules": [
+    {
+      "id": "offres-metier",
+      "whenAnyOption": ["html-css", "javascript", "webflow", "typescript"],
+      "skus": [
+        "OFFRE-VITRINE-CLAIR",
+        "OFFRE-CONSEIL-WEB",
+        "OFFRE-REDACTION-WEB",
+        "OFFRE-CHARTE-GRAPHIQUE",
+        "OFFRE-HANDOVER",
+        "OFFRE-BILAN-SITE",
+        "OFFRE-FORMULE-SERENITE"
+      ],
+      "weight": 9
+    },
     {
       "id": "fullstack-ts",
       "whenAnyOption": ["typescript", "react", "nestjs", "nodejs"],
@@ -36,9 +51,21 @@
       "weight": 9
     },
     {
-      "id": "php-cms",
-      "whenAnyOption": ["php", "wordpress", "laravel", "prestashop"],
-      "skus": ["STACK-WP-VITRINE", "STACK-LARAVEL-APP", "STACK-PRESTASHOP-BOUTIQUE"],
+      "id": "wordpress-cms",
+      "whenAnyOption": ["wordpress"],
+      "skus": ["STACK-WP-VITRINE"],
+      "weight": 10
+    },
+    {
+      "id": "prestashop-ecom",
+      "whenAnyOption": ["prestashop"],
+      "skus": ["STACK-PRESTASHOP-BOUTIQUE"],
+      "weight": 10
+    },
+    {
+      "id": "laravel-backend",
+      "whenAnyOption": ["laravel"],
+      "skus": ["STACK-LARAVEL-APP"],
       "weight": 9
     },
     {
@@ -56,7 +83,7 @@
     {
       "id": "static-vitrine",
       "whenAnyOption": ["html-css", "javascript", "webflow"],
-      "skus": ["STACK-WEB-STATIC", "ADDON-SEO-BASIQUE", "ADDON-PAGE-SUPP"],
+      "skus": ["STACK-WEB-STATIC", "OFFRE-VITRINE-CLAIR", "ADDON-SEO-BASIQUE", "ADDON-PAGE-SUPP"],
       "weight": 10
     },
     {
@@ -80,17 +107,17 @@
     {
       "id": "security",
       "whenAnyOption": ["owasp", "pentest", "snyk", "sonarqube", "waf", "vault"],
-      "skus": ["STACK-AUDIT-SECU", "STACK-PENTEST-APP"],
+      "skus": ["STACK-AUDIT-SECU", "STACK-PENTEST-APP", "OFFRE-BILAN-SITE"],
       "weight": 9
     },
     {
       "id": "support-maint",
-      "whenAnyOption": ["nodejs", "typescript", "react"],
-      "skus": ["STACK-MAINT-MENSUEL", "STACK-SUPPORT-ABO", "ADDON-ACCOMP-H"],
+      "whenAnyOption": ["wordpress", "webflow", "html-css"],
+      "skus": ["STACK-MAINT-MENSUEL", "STACK-SUPPORT-ABO", "OFFRE-FORMULE-SERENITE"],
       "weight": 5
     }
   ],
-  "languageOverlapWeight": 6,
+  "languageOverlapWeight": 5,
   "budgetFriendlyBonus": 4,
   "ruleMatchBonus": 3
 }

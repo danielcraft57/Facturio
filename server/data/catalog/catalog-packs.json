@@ -7,7 +7,7 @@
       "description": "Site statique, SEO, pages, maintenance — pour facturer votre première mission.",
       "priceHint": "9",
       "audience": "junior",
-      "suggestedProfiles": ["student", "freelance", "indie"],
+      "suggestedProfiles": ["student-dev", "freelance-dev", "webdesigner", "commercial", "redacteur"],
       "skus": [
         "STACK-WEB-STATIC",
         "ADDON-SEO-BASIQUE",
@@ -23,7 +23,7 @@
       "description": "MVP React/Nest, Next+Supabase, Docker CI/CD — stack la plus demandée.",
       "priceHint": "14",
       "audience": "junior",
-      "suggestedProfiles": ["student", "freelance", "studio"],
+      "suggestedProfiles": ["student-dev", "freelance-dev", "studio-dev", "indie"],
       "skus": [
         "STACK-MVP-REACT-NEST",
         "STACK-NEXT-SUPABASE",
@@ -38,7 +38,14 @@
       "description": "Site WP, pages, SEO, maintenance — entrée classique du marché.",
       "priceHint": "12",
       "audience": "junior",
-      "suggestedProfiles": ["student", "freelance"],
+      "suggestedProfiles": [
+        "student-dev",
+        "freelance-dev",
+        "webdesigner",
+        "integrateur-cms",
+        "redacteur",
+        "community-manager"
+      ],
       "skus": [
         "STACK-WP-VITRINE",
         "STACK-WEB-STATIC",
@@ -53,7 +60,7 @@
       "description": "API FastAPI, portail Django, agent RAG — backend et IA.",
       "priceHint": "14",
       "audience": "junior",
-      "suggestedProfiles": ["student", "freelance"],
+      "suggestedProfiles": ["student-dev", "freelance-dev", "consultant-digital"],
       "skus": [
         "STACK-FASTAPI-API",
         "STACK-DJANGO-PORTAL",
@@ -68,7 +75,14 @@
       "description": "Chatbot site, n8n, Claude — monétiser l'IA sans être expert ML.",
       "priceHint": "13",
       "audience": "junior",
-      "suggestedProfiles": ["student", "freelance", "indie"],
+      "suggestedProfiles": [
+        "student-dev",
+        "freelance-dev",
+        "indie",
+        "community-manager",
+        "consultant-digital",
+        "growth-marketing"
+      ],
       "skus": [
         "STACK-CHATBOT-WEB",
         "STACK-N8N-WORKFLOW",
@@ -82,6 +96,7 @@
       "description": "Sites, landings Next, Nuxt, SEO et formation client.",
       "priceHint": "19",
       "audience": "all",
+      "suggestedProfiles": ["studio-dev", "webdesigner", "freelance-dev", "growth-marketing", "no-code-maker"],
       "skus": [
         "STACK-WEB-STATIC",
         "STACK-NEXT-LANDING",
@@ -97,6 +112,7 @@
       "description": "APIs, n8n, RAG, intégrations IA.",
       "priceHint": "15",
       "audience": "all",
+      "suggestedProfiles": ["indie", "consultant-digital", "growth-marketing", "freelance-dev"],
       "skus": [
         "STACK-N8N-WORKFLOW",
         "STACK-RAG-LANGCHAIN",
@@ -111,6 +127,7 @@
       "description": "Contrats récurrents, dépannage, accompagnement.",
       "priceHint": "12",
       "audience": "all",
+      "suggestedProfiles": ["freelance-dev", "integrateur-cms", "studio-dev", "commercial"],
       "skus": [
         "STACK-MAINT-MENSUEL",
         "STACK-SUPPORT-ABO",

@@ -67,6 +67,8 @@ model Organization {
   preferredTechnologies       Json?
   /// Renseigné après l’assistant post-inscription (stack + installation catalogue)
   onboardingCompletedAt       DateTime?
+  /// Profil développeur choisi à l’onboarding (freelance, indie, studio, student, other)
+  devProfile                  String?
   amortizations               Amortization[]
   apiAccessTokens             ApiAccessToken[]
   avoirs                      Avoir[]

@@ -52,6 +52,11 @@ class ProductService {
     );
   }
 
+  /** Vide le cache HTTP catalogue (après régénération onboarding). */
+  invalidateCatalogCache(): void {
+    this.apiClient.invalidateCache('/products');
+  }
+
   async getProducts(filters?: ProductFilters, page = 1, limit = 10): Promise<ApiResponse<ProductListResponse>> {
     return this.apiClient.get<ProductListResponse>(this.buildProductsUrl(filters, page, limit));
   }
