@@ -123,7 +123,7 @@ describe('ProductsService', () => {
 				}),
 			);
 
-			await service.create({ name: 'Sans visuel' });
+			await service.create({ name: 'Sans visuel', sku: 'SANS-VISUEL' });
 
 			const call = mockPrismaService.product.create.mock.calls[0][0];
 			expect(['icon', 'library']).toContain(call.data.visualType);

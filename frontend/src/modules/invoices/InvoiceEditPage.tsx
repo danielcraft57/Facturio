@@ -24,6 +24,7 @@ import { clientService, parseClientsListResponse } from '../../services/clients'
 import type { Client } from '../../services/clients'
 import { useProductsStore } from '../../stores/productsStore'
 import { productService } from '../../services/productService'
+import { suggestProductSkuFromName } from '../products/utils/productSku'
 import { useToast } from '../../components/useToast'
 import { apiClient } from '../../services/api'
 import { formatDate } from '../../utils/formatters'
@@ -217,6 +218,7 @@ export function InvoiceEditPage() {
         try {
           await productService.createProduct({
             name: candidate.name,
+            sku: suggestProductSkuFromName(candidate.name),
             description: candidate.name,
             unitPrice: candidate.unitPrice > 0 ? candidate.unitPrice : undefined,
           })

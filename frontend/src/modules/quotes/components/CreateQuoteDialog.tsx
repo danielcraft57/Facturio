@@ -12,6 +12,7 @@ import { clientService, mapApiClientToClient, parseClientsListResponse, toCreate
 import type { Client } from '../../../services/clients'
 import { useProductsStore } from '../../../stores/productsStore'
 import { productService } from '../../../services/productService'
+import { suggestProductSkuFromName } from '../../products/utils/productSku'
 import type { CreateQuoteLineData } from '../../../types/quote'
 import { financePrimaryButtonSx, financeOutlinedButtonSx } from '../../../components/finance/financeStyles'
 import {
@@ -197,9 +198,11 @@ export function CreateQuoteDialog({
         continue
       }
       try {
+        const lineName = line.description.trim()
         const created = await productService.createProduct({
-          name: line.description.trim(),
-          description: line.description.trim(),
+          name: lineName,
+          sku: suggestProductSkuFromName(lineName),
+          description: lineName,
           unitPrice: Number(line.unitPrice) > 0 ? Number(line.unitPrice) : undefined,
         })
         const createdProduct = created.data

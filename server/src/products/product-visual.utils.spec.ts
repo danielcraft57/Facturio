@@ -32,6 +32,7 @@ describe('product-visual.utils', () => {
 	it('resolveVisualOnCreate — icône explicite avec dégradé', () => {
 		const v = resolveVisualOnCreate({
 			name: 'Test',
+			sku: 'TEST-ICON',
 			visualType: 'icon',
 			iconName: 'robot',
 		});
@@ -43,6 +44,7 @@ describe('product-visual.utils', () => {
 	it('resolveVisualOnCreate — bibliothèque explicite', () => {
 		const v = resolveVisualOnCreate({
 			name: 'Test',
+			sku: 'TEST-LIB',
 			visualType: 'library',
 			imageData: 'library:seo',
 		});
@@ -54,7 +56,7 @@ describe('product-visual.utils', () => {
 	it('resolveVisualOnCreate — aléatoire sans visualType', () => {
 		const types = new Set<string>();
 		for (let i = 0; i < 30; i++) {
-			types.add(resolveVisualOnCreate({ name: 'X' }).visualType);
+			types.add(resolveVisualOnCreate({ name: 'X', sku: 'TEST-RANDOM' }).visualType);
 		}
 		expect(types.has('icon')).toBe(true);
 		expect(types.has('library')).toBe(true);

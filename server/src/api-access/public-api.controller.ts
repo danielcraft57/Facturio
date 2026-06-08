@@ -41,6 +41,7 @@ export class PublicApiController {
 	constructor(
 		private readonly clients: ClientsService,
 		private readonly products: ProductsService,
+		private readonly deliverablesCatalog: DeliverablesCatalogService,
 		private readonly invoices: InvoicesService,
 		private readonly quotes: QuotesService,
 		private readonly dispatch: PublicApiDispatchService,

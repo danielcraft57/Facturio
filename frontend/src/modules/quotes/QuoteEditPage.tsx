@@ -21,6 +21,7 @@ import type { CreateQuoteLineData } from '../../types/quote'
 import type { Quote, QuoteStatus } from '../../types/quote'
 import { useProductsStore } from '../../stores/productsStore'
 import { productService } from '../../services/productService'
+import { suggestProductSkuFromName } from '../products/utils/productSku'
 import { useToast } from '../../components/useToast'
 import { formatDate } from '../../utils/formatters'
 import { financePrimaryButtonSx, financeOutlinedButtonSx } from '../../components/finance/financeStyles'
@@ -216,6 +217,7 @@ export function QuoteEditPage() {
         try {
           await productService.createProduct({
             name: candidate.name,
+            sku: suggestProductSkuFromName(candidate.name),
             description: candidate.name,
             unitPrice: candidate.unitPrice > 0 ? candidate.unitPrice : undefined,
           })

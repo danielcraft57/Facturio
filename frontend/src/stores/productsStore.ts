@@ -84,11 +84,11 @@ export const useProductsStore = create<ProductsState>()(
           const list = rawList.map((p: Record<string, unknown>) => normalizeProductFromApi(p));
           const total = raw?.total ?? 0;
           const pageNum = raw?.page ?? page;
-          const limit = raw?.pageSize ?? raw?.limit ?? get().pagination.limit;
+          const pageLimit = raw?.pageSize ?? raw?.limit ?? get().pagination.limit;
           if (list.length >= 0) {
             set({
               products: list,
-              pagination: { page: pageNum, limit, total },
+              pagination: { page: pageNum, limit: pageLimit, total },
               lastFetch: Date.now(),
               isStale: false,
             });

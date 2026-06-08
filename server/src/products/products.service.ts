@@ -50,8 +50,9 @@ export class ProductsService {
 	 * @param data - Données du produit (nom, SKU, prix, taux TVA, etc.)
 	 * @returns Produit créé avec taux de TVA par défaut
 	 */
-	private toPrismaData(data: ProductWriteDto) {
-		const { languages, details, techStack, sku, ...rest } = data as CreateProductDto;
+	private toPrismaData(data: ProductWriteDto): Prisma.ProductUncheckedCreateInput {
+		const { languages, details, techStack, sku, visualType, iconName, imageData, ...rest } =
+			data as CreateProductDto;
 		const resolvedLangs =
 			languages !== undefined
 				? languages
@@ -71,9 +72,13 @@ export class ProductsService {
 				? { sku: sku ? normalizeProductSku(sku) : null }
 				: {}),
 			...(techStackJson !== undefined ? { techStack: techStackJson } : {}),
-			...(resolvedLangs !== undefined ? { languages: resolvedLangs ?? [] } : {}),
-			...(details !== undefined ? { details: details ?? [] } : {}),
-		};
+			...(resolvedLangs !== undefined
+				? { languages: (resolvedLangs ?? []) as Prisma.InputJsonValue }
+				: {}),
+			...(details !== undefined
+				? { details: (details ?? []) as unknown as Prisma.InputJsonValue }
+				: {}),
+		} as Prisma.ProductUncheckedCreateInput;
 	}
 
 	async create(data: CreateProductDto, organizationId?: number) {
@@ -109,7 +114,7 @@ export class ProductsService {
 		sku: string,
 		organizationId: number,
 		data: Pick<CreateProductDto, 'name' | 'unitPrice' | 'kind' | 'description'>,
-	) {
+	): Promise<Prisma.ProductGetPayload<{ include: { defaultTaxRate: true } }>> {
 		const existing = await this.findBySku(sku, organizationId);
 		if (existing) return existing;
 		return this.create(
@@ -252,7 +257,7 @@ export class ProductsService {
 		await this.assertOrgProduct(id, organizationId);
 		const product = await this.prisma.product.update({
 			where: { id },
-			data: this.toPrismaData(data),
+			data: this.toPrismaData(data) as Prisma.ProductUncheckedUpdateInput,
 			include: { defaultTaxRate: true },
 		});
 		await this.syncDeliverablesCatalog(organizationId, data.details ?? product.details);
