@@ -152,10 +152,22 @@ fi
 NEED_RESTART=false
 
 RUN_MIGRATE=true
+RUN_CATALOG_SEED=false
 if [ -n "$LAST_OK_SHA" ] && git cat-file -e "${LAST_OK_SHA}^{commit}" 2>/dev/null; then
 	if git diff --quiet "$LAST_OK_SHA" "$DESIRED_SHA" -- server/prisma/postgresql server/package.json; then
 		RUN_MIGRATE=false
 		echo "[facturio-update] pas de changement migrations Postgres depuis $LAST_OK_SHA"
+	fi
+	if ! git diff --quiet "$LAST_OK_SHA" "$DESIRED_SHA" -- \
+		server/prisma/seeds/dev-products.catalog.ts \
+		server/prisma/seeds/danielcraft-prestations.data.ts \
+		server/prisma/seeds/products.seed.ts \
+		server/prisma/seeds/catalog-rules.seed.ts \
+		server/prisma/seed-catalog-prod.ts \
+		server/data/catalog \
+		server/tsconfig.catalog-seed.json; then
+		RUN_CATALOG_SEED=true
+		echo "[facturio-update] catalogue installation (templates globaux) à resynchroniser"
 	fi
 fi
 
@@ -183,6 +195,11 @@ if [ "$RUN_BACKEND" = true ]; then
 	echo "[facturio-update] build backend..."
 	npm run build:prod
 	NEED_RESTART=true
+
+	if [ "$RUN_CATALOG_SEED" = true ]; then
+		echo "[facturio-update] seed catalogue templates (/installation)..."
+		npm run seed:catalog:prod
+	fi
 else
 	echo "[facturio-update] build backend ignoré"
 fi

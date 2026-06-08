@@ -21,7 +21,9 @@ sudo chown pi:pi /var/lib/facturio/github-token
 
 Cron exemple : `0 4 * * * /usr/local/bin/facturio-update.sh >> /var/log/facturio-update.log 2>&1`
 
-Le script enchaîne : `git pull` → `pre-migrate-facturio-ownership.sql` (postgres) → `npm run migrate:prod` → `grant-facturio-role.sql` → build backend → téléchargement `frontend-dist-<sha>` → restart `facturio`.
+Le script enchaîne : `git pull` → `pre-migrate-facturio-ownership.sql` (postgres) → `npm run migrate:prod` → `grant-facturio-role.sql` → build backend → **`npm run seed:catalog:prod`** (si catalogue modifié) → téléchargement `frontend-dist-<sha>` → restart `facturio`.
+
+Le seed prod ne purge **pas** la base : il met à jour les produits modèles globaux (`organizationId` null) clonés par `/installation`.
 
 ## Nginx (node12)
 

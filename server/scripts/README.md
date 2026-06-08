@@ -19,6 +19,8 @@ Exécution : **`cd /opt/facturio/server`** (prod) avec `.env` et `DATABASE_URL`.
 | `npm run user:add -- …` | `manage-user.js add` |
 | `npm run user:remove -- <email>` | `manage-user.js remove` |
 | `npm run user:list` | `manage-user.js list` |
+| `npm run seed:catalog:prod` | Modèles catalogue `/installation` (après `build:prod`) |
+| `npm run seed:prod` | Alias de `seed:catalog:prod` — **ne pas** lancer le seed dev complet en prod |
 
 **Plans** : `free`, `pro`, `pro-efacture`, `agency` (alias `agence`).
 

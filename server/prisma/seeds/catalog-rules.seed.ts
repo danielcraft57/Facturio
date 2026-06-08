@@ -16,7 +16,7 @@ type CatalogPacksFile = {
  * Vérifie que les SKU des règles et packs existent en base (après seedProducts).
  */
 export async function seedCatalogRulesValidation(prisma: PrismaClient): Promise<void> {
-	const dataDir = path.join(__dirname, '..', '..', 'data', 'catalog');
+	const dataDir = path.join(process.cwd(), 'data', 'catalog');
 	const rules = JSON.parse(fs.readFileSync(path.join(dataDir, 'catalog-match-rules.json'), 'utf-8')) as MatchRulesFile;
 	const packs = JSON.parse(fs.readFileSync(path.join(dataDir, 'catalog-packs.json'), 'utf-8')) as CatalogPacksFile;
 
