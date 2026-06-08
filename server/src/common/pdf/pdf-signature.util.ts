@@ -33,6 +33,19 @@ export function tryEmbedSignatureImage(
 	return false;
 }
 
+/** Vrai seulement pour une image (data URL ou fichier) — pas un simple prénom texte. */
+export function hasRenderableSignature(signature?: string | null): boolean {
+	const s = signature?.trim();
+	if (!s) return false;
+	if (s.startsWith('data:image')) return true;
+	try {
+		if (fs.existsSync(s)) return true;
+	} catch {
+		return false;
+	}
+	return false;
+}
+
 export function resolveSubscriptionSignature(): string | null {
 	const raw =
 		process.env.SUBSCRIPTION_SIGNATURE?.trim() ||

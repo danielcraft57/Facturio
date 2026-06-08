@@ -2,11 +2,16 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
 import { getTechStackChoices } from '../catalog/catalog-data';
+import {
+	getOnboardingProfilesFile,
+	normalizeOnboardingProfileId,
+} from '../catalog/onboarding-profiles';
 
 export type OnboardingStatus = {
 	completed: boolean;
 	onboardingCompletedAt: string | null;
 	preferredTechnologies: string[];
+	devProfile: string | null;
 	productCount: number;
 };
 
@@ -23,6 +28,7 @@ export class OnboardingService {
 			select: {
 				onboardingCompletedAt: true,
 				preferredTechnologies: true,
+				devProfile: true,
 			},
 		});
 		if (!org) {
@@ -37,6 +43,7 @@ export class OnboardingService {
 			completed: !!org.onboardingCompletedAt,
 			onboardingCompletedAt: org.onboardingCompletedAt?.toISOString() ?? null,
 			preferredTechnologies: (org.preferredTechnologies as string[]) ?? [],
+			devProfile: normalizeOnboardingProfileId(org.devProfile) ?? org.devProfile ?? null,
 			productCount,
 		};
 	}
@@ -45,28 +52,20 @@ export class OnboardingService {
 		return getTechStackChoices();
 	}
 
-	async previewInstall(organizationId: number, technologyIds: string[]) {
-		this.catalog.validateSelection(technologyIds);
-		const computed = await this.catalog.computeCatalog(technologyIds);
-		const templates = await this.prisma.product.findMany({
-			where: { id: { in: computed.productIds }, organizationId: null },
-			select: {
-				id: true,
-				name: true,
-				sku: true,
-				unitPrice: true,
-				languages: true,
-				description: true,
-			},
-		});
-		return {
-			technologyIds,
-			products: templates,
-			total: templates.length,
-		};
+	getProfiles() {
+		return getOnboardingProfilesFile();
 	}
 
-	async install(organizationId: number, technologyIds: string[]) {
+	async previewInstall(organizationId: number, technologyIds: string[]) {
+		return this.catalog.buildCatalogPreview(technologyIds);
+	}
+
+	async install(
+		organizationId: number,
+		technologyIds: string[],
+		devProfile?: string,
+		templateProductIds?: number[],
+	) {
 		const org = await this.prisma.organization.findUnique({
 			where: { id: organizationId },
 		});
@@ -78,6 +77,12 @@ export class OnboardingService {
 			organizationId,
 			technologyIds,
 			'onboarding',
+			{
+				...(devProfile
+					? { devProfile: normalizeOnboardingProfileId(devProfile) ?? devProfile }
+					: {}),
+				...(templateProductIds?.length ? { templateProductIds } : {}),
+			},
 		);
 
 		return {
@@ -85,6 +90,7 @@ export class OnboardingService {
 			clonedCount: result.clonedCount,
 			productIds: result.productIds,
 			skus: result.skus,
+			deliverablesIndexed: result.deliverablesIndexed,
 		};
 	}
 }

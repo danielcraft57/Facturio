@@ -3,7 +3,7 @@ import { getCatalogPacks } from '../../src/catalog/catalog-packs';
 import { AccountingService } from '../../src/accounting/accounting.service';
 
 /** Packs catalogue visibles en captures marketing (grille produits riche). */
-const MARKETING_CATALOG_PACK_IDS = ['agence-web', 'automation', 'maintenance'] as const;
+const MARKETING_CATALOG_PACK_IDS = ['pack-agence-web', 'pack-automation', 'pack-maintenance'] as const;
 
 export async function installPlaywrightCatalogPacks(prisma: PrismaClient, organizationId: number) {
 	let totalCloned = 0;
@@ -41,6 +41,7 @@ export async function installPlaywrightCatalogPacks(prisma: PrismaClient, organi
 					purpose: t.purpose,
 					category: t.category,
 					languages: t.languages ?? [],
+					techStack: t.techStack ?? undefined,
 					details: t.details ?? [],
 					estimatedHours: t.estimatedHours,
 					description: t.description,

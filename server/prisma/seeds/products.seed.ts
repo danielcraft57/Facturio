@@ -1,8 +1,9 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { DANIELCRAFT_PRESTATIONS } from './danielcraft-prestations.data';
+import { flattenTechAssembly } from '../../src/catalog/tech-assembly.utils';
+import { DANIELCRAFT_PRESTATIONS, DEV_PRODUCT_ALIASES } from './danielcraft-prestations.data';
 
 /**
- * Produits alignés sur https://danielcraft.fr/autres-prestations
+ * Produits développeur v2 — livrables par stack (dev-products.catalog.ts).
  */
 type ProductRef = { id: number; sku?: string | null };
 
@@ -26,7 +27,8 @@ export async function seedProducts(prisma: PrismaClient, taxIds: { def20Id: numb
 			unitPrice: p.unitPrice,
 			category: p.category,
 			purpose: p.purpose ?? null,
-			languages: (p.languages ?? []) as unknown as Prisma.JsonArray,
+			techStack: p.assembly as unknown as Prisma.JsonObject,
+			languages: flattenTechAssembly(p.assembly) as unknown as Prisma.JsonArray,
 			estimatedHours: p.estimatedHours ?? null,
 			description: p.description,
 			details: p.details as unknown as Prisma.JsonArray,
@@ -49,25 +51,25 @@ export async function seedProducts(prisma: PrismaClient, taxIds: { def20Id: numb
 				await prisma.product.update({
 					where: { id: existing.id },
 					data: data as Prisma.ProductUncheckedUpdateInput,
-				})
+				}),
 			);
 		}
 	}
 
 	const bySku = (sku: string): ProductRef => {
-		const found = created.find(c => c.sku === sku);
+		const found = created.find((c) => c.sku === sku);
 		if (!found) throw new Error(`Produit seed manquant: ${sku}`);
 		return found;
 	};
 
 	return {
-		productSaas: bySku('SUPPORT-ABO'),
-		productService: bySku('SITE-VITRINE'),
-		productApp: bySku('AUTO-METIER'),
-		productGood: bySku('AUDIT-OPTIM'),
-		siteVitrine: bySku('SITE-VITRINE'),
-		automatisation: bySku('AUTO-METIER'),
-		auditOptim: bySku('AUDIT-OPTIM'),
+		productSaas: bySku(DEV_PRODUCT_ALIASES.supportAbo),
+		productService: bySku(DEV_PRODUCT_ALIASES.siteVitrine),
+		productApp: bySku(DEV_PRODUCT_ALIASES.automatisation),
+		productGood: bySku(DEV_PRODUCT_ALIASES.auditOptim),
+		siteVitrine: bySku(DEV_PRODUCT_ALIASES.siteVitrine),
+		automatisation: bySku(DEV_PRODUCT_ALIASES.automatisation),
+		auditOptim: bySku(DEV_PRODUCT_ALIASES.auditOptim),
 	};
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   TextField,
@@ -32,6 +33,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+import { productService } from '../../services/productService';
 import { EditProductDialog } from './components/EditProductDialog';
 import { ProductCatalogSections } from './components/ProductCatalogSections';
 import { ProductCatalogInitialLoader } from '../../components/loading/ProductCatalogInitialLoader';
@@ -56,10 +59,12 @@ function scoreProduct(p: Product, qTokens: string[]): number {
   const name = (p.name ?? '').toLowerCase();
   const sku = (p.sku ?? '').toLowerCase();
   const desc = (p.description ?? '').toLowerCase();
-  const details = (p.details ?? []).join(' ').toLowerCase();
+  const details = (p.details ?? []).map(d => (typeof d === 'string' ? d : d.label)).join(' ').toLowerCase();
   const cat = (p.category ?? '').toLowerCase();
   const pur = (p.purpose ?? '').toLowerCase();
-  const langs = (p.languages ?? []).join(' ').toLowerCase();
+  const langs = [...(p.languages ?? []), ...Object.values(p.techStack ?? {}).flat()]
+    .join(' ')
+    .toLowerCase();
   const hay = `${name} ${sku} ${desc} ${details} ${cat} ${pur} ${langs}`;
 
   let s = 0;
@@ -78,9 +83,16 @@ function scoreProduct(p: Product, qTokens: string[]): number {
   return s;
 }
 
+type ProductsLocationState = {
+  catalogRegenerated?: boolean;
+  productCount?: number;
+};
+
 export function ProductsPage() {
   const productsStore = useProducts();
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim().toLowerCase(), 280);
@@ -141,6 +153,34 @@ export function ProductsPage() {
 
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
+
+  const regenNavKeyHandled = useRef<string | null>(null);
+
+  useEffect(() => {
+    const state = location.state as ProductsLocationState | null;
+    if (!state?.catalogRegenerated) return;
+    if (regenNavKeyHandled.current === location.key) return;
+    regenNavKeyHandled.current = location.key;
+
+    const count = state.productCount;
+    toast.success(
+      count != null ? `Catalogue régénéré — ${count} produit(s) installé(s).` : 'Catalogue régénéré.',
+    );
+    productsStore.markAsStale();
+    productService.invalidateCatalogCache();
+
+    void refreshRef
+      .current()
+      .catch(() => {
+        toast.error('Catalogue mis à jour — rechargez la page si la liste semble incomplète.');
+      })
+      .finally(() => {
+        navigate(
+          { pathname: location.pathname, search: location.search },
+          { replace: true, state: {} },
+        );
+      });
+  }, [location.key, location.state, location.pathname, location.search, navigate, productsStore, toast]);
 
   useEffect(() => {
     const onRealtime = (ev: Event) => {
@@ -258,14 +298,25 @@ export function ProductsPage() {
         title="Catalogue produits"
         subtitle="Recherche rapide et filtres intelligents pour retrouver tes produits en quelques secondes."
         actions={
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateProductOpen(true)}
-            sx={financePrimaryButtonSx}
-          >
-            Nouveau produit
-          </Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+            <Button
+              component={RouterLink}
+              to="/installation?returnTo=/produits"
+              variant="outlined"
+              startIcon={<AutorenewIcon />}
+              sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+            >
+              Régénérer catalogue
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateProductOpen(true)}
+              sx={financePrimaryButtonSx}
+            >
+              Nouveau produit
+            </Button>
+          </Stack>
         }
       />
 

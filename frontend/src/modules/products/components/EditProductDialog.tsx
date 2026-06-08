@@ -11,7 +11,6 @@ import {
   Stepper,
   Step,
   StepButton,
-  MobileStepper,
   Slide,
   Chip,
   Divider,
@@ -31,7 +30,6 @@ import {
   faEuroSign,
   faCode,
   faImage,
-  faAlignLeft,
 } from '@fortawesome/free-solid-svg-icons';
 import type {
   Product,
@@ -45,20 +43,35 @@ import type {
 import {
   FORM_STEPS,
   KIND_LABELS,
-  KIND_ICONS,
   PURPOSE_LABELS,
-  PURPOSE_ICONS,
   CATEGORY_LABELS,
-  CATEGORY_ICONS,
 } from '../constants/productLabels';
-import { SelectionCard } from './SelectionCard';
+import { ProductClassificationField } from './ProductClassificationField';
 import { ProductVisualPicker } from './ProductVisualPicker';
 import { ProductAvatar } from './ProductAvatar';
-import { ProductTechAutocomplete } from './ProductTechAutocomplete';
+import { ProductTechStackAssemblyField } from './ProductTechStackAssemblyField';
+import { ProductDeliverablesField } from './ProductDeliverablesField';
+import {
+  parseProductDeliverables,
+  serializeProductDeliverables,
+  sumKnownDeliverableAmounts,
+  type ProductDeliverable,
+} from '../utils/productDeliverables';
+import {
+  isValidProductSku,
+  normalizeProductSku,
+  normalizeProductSkuInput,
+  PRODUCT_SKU_FORMAT_HINT,
+  suggestProductSkuFromName,
+} from '../utils/productSku';
+import type { TechStackAssembly } from '../../../types/techStack';
+import { flattenTechStack } from '../../../types/techStack';
 import { PRODUCT_VISUAL_LIBRARY } from '../constants/productVisualLibrary';
 import { PRODUCT_ICON_OPTIONS } from '../constants/productIconOptions';
+import { applySuggestedTechStackIfEmpty } from '../utils/suggestTechStack';
+import { catalogService } from '../../../services/catalogService';
 
-const STEP_ICONS = [faTag, faLayerGroup, faEuroSign, faCode, faImage, faAlignLeft, faCheck];
+const STEP_ICONS = [faTag, faLayerGroup, faEuroSign, faCode, faImage, faCheck];
 
 type Props = {
   open: boolean;
@@ -67,13 +80,6 @@ type Props = {
   onSave: (data: UpdateProductData | CreateProductData) => Promise<void> | void;
   isSaving?: boolean;
 };
-
-const KINDS: ProductKind[] = ['SAAS', 'APP', 'SERVICE', 'GOOD'];
-const PURPOSES: ProductPurpose[] = ['WEBSITE', 'SAAS', 'ECOMMERCE', 'SHOWCASE'];
-const CATEGORIES: ProductCategory[] = [
-  'SETUP', 'THEME', 'DEV', 'ECOMMERCE', 'PAYMENT', 'CONTENT', 'SEO',
-  'HOSTING', 'CI_CD', 'MAINTENANCE', 'MOBILE', 'API',
-];
 
 export function EditProductDialog({ open, product, onClose, onSave, isSaving }: Props) {
   const [activeStep, setActiveStep] = useState(0);
@@ -87,29 +93,35 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
   const [unitPrice, setUnitPrice] = useState<number | ''>('');
   const [estimatedHours, setEstimatedHours] = useState<number | ''>('');
   const [languages, setLanguages] = useState<string[]>([]);
+  const [techStack, setTechStack] = useState<TechStackAssembly>({});
   const [description, setDescription] = useState('');
-  const [detailsText, setDetailsText] = useState('');
+  const [deliverables, setDeliverables] = useState<ProductDeliverable[]>([{ label: '' }]);
   const [visualType, setVisualType] = useState<ProductVisualType>('icon');
   const [iconName, setIconName] = useState('box');
   const [imageData, setImageData] = useState<string | undefined>();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [skuTouched, setSkuTouched] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setActiveStep(0);
     setSlideIn(true);
+    setSkuTouched(false);
     if (product) {
       setName(product.name || '');
-      setSku(product.sku || '');
+      setSku(normalizeProductSku(product.sku || ''));
+      setSkuTouched(true);
       setKind(product.kind || 'SERVICE');
       setPurpose(product.purpose || '');
       setCategory(product.category || '');
       setUnitPrice(product.unitPrice ?? '');
       setEstimatedHours(product.estimatedHours ?? '');
       setLanguages(product.languages || []);
+      setTechStack(product.techStack ?? {});
       setDescription(product.description || '');
-      setDetailsText((product.details || []).join('\n'));
+      const parsed = parseProductDeliverables(product.details);
+      setDeliverables(parsed.length ? parsed : [{ label: '' }]);
       setVisualType(product.visualType || 'icon');
       setIconName(product.iconName || 'box');
       setImageData(product.imageData);
@@ -124,8 +136,9 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       setUnitPrice('');
       setEstimatedHours('');
       setLanguages([]);
+      setTechStack({});
       setDescription('');
-      setDetailsText('');
+      setDeliverables([{ label: '' }]);
       setVisualType('library');
       setIconName(randomIcon?.name || 'box');
       setImageData(randomVisual?.id || PRODUCT_VISUAL_LIBRARY[0]?.id);
@@ -133,25 +146,52 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
     setErrors({});
   }, [open, product]);
 
+  useEffect(() => {
+    if (!open) return;
+    void catalogService.prefetchTechChoices();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || product) return;
+    setTechStack((current) =>
+      applySuggestedTechStackIfEmpty(current, { kind, purpose, category }),
+    );
+  }, [open, product, kind, purpose, category]);
+
   const validateStep = useCallback((step: number): boolean => {
     const e: Record<string, string> = {};
-    if (step === 0 && !name.trim()) e.name = 'Nom requis';
+    if (step === 0) {
+      if (!name.trim()) e.name = 'Nom requis';
+      const skuNorm = normalizeProductSku(sku);
+      if (!skuNorm) e.sku = 'Référence SKU requise';
+      else if (!isValidProductSku(skuNorm)) e.sku = PRODUCT_SKU_FORMAT_HINT;
+    }
     if (step === 1 && !kind) e.kind = 'Type requis';
     if (step === 2) {
-      if (unitPrice === '' || Number(unitPrice) < 0) e.unitPrice = 'Prix invalide';
+      const effectivePrice =
+        unitPrice !== '' ? Number(unitPrice) : sumKnownDeliverableAmounts(deliverables);
+      if (!Number.isFinite(effectivePrice) || effectivePrice <= 0) {
+        e.unitPrice = 'Indiquez un montant sur au moins un livrable ou un forfait HT';
+      }
       if (estimatedHours !== '' && Number(estimatedHours) < 0) e.estimatedHours = 'Heures invalides';
+      const filled = deliverables.filter(d => d.label.trim());
+      if (!filled.length) e.deliverables = 'Ajoutez au moins un livrable';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
-  }, [name, kind, unitPrice, estimatedHours]);
+  }, [name, sku, kind, unitPrice, estimatedHours, deliverables]);
 
   const isFormValid = useMemo(() => {
     if (!name.trim()) return false;
+    if (!isValidProductSku(normalizeProductSku(sku))) return false;
     if (!kind) return false;
-    if (unitPrice === '' || Number(unitPrice) < 0) return false;
+    const effectivePrice =
+      unitPrice !== '' ? Number(unitPrice) : sumKnownDeliverableAmounts(deliverables);
+    if (!Number.isFinite(effectivePrice) || effectivePrice <= 0) return false;
     if (estimatedHours !== '' && Number(estimatedHours) < 0) return false;
+    if (!deliverables.some(d => d.label.trim())) return false;
     return true;
-  }, [name, kind, unitPrice, estimatedHours]);
+  }, [name, sku, kind, unitPrice, estimatedHours, deliverables]);
 
   const goNext = () => {
     if (!validateStep(activeStep)) return;
@@ -208,15 +248,19 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
 
   const buildPayload = (): CreateProductData | UpdateProductData => ({
     name: name.trim(),
-    sku: sku.trim() || undefined,
+    sku: normalizeProductSku(sku),
     kind,
     purpose: purpose || undefined,
     category: category || undefined,
-    unitPrice: unitPrice === '' ? undefined : Number(unitPrice),
+    unitPrice:
+      unitPrice === ''
+        ? sumKnownDeliverableAmounts(deliverables) || undefined
+        : Number(unitPrice),
     estimatedHours: estimatedHours === '' ? undefined : Number(estimatedHours),
-    languages,
+    languages: flattenTechStack(techStack).length > 0 ? flattenTechStack(techStack) : languages,
+    techStack: Object.keys(techStack).length > 0 ? techStack : undefined,
     description: description.trim() || undefined,
-    details: detailsText.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean),
+    details: serializeProductDeliverables(deliverables),
     visualType,
     iconName: visualType === 'icon' ? iconName : undefined,
     imageData: visualType !== 'icon' ? imageData : undefined,
@@ -227,7 +271,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
     await onSave(product ? buildPayload() : (buildPayload() as CreateProductData));
   };
 
-  const detailsList = detailsText.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean);
+  const detailsList = deliverables.filter(d => d.label.trim());
   const isLastStep = activeStep === FORM_STEPS.length - 1;
 
   const renderStepContent = () => {
@@ -241,101 +285,82 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
             <TextField
               label="Nom du produit"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={e => {
+                const next = e.target.value;
+                setName(next);
+                if (!skuTouched) {
+                  setSku(suggestProductSkuFromName(next));
+                }
+              }}
               error={!!errors.name}
               helperText={errors.name}
               fullWidth
               autoFocus
             />
             <TextField
-              label="Référence SKU (optionnel)"
+              label="Référence SKU"
               value={sku}
-              onChange={e => setSku(e.target.value)}
+              onChange={e => {
+                setSkuTouched(true);
+                setSku(normalizeProductSkuInput(e.target.value));
+              }}
               fullWidth
-              placeholder="ex: DEV-REACT-001"
+              required
+              error={!!errors.sku}
+              helperText={
+                errors.sku ||
+                (skuTouched ? PRODUCT_SKU_FORMAT_HINT : 'Généré depuis le nom — modifiable')
+              }
+              placeholder="STACK-WP-VITRINE"
+              inputProps={{
+                style: { textTransform: 'uppercase', fontFamily: 'monospace' },
+                spellCheck: false,
+              }}
             />
           </Box>
         );
 
       case 'classification':
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>Type de produit</Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
-                {KINDS.map(k => (
-                  <SelectionCard
-                    key={k}
-                    label={KIND_LABELS[k]}
-                    icon={KIND_ICONS[k]}
-                    selected={kind === k}
-                    onClick={() => setKind(k)}
-                  />
-                ))}
-              </Box>
-            </Box>
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>But / usage</Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
-                <SelectionCard label="Non défini" selected={!purpose} onClick={() => setPurpose('')} />
-                {PURPOSES.map(p => (
-                  <SelectionCard
-                    key={p}
-                    label={PURPOSE_LABELS[p]}
-                    icon={PURPOSE_ICONS[p]}
-                    selected={purpose === p}
-                    onClick={() => setPurpose(p)}
-                  />
-                ))}
-              </Box>
-            </Box>
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>Catégorie</Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, maxHeight: 160, overflowY: 'auto' }}>
-                <SelectionCard label="—" selected={!category} onClick={() => setCategory('')} />
-                {CATEGORIES.map(c => (
-                  <SelectionCard
-                    key={c}
-                    label={CATEGORY_LABELS[c]}
-                    icon={CATEGORY_ICONS[c]}
-                    selected={category === c}
-                    onClick={() => setCategory(c)}
-                  />
-                ))}
-              </Box>
-            </Box>
-          </Box>
+          <ProductClassificationField
+            kind={kind}
+            purpose={purpose}
+            category={category}
+            onKindChange={setKind}
+            onPurposeChange={setPurpose}
+            onCategoryChange={setCategory}
+            kindError={errors.kind}
+          />
         );
 
-      case 'pricing':
+      case 'offer':
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Prix unitaire (€)"
-              type="number"
-              value={unitPrice}
-              onChange={e => setUnitPrice(e.target.value === '' ? '' : Number(e.target.value))}
-              error={!!errors.unitPrice}
-              helperText={errors.unitPrice || 'Montant HT affiché sur les devis'}
-              fullWidth
-              inputProps={{ min: 0, step: 0.01 }}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <ProductDeliverablesField
+              items={deliverables}
+              unitPrice={unitPrice}
+              estimatedHours={estimatedHours}
+              onChange={setDeliverables}
+              onUnitPriceChange={setUnitPrice}
+              onEstimatedHoursChange={setEstimatedHours}
             />
-            <TextField
-              label="Heures estimées (optionnel)"
-              type="number"
-              value={estimatedHours}
-              onChange={e => setEstimatedHours(e.target.value === '' ? '' : Number(e.target.value))}
-              error={!!errors.estimatedHours}
-              helperText={errors.estimatedHours || 'Pour estimer la charge projet'}
-              fullWidth
-              inputProps={{ min: 0, step: 1 }}
-            />
+            {(errors.deliverables || errors.unitPrice || errors.estimatedHours) && (
+              <Typography variant="caption" color="error" component="div">
+                {errors.deliverables || errors.unitPrice || errors.estimatedHours}
+              </Typography>
+            )}
           </Box>
         );
 
       case 'skills':
         return (
-          <ProductTechAutocomplete value={languages} onChange={setLanguages} />
+          <ProductTechStackAssemblyField
+            value={techStack}
+            onChange={(next) => {
+              setTechStack(next);
+              setLanguages(flattenTechStack(next));
+            }}
+          />
         );
 
       case 'visual':
@@ -352,31 +377,6 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
               if ('imageData' in patch) setImageData(patch.imageData);
             }}
           />
-        );
-
-      case 'content':
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Description"
-              multiline
-              minRows={3}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              fullWidth
-              placeholder="Résumé commercial du produit ou service"
-            />
-            <TextField
-              label="Points clés"
-              multiline
-              minRows={4}
-              value={detailsText}
-              onChange={e => setDetailsText(e.target.value)}
-              fullWidth
-              placeholder="Un point par ligne"
-              helperText="Chaque ligne = une puce dans le catalogue"
-            />
-          </Box>
         );
 
       case 'summary':
@@ -426,7 +426,16 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
                     <ListItemIcon sx={{ minWidth: 28 }}>
                       <FontAwesomeIcon icon={faCheck} style={{ fontSize: 12, color: '#10b981' }} />
                     </ListItemIcon>
-                    <ListItemText primary={d} />
+                    <ListItemText
+                      primary={d.label}
+                      secondary={
+                        d.amount != null
+                          ? `${Number(d.amount).toLocaleString('fr-FR')} € HT${d.hours ? ` · ${d.hours} h` : ''}`
+                          : d.hours
+                            ? `${d.hours} h`
+                            : undefined
+                      }
+                    />
                   </ListItem>
                 ))}
               </List>
@@ -449,7 +458,18 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       </DialogTitle>
 
       <DialogContent dividers sx={{ minHeight: 380 }}>
-        <Stepper activeStep={activeStep} nonLinear alternativeLabel sx={{ mb: 3, display: { xs: 'none', sm: 'flex' } }}>
+        <Stepper
+          activeStep={activeStep}
+          nonLinear
+          alternativeLabel
+          sx={{
+            mt: 2,
+            mb: 3,
+            display: { xs: 'none', sm: 'flex' },
+            '& .MuiStepLabel-root': { mt: 1.25 },
+            '& .MuiStepLabel-label': { mt: 0.75 },
+          }}
+        >
           {FORM_STEPS.map((step, i) => (
             <Step key={step.id} completed={i < activeStep}>
               <StepButton
@@ -474,49 +494,80 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
           ))}
         </Stepper>
 
-        <MobileStepper
-          variant="dots"
-          steps={FORM_STEPS.length}
-          position="static"
-          activeStep={activeStep}
-          sx={{ mb: 2, display: { xs: 'flex', sm: 'none' }, bgcolor: 'transparent' }}
-          nextButton={<span />}
-          backButton={<span />}
-        />
+        <Box
+          sx={{
+            display: { xs: 'flex', sm: 'none' },
+            justifyContent: 'center',
+            gap: 0.75,
+            mb: 2,
+          }}
+        >
+          {FORM_STEPS.map((_, i) => (
+            <Box
+              key={i}
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: i === activeStep ? 'primary.main' : 'action.disabledBackground',
+              }}
+            />
+          ))}
+        </Box>
 
         <Slide direction="left" in={slideIn} mountOnEnter unmountOnExit>
           <Box>{renderStepContent()}</Box>
         </Slide>
       </DialogContent>
 
-      <DialogActions sx={{ flexDirection: { xs: 'column', sm: 'row' }, gap: 1, px: 2, py: 1.5 }}>
-        <MobileStepper
-          variant="text"
-          steps={FORM_STEPS.length}
-          position="static"
-          activeStep={activeStep}
-          sx={{ flex: 1, bgcolor: 'transparent', px: 0 }}
-          nextButton={
-            <Button size="small" onClick={goNext} disabled={activeStep >= FORM_STEPS.length - 1}>
-              Suivant
-              <FontAwesomeIcon icon={faArrowRight} style={{ marginLeft: 8 }} />
-            </Button>
-          }
-          backButton={
-            <Button size="small" onClick={goBack} disabled={activeStep === 0}>
-              <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: 8 }} />
-              Précédent
-            </Button>
-          }
-        />
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button onClick={onClose}>Annuler</Button>
+      <DialogActions
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 1,
+          px: 2,
+          py: 1.5,
+        }}
+      >
+        <Button
+          onClick={goBack}
+          disabled={activeStep === 0 || isSaving}
+          startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
+        >
+          Précédent
+        </Button>
+
+        <Typography variant="caption" color="text.secondary" sx={{ mx: 1 }}>
+          {activeStep + 1} / {FORM_STEPS.length}
+        </Typography>
+
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button onClick={onClose} disabled={isSaving}>
+            Annuler
+          </Button>
           {!isLastStep ? (
-            <Button variant="contained" onClick={goNext}>
+            <Button
+              variant="contained"
+              onClick={goNext}
+              disabled={isSaving}
+              endIcon={<FontAwesomeIcon icon={faArrowRight} />}
+            >
               Continuer
             </Button>
           ) : (
-            <Button variant="contained" onClick={handleSave} disabled={isSaving || !isFormValid} startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <FontAwesomeIcon icon={faCheck} />}>
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={isSaving || !isFormValid}
+              startIcon={
+                isSaving ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  <FontAwesomeIcon icon={faCheck} />
+                )
+              }
+            >
               {isSaving ? 'Enregistrement…' : 'Enregistrer'}
             </Button>
           )}

@@ -21,6 +21,7 @@ import type { CreateQuoteLineData } from '../../types/quote'
 import type { Quote, QuoteStatus } from '../../types/quote'
 import { useProductsStore } from '../../stores/productsStore'
 import { productService } from '../../services/productService'
+import { suggestProductSkuFromName } from '../products/utils/productSku'
 import { useToast } from '../../components/useToast'
 import { formatDate } from '../../utils/formatters'
 import { financePrimaryButtonSx, financeOutlinedButtonSx } from '../../components/finance/financeStyles'
@@ -79,6 +80,10 @@ export function QuoteEditPage() {
   const [error, setError] = useState<string | null>(null)
 
   const quoteId = id ?? ''
+
+  useEffect(() => {
+    void productService.prefetchCatalog(100)
+  }, [])
 
   useEffect(() => {
     if (!isEntityCuid(quoteId)) return
@@ -177,6 +182,7 @@ export function QuoteEditPage() {
               line[field] = Number(value)
             } else if (field === 'description') {
               line.description = String(value)
+              line.productId = undefined
             } else if (field === 'productId') {
               line.productId = Number(value)
             }
@@ -211,6 +217,7 @@ export function QuoteEditPage() {
         try {
           await productService.createProduct({
             name: candidate.name,
+            sku: suggestProductSkuFromName(candidate.name),
             description: candidate.name,
             unitPrice: candidate.unitPrice > 0 ? candidate.unitPrice : undefined,
           })
@@ -375,6 +382,7 @@ export function QuoteEditPage() {
             quantity: 1,
             unitPrice: Math.round(Number(line.unitPrice)),
             taxRate: line.taxRate ?? 0.2,
+            productId: line.productId,
           }))}
           products={productsStore.products}
           taxHeader="TVA (0-1)"
@@ -383,6 +391,20 @@ export function QuoteEditPage() {
           taxWidth={80}
           onRemoveLine={handleRemoveLine}
           onLineChange={handleLineChange}
+          onProductPicked={(index, product) => {
+            const label = (product.name ?? '').trim()
+            setForm((prev) => {
+              if (!prev) return prev
+              const next = [...prev.lines]
+              next[index] = {
+                ...next[index],
+                description: label,
+                productId: Number(product.id),
+                unitPrice: Math.round(Number(product.unitPrice ?? next[index].unitPrice ?? 0)),
+              }
+              return { ...prev, lines: ensureTrailingEmptyLine(next, createEmptyLine) }
+            })
+          }}
         />
 
         <FinanceFormTotalsBox

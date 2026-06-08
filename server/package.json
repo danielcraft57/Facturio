@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "1.3.12",
+  "version": "1.3.13",
   "main": "index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-pdf-assets.js && node scripts/copy-email-assets.js",
@@ -44,6 +44,7 @@
     "invoices:list": "node scripts/purge-organization-invoices.js list",
     "invoices:purge": "node scripts/purge-organization-invoices.js purge",
     "preview:emails": "ts-node --transpile-only scripts/preview-emails.ts",
+    "preview:quote-pdfs": "ts-node --transpile-only scripts/preview-quote-pdfs.ts",
     "test:email:branded": "node scripts/test-email-branded.js"
   },
   "keywords": [],

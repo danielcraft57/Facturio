@@ -1,37 +1,43 @@
-/** Palette et dimensions du template PDF facture / devis */
+/** Palette Facturio — alignée sur l’app (#0f172a / #1e3a5f / #1e40af) */
 export const PDF_THEME = {
-	navy: '#2C2E4E',
-	red: '#B21F2D',
+	navy: '#0f172a',
+	navyMid: '#1e3a5f',
+	accent: '#1e40af',
+	accentLight: '#3b82f6',
 	white: '#FFFFFF',
 	text: '#374151',
-	textDark: '#1f2937',
-	textMuted: '#6b7280',
-	border: '#e5e7eb',
-	rowAlt: '#f8f9fb',
-	legalBg: '#f3f4f6'
+	textDark: '#0f172a',
+	textMuted: '#64748b',
+	border: '#e2e8f0',
+	rowAlt: '#f8fafc',
+	legalBg: '#f1f5f9',
+	/** Bordures & totaux (remplace l’ancien rouge corporate) */
+	highlight: '#1e40af',
 } as const;
 
 export const PDF_LAYOUT = {
 	pageWidth: 595.28,
 	marginX: 50,
 	contentWidth: 495.28,
-	/** Espacements (pt) */
 	padSm: 8,
 	padMd: 14,
 	padLg: 20,
-	sectionGap: 16,
-	headerHeight: 128,
-	headerContentBottom: 148,
-	tableHeaderHeight: 36,
+	sectionGap: 14,
+	headerHeight: 118,
+	headerContentBottom: 132,
+	tableHeaderHeight: 32,
 	lineHeight: 32,
-	tableCellPadX: 16,
-	tableCellPadY: 11
+	tableCellPadX: 14,
+	tableCellPadY: 10,
 } as const;
 
 export type PdfDocumentKind = 'facture' | 'devis';
 
 export interface PdfCompanyInfo {
+	/** Nom affiché (raison sociale ou nom commercial). */
 	name: string;
+	/** Nom légal si différent du nom commercial (EI). */
+	legalName?: string;
 	legalForm?: string;
 	capital?: string;
 	address: string;
@@ -49,8 +55,6 @@ export interface PdfTotals {
 	subtotal: number;
 	tax: number;
 	total: number;
-	/** Avoirs client imputés (TTC), affichés en déduction. */
 	creditApplied?: number;
-	/** Solde restant après avoirs (TTC). */
 	netDue?: number;
 }

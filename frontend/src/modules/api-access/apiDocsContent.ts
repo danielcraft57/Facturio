@@ -133,7 +133,35 @@ export const API_WORKFLOWS = [
       'Visuel omis → icône + dégradé ou image bibliothèque tirés au hasard.',
     ],
   },
+  {
+    id: 'deliverables-catalog',
+    title: 'Catalogue livrables (tarif / durée réutilisables)',
+    steps: [
+      'Jeton avec produits.read (recherche) et produits.write (enregistrement via produit).',
+      'GET /api/public/produits/livrables/catalog?q=wordpress — suggestions avec defaultAmount et defaultHours.',
+      'POST ou PATCH /api/public/produits — details: [{ "label": "…", "amount": 1200, "hours": 16 }] indexe chaque livrable libellé.',
+      'Prochain produit : même libellé retrouvé via GET livrables/catalog ; réutiliser amount/hours comme valeurs par défaut.',
+    ],
+  },
 ] as const
+
+/** Couleurs du sommaire (une teinte par section de la référence). */
+export const API_DOC_SECTION_COLORS: Record<string, string> = {
+  overview: '#64748b',
+  auth: '#6366f1',
+  'paid-externe': '#059669',
+  pagination: '#8b5cf6',
+  clients: '#0ea5e9',
+  produits: '#f59e0b',
+  livrables: '#db2777',
+  factures: '#2563eb',
+  devis: '#14b8a6',
+  'catalog-import': '#dc2626',
+}
+
+export function getApiDocSectionColor(sectionId: string): string {
+  return API_DOC_SECTION_COLORS[sectionId] ?? '#64748b'
+}
 
 /** Sections affichées dans l’onglet Référence (sommaire + contenu). */
 export const API_DOC_SECTIONS: ApiDocSection[] = [
@@ -272,7 +300,9 @@ Visuel (si visualType / iconName / imageData omis) : tirage aléatoire entre
 
 Forcer : visualType "icon" + iconName optionnel, ou visualType "library" + imageData "library:…".
 
-Recherche : GET /public/produits?search=MON-SKU (contient, pas égalité stricte).
+Recherche produits : GET /public/produits?search=MON-SKU (contient, pas égalité stricte).
+
+Livrables (champ details) : tableau de { label, amount?, hours? } — rétrocompatible avec des chaînes simples ("Mesure Core Web Vitals"). Chaque livrable libellé est indexé dans le catalogue organisation à la création ou modification (POST/PATCH) avec son tarif et sa durée par défaut. Voir section « Catalogue livrables ».
 
 Script de test : scripts/windows/test-produit.ps1.`,
     endpoints: [
@@ -280,29 +310,71 @@ Script de test : scripts/windows/test-produit.ps1.`,
         method: 'GET',
         path: '/public/produits',
         scope: 'produits.read',
-        desc: 'Catalogue',
-        queryParams: '?page=1&search=…',
+        desc: 'Produits de votre organisation',
+        queryParams: '?page=1&search=…&kind=SERVICE',
       },
-      { method: 'GET', path: '/public/produits/:id', scope: 'produits.read', desc: 'Détail' },
+      {
+        method: 'GET',
+        path: '/public/produits/sku/:sku',
+        scope: 'produits.read',
+        desc: 'Produit org par SKU exact',
+      },
+      { method: 'GET', path: '/public/produits/:id', scope: 'produits.read', desc: 'Détail par id' },
       {
         method: 'POST',
         path: '/public/produits',
         scope: 'produits.write',
         desc: 'Créer',
-        requestBody: '{ "name", "unitPrice", "kind": "SERVICE", "iconName" (optionnel), "visualType" (optionnel) }',
+        requestBody:
+          '{ "name", "sku", "unitPrice", "kind": "SERVICE", "estimatedHours", "techStack", "details": [{ "label", "amount", "hours" }], "iconName" (optionnel) }',
       },
       { method: 'PATCH', path: '/public/produits/:id', scope: 'produits.write', desc: 'Modifier' },
       { method: 'DELETE', path: '/public/produits/:id', scope: 'produits.write', desc: 'Supprimer' },
     ],
     exampleBody: `{
-  "name": "Audit performance",
-  "sku": "AUDIT-PERF-API",
+  "name": "Site vitrine WordPress",
+  "sku": "WP-VITRINE-API",
   "kind": "SERVICE",
-  "unitPrice": 890,
+  "unitPrice": 3200,
+  "estimatedHours": 40,
   "category": "DEV",
-  "description": "Analyse Lighthouse et recommandations"
+  "techStack": {
+    "languages": ["PHP"],
+    "cms": ["WordPress"]
+  },
+  "details": [
+    { "label": "Intégration thème", "amount": 1800, "hours": 24 },
+    { "label": "Recette & mise en ligne", "amount": 600, "hours": 8 },
+    { "label": "Formation éditeur", "amount": 800, "hours": 8 }
+  ]
 }`,
     exampleCurl: { method: 'POST', path: '/public/produits' },
+  },
+  {
+    id: 'livrables',
+    title: 'Catalogue livrables',
+    scopes: ['produits.read', 'produits.write'],
+    body: `Répertoire organisation des libellés de livrables réutilisés entre produits (comme l’autocomplete dans l’app web).
+
+• Recherche : GET /public/produits/livrables/catalog?q=mot-clé (sans q → livrables récents, max 25).
+• Enregistrement : automatique à chaque POST/PATCH /public/produits dont details contient un label non vide.
+• Mise à jour : si le libellé existe déjà (insensible à la casse), amount et hours fournis écrasent les valeurs par défaut.
+
+Réponse : tableau [{ "id", "label", "defaultAmount", "defaultHours" }] — montants HT, heures entières.
+
+Les livrables structurés alimentent aussi la répartition du prix sur le PDF devis (si tous les montants sont renseignés).`,
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/public/produits/livrables/catalog',
+        scope: 'produits.read',
+        desc: 'Rechercher des livrables (autocomplete)',
+        queryParams: '?q=intégration (optionnel)',
+        responseHint: '[{ "id": 1, "label": "Intégration thème", "defaultAmount": 1800, "defaultHours": 24 }]',
+      },
+    ],
+    exampleCurl: { method: 'GET', path: '/public/produits/livrables/catalog?q=wordpress' },
+    workflow: API_WORKFLOWS.find(w => w.id === 'deliverables-catalog'),
   },
   {
     id: 'factures',
@@ -454,6 +526,7 @@ Scripts : scripts/windows/test-devis.ps1 (envoi / accept), test-devis-produit.ps
 
 • Recherche : GET /public/produits?search=SKU avant POST pour limiter les doublons.
 • Création unitaire : POST /public/produits (visuel aléatoire si omis).
+• Livrables réutilisables : GET /public/produits/livrables/catalog — indexés via details sur POST/PATCH produit.
 • Import massif : préférer l’API session POST /api/products (pas de rate limit 60/15 min).
 • Devis sans produit préalable : productSku sur POST /public/devis (get-or-create, voir section Devis).`,
     scopes: ['produits.read', 'produits.write', 'devis.write'],

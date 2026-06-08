@@ -1,12 +1,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+export type CatalogPackAudience = 'all' | 'junior';
+
 export type CatalogPackDefinition = {
 	id: string;
 	name: string;
 	description: string;
 	priceHint: string;
 	skus: string[];
+	audience?: CatalogPackAudience;
+	suggestedProfiles?: string[];
 };
 
 export type CatalogPacksFile = {
@@ -32,4 +36,8 @@ export function getCatalogPackById(packId: string): CatalogPackDefinition | unde
 
 export function listCatalogPacks(): CatalogPackDefinition[] {
 	return getCatalogPacks().packs;
+}
+
+export function listJuniorCatalogPacks(): CatalogPackDefinition[] {
+	return getCatalogPacks().packs.filter((p) => p.audience === 'junior');
 }

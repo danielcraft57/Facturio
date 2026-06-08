@@ -104,29 +104,77 @@ export const WORKFLOWS = [
   },
 ] as const
 
+export const CATALOG_PACKS_JUNIOR = [
+  {
+    id: 'junior-premier-client',
+    name: 'Premier client',
+    price: '9',
+    priceNote: '€ achat unique',
+    description: 'Site statique, SEO, pages — pour votre première mission facturable.',
+    cta: 'Idéal étudiant·e',
+    techStack: 'HTML · JS',
+  },
+  {
+    id: 'junior-fullstack-ts',
+    name: 'Full-Stack TypeScript',
+    price: '14',
+    priceNote: '€ achat unique',
+    description: 'MVP React/Nest, Next+Supabase, Docker CI/CD.',
+    cta: 'Stack 2026',
+    techStack: 'TypeScript · React · Node',
+  },
+  {
+    id: 'junior-wordpress',
+    name: 'WordPress',
+    price: '12',
+    priceNote: '€ achat unique',
+    description: 'Thème WP, maintenance, dépannage.',
+    cta: 'Intégrateur CMS',
+    techStack: 'PHP · WordPress',
+  },
+  {
+    id: 'junior-python',
+    name: 'Python',
+    price: '14',
+    priceNote: '€ achat unique',
+    description: 'FastAPI, Django, agent RAG LangChain.',
+    cta: 'Backend Python',
+    techStack: 'Python · FastAPI',
+  },
+  {
+    id: 'junior-ia',
+    name: 'IA & no-code',
+    price: '13',
+    priceNote: '€ achat unique',
+    description: 'Chatbot, n8n, Claude API.',
+    cta: 'Consultant IA junior',
+    techStack: 'OpenAI · n8n',
+  },
+] as const
+
 export const CATALOG_PACKS = [
   {
-    id: 'agence-web',
+    id: 'pack-agence-web',
     name: 'Pack Agence web',
     price: '19',
     priceNote: '€ achat unique',
-    description: '~30 prestations typées : vitrine, refonte, SEO, formation.',
+    description: 'Sites statiques, Next, Nuxt, SEO et formation.',
     cta: 'Inclure à l’inscription',
   },
   {
-    id: 'automation',
+    id: 'pack-automation',
     name: 'Pack Automatisation',
     price: '15',
     priceNote: '€ achat unique',
-    description: 'Intégrations API, n8n/Make, migrations et scripts.',
+    description: 'APIs, n8n, RAG, intégrations IA.',
     cta: 'Voir avec Pro',
   },
   {
-    id: 'maintenance',
+    id: 'pack-maintenance',
     name: 'Pack Maintenance & SLA',
     price: '12',
     priceNote: '€ ou +3 €/mois',
-    description: 'Hébergement, correctifs, monitoring et contrats récurrents.',
+    description: 'Contrats récurrents, dépannage, accompagnement.',
     cta: 'Voir avec Pro',
   },
 ] as const

@@ -1,34 +1,79 @@
 import { PrismaClient, ProductKind } from '@prisma/client';
 
-/** Produits minimaux pour que l'algorithme de catalogue ait des SKU à matcher en e2e. */
+/** Produits minimaux catalogue v2 pour e2e onboarding. */
 const CATALOG_E2E_PRODUCTS: Array<{
 	sku: string;
 	name: string;
 	unitPrice: number;
-	languages: string[];
+	techStack: Record<string, string[]>;
 	kind?: ProductKind;
 }> = [
-	{ sku: 'SEO-BASIQUE', name: 'SEO Basique', unitPrice: 120, languages: [] },
-	{ sku: 'PAGE-SUPP', name: 'Page supplémentaire', unitPrice: 80, languages: ['HTML', 'CSS'] },
-	{ sku: 'DEPANNAGE-2H', name: 'Dépannage 2h', unitPrice: 90, languages: [] },
-	{ sku: 'SITE-VITRINE', name: 'Site Vitrine', unitPrice: 490, languages: ['HTML', 'CSS', 'JavaScript'] },
-	{ sku: 'AUTO-METIER', name: 'App métier', unitPrice: 750, languages: ['TypeScript', 'React', 'NestJS', 'Node.js'] },
-	{ sku: 'INTEG-API', name: 'Intégration API', unitPrice: 320, languages: ['TypeScript', 'Node.js'] },
-	{ sku: 'REFONTE-LEGERE', name: 'Refonte légère', unitPrice: 280, languages: ['HTML', 'CSS', 'JavaScript'] },
-	{ sku: 'IA-FAQ-SITE', name: 'FAQ IA', unitPrice: 199, languages: ['ChatGPT API', 'JavaScript'] },
+	{
+		sku: 'ADDON-SEO-BASIQUE',
+		name: 'SEO Basique',
+		unitPrice: 290,
+		techStack: { languages: ['HTML', 'CSS'] },
+	},
+	{
+		sku: 'ADDON-PAGE-SUPP',
+		name: 'Page supplémentaire',
+		unitPrice: 65,
+		techStack: { languages: ['HTML', 'CSS'] },
+	},
+	{
+		sku: 'ADDON-DEPANNAGE-2H',
+		name: 'Dépannage 2h',
+		unitPrice: 120,
+		techStack: { languages: ['JavaScript'], cms: ['WordPress'] },
+	},
+	{
+		sku: 'STACK-WEB-STATIC',
+		name: 'Site vitrine statique',
+		unitPrice: 490,
+		techStack: { languages: ['HTML', 'CSS', 'JavaScript'] },
+	},
+	{
+		sku: 'STACK-MVP-REACT-NEST',
+		name: 'MVP SaaS React + NestJS',
+		unitPrice: 750,
+		techStack: {
+			languages: ['TypeScript'],
+			frontend: ['React'],
+			backend: ['NestJS', 'Node.js'],
+			databases: ['PostgreSQL'],
+		},
+	},
+	{
+		sku: 'STACK-FASTAPI-API',
+		name: 'API FastAPI',
+		unitPrice: 620,
+		techStack: { languages: ['Python'], backend: ['FastAPI'], databases: ['PostgreSQL'] },
+	},
+	{
+		sku: 'STACK-CHATBOT-WEB',
+		name: 'Chatbot IA',
+		unitPrice: 990,
+		techStack: { languages: ['TypeScript'], ai: ['OpenAI'] },
+	},
 ];
+
+function flatten(stack: Record<string, string[]>): string[] {
+	return Object.values(stack).flat();
+}
 
 export async function seedCatalogProductsForE2e(prisma: PrismaClient): Promise<void> {
 	for (const p of CATALOG_E2E_PRODUCTS) {
 		const existing = await prisma.product.findFirst({
 			where: { sku: p.sku, organizationId: null },
 		});
+		const languages = flatten(p.techStack);
 		const payload = {
 			name: p.name,
 			sku: p.sku,
 			organizationId: null,
 			unitPrice: p.unitPrice,
-			languages: p.languages,
+			languages,
+			techStack: p.techStack,
 			kind: p.kind ?? 'SERVICE',
 			category: 'DEV',
 		};
@@ -37,7 +82,7 @@ export async function seedCatalogProductsForE2e(prisma: PrismaClient): Promise<v
 		} else {
 			await prisma.product.update({
 				where: { id: existing.id },
-				data: { name: p.name, unitPrice: p.unitPrice, languages: p.languages },
+				data: { name: p.name, unitPrice: p.unitPrice, languages, techStack: p.techStack },
 			});
 		}
 	}
@@ -52,7 +97,7 @@ const TECH_TAGS = [
 	'Python',
 	'HTML',
 	'CSS',
-	'ChatGPT API',
+	'OpenAI',
 ];
 
 const PRODUCT_KINDS: ProductKind[] = ['SERVICE', 'APP', 'SAAS', 'GOOD'];

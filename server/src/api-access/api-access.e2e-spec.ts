@@ -110,6 +110,76 @@ describe('API publique (api-access)', () => {
 		expect(sendRes.alreadyPaid).toBe(true);
 	});
 
+	it('liste et lit les produits de l’organisation via GET', async () => {
+		const sku = `E2E-GET-${Date.now()}`;
+		const created = await request(app.getHttpServer())
+			.post('/api/public/produits')
+			.set(bearer())
+			.send({
+				name: 'Produit GET e2e',
+				sku,
+				kind: 'SERVICE',
+				unitPrice: 99,
+				techStack: { languages: ['TypeScript'], frontend: ['React'] },
+				details: ['Livrable test'],
+			})
+			.expect(201)
+			.then((r: { body: { id: number } }) => r.body);
+
+		const list = await request(app.getHttpServer())
+			.get('/api/public/produits?search=E2E-GET')
+			.set(bearer())
+			.expect(200)
+			.then((r: { body: { items: { id: number }[] } }) => r.body);
+
+		expect(list.items.some((p) => p.id === created.id)).toBe(true);
+
+		const one = await request(app.getHttpServer())
+			.get(`/api/public/produits/${created.id}`)
+			.set(bearer())
+			.expect(200)
+			.then((r: { body: { techStack: { frontend: string[] } } }) => r.body);
+
+		expect(one.techStack?.frontend).toContain('React');
+
+		const bySku = await request(app.getHttpServer())
+			.get(`/api/public/produits/sku/${sku}`)
+			.set(bearer())
+			.expect(200)
+			.then((r: { body: { id: number } }) => r.body);
+
+		expect(bySku.id).toBe(created.id);
+	});
+
+	it('indexe et recherche les livrables via GET livrables/catalog', async () => {
+		const label = `Intégration E2E ${Date.now()}`;
+		await request(app.getHttpServer())
+			.post('/api/public/produits')
+			.set(bearer())
+			.send({
+				name: 'Produit livrables e2e',
+				sku: `E2E-LIV-${Date.now()}`,
+				kind: 'SERVICE',
+				unitPrice: 1600,
+				details: [
+					{ label, amount: 1200, hours: 16 },
+					{ label: 'Recette QA', amount: 400, hours: 4 },
+				],
+			})
+			.expect(201);
+
+		const catalog = await request(app.getHttpServer())
+			.get(`/api/public/produits/livrables/catalog?q=${encodeURIComponent(label.slice(0, 12))}`)
+			.set(bearer())
+			.expect(200)
+			.then((r: { body: { label: string; defaultAmount: number; defaultHours: number }[] }) => r.body);
+
+		expect(Array.isArray(catalog)).toBe(true);
+		const item = catalog.find((d) => d.label === label);
+		expect(item?.defaultAmount).toBe(1200);
+		expect(item?.defaultHours).toBe(16);
+	});
+
 	it('crée un produit rattaché à l’organisation du jeton', async () => {
 		const sku = `E2E-API-${Date.now()}`;
 		const product = await request(app.getHttpServer())

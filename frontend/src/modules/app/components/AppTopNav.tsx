@@ -1,7 +1,7 @@
 import { Box, Button, alpha, useTheme } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
-import { navDashboard, navGroups, navSettings, isNavActive } from '../config/navConfig'
+import { navDashboard, navGroups, navSettingsGroup, isNavActive } from '../config/navConfig'
 import { AppMegaMenu } from './AppMegaMenu'
 import { topNavItemSx } from './topNavItemStyles'
 
@@ -44,11 +44,7 @@ export function AppTopNav() {
       {navGroups.map((group) => (
         <AppMegaMenu key={group.id} group={group} />
       ))}
-      <NavTextLink
-        to={navSettings.to}
-        label={navSettings.label}
-        active={isNavActive(location.pathname, navSettings.to)}
-      />
+      <AppMegaMenu group={navSettingsGroup} />
 
       <Button
         component={RouterLink}

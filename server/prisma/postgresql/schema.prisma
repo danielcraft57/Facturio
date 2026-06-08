@@ -154,8 +154,10 @@ model Organization {
 
   preferredTechnologies Json?
   onboardingCompletedAt DateTime?
-  catalogItems          OrganizationCatalogItem[]
-  products              Product[]
+  devProfile              String?
+  catalogItems              OrganizationCatalogItem[]
+  deliverableCatalogItems   DeliverableCatalogItem[]
+  products                  Product[]
 
   // Prospection externe (ProspectLab)
   prospectLabApiUrl String?
@@ -611,8 +613,10 @@ model Product {
   purpose          String?
   /** Catégorie fonctionnelle (SETUP, THEME, DEV, MAINTENANCE, etc.) */
   category         String?
-  /** Langages / technos (ex: TypeScript, React, Nest) stockés en JSON array */
+  /** Langages / technos (liste plate dérivée de techStack) */
   languages        Json?
+  /** Assemblage structuré par couche techno */
+  techStack        Json?
   /** Points clés (bullet points) stockés en JSON array */
   details          Json?
   /** Temps estimé en heures pour la prestation */
@@ -637,6 +641,21 @@ model Product {
   @@unique([organizationId, sku])
   @@index([organizationId])
   @@index([templateProductId])
+}
+
+model DeliverableCatalogItem {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  label          String
+  labelKey       String
+  defaultAmount  Decimal?
+  defaultHours   Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, labelKey])
+  @@index([organizationId])
 }
 
 model OrganizationCatalogItem {

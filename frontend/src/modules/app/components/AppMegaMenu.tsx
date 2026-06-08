@@ -81,12 +81,14 @@ function MegaMenuItem({
   onNavigate,
   staggerIndex = 0,
   menuOpen,
+  compact = false,
 }: {
   item: NavItem
   selected: boolean
   onNavigate: () => void
   staggerIndex?: number
   menuOpen: boolean
+  compact?: boolean
 }) {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
@@ -100,9 +102,9 @@ function MegaMenuItem({
       onFocus={() => prefetchFinanceRouteFromPath(item.to)}
       sx={{
         display: 'flex',
-        gap: 1.25,
-        p: 1.25,
-        minHeight: 56,
+        gap: compact ? 0.75 : 1.25,
+        p: compact ? 0.75 : 1.25,
+        minHeight: compact ? 40 : 56,
         borderRadius: 2,
         textDecoration: 'none',
         color: 'text.primary',
@@ -129,8 +131,8 @@ function MegaMenuItem({
       <Box
         className="mega-menu-item-icon"
         sx={{
-          width: 36,
-          height: 36,
+          width: compact ? 28 : 36,
+          height: compact ? 28 : 36,
           borderRadius: 1.5,
           display: 'flex',
           alignItems: 'center',
@@ -149,7 +151,11 @@ function MegaMenuItem({
       </Box>
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-          <Typography variant="body2" fontWeight={600} sx={{ lineHeight: 1.3 }}>
+          <Typography
+            variant="body2"
+            fontWeight={600}
+            sx={{ lineHeight: 1.3, fontSize: compact ? '0.8125rem' : undefined }}
+          >
             {item.label}
           </Typography>
           {item.badge && (
@@ -157,7 +163,7 @@ function MegaMenuItem({
               label={item.badge}
               size="small"
               sx={{
-                height: 18,
+                height: compact ? 16 : 18,
                 fontSize: '0.62rem',
                 fontWeight: 700,
                 bgcolor: alpha('#b45309', 0.12),
@@ -166,7 +172,7 @@ function MegaMenuItem({
             />
           )}
         </Box>
-        {item.description && (
+        {item.description && !compact && (
           <Typography
             variant="caption"
             color="text.secondary"
@@ -319,7 +325,7 @@ function MegaMenuFeatured({
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        minHeight: 200,
+        minHeight: horizontal ? 200 : 160,
       }}
     >
       <Box
@@ -340,7 +346,18 @@ function MegaMenuFeatured({
         <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'inherit', mb: 0.5 }}>
           {featured.title}
         </Typography>
-        <Typography variant="caption" sx={{ color: alpha('#fff', 0.78), lineHeight: 1.45, display: 'block', mb: 0.5 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: alpha('#fff', 0.78),
+            lineHeight: 1.45,
+            display: 'block',
+            mb: 0.5,
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
           {featured.description}
         </Typography>
         {ctas}
@@ -349,26 +366,57 @@ function MegaMenuFeatured({
   )
 }
 
-function groupItemsBySection(group: NavGroup): { activity: NavItem[]; encours: NavItem[]; other: NavItem[] } {
-  if (group.id !== 'commercial') {
-    return { activity: [], encours: [], other: group.items }
+type MenuSections = {
+  activity: NavItem[]
+  encours: NavItem[]
+  compte: NavItem[]
+  facturation: NavItem[]
+  donnees: NavItem[]
+  api: NavItem[]
+  other: NavItem[]
+}
+
+function groupItemsBySection(group: NavGroup): MenuSections {
+  const empty: MenuSections = {
+    activity: [],
+    encours: [],
+    compte: [],
+    facturation: [],
+    donnees: [],
+    api: [],
+    other: [],
   }
-  const activity: NavItem[] = []
-  const encours: NavItem[] = []
-  for (const item of group.items) {
-    if (item.section === 'encours') encours.push(item)
-    else activity.push(item)
+
+  if (group.id === 'commercial') {
+    for (const item of group.items) {
+      if (item.section === 'encours') empty.encours.push(item)
+      else empty.activity.push(item)
+    }
+    return empty
   }
-  return { activity, encours, other: [] }
+
+  if (group.id === 'parametres') {
+    for (const item of group.items) {
+      if (item.section === 'compte') empty.compte.push(item)
+      else if (item.section === 'facturation') empty.facturation.push(item)
+      else if (item.section === 'donnees') empty.donnees.push(item)
+      else if (item.section === 'api') empty.api.push(item)
+      else empty.compte.push(item)
+    }
+    return empty
+  }
+
+  empty.other = group.items
+  return empty
 }
 
 function renderMenuItems(
   items: NavItem[],
-  group: NavGroup,
   pathname: string,
   close: () => void,
   menuOpen: boolean,
   startIndex: number,
+  compact = false,
 ) {
   return items.map((item, i) => (
     <MegaMenuItem
@@ -378,6 +426,7 @@ function renderMenuItems(
       onNavigate={close}
       staggerIndex={startIndex + i}
       menuOpen={menuOpen}
+      compact={compact}
     />
   ))
 }
@@ -399,7 +448,8 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
     setOpen(false)
   }, [location.pathname])
 
-  const { activity, encours, other } = groupItemsBySection(group)
+  const { activity, encours, compte, facturation, donnees, api, other } = groupItemsBySection(group)
+  const isCompact = group.layout === 'compact'
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -460,7 +510,9 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                 <Paper
                   elevation={0}
                   sx={{
-                    width: { md: 'min(720px, calc(100vw - 32px))', lg: 800, xl: 860 },
+                    width: isCompact
+                      ? { md: 'min(880px, calc(100vw - 32px))', lg: 920, xl: 940 }
+                      : { md: 'min(720px, calc(100vw - 32px))', lg: 800, xl: 860 },
                     maxWidth: 'calc(100vw - 24px)',
                     borderRadius: 2.5,
                     overflow: 'hidden',
@@ -479,13 +531,13 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                         ? 'minmax(176px, 200px) minmax(0, 1fr) minmax(200px, 220px)'
                         : '1fr',
                       gridTemplateRows: isDesktopPanel ? '1fr' : 'auto auto auto',
-                      maxHeight: isDesktopPanel ? 'none' : 'min(70vh, 520px)',
-                      overflow: isDesktopPanel ? 'visible' : 'auto',
+                      maxHeight: isDesktopPanel || isCompact ? 'none' : 'min(70vh, 520px)',
+                      overflow: isDesktopPanel || isCompact ? 'visible' : 'auto',
                     }}
                   >
                     <Box
                       sx={{
-                        p: 2,
+                        p: isCompact ? 1.5 : 2,
                         borderRight: isDesktopPanel ? `1px solid ${theme.palette.divider}` : 'none',
                         borderBottom: isDesktopPanel ? 'none' : `1px solid ${theme.palette.divider}`,
                         bgcolor: isDark ? alpha('#fff', 0.02) : alpha('#f8fafc', 1),
@@ -549,10 +601,12 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
 
                     <Box
                       sx={{
-                        p: 1.75,
+                        p: isCompact ? 1.25 : 1.75,
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                        gap: 0.75,
+                        gridTemplateColumns: isCompact
+                          ? 'repeat(4, minmax(0, 1fr))'
+                          : 'repeat(2, minmax(0, 1fr))',
+                        gap: isCompact ? 0.5 : 0.75,
                         alignContent: 'start',
                         borderBottom: isDesktopPanel ? 'none' : `1px solid ${theme.palette.divider}`,
                       }}
@@ -560,10 +614,35 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                       {group.id === 'commercial' ? (
                         <>
                           <MenuSectionLabel sx={{ pt: 0 }}>Activités courantes</MenuSectionLabel>
-                          {renderMenuItems(activity, group, location.pathname, close, open, 0)}
+                          {renderMenuItems(activity, location.pathname, close, open, 0)}
                           <MenuSectionLabel sx={{ pt: 2 }}>Encours</MenuSectionLabel>
                           <Divider sx={{ gridColumn: '1 / -1', my: 0.25 }} />
-                          {renderMenuItems(encours, group, location.pathname, close, open, activity.length)}
+                          {renderMenuItems(encours, location.pathname, close, open, activity.length)}
+                        </>
+                      ) : group.id === 'parametres' ? (
+                        <>
+                          <MenuSectionLabel sx={{ pt: 0, gridColumn: 'span 2' }}>Compte</MenuSectionLabel>
+                          <MenuSectionLabel sx={{ pt: 0, gridColumn: 'span 2' }}>Facturation</MenuSectionLabel>
+                          {renderMenuItems(compte, location.pathname, close, open, 0, true)}
+                          {renderMenuItems(facturation, location.pathname, close, open, compte.length, true)}
+                          <MenuSectionLabel sx={{ pt: 1, gridColumn: 'span 2' }}>Données</MenuSectionLabel>
+                          <MenuSectionLabel sx={{ pt: 1, gridColumn: 'span 2' }}>API Pro</MenuSectionLabel>
+                          {renderMenuItems(
+                            donnees,
+                            location.pathname,
+                            close,
+                            open,
+                            compte.length + facturation.length,
+                            true,
+                          )}
+                          {renderMenuItems(
+                            api,
+                            location.pathname,
+                            close,
+                            open,
+                            compte.length + facturation.length + donnees.length,
+                            true,
+                          )}
                         </>
                       ) : (
                         <>

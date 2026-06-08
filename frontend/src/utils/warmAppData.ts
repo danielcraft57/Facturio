@@ -1,5 +1,7 @@
 import { apiClient } from '../services/api'
 import { ApiClient } from '../services/apiClient'
+import { catalogService } from '../services/catalogService'
+import { productService } from '../services/productService'
 import { quoteService } from '../services/quoteService'
 import { FINANCE_DOCUMENT_PAGE_SIZE } from '../hooks/useFinanceDocumentFolderList'
 import { CLIENTS_PAGE_SIZE } from '../hooks/useClientsFolderList'
@@ -54,6 +56,8 @@ export async function warmAppDataAfterLogin(): Promise<void> {
 
   await Promise.allSettled([
     ...inboxListWarmers,
+    catalogService.prefetchTechChoices(),
+    productService.prefetchCatalog(100),
     useInvoicesStore.getState().fetchInvoices({
       folder: 'inbox',
       limit: 50,

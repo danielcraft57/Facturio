@@ -21,7 +21,8 @@ import { useState } from 'react'
 import {
   navDashboard,
   navGroups,
-  navSettings,
+  navSettingsGroup,
+  isGroupActive,
   isNavActive,
   type NavGroup,
 } from '../config/navConfig'
@@ -34,7 +35,7 @@ function NavGroupSection({ group, onNavigate }: { group: NavGroup; onNavigate?: 
   const theme = useTheme()
   const location = useLocation()
   const [expanded, setExpanded] = useState(true)
-  const hasActive = group.items.some((i) => isNavActive(location.pathname, i.to))
+  const hasActive = isGroupActive(location.pathname, group)
 
   return (
     <Box sx={{ mb: 0.5 }}>
@@ -61,6 +62,31 @@ function NavGroupSection({ group, onNavigate }: { group: NavGroup; onNavigate?: 
       </ListItemButton>
       <Collapse in={expanded}>
         <List dense disablePadding sx={{ pl: 0.5 }}>
+          {group.overviewCta && (
+            <ListItem disablePadding sx={{ mb: 0.25 }}>
+              <ListItemButton
+                component={RouterLink}
+                to={group.overviewCta.to}
+                selected={isNavActive(location.pathname, group.overviewCta.to)}
+                onClick={onNavigate}
+                sx={{
+                  borderRadius: 2,
+                  mx: 0.5,
+                  py: 0.75,
+                  '&.Mui-selected': {
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    borderLeft: 3,
+                    borderColor: 'primary.main',
+                  },
+                }}
+              >
+                <ListItemText
+                  primary={group.overviewCta.label}
+                  primaryTypographyProps={{ fontSize: '0.8125rem', fontWeight: 500 }}
+                />
+              </ListItemButton>
+            </ListItem>
+          )}
           {group.items.map((item) => {
             const selected = isNavActive(location.pathname, item.to)
             return (
@@ -111,7 +137,6 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
   const theme = useTheme()
   const location = useLocation()
   const dashActive = isNavActive(location.pathname, navDashboard.to)
-  const settingsActive = isNavActive(location.pathname, navSettings.to)
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -170,30 +195,7 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
           <NavGroupSection key={group.id} group={group} onNavigate={onNavigate} />
         ))}
 
-        <Divider sx={{ my: 1 }} />
-
-        <ListItem disablePadding>
-          <ListItemButton
-            component={RouterLink}
-            to={navSettings.to}
-            selected={settingsActive}
-            onClick={onNavigate}
-            sx={{
-              borderRadius: 2,
-              mx: 0.5,
-              '&.Mui-selected': {
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                borderLeft: 3,
-                borderColor: 'primary.main',
-              },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 36, color: settingsActive ? 'primary.main' : 'text.secondary' }}>
-              {navSettings.icon}
-            </ListItemIcon>
-            <ListItemText primary={navSettings.label} secondary={navSettings.description} />
-          </ListItemButton>
-        </ListItem>
+        <NavGroupSection group={navSettingsGroup} onNavigate={onNavigate} />
       </List>
     </Box>
   )

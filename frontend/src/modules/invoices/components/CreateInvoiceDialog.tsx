@@ -40,6 +40,7 @@ import { clientService, parseClientsListResponse } from '../../../services/clien
 import type { Client } from '../../../services/clients'
 import { useProductsStore } from '../../../stores/productsStore'
 import { productService } from '../../../services/productService'
+import { suggestProductSkuFromName } from '../../products/utils/productSku'
 import { useToast } from '../../../components/useToast'
 
 interface InvoiceItem {
@@ -242,9 +243,11 @@ export function CreateInvoiceDialog({
         continue
       }
       try {
+        const lineName = String(item.description ?? '').trim()
         const created = await productService.createProduct({
-          name: String(item.description ?? '').trim(),
-          description: String(item.description ?? '').trim(),
+          name: lineName,
+          sku: suggestProductSkuFromName(lineName),
+          description: lineName,
           unitPrice: Number(item.unitPrice) > 0 ? Number(item.unitPrice) : undefined,
         })
         const createdProduct = created.data

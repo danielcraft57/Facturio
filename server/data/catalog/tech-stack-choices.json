@@ -21,7 +21,18 @@
         { "id": "go", "label": "Go", "matchTags": ["Go", "Golang"] },
         { "id": "rust", "label": "Rust", "matchTags": ["Rust"] },
         { "id": "java", "label": "Java", "matchTags": ["Java"] },
-        { "id": "csharp", "label": "C#", "matchTags": ["C#", "CSharp"] }
+        { "id": "csharp", "label": "C#", "matchTags": ["C#", "CSharp"] },
+        { "id": "cpp", "label": "C / C++", "matchTags": ["C++", "C"] },
+        { "id": "perl", "label": "Perl", "matchTags": ["Perl"] },
+        { "id": "vbnet", "label": "VB.NET", "matchTags": ["VB.NET", "Visual Basic", "VB"] },
+        { "id": "delphi", "label": "Delphi / Pascal", "matchTags": ["Delphi", "Pascal"] },
+        { "id": "coldfusion", "label": "ColdFusion", "matchTags": ["ColdFusion", "CFML"] },
+        { "id": "asp-classic", "label": "ASP classique", "matchTags": ["ASP", "Classic ASP"] },
+        { "id": "jsp", "label": "JSP / Java EE", "matchTags": ["JSP", "Java EE", "Servlet"] },
+        { "id": "actionscript", "label": "ActionScript / Flash", "matchTags": ["ActionScript", "Flash"] },
+        { "id": "dart", "label": "Dart", "matchTags": ["Dart"] },
+        { "id": "scala", "label": "Scala", "matchTags": ["Scala"] },
+        { "id": "powershell", "label": "PowerShell", "matchTags": ["PowerShell"] }
       ]
     },
     {
@@ -53,7 +64,11 @@
         { "id": "laravel", "label": "Laravel", "matchTags": ["Laravel", "PHP"] },
         { "id": "symfony", "label": "Symfony", "matchTags": ["Symfony", "PHP"] },
         { "id": "rails", "label": "Ruby on Rails", "matchTags": ["Rails", "Ruby"] },
-        { "id": "spring", "label": "Spring", "matchTags": ["Spring", "Java"] }
+        { "id": "spring", "label": "Spring", "matchTags": ["Spring", "Java"] },
+        { "id": "aspnet", "label": "ASP.NET", "matchTags": ["ASP.NET", ".NET"] },
+        { "id": "dotnet", "label": ".NET", "matchTags": [".NET", "dotnet"] },
+        { "id": "codeigniter", "label": "CodeIgniter", "matchTags": ["CodeIgniter", "PHP"] },
+        { "id": "cakephp", "label": "CakePHP", "matchTags": ["CakePHP", "PHP"] }
       ]
     },
     {
@@ -82,7 +97,11 @@
         { "id": "sqlite", "label": "SQLite", "matchTags": ["SQLite"] },
         { "id": "redis", "label": "Redis", "matchTags": ["Redis"] },
         { "id": "supabase", "label": "Supabase", "matchTags": ["Supabase", "PostgreSQL"] },
-        { "id": "firebase", "label": "Firebase", "matchTags": ["Firebase"] }
+        { "id": "firebase", "label": "Firebase", "matchTags": ["Firebase"] },
+        { "id": "mssql", "label": "SQL Server", "matchTags": ["SQL Server", "MSSQL", "Microsoft SQL"] },
+        { "id": "oracle", "label": "Oracle", "matchTags": ["Oracle"] },
+        { "id": "elasticsearch", "label": "Elasticsearch", "matchTags": ["Elasticsearch", "Elastic"] },
+        { "id": "memcached", "label": "Memcached", "matchTags": ["Memcached"] }
       ]
     },
     {
@@ -97,7 +116,10 @@
         { "id": "vercel", "label": "Vercel", "matchTags": ["Vercel", "Next.js"] },
         { "id": "netlify", "label": "Netlify", "matchTags": ["Netlify"] },
         { "id": "aws", "label": "AWS", "matchTags": ["AWS", "Amazon"] },
-        { "id": "nginx", "label": "Nginx", "matchTags": ["Nginx"] }
+        { "id": "nginx", "label": "Nginx", "matchTags": ["Nginx"] },
+        { "id": "apache", "label": "Apache", "matchTags": ["Apache", "httpd"] },
+        { "id": "iis", "label": "IIS", "matchTags": ["IIS", "Windows Server"] },
+        { "id": "gitlab-ci", "label": "GitLab CI", "matchTags": ["GitLab CI", "GitLab"] }
       ]
     },
     {

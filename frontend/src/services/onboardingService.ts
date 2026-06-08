@@ -5,6 +5,7 @@ export type OnboardingStatus = {
   completed: boolean
   onboardingCompletedAt: string | null
   preferredTechnologies: string[]
+  devProfile: string | null
   productCount: number
 }
 
@@ -13,8 +14,11 @@ export type OnboardingPreviewProduct = {
   name: string
   sku: string | null
   unitPrice: string | number | null
-  languages: unknown
   description: string | null
+  matchScore: number
+  matchReasons: string[]
+  techLabels: string[]
+  suggested: boolean
 }
 
 function unwrap<T>(response: { data: unknown }): T {
@@ -45,13 +49,22 @@ class OnboardingService {
     return unwrap(res)
   }
 
-  async install(technologyIds: string[]): Promise<{
+  async install(
+    technologyIds: string[],
+    devProfile?: string | null,
+    templateProductIds?: number[],
+  ): Promise<{
     message: string
     clonedCount: number
     productIds: number[]
     skus: string[]
+    deliverablesIndexed?: number
   }> {
-    const res = await apiClient.post('/onboarding/install', { technologyIds })
+    const res = await apiClient.post('/onboarding/install', {
+      technologyIds,
+      ...(devProfile ? { devProfile } : {}),
+      ...(templateProductIds?.length ? { templateProductIds } : {}),
+    })
     return unwrap(res)
   }
 }

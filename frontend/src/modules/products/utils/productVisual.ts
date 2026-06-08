@@ -1,5 +1,7 @@
 import type { Product, ProductVisualType } from '../../../types/product';
+import type { TechStackAssembly } from '../../../types/techStack';
 import { getLibraryImageData } from '../constants/productVisualLibrary';
+import { parseProductDeliverables } from './productDeliverables';
 
 export const ICON_GRADIENT_PREFIX = 'icon-gradient:';
 
@@ -34,15 +36,17 @@ export function normalizeProductFromApi(raw: Record<string, unknown>): Product {
       ? (raw.languages as string).split(',').map(s => s.trim()).filter(Boolean)
       : [];
 
-  const details = Array.isArray(raw.details)
-    ? (raw.details as string[])
-    : typeof raw.details === 'string'
-      ? (raw.details as string).split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean)
-      : [];
+  const details = parseProductDeliverables(raw.details);
+
+  const techStack =
+    raw.techStack && typeof raw.techStack === 'object' && !Array.isArray(raw.techStack)
+      ? (raw.techStack as TechStackAssembly)
+      : undefined;
 
   return {
     ...(raw as unknown as Product),
     languages,
+    techStack,
     details,
     unitPrice: raw.unitPrice != null ? Number(raw.unitPrice) : undefined,
     estimatedHours: raw.estimatedHours != null ? Number(raw.estimatedHours) : undefined,

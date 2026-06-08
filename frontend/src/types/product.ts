@@ -1,20 +1,65 @@
+import type { TechStackAssembly } from './techStack';
+
 export type ProductKind = 'SAAS' | 'APP' | 'SERVICE' | 'GOOD';
-export type ProductPurpose = 'WEBSITE' | 'SAAS' | 'ECOMMERCE' | 'SHOWCASE';
+export type ProductPurpose =
+  | 'WEBSITE'
+  | 'SHOWCASE'
+  | 'LANDING'
+  | 'ECOMMERCE'
+  | 'BLOG'
+  | 'PORTAL'
+  | 'INTRANET'
+  | 'MARKETPLACE'
+  | 'SAAS'
+  | 'CONSULTING'
+  | 'INTEGRATION'
+  | 'AUTOMATION';
+
 export type ProductCategory =
   | 'SETUP'
+  | 'AUDIT'
+  | 'CONSULTING'
   | 'THEME'
+  | 'UX_UI'
+  | 'DESIGN'
   | 'DEV'
+  | 'API'
+  | 'MOBILE'
+  | 'INTEGRATION'
+  | 'AUTOMATION'
   | 'ECOMMERCE'
   | 'PAYMENT'
   | 'CONTENT'
+  | 'COPYWRITING'
   | 'SEO'
+  | 'ANALYTICS'
   | 'HOSTING'
   | 'CI_CD'
+  | 'SECURITY'
+  | 'PERFORMANCE'
+  | 'ACCESSIBILITY'
   | 'MAINTENANCE'
-  | 'MOBILE'
-  | 'API';
+  | 'SUPPORT'
+  | 'TRAINING'
+  | 'MIGRATION'
+  | 'DATA';
 
 export type ProductVisualType = 'icon' | 'library' | 'custom';
+
+/** Ligne de livrable — libellé seul ou avec montant/heures pour la répartition du prix. */
+export type ProductDeliverable = {
+  label: string;
+  amount?: number | null;
+  hours?: number | null;
+};
+
+/** Entrée catalogue livrable (autocomplete organisation). */
+export type DeliverableCatalogItem = {
+  id: number;
+  label: string;
+  defaultAmount: number | null;
+  defaultHours: number | null;
+};
 
 export interface Product {
   id: number;
@@ -26,9 +71,10 @@ export interface Product {
   purpose?: ProductPurpose;
   category?: ProductCategory;
   languages?: string[];
+  techStack?: TechStackAssembly;
   estimatedHours?: number;
   description?: string;
-  details?: string[];
+  details?: ProductDeliverable[];
   visualType?: ProductVisualType;
   iconName?: string;
   imageData?: string;
@@ -38,16 +84,17 @@ export interface Product {
 
 export interface CreateProductData {
   name: string;
-  sku?: string;
+  sku: string;
   kind?: ProductKind;
   unitPrice?: number;
   defaultTaxRateId?: number;
   purpose?: ProductPurpose;
   category?: ProductCategory;
   languages?: string[];
+  techStack?: TechStackAssembly;
   estimatedHours?: number;
   description?: string;
-  details?: string[];
+  details?: ProductDeliverable[];
   visualType?: ProductVisualType;
   iconName?: string;
   imageData?: string;
@@ -62,9 +109,10 @@ export interface UpdateProductData {
   purpose?: ProductPurpose;
   category?: ProductCategory;
   languages?: string[];
+  techStack?: TechStackAssembly;
   estimatedHours?: number;
   description?: string;
-  details?: string[];
+  details?: ProductDeliverable[];
   visualType?: ProductVisualType;
   iconName?: string;
   imageData?: string;

@@ -5,6 +5,7 @@ Documentation sur le planning et la roadmap du projet.
 ## 📚 Contenu
 
 - [Roadmap globale](./ROADMAP.md) - Vue d'ensemble des fonctionnalités à venir
+- [Roadmap catalogue & seed](./ROADMAP_CATALOGUE_SEED.md) - Générateur produits (onboarding + page Produits), livrables, technos, clients
 - [Positionnement prestations services](./POSITIONNEMENT_PRESTATIONS_SERVICES.md) - Dev web, logiciel, automatisation (vision produit)
 - [Monétisation bootstrap](./MONETISATION.md) - Rentabiliser Facturio à faible coût
 - [Facturation électronique 2026–2027](./FACTURATION_ELECTRONIQUE_2026.md) - Réforme B2B, PA, Factur-X, e-reporting

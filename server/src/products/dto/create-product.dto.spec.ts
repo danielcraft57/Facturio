@@ -1,20 +1,26 @@
 import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { CreateProductDto } from './create-product.dto';
+
+function toDto(data: Partial<CreateProductDto>): CreateProductDto {
+	return plainToInstance(CreateProductDto, data);
+}
 
 describe('CreateProductDto', () => {
 	it('devrait valider un DTO valide', async () => {
-		const dto = new CreateProductDto();
-		dto.name = 'Test Product';
-		dto.sku = 'TEST-001';
-		dto.unitPrice = 100;
+		const dto = toDto({
+			name: 'Test Product',
+			sku: 'TEST-001',
+			unitPrice: 100,
+		});
 
 		const errors = await validate(dto);
 		expect(errors.length).toBe(0);
+		expect(dto.sku).toBe('TEST-001');
 	});
 
 	it('devrait rejeter un nom vide', async () => {
-		const dto = new CreateProductDto();
-		dto.name = '';
+		const dto = toDto({ name: '', sku: 'TEST-001' });
 
 		const errors = await validate(dto);
 		expect(errors.length).toBeGreaterThan(0);
@@ -22,9 +28,11 @@ describe('CreateProductDto', () => {
 	});
 
 	it('devrait rejeter un prix négatif', async () => {
-		const dto = new CreateProductDto();
-		dto.name = 'Test Product';
-		dto.unitPrice = -10;
+		const dto = toDto({
+			name: 'Test Product',
+			sku: 'TEST-001',
+			unitPrice: -10,
+		});
 
 		const errors = await validate(dto);
 		expect(errors.length).toBeGreaterThan(0);
@@ -32,22 +40,31 @@ describe('CreateProductDto', () => {
 		expect(priceError).toBeDefined();
 	});
 
-	it('devrait accepter des champs optionnels null', async () => {
-		const dto = new CreateProductDto();
-		dto.name = 'Test Product';
-		dto.sku = null;
-		dto.unitPrice = null;
+	it('devrait exiger un SKU au format PREFIX-NOM', async () => {
+		const dto = toDto({ name: 'Test Product' });
 
 		const errors = await validate(dto);
-		expect(errors.length).toBe(0);
+		expect(errors.some(e => e.property === 'sku')).toBe(true);
 	});
 
-	it('devrait accepter un produit sans SKU ni prix', async () => {
-		const dto = new CreateProductDto();
-		dto.name = 'Test Product';
+	it('devrait normaliser le SKU en majuscules', async () => {
+		const dto = toDto({
+			name: 'Test Product',
+			sku: 'stack-wp-vitrine',
+		});
 
 		const errors = await validate(dto);
 		expect(errors.length).toBe(0);
+		expect(dto.sku).toBe('STACK-WP-VITRINE');
+	});
+
+	it('devrait rejeter un SKU sans tiret', async () => {
+		const dto = toDto({
+			name: 'Test Product',
+			sku: 'DEVONLY',
+		});
+
+		const errors = await validate(dto);
+		expect(errors.some(e => e.property === 'sku')).toBe(true);
 	});
 });
-

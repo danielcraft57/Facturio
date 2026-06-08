@@ -8,6 +8,10 @@ import { buildPublicQuoteUrl } from '../common/public-app-url';
 import { attachListEmailEngagementFlags, getQuoteEmailEngagement } from '../common/email-engagement.util';
 import { InvoicesService } from '../invoices/invoices.service';
 import { ProductsService } from '../products/products.service';
+import {
+	buildProductQuoteLineDescription,
+	productHasEnrichableContent,
+} from '../products/product-quote-description.util';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 import {
@@ -487,11 +491,14 @@ export class QuotesService {
 				throw new BadRequestException('Utilisez productId ou productSku sur une ligne, pas les deux');
 			}
 
+			let linkedProduct: Awaited<ReturnType<typeof this.findProductForQuoteLine>> | null = null;
+
 			if (productId != null) {
 				const product = await this.findProductForQuoteLine(productId, organizationId);
 				if (!product) {
 					throw new BadRequestException(`Produit avec l'ID ${productId} introuvable`);
 				}
+				linkedProduct = product;
 				productId = product.id;
 				if (!description) description = product.name;
 				if (unitPrice == null || Number.isNaN(Number(unitPrice))) {
@@ -524,6 +531,7 @@ export class QuotesService {
 					unitPrice: unitPrice != null ? Number(unitPrice) : undefined,
 					description: description || undefined,
 				});
+				linkedProduct = product;
 				productId = product.id;
 				if (!description) description = product.name;
 				if (unitPrice == null || Number.isNaN(Number(unitPrice))) {
@@ -531,6 +539,15 @@ export class QuotesService {
 				}
 				if (taxRate == null && product.defaultTaxRate?.rate != null) {
 					taxRate = Number(product.defaultTaxRate.rate);
+				}
+			}
+
+			if (linkedProduct && productHasEnrichableContent(linkedProduct)) {
+				const enriched = buildProductQuoteLineDescription(linkedProduct);
+				const shortLabel = linkedProduct.name.trim();
+				const userDesc = line.description?.trim() ?? '';
+				if (!userDesc || userDesc === shortLabel || userDesc === (linkedProduct.description?.trim() ?? '')) {
+					description = enriched;
 				}
 			}
 

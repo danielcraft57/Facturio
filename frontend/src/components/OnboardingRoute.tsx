@@ -37,7 +37,7 @@ export function OnboardingRoute({ children }: Props) {
     return () => {
       cancelled = true
     }
-  }, [location.pathname])
+  }, [])
 
   if (exempt) {
     return <>{children}</>

@@ -17,6 +17,11 @@ export class OnboardingController {
 		return this.onboarding.getTechChoices();
 	}
 
+	@Get('profiles')
+	getProfiles() {
+		return this.onboarding.getProfiles();
+	}
+
 	@Post('preview')
 	preview(
 		@CurrentUser() user: { organizationId: number },
@@ -30,6 +35,11 @@ export class OnboardingController {
 		@CurrentUser() user: { organizationId: number },
 		@Body() body: OnboardingInstallDto,
 	) {
-		return this.onboarding.install(user.organizationId, body.technologyIds);
+		return this.onboarding.install(
+			user.organizationId,
+			body.technologyIds,
+			body.devProfile,
+			body.templateProductIds,
+		);
 	}
 }
