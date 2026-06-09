@@ -15,14 +15,12 @@ import {
 import { Transform, Type } from 'class-transformer';
 import { ProductKind } from '@prisma/client';
 import { TechStackDto } from './tech-stack.dto';
-import { ProductDeliverableDto } from './product-deliverable.dto';
 import {
 	normalizeProductSku,
 	PRODUCT_SKU_FORMAT_HINT,
 	PRODUCT_SKU_MAX_LENGTH,
 	PRODUCT_SKU_PATTERN,
 } from '../product-sku.util';
-import { normalizeDetailsInput } from '../product-payload-normalize.util';
 
 /**
  * DTO pour la création d'un produit
@@ -80,17 +78,13 @@ export class CreateProductDto {
 	})
 	languages?: string[];
 
+	/** Livrables structurés — normalisés côté service (label, amount, hours). */
+	@IsOptional()
+	details?: unknown;
+
 	/** Alias accepté : livrables (même format que details). */
 	@IsOptional()
-	@IsArray()
-	livrables?: unknown[];
-
-	@IsOptional()
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => ProductDeliverableDto)
-	@Transform(({ value, obj }) => normalizeDetailsInput(value ?? obj.livrables))
-	details?: ProductDeliverableDto[];
+	livrables?: unknown;
 
 	/** Alias de languages (liste plate). Préférer techStack.languages. */
 	@IsOptional()
