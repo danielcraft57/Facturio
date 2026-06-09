@@ -7,6 +7,12 @@ import { DeliverablesCatalogService } from './deliverables-catalog.service';
 import { NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ListQueryDto } from '../common/dto/list-query.dto';
+const asApiProduct = <T extends object>(product: T) => ({
+	...product,
+	details: [] as { label: string }[],
+	languages: [] as string[],
+	techStack: null,
+});
 
 describe('ProductsService', () => {
 	let service: ProductsService;
@@ -96,7 +102,7 @@ describe('ProductsService', () => {
 				2,
 			);
 
-			expect(result).toEqual(expected);
+			expect(result).toEqual(asApiProduct(expected));
 			expect(mockPrismaService.product.create).toHaveBeenCalledWith({
 				data: expect.objectContaining({
 					name: dto.name,
@@ -252,7 +258,7 @@ describe('ProductsService', () => {
 				unitPrice: 200,
 			});
 
-			expect(result).toEqual(existing);
+			expect(result).toEqual(asApiProduct(existing));
 			expect(mockPrismaService.product.create).not.toHaveBeenCalled();
 		});
 
@@ -298,7 +304,7 @@ describe('ProductsService', () => {
 
 			const result = await service.findOne(1);
 
-			expect(result).toEqual(product);
+			expect(result).toEqual(asApiProduct(product));
 			expect(mockPrismaService.product.findFirst).toHaveBeenCalledWith({
 				where: { id: 1, organizationId: null },
 				include: { defaultTaxRate: true },
@@ -335,7 +341,7 @@ describe('ProductsService', () => {
 
 			const result = await service.update(1, updateDto);
 
-			expect(result).toEqual(updated);
+			expect(result).toEqual(asApiProduct(updated));
 			expect(mockPrismaService.product.update).toHaveBeenCalledWith({
 				where: { id: 1 },
 				data: updateDto,
