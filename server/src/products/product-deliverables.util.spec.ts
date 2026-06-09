@@ -20,6 +20,15 @@ describe('product-deliverables', () => {
 		]);
 	});
 
+	it('accepte alias FR et ignore [object Object]', () => {
+		expect(
+			parseProductDeliverables([
+				{ livrable: 'Intégration', montant: 800, heures: 10 },
+				{ label: '[object Object]' },
+			]),
+		).toEqual([{ label: 'Intégration', amount: 800, hours: 10 }]);
+	});
+
 	it('somme les montants si toutes les lignes en ont', () => {
 		const items = [
 			{ label: 'A', amount: 1000 },

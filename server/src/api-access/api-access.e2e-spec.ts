@@ -151,6 +151,32 @@ describe('API publique (api-access)', () => {
 		expect(bySku.id).toBe(created.id);
 	});
 
+	it('accepte alias FR livrables et technos sur POST produit', async () => {
+		const sku = `E2E-FR-${Date.now()}`;
+		const product = await request(app.getHttpServer())
+			.post('/api/public/produits')
+			.set(bearer())
+			.send({
+				name: 'Produit alias FR',
+				sku,
+				kind: 'SERVICE',
+				unitPrice: 400,
+				technos: ['Python', 'OpenAI'],
+				livrables: [
+					{ livrable: 'Audit usage IA', montant: 300, heures: 4 },
+					{ livrable: 'Recommandations', montant: 100, heures: 2 },
+				],
+			})
+			.expect(201)
+			.then((r: { body: { details: { label: string }[]; techStack: { languages: string[] } } }) => r.body);
+
+		expect(product.details).toEqual([
+			{ label: 'Audit usage IA', amount: 300, hours: 4 },
+			{ label: 'Recommandations', amount: 100, hours: 2 },
+		]);
+		expect(product.techStack?.languages).toEqual(expect.arrayContaining(['Python', 'OpenAI']));
+	});
+
 	it('indexe et recherche les livrables via GET livrables/catalog', async () => {
 		const label = `Intégration E2E ${Date.now()}`;
 		await request(app.getHttpServer())

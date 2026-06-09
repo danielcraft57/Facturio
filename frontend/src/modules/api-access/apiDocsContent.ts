@@ -302,7 +302,13 @@ Forcer : visualType "icon" + iconName optionnel, ou visualType "library" + image
 
 Recherche produits : GET /public/produits?search=MON-SKU (contient, pas égalité stricte).
 
-Livrables (champ details) : tableau de { label, amount?, hours? } — rétrocompatible avec des chaînes simples ("Mesure Core Web Vitals"). Chaque livrable libellé est indexé dans le catalogue organisation à la création ou modification (POST/PATCH) avec son tarif et sa durée par défaut. Voir section « Catalogue livrables ».
+Livrables — champ details (ou alias livrables) : tableau de { label, amount?, hours? }.
+Alias acceptés : livrable / name / title → label ; montant / montantHT / prix → amount ; heures / duree → hours.
+Formats valides : chaîne simple ("Mesure Core Web Vitals") ou objet structuré. Objets sans libellé texte ignorés (évite [object Object]).
+Chaque livrable libellé est indexé dans le catalogue organisation (POST/PATCH). Voir section « Catalogue livrables ».
+
+Technos — préférer techStack par couche (languages, frontend, backend, cms, databases, devops, ai, mobile, security).
+Alias : languages ou technos (liste plate) → techStack.languages si aucune couche fournie.
 
 Script de test : scripts/windows/test-produit.ps1.`,
     endpoints: [
@@ -326,7 +332,7 @@ Script de test : scripts/windows/test-produit.ps1.`,
         scope: 'produits.write',
         desc: 'Créer',
         requestBody:
-          '{ "name", "sku", "unitPrice", "kind": "SERVICE", "estimatedHours", "techStack", "details": [{ "label", "amount", "hours" }], "iconName" (optionnel) }',
+          '{ "name", "sku", "unitPrice", "kind", "techStack", "details" ou "livrables": [{ "label", "amount", "hours" }], "languages" / "technos" (optionnel) }',
       },
       { method: 'PATCH', path: '/public/produits/:id', scope: 'produits.write', desc: 'Modifier' },
       { method: 'DELETE', path: '/public/produits/:id', scope: 'produits.write', desc: 'Supprimer' },

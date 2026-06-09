@@ -22,6 +22,7 @@ import {
 	PRODUCT_SKU_MAX_LENGTH,
 	PRODUCT_SKU_PATTERN,
 } from '../product-sku.util';
+import { normalizeDetailsInput } from '../product-payload-normalize.util';
 
 /**
  * DTO pour la création d'un produit
@@ -79,36 +80,23 @@ export class CreateProductDto {
 	})
 	languages?: string[];
 
+	/** Alias accepté : livrables (même format que details). */
 	@IsOptional()
+	@IsArray()
+	livrables?: unknown[];
+
+	@IsOptional()
+	@Transform(({ value, obj }) => normalizeDetailsInput(value ?? obj.livrables))
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => ProductDeliverableDto)
-	@Transform(({ value }) => {
-		if (value === undefined || value === null || value === '') return undefined;
-		if (Array.isArray(value)) {
-			return value
-				.map((item) => {
-					if (typeof item === 'string') {
-						const label = item.trim();
-						return label ? { label } : null;
-					}
-					if (item && typeof item === 'object' && 'label' in item) {
-						return item;
-					}
-					return null;
-				})
-				.filter(Boolean);
-		}
-		if (typeof value === 'string') {
-			return value
-				.split(/[\r\n,]+/)
-				.map((s: string) => s.trim())
-				.filter(Boolean)
-				.map((label: string) => ({ label }));
-		}
-		return value;
-	})
 	details?: ProductDeliverableDto[];
+
+	/** Alias de languages (liste plate). Préférer techStack.languages. */
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	technos?: string[];
 
 	@IsOptional()
 	@Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : parseInt(value, 10)))

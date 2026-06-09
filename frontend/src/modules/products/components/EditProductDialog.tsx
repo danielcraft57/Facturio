@@ -118,7 +118,14 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       setUnitPrice(product.unitPrice ?? '');
       setEstimatedHours(product.estimatedHours ?? '');
       setLanguages(product.languages || []);
-      setTechStack(product.techStack ?? {});
+      const stack = product.techStack ?? {};
+      setTechStack(
+        Object.keys(stack).length > 0
+          ? stack
+          : product.languages?.length
+            ? { languages: product.languages }
+            : {},
+      );
       setDescription(product.description || '');
       const parsed = parseProductDeliverables(product.details);
       setDeliverables(parsed.length ? parsed : [{ label: '' }]);

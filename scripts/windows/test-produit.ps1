@@ -95,6 +95,11 @@ if ($id -le 0) {
 			kind      = "SERVICE"
 			unitPrice = 199.5
 			purpose   = "Test intégration API"
+			techStack = @{ languages = @("TypeScript"); frontend = @("React") }
+			livrables = @(
+				@{ livrable = "Recette fonctionnelle"; montant = 120; heures = 2 },
+				@{ livrable = "Documentation"; montant = 79.5; heures = 1 }
+			)
 		}
 		$id = [int]$product.id
 		$created = $true

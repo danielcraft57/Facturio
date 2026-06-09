@@ -10,6 +10,10 @@ import { resolveVisualOnCreate } from './product-visual.utils';
 import { normalizeProductSku } from './product-sku.util';
 import { DeliverablesCatalogService } from './deliverables-catalog.service';
 import { parseProductDeliverables } from './product-deliverables.util';
+import {
+	formatProductForResponse,
+	normalizeProductWritePayload,
+} from './product-payload-normalize.util';
 
 type ProductWriteDto = CreateProductDto | UpdateProductDto;
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
@@ -81,29 +85,37 @@ export class ProductsService {
 		} as Prisma.ProductUncheckedCreateInput;
 	}
 
+	private mapProductResponse<T extends { details?: unknown; techStack?: unknown; languages?: unknown }>(
+		product: T,
+	): T {
+		return formatProductForResponse(product);
+	}
+
 	async create(data: CreateProductDto, organizationId?: number) {
-		const visual = resolveVisualOnCreate(data);
+		const normalized = normalizeProductWritePayload(data);
+		const visual = resolveVisualOnCreate(normalized);
 		const product = await this.prisma.product.create({
 			data: {
-				...this.toPrismaData(data),
+				...this.toPrismaData(normalized),
 				...visual,
 				organizationId: organizationId ?? null,
 			},
 			include: { defaultTaxRate: true },
 		});
-		await this.syncDeliverablesCatalog(organizationId, data.details);
+		await this.syncDeliverablesCatalog(organizationId, normalized.details);
 		this.notifyProduct(organizationId, 'created', product.id, product.name);
-		return product;
+		return this.mapProductResponse(product);
 	}
 
 	/** Produit catalogue de l’organisation par SKU exact (insensible à la casse côté appelant si besoin). */
 	async findBySku(sku: string, organizationId: number) {
 		const normalized = normalizeProductSku(sku);
 		if (!normalized) return null;
-		return this.prisma.product.findFirst({
+		const product = await this.prisma.product.findFirst({
 			where: { organizationId, sku: normalized },
 			include: { defaultTaxRate: true },
 		});
+		return product ? this.mapProductResponse(product) : null;
 	}
 
 	/**
@@ -116,7 +128,7 @@ export class ProductsService {
 		data: Pick<CreateProductDto, 'name' | 'unitPrice' | 'kind' | 'description'>,
 	): Promise<Prisma.ProductGetPayload<{ include: { defaultTaxRate: true } }>> {
 		const existing = await this.findBySku(sku, organizationId);
-		if (existing) return existing;
+		if (existing) return this.mapProductResponse(existing);
 		return this.create(
 			{
 				name: data.name,
@@ -213,12 +225,12 @@ export class ProductsService {
 				const langs = Array.isArray(p.languages) ? (p.languages as string[]) : [];
 				return langs.some(l => String(l).toLowerCase().includes(lang));
 			});
-			return {
-				items: filtered.slice(skip, skip + take),
-				total: filtered.length,
-				page,
-				pageSize: take,
-			};
+		return {
+			items: filtered.slice(skip, skip + take).map((p) => this.mapProductResponse(p)),
+			total: filtered.length,
+			page,
+			pageSize: take,
+		};
 		}
 
 		const [items, total] = await this.prisma.$transaction([
@@ -227,7 +239,7 @@ export class ProductsService {
 		]);
 
 		return {
-			items,
+			items: items.map((p) => this.mapProductResponse(p)),
 			total,
 			page,
 			pageSize: take,
@@ -242,7 +254,8 @@ export class ProductsService {
 	 * @throws {NotFoundException} Si produit non trouvé
 	 */
 	async findOne(id: number, organizationId?: number) {
-		return this.assertOrgProduct(id, organizationId);
+		const product = await this.assertOrgProduct(id, organizationId);
+		return this.mapProductResponse(product);
 	}
 
 	/**
@@ -255,14 +268,15 @@ export class ProductsService {
 	 */
 	async update(id: number, data: UpdateProductDto, organizationId?: number) {
 		await this.assertOrgProduct(id, organizationId);
+		const normalized = normalizeProductWritePayload(data);
 		const product = await this.prisma.product.update({
 			where: { id },
-			data: this.toPrismaData(data) as Prisma.ProductUncheckedUpdateInput,
+			data: this.toPrismaData(normalized) as Prisma.ProductUncheckedUpdateInput,
 			include: { defaultTaxRate: true },
 		});
-		await this.syncDeliverablesCatalog(organizationId, data.details ?? product.details);
+		await this.syncDeliverablesCatalog(organizationId, normalized.details ?? product.details);
 		this.notifyProduct(organizationId, 'updated', product.id, product.name);
-		return product;
+		return this.mapProductResponse(product);
 	}
 
 	/**
