@@ -95,7 +95,7 @@ export class ProductsService {
 		const normalized = normalizeProductWritePayload({
 			...data,
 			details: data.details ?? (data as CreateProductDto & { livrables?: unknown }).livrables,
-		});
+		}) as CreateProductDto;
 		const visual = resolveVisualOnCreate(normalized);
 		const product = await this.prisma.product.create({
 			data: {
@@ -274,7 +274,7 @@ export class ProductsService {
 	 */
 	async update(id: number, data: UpdateProductDto, organizationId?: number) {
 		await this.assertOrgProduct(id, organizationId);
-		const normalized = normalizeProductWritePayload(data);
+		const normalized = normalizeProductWritePayload(data) as UpdateProductDto;
 		const product = await this.prisma.product.update({
 			where: { id },
 			data: this.toPrismaData(normalized) as Prisma.ProductUncheckedUpdateInput,
