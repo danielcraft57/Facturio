@@ -195,13 +195,14 @@ describe('API publique (api-access)', () => {
 			.expect(201);
 
 		const catalog = await request(app.getHttpServer())
-			.get(`/api/public/produits/livrables/catalog?q=${encodeURIComponent(label.slice(0, 12))}`)
+			.get(`/api/public/produits/livrables/catalog?q=${encodeURIComponent(label)}`)
 			.set(bearer())
 			.expect(200)
 			.then((r: { body: { label: string; defaultAmount: number; defaultHours: number }[] }) => r.body);
 
 		expect(Array.isArray(catalog)).toBe(true);
 		const item = catalog.find((d) => d.label === label);
+		expect(item).toBeDefined();
 		expect(item?.defaultAmount).toBe(1200);
 		expect(item?.defaultHours).toBe(16);
 	});

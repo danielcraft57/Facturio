@@ -102,7 +102,10 @@ export class ProductsService {
 			},
 			include: { defaultTaxRate: true },
 		});
-		await this.syncDeliverablesCatalog(organizationId, normalized.details);
+		await this.syncDeliverablesCatalog(
+			organizationId,
+			parseProductDeliverables(normalized.details ?? product.details),
+		);
 		this.notifyProduct(organizationId, 'created', product.id, product.name);
 		return this.mapProductResponse(product);
 	}
@@ -274,7 +277,10 @@ export class ProductsService {
 			data: this.toPrismaData(normalized) as Prisma.ProductUncheckedUpdateInput,
 			include: { defaultTaxRate: true },
 		});
-		await this.syncDeliverablesCatalog(organizationId, normalized.details ?? product.details);
+		await this.syncDeliverablesCatalog(
+			organizationId,
+			parseProductDeliverables(normalized.details ?? product.details),
+		);
 		this.notifyProduct(organizationId, 'updated', product.id, product.name);
 		return this.mapProductResponse(product);
 	}
