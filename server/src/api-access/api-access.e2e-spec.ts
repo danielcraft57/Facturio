@@ -178,8 +178,8 @@ describe('API publique (api-access)', () => {
 	});
 
 	it('indexe et recherche les livrables via GET livrables/catalog', async () => {
-		const label = `Intégration E2E ${Date.now()}`;
-		await request(app.getHttpServer())
+		const label = `Livrable E2E ${Date.now()}`;
+		const created = await request(app.getHttpServer())
 			.post('/api/public/produits')
 			.set(bearer())
 			.send({
@@ -192,7 +192,12 @@ describe('API publique (api-access)', () => {
 					{ label: 'Recette QA', amount: 400, hours: 4 },
 				],
 			})
-			.expect(201);
+			.expect(201)
+			.then((r: { body: { details: { label: string; amount: number }[] } }) => r.body);
+
+		expect(created.details).toEqual(
+			expect.arrayContaining([expect.objectContaining({ label, amount: 1200, hours: 16 })]),
+		);
 
 		const catalog = await request(app.getHttpServer())
 			.get(`/api/public/produits/livrables/catalog?q=${encodeURIComponent(label)}`)

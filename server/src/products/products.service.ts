@@ -92,7 +92,10 @@ export class ProductsService {
 	}
 
 	async create(data: CreateProductDto, organizationId?: number) {
-		const normalized = normalizeProductWritePayload(data);
+		const normalized = normalizeProductWritePayload({
+			...data,
+			details: data.details ?? (data as CreateProductDto & { livrables?: unknown }).livrables,
+		});
 		const visual = resolveVisualOnCreate(normalized);
 		const product = await this.prisma.product.create({
 			data: {

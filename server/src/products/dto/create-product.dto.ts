@@ -86,10 +86,10 @@ export class CreateProductDto {
 	livrables?: unknown[];
 
 	@IsOptional()
-	@Transform(({ value, obj }) => normalizeDetailsInput(value ?? obj.livrables))
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => ProductDeliverableDto)
+	@Transform(({ value, obj }) => normalizeDetailsInput(value ?? obj.livrables))
 	details?: ProductDeliverableDto[];
 
 	/** Alias de languages (liste plate). Préférer techStack.languages. */
