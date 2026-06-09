@@ -3,15 +3,16 @@ name: CI
 on:
   push:
     branches: [ "main" ]
-    tags:
-      - "v*"
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   server-unit:
@@ -53,6 +54,7 @@ jobs:
 
   server-e2e:
     name: server (e2e)
+    needs: server-unit
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -88,8 +90,54 @@ jobs:
           NODE_ENV: test
           DATABASE_URL: file:./test.db
 
-  frontend:
-    name: frontend (lint/test/build)
+  frontend-lint:
+    name: frontend (lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+  frontend-test:
+    name: frontend (test)
+    needs: frontend-lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+  frontend-build:
+    name: frontend (build)
+    needs: frontend-test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -110,16 +158,9 @@ jobs:
       - name: Production env (Vite)
         run: cp env.prod.example .env.production
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Tests
-        run: npm test
-
       - name: Build
         run: npm run build
         env:
-          # Secret repo optionnel ; vide = pas d’URL en dur dans le bundle (origine navigateur à l’exécution)
           VITE_PUBLIC_APP_URL: ${{ secrets.FACTURIO_PUBLIC_APP_URL }}
 
       - name: Upload frontend dist (déploiement Pi sans build local)
@@ -129,3 +170,10 @@ jobs:
           path: frontend/dist/
           retention-days: 30
           if-no-files-found: error
+
+  ci-success:
+    name: ci (gate)
+    needs: [server-e2e, frontend-build]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "CI OK — prêt pour tag v* et CD"

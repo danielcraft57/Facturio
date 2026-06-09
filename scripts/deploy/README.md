@@ -23,6 +23,8 @@ Cron exemple : `0 4 * * * /usr/local/bin/facturio-update.sh >> /var/log/facturio
 
 Le script enchaîne : `git pull` → `pre-migrate-facturio-ownership.sql` (postgres) → `npm run migrate:prod` → `grant-facturio-role.sql` → build backend → **`npm run seed:catalog:prod`** (si catalogue modifié) → téléchargement `frontend-dist-<sha>` → restart `facturio`.
 
+**CI/CD GitHub** : push `main` → workflow **CI** (tests). Tag `v*` → **CD** (build prod + archives), uniquement si le CI a réussi sur le même commit. Ne pas taguer avant le CI vert.
+
 Le seed prod ne purge **pas** la base : il met à jour les produits modèles globaux (`organizationId` null) clonés par `/installation`.
 
 ## Nginx (node12)

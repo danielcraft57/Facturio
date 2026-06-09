@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "1.3.15",
+  "version": "1.3.16",
   "main": "index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-pdf-assets.js && node scripts/copy-email-assets.js",
@@ -19,7 +19,7 @@
     "seed": "ts-node --transpile-only prisma/seed.ts",
     "seed:dev": "cross-env NODE_ENV=dev DATABASE_URL=file:./dev.db npm run migrate:setup && cross-env NODE_ENV=dev DATABASE_URL=file:./dev.db SEED_PURGE=false ts-node --transpile-only prisma/seed.ts",
     "seed:playwright": "cross-env NODE_ENV=dev DATABASE_URL=file:./dev.db npm run migrate:setup && cross-env NODE_ENV=dev DATABASE_URL=file:./dev.db ts-node --transpile-only prisma/seed-playwright.ts",
-    "seed:catalog:prod": "cross-env NODE_ENV=prod node dist/catalog-seed/prisma/seed-catalog-prod.js",
+    "seed:catalog:prod": "node dist/catalog-seed/prisma/seed-catalog-prod.js",
     "seed:prod": "npm run seed:catalog:prod",
     "prisma:prod": "prisma generate --schema=prisma/postgresql/schema.prisma",
     "migrate:dev": "prisma migrate dev",

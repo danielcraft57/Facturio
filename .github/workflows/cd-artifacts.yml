@@ -10,9 +10,54 @@ concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
-  build:
+  verify-ci:
+    name: verify CI on commit
     runs-on: ubuntu-latest
+    steps:
+      - name: CI manuel (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "CD manuel — gate CI ignoré"
+
+      - name: Vérifier qu’un CI main a réussi sur ce commit
+        if: github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.sha;
+            const { owner, repo } = context.repo;
+            const workflows = await github.rest.actions.listRepoWorkflows({ owner, repo });
+            const ci = workflows.data.workflows.find((w) => w.path === '.github/workflows/ci.yml');
+            if (!ci) {
+              core.setFailed('Workflow CI introuvable.');
+              return;
+            }
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: ci.id,
+              head_sha: sha,
+              status: 'completed',
+              per_page: 20,
+            });
+            const ok = runs.data.workflow_runs.some((r) => r.conclusion === 'success');
+            if (!ok) {
+              core.setFailed(
+                `Aucun CI réussi sur ${sha}. Poussez sur main, attendez le CI vert, puis taguez.`,
+              );
+            }
+
+  server-build:
+    name: server (build prod)
+    needs: verify-ci
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
     steps:
       - uses: actions/checkout@v4
 
@@ -21,49 +66,86 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: server/package-lock.json
 
-      - name: Install (server)
+      - name: Install
         run: npm ci
-        working-directory: server
 
       - name: Generate Prisma client (prod schema)
         run: npx prisma generate --schema=prisma/postgresql/schema.prisma
-        working-directory: server
 
-      - name: Server tests (unit + e2e)
-        run: npm test
-        working-directory: server
-        env:
-          NODE_ENV: test
-          DATABASE_URL: file:./test.db
-
-      - name: Build (server)
+      - name: Build prod
         run: npm run build:prod
-        working-directory: server
 
-      - name: Install (frontend)
-        run: npm ci
+      - name: Upload server dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-dist-${{ github.sha }}
+          path: |
+            server/dist/
+            server/package.json
+            server/package-lock.json
+            server/prisma/
+          retention-days: 30
+
+  frontend-build:
+    name: frontend (build prod)
+    needs: verify-ci
+    runs-on: ubuntu-latest
+    defaults:
+      run:
         working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
 
       - name: Production env (Vite)
         run: cp env.prod.example .env.production
-        working-directory: frontend
 
-      - name: Frontend tests
-        run: npm test
-        working-directory: frontend
-
-      - name: Build (frontend)
+      - name: Build
         run: npm run build
-        working-directory: frontend
+        env:
+          VITE_PUBLIC_APP_URL: ${{ secrets.FACTURIO_PUBLIC_APP_URL }}
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-cd-${{ github.sha }}
+          path: frontend/dist/
+          retention-days: 30
+
+  release-artifacts:
+    name: release (archives)
+    needs: [server-build, frontend-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download server
+        uses: actions/download-artifact@v4
+        with:
+          name: server-dist-${{ github.sha }}
+          path: server-pack
+
+      - name: Download frontend
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist-cd-${{ github.sha }}
+          path: frontend-pack/dist
 
       - name: Archive artifacts
         run: |
           mkdir -p out
-          tar -czf out/server-dist.tgz -C server dist package.json package-lock.json prisma
-          tar -czf out/frontend-dist.tgz -C frontend dist
+          tar -czf out/server-dist.tgz -C server-pack .
+          tar -czf out/frontend-dist.tgz -C frontend-pack .
 
-      # ref_name peut contenir des / (branche) — interdit dans upload-artifact@v4
       - name: Nom d'artefact (sans /)
         id: artifact
         shell: bash
@@ -71,9 +153,8 @@ jobs:
           safe="${GITHUB_REF_NAME//\//-}"
           echo "name=facturio-build-${safe}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload artifacts
+      - name: Upload release bundle
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.name }}
           path: out/*.tgz
-
