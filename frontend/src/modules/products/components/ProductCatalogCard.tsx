@@ -20,6 +20,7 @@ import { ProductAvatar } from './ProductAvatar';
 import { PURPOSE_LABELS, CATEGORY_LABELS, KIND_LABELS } from '../constants/productLabels';
 import { ProductTechStackChips } from './ProductTechStackChips';
 import { resolveProductImageUrl, getProductIconGradientCss } from '../utils/productVisual';
+import { withProductVisualFallback } from '../utils/productVisualFallback';
 import { downloadDataUrl } from '../utils/generateProductImage';
 
 type Props = {
@@ -39,8 +40,9 @@ export function ProductCatalogCard({
   highlight = false,
   highlightTone,
 }: Props) {
-  const imageUrl = resolveProductImageUrl(product);
-  const iconGradient = getProductIconGradientCss(product);
+  const displayProduct = withProductVisualFallback(product);
+  const imageUrl = resolveProductImageUrl(displayProduct);
+  const iconGradient = getProductIconGradientCss(displayProduct);
   const [imageBroken, setImageBroken] = useState(false);
   const price = Number(product.unitPrice ?? 0);
   const details = (product.details || []).slice(0, mode === 'catalog' ? 3 : mode === 'compact' ? 1 : 2);
@@ -111,7 +113,7 @@ export function ProductCatalogCard({
           />
         )}
         {!showVisualImage && (
-          <ProductAvatar product={product} size={isCompact ? 52 : 72} />
+          <ProductAvatar product={displayProduct} size={isCompact ? 52 : 72} />
         )}
         <IconButton
           size="small"

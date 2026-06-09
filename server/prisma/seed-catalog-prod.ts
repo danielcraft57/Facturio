@@ -7,6 +7,7 @@
 import { PrismaClient } from '@prisma/client';
 import { seedCatalogRulesValidation } from './seeds/catalog-rules.seed';
 import { seedProducts } from './seeds/products.seed';
+import { syncOrganizationProductVisuals } from './seeds/sync-org-product-visuals';
 
 async function resolveTaxIds(prisma: PrismaClient): Promise<{ def20Id: number; def10Id: number }> {
 	const def20 =
@@ -28,8 +29,10 @@ async function main(): Promise<void> {
 		const taxIds = await resolveTaxIds(prisma);
 		const result = await seedProducts(prisma, taxIds);
 		await seedCatalogRulesValidation(prisma);
+		const visualsFixed = await syncOrganizationProductVisuals(prisma);
 		console.log(
-			`[seed:catalog:prod] OK — ${Object.keys(result).length} références seed, templates globaux à jour.`,
+			`[seed:catalog:prod] OK — ${Object.keys(result).length} références seed, templates globaux à jour.` +
+				(visualsFixed > 0 ? ` ${visualsFixed} produit(s) org : visuels réparés.` : ''),
 		);
 	} finally {
 		await prisma.$disconnect();

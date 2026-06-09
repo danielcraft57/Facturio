@@ -1,4 +1,6 @@
-/** Sections catalogue v2 — livrables par stack (aligné dev-products.catalog.ts) */
+/** Sections catalogue v2 + legacy v1 (prestations DanielCraft) */
+
+import legacyMeta from './legacy-catalog-meta.json';
 
 export type CatalogSectionId =
   | 'sites'
@@ -21,7 +23,19 @@ export const CATALOG_SECTIONS: {
     id: 'sites',
     label: 'Sites & vitrine',
     subtitle: 'HTML, WordPress, Next.js, Nuxt.',
-    skus: ['STACK-WEB-STATIC', 'STACK-WP-VITRINE', 'STACK-NEXT-LANDING', 'STACK-NUXT-SITE'],
+    skus: [
+      'STACK-WEB-STATIC',
+      'STACK-WP-VITRINE',
+      'STACK-NEXT-LANDING',
+      'STACK-NUXT-SITE',
+      'OFFRE-VITRINE-CLAIR',
+      'OFFRE-CONSEIL-WEB',
+      'OFFRE-REDACTION-WEB',
+      'OFFRE-CHARTE-GRAPHIQUE',
+      'OFFRE-HANDOVER',
+      'OFFRE-BILAN-SITE',
+      'OFFRE-FORMULE-SERENITE',
+    ],
   },
   {
     id: 'fullstack',
@@ -87,6 +101,16 @@ export const CATALOG_SECTIONS: {
   },
 ];
 
+/** Sections v1 (catalogue plat) — orgs créées avant la v2 stack. */
+export const LEGACY_CATALOG_SECTIONS = legacyMeta.sections.map((section) => ({
+  id: section.id as CatalogSectionId,
+  label: section.label,
+  subtitle: section.subtitle,
+  skus: section.skus,
+}));
+
+export const ALL_CATALOG_SECTIONS = [...CATALOG_SECTIONS, ...LEGACY_CATALOG_SECTIONS];
+
 const OTHER_SECTION = {
   id: 'sites' as CatalogSectionId,
   label: 'Autres produits',
@@ -96,9 +120,9 @@ const OTHER_SECTION = {
 
 export function groupProductsBySection<T extends { sku?: string }>(
   products: T[],
-): { section: (typeof CATALOG_SECTIONS)[number]; products: T[] }[] {
+): { section: (typeof ALL_CATALOG_SECTIONS)[number]; products: T[] }[] {
   const usedIds = new Set<number | string>();
-  const grouped: { section: (typeof CATALOG_SECTIONS)[number]; products: T[] }[] = [];
+  const grouped: { section: (typeof ALL_CATALOG_SECTIONS)[number]; products: T[] }[] = [];
 
   const markUsed = (items: T[]) => {
     for (const p of items) {
@@ -107,7 +131,7 @@ export function groupProductsBySection<T extends { sku?: string }>(
     }
   };
 
-  for (const section of CATALOG_SECTIONS) {
+  for (const section of ALL_CATALOG_SECTIONS) {
     const items = products.filter((p) => {
       if (!p.sku || !section.skus.includes(p.sku)) return false;
       const key = (p as { id?: number }).id ?? p.sku;

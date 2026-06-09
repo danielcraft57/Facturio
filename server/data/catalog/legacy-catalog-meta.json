@@ -1,0 +1,486 @@
+{
+  "sections": [
+    {
+      "id": "identity",
+      "label": "Identité & visibilité",
+      "subtitle": "Identité web multi-supports, SEO Google et découvrabilité IA (ChatGPT).",
+      "skus": [
+        "IDENTITE-MULTI",
+        "SEO-BASIQUE",
+        "SEO-CHATGPT"
+      ]
+    },
+    {
+      "id": "ai",
+      "label": "Intelligence artificielle & ChatGPT",
+      "subtitle": "Assistants, automatisation, contenus et évolutions IA.",
+      "skus": [
+        "IA-FAQ-SITE",
+        "IA-SUPPORT-EMAIL",
+        "IA-CONTENUS-WEB",
+        "IA-REDACTION-COMMERCIALE",
+        "IA-ANALYSE-DONNEES",
+        "IA-CHATBOT-ECOMMERCE",
+        "IA-AUTOMATISATION-TACHES",
+        "IA-MAINTENANCE-MENSUEL",
+        "IA-EVOLUTION-FEATURE",
+        "IA-AUDIT-USAGE",
+        "IA-CLAUDE-INTEG",
+        "IA-LANGCHAIN-BOT",
+        "AUTO-N8N-WORKFLOW"
+      ]
+    },
+    {
+      "id": "technical",
+      "label": "Technique & intégration",
+      "subtitle": "Architecture, CRM, migrations, API et performances.",
+      "skus": [
+        "CONSEIL-ARCHI",
+        "INTEG-CRM",
+        "MIGRATION-DONNEES",
+        "INTEG-API",
+        "RAPPORT-PERF",
+        "DEV-API-REST",
+        "DEV-GRAPHQL",
+        "DEV-PHP-CUSTOM",
+        "DEV-SPRING-API",
+        "DEV-GO-SERVICE",
+        "DEV-RUST-PERF",
+        "CMS-STRAPI-HEADLESS",
+        "DATA-POSTGRES-OPTIM",
+        "DATA-MONGODB-SCHEMA",
+        "DATA-REDIS-CACHE",
+        "BaaS-SUPABASE-SETUP",
+        "BaaS-FIREBASE-APP",
+        "DEVOPS-CICD-GHA",
+        "SEC-DEP-SCAN",
+        "SEC-SONAR-CODE",
+        "SEC-VAULT-SECRETS"
+      ]
+    },
+    {
+      "id": "site",
+      "label": "Site & contenu",
+      "subtitle": "Pages, formulaires, refonte légère et mises à jour.",
+      "skus": [
+        "PAGE-SUPP",
+        "FORM-AVANCE",
+        "REFONTE-LEGERE",
+        "MAJ-CONTENU-5H",
+        "FORMATION-DEMI",
+        "DEV-SVELTE-SITE",
+        "CMS-WORDPRESS-THEME",
+        "PLUGIN-WP-SECU",
+        "ECOM-SHOPIFY-THEME"
+      ]
+    },
+    {
+      "id": "maintenance",
+      "label": "Maintenance & support",
+      "subtitle": "Hébergement, sécurité, dépannage et accompagnement.",
+      "skus": [
+        "MAINT-MENSUEL",
+        "HEBERG-DOMAIN",
+        "BACKUP-SECU",
+        "SSL-CONFIG",
+        "SUPPORT-ABO",
+        "DEPANNAGE-2H",
+        "ACCOMP-H",
+        "SUPPORT-H",
+        "DEVOPS-DOCKER-SETUP",
+        "DEVOPS-K8S-DEPLOY",
+        "DEVOPS-VERCEL-NEXT",
+        "DEVOPS-AWS-INFRA",
+        "DEVOPS-NGINX-CONFIG",
+        "SEC-AUDIT-PENTEST",
+        "SEC-WAF-SETUP"
+      ]
+    },
+    {
+      "id": "offers",
+      "label": "Offres principales",
+      "subtitle": "Sites, applications métier et packs complémentaires.",
+      "skus": [
+        "SITE-VITRINE",
+        "AUTO-METIER",
+        "AUDIT-OPTIM",
+        "PACK-SEO-GOOGLE-CHATGPT",
+        "DEV-VUE-SPA",
+        "DEV-ANGULAR-ENT",
+        "DEV-RAILS-APP",
+        "CMS-PRESTASHOP-SHOP",
+        "APP-MOBILE-RN",
+        "APP-MOBILE-FLUTTER",
+        "APP-IOS-SWIFT",
+        "APP-ANDROID-KOTLIN"
+      ]
+    }
+  ],
+  "visuals": {
+    "SITE-VITRINE": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "window-maximize"
+    },
+    "AUTO-METIER": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "code"
+    },
+    "AUDIT-OPTIM": {
+      "visualType": "library",
+      "imageData": "library:analytics",
+      "iconName": "magnifying-glass"
+    },
+    "PACK-SEO-GOOGLE-CHATGPT": {
+      "visualType": "library",
+      "imageData": "library:seo",
+      "iconName": "chart-line"
+    },
+    "IDENTITE-MULTI": {
+      "visualType": "library",
+      "imageData": "library:design",
+      "iconName": "palette"
+    },
+    "SEO-BASIQUE": {
+      "visualType": "library",
+      "imageData": "library:seo",
+      "iconName": "magnifying-glass"
+    },
+    "SEO-CHATGPT": {
+      "visualType": "library",
+      "imageData": "library:saas",
+      "iconName": "cloud"
+    },
+    "IA-FAQ-SITE": {
+      "visualType": "library",
+      "imageData": "library:saas",
+      "iconName": "headset"
+    },
+    "IA-SUPPORT-EMAIL": {
+      "visualType": "library",
+      "imageData": "library:saas",
+      "iconName": "envelope"
+    },
+    "IA-CONTENUS-WEB": {
+      "visualType": "library",
+      "imageData": "library:design",
+      "iconName": "pen-nib"
+    },
+    "IA-REDACTION-COMMERCIALE": {
+      "visualType": "library",
+      "imageData": "library:saas",
+      "iconName": "briefcase"
+    },
+    "IA-ANALYSE-DONNEES": {
+      "visualType": "library",
+      "imageData": "library:analytics",
+      "iconName": "chart-line"
+    },
+    "IA-CHATBOT-ECOMMERCE": {
+      "visualType": "library",
+      "imageData": "library:ecommerce",
+      "iconName": "cart-shopping"
+    },
+    "IA-AUTOMATISATION-TACHES": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "gear"
+    },
+    "IA-MAINTENANCE-MENSUEL": {
+      "visualType": "library",
+      "imageData": "library:saas",
+      "iconName": "wrench"
+    },
+    "IA-EVOLUTION-FEATURE": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "puzzle-piece"
+    },
+    "IA-AUDIT-USAGE": {
+      "visualType": "library",
+      "imageData": "library:analytics",
+      "iconName": "lightbulb"
+    },
+    "CONSEIL-ARCHI": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "lightbulb"
+    },
+    "INTEG-CRM": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "plug"
+    },
+    "MIGRATION-DONNEES": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "database"
+    },
+    "INTEG-API": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "plug"
+    },
+    "RAPPORT-PERF": {
+      "visualType": "library",
+      "imageData": "library:analytics",
+      "iconName": "rocket"
+    },
+    "PAGE-SUPP": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "file-code"
+    },
+    "FORM-AVANCE": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "envelope"
+    },
+    "REFONTE-LEGERE": {
+      "visualType": "library",
+      "imageData": "library:design",
+      "iconName": "palette"
+    },
+    "MAJ-CONTENU-5H": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "pen-nib"
+    },
+    "FORMATION-DEMI": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "users"
+    },
+    "MAINT-MENSUEL": {
+      "visualType": "library",
+      "imageData": "library:hosting",
+      "iconName": "wrench"
+    },
+    "HEBERG-DOMAIN": {
+      "visualType": "library",
+      "imageData": "library:hosting",
+      "iconName": "server"
+    },
+    "BACKUP-SECU": {
+      "visualType": "library",
+      "imageData": "library:security",
+      "iconName": "shield-halved"
+    },
+    "SSL-CONFIG": {
+      "visualType": "library",
+      "imageData": "library:security",
+      "iconName": "lock"
+    },
+    "SUPPORT-ABO": {
+      "visualType": "library",
+      "imageData": "library:support",
+      "iconName": "headset"
+    },
+    "DEPANNAGE-2H": {
+      "visualType": "library",
+      "imageData": "library:support",
+      "iconName": "screwdriver-wrench"
+    },
+    "ACCOMP-H": {
+      "visualType": "library",
+      "imageData": "library:support",
+      "iconName": "code"
+    },
+    "SUPPORT-H": {
+      "visualType": "library",
+      "imageData": "library:support",
+      "iconName": "bell"
+    },
+    "DEV-API-REST": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "plug"
+    },
+    "DEV-GRAPHQL": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "layer-group"
+    },
+    "DEV-VUE-SPA": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "code"
+    },
+    "DEV-ANGULAR-ENT": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "code"
+    },
+    "DEV-SVELTE-SITE": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "code"
+    },
+    "DEV-PHP-CUSTOM": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "code"
+    },
+    "DEV-RAILS-APP": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "code"
+    },
+    "DEV-SPRING-API": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "code"
+    },
+    "DEV-GO-SERVICE": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "code"
+    },
+    "DEV-RUST-PERF": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "rocket"
+    },
+    "CMS-WORDPRESS-THEME": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "globe"
+    },
+    "PLUGIN-WP-SECU": {
+      "visualType": "library",
+      "imageData": "library:security",
+      "iconName": "shield-halved"
+    },
+    "CMS-STRAPI-HEADLESS": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "database"
+    },
+    "CMS-PRESTASHOP-SHOP": {
+      "visualType": "library",
+      "imageData": "library:ecommerce",
+      "iconName": "cart-shopping"
+    },
+    "ECOM-SHOPIFY-THEME": {
+      "visualType": "library",
+      "imageData": "library:ecommerce",
+      "iconName": "cart-shopping"
+    },
+    "DATA-POSTGRES-OPTIM": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "database"
+    },
+    "DATA-MONGODB-SCHEMA": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "database"
+    },
+    "DATA-REDIS-CACHE": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "database"
+    },
+    "BaaS-SUPABASE-SETUP": {
+      "visualType": "library",
+      "imageData": "library:saas",
+      "iconName": "cloud"
+    },
+    "BaaS-FIREBASE-APP": {
+      "visualType": "library",
+      "imageData": "library:saas",
+      "iconName": "cloud"
+    },
+    "DEVOPS-DOCKER-SETUP": {
+      "visualType": "library",
+      "imageData": "library:hosting",
+      "iconName": "server"
+    },
+    "DEVOPS-K8S-DEPLOY": {
+      "visualType": "library",
+      "imageData": "library:hosting",
+      "iconName": "server"
+    },
+    "DEVOPS-CICD-GHA": {
+      "visualType": "library",
+      "imageData": "library:hosting",
+      "iconName": "gear"
+    },
+    "DEVOPS-VERCEL-NEXT": {
+      "visualType": "library",
+      "imageData": "library:hosting",
+      "iconName": "rocket"
+    },
+    "DEVOPS-AWS-INFRA": {
+      "visualType": "library",
+      "imageData": "library:hosting",
+      "iconName": "cloud"
+    },
+    "DEVOPS-NGINX-CONFIG": {
+      "visualType": "library",
+      "imageData": "library:hosting",
+      "iconName": "server"
+    },
+    "APP-MOBILE-RN": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "mobile-screen"
+    },
+    "APP-MOBILE-FLUTTER": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "mobile-screen"
+    },
+    "APP-IOS-SWIFT": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "mobile-screen"
+    },
+    "APP-ANDROID-KOTLIN": {
+      "visualType": "library",
+      "imageData": "library:web",
+      "iconName": "mobile-screen"
+    },
+    "SEC-AUDIT-PENTEST": {
+      "visualType": "library",
+      "imageData": "library:security",
+      "iconName": "shield-halved"
+    },
+    "SEC-DEP-SCAN": {
+      "visualType": "library",
+      "imageData": "library:security",
+      "iconName": "shield-halved"
+    },
+    "SEC-SONAR-CODE": {
+      "visualType": "library",
+      "imageData": "library:security",
+      "iconName": "magnifying-glass"
+    },
+    "SEC-WAF-SETUP": {
+      "visualType": "library",
+      "imageData": "library:security",
+      "iconName": "shield-halved"
+    },
+    "SEC-VAULT-SECRETS": {
+      "visualType": "library",
+      "imageData": "library:security",
+      "iconName": "lock"
+    },
+    "IA-CLAUDE-INTEG": {
+      "visualType": "library",
+      "imageData": "library:saas",
+      "iconName": "cloud"
+    },
+    "IA-LANGCHAIN-BOT": {
+      "visualType": "library",
+      "imageData": "library:saas",
+      "iconName": "cloud"
+    },
+    "AUTO-N8N-WORKFLOW": {
+      "visualType": "library",
+      "imageData": "library:api",
+      "iconName": "gear"
+    }
+  }
+}

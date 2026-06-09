@@ -14,6 +14,7 @@
   "include": [
     "prisma/seed-catalog-prod.ts",
     "prisma/seeds/products.seed.ts",
+    "prisma/seeds/sync-org-product-visuals.ts",
     "prisma/seeds/catalog-rules.seed.ts",
     "prisma/seeds/danielcraft-prestations.data.ts",
     "prisma/seeds/dev-products.catalog.ts",
