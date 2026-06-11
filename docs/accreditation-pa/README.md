@@ -1,17 +1,23 @@
 # Dossier de candidature — Plateforme Agréée (PA)
 
-Ce répertoire regroupe les éléments pour une **candidature à l’immatriculation** en tant que Plateforme Agréée (réforme facturation électronique B2B, DGFiP), ainsi que la **piste parallèle recommandée** : Facturio en **solution compatible** connectée à une PA partenaire.
+Ce répertoire regroupe les éléments pour une **candidature à l'immatriculation** en tant que Plateforme Agréée (réforme facturation électronique B2B, DGFiP), ainsi que la **piste de repli** : Facturio en **solution compatible** connectée à une PA partenaire.
 
 **Éditeur** : Loïc DANIEL — DanielCraft (micro-entreprise)  
 **Produit** : Facturio  
-**Dernière mise à jour** : mai 2026
+**Dernière mise à jour** : juin 2026
 
 ## Statut du projet
 
-| Piste | Statut | Recommandation |
-|-------|--------|----------------|
-| **Solution compatible + PA partenaire** | En cours (module e-facture partiel) | **Prioritaire** — délai et coût maîtrisés |
-| **Immatriculation PA DanielCraft / Facturio** | Dossier en préparation (ce dossier) | Long terme — ISO 27001, audits, interop PPF |
+| Piste | Statut | Note |
+|-------|--------|------|
+| **Immatriculation PA DanielCraft / Facturio** | **Objectif retenu** — dossier en préparation | Bloquant : ISO 27001 + produit PA + interop PPF |
+| **Solution compatible + PA partenaire** | Piste de repli possible | Si délai immatriculation dépassé (ex. sept. 2026) |
+
+## Document principal (suivi)
+
+| Fichier | Description |
+|---------|-------------|
+| **[09-PARCOURS_COMPLET_PA_ISO27001.md](./09-PARCOURS_COMPLET_PA_ISO27001.md)** | **Parcours PA dédiée + ISO 27001 — guide complet, planning, tableaux d'avancement** |
 
 ## Contenu du dossier
 
@@ -25,7 +31,10 @@ Ce répertoire regroupe les éléments pour une **candidature à l’immatricula
 | [05-securite-conformite.md](./05-securite-conformite.md) | RGPD, sécurité, hébergement |
 | [06-plan-certification-iso27001.md](./06-plan-certification-iso27001.md) | Feuille de route certification |
 | [07-checklist-depot-immatriculation.md](./07-checklist-depot-immatriculation.md) | Checklist administrative DGFiP |
-| [08-piste-pa-partenaire.md](./08-piste-pa-partenaire.md) | Alternative court terme (commission / API) |
+| [08-piste-pa-partenaire.md](./08-piste-pa-partenaire.md) | Piste de repli court terme (commission / API) |
+| [09-PARCOURS_COMPLET_PA_ISO27001.md](./09-PARCOURS_COMPLET_PA_ISO27001.md) | Parcours PA dédiée, ISO 27001, avancement |
+| [10-INVENTAIRE_CODE_ET_PAGES_PA.md](./10-INVENTAIRE_CODE_ET_PAGES_PA.md) | Fichiers code, pages UI, infra à modifier |
+| [annexes/isms/](./annexes/isms/) | Modèles ISMS à compléter (périmètre, procédures, RGPD) |
 | [templates/lettre-accompagnement-depot.md](./templates/lettre-accompagnement-depot.md) | Modèle de lettre |
 | [annexes/references-officielles.md](./annexes/references-officielles.md) | Liens impots.gouv.fr, démarches |
 
@@ -38,7 +47,10 @@ Ce répertoire regroupe les éléments pour une **candidature à l’immatricula
 
 ## Prochaines actions
 
-1. Valider la décision : PA propre **ou** PA partenaire (voir [08-piste-pa-partenaire.md](./08-piste-pa-partenaire.md)).
-2. Compléter les cases « à fournir » du [07-checklist-depot-immatriculation.md](./07-checklist-depot-immatriculation.md) (Kbis, hébergeur, DPO).
-3. Lancer l’audit ISO/IEC 27001 si immatriculation PA retenue ([06-plan-certification-iso27001.md](./06-plan-certification-iso27001.md)).
-4. Poursuivre le MVP solution compatible (Factur-X + connecteur PA sandbox).
+Voir le suivi détaillé : **[09-PARCOURS_COMPLET_PA_ISO27001.md](./09-PARCOURS_COMPLET_PA_ISO27001.md)**.
+
+1. Demander devis consultants ISO + organismes certificateurs.
+2. Démarrer l'ISMS (périmètre, politique sécurité, registre risques).
+3. Automatiser sauvegardes prod + test de restauration.
+4. Poursuivre le produit PA (Factur-X, émission, réception) en parallèle.
+5. Ne déposer `immatpdp` qu'après obtention du certificat ISO 27001.

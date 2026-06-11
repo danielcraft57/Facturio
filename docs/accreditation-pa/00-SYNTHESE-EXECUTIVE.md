@@ -1,14 +1,15 @@
 # Synthèse exécutive — Facturio & facturation électronique
 
 **Document** : dossier de candidature / présentation partenaires  
-**Version** : 1.0 — mai 2026  
-**Éditeur** : Loïc DANIEL — DanielCraft
+**Version** : 1.1 — juin 2026  
+**Éditeur** : Loïc DANIEL — DanielCraft  
+**Branche** : `feat/pa-iso27001-parcours`
 
 ---
 
 ## 1. Objet
 
-**Facturio** est un logiciel SaaS de facturation destiné aux **prestataires de services numériques** (développement web, logiciel sur mesure, automatisation, maintenance, offres IA). L’objectif réglementaire est la conformité à la **réforme française de facturation électronique B2B** (échéances septembre 2026 et 2027) et, selon la stratégie retenue, l’**immatriculation en Plateforme Agréée (PA)** ou l’intégration à une **PA partenaire** en tant que solution compatible.
+**Facturio** est un logiciel SaaS de facturation destiné aux **prestataires de services numériques** (développement web, logiciel sur mesure, automatisation, maintenance, offres IA). L’objectif réglementaire est la conformité à la **réforme française de facturation électronique B2B** (échéances septembre 2026 et 2027) et l’**immatriculation de DanielCraft / Facturio en Plateforme Agréée (PA)**. Une intégration PA partenaire reste une **piste de repli** si le délai d’immatriculation n’est pas tenu.
 
 ## 2. Identité de l’éditeur
 
@@ -45,7 +46,7 @@
 | Délai | 6–12 mois (selon partenaire) | 12–24 mois |
 | Coût | Modéré (API + commission) | Élevé (ISO 27001, audits, infra) |
 | Risque | Dépendance partenaire | Contrôle du canal réglementaire |
-| **Recommandation** | **Phase 1 commerciale** | Option long terme |
+| **Recommandation (juin 2026)** | Piste de repli | **Objectif retenu** |
 
 ## 5. Engagements conformité (cible)
 
@@ -58,15 +59,16 @@
 
 | Date | Jalon |
 |------|--------|
-| Q2 2026 | Finaliser MVP Factur-X + contrat PA partenaire |
-| **1 sept. 2026** | Réception obligatoire ; émission ETI/GE — utilisateurs Pro + e-facture |
-| Q4 2026 | Réception factures fournisseurs via PA |
+| Q2–Q3 2026 | ISMS démarré ; Factur-X ; passerelle PPF (sandbox) |
+| **1 sept. 2026** | Échéance légale utilisateurs (réception / émission ETI) — immatriculation PA si ISO prête |
+| T1–T2 2027 | Certification ISO 27001 (cible) |
+| T2 2027 | Dépôt `immatpdp` + tests interop PPF |
 | **1 sept. 2027** | Émission PME / micro — activation par défaut |
-| 2027+ | Candidature PA propre si ROI validé |
+| Q4 2026 – Q1 2027 | Réception fournisseurs + e-reporting |
 
 ## 7. Pièces du dossier
 
-Voir l’index [README.md](./README.md) : cadre réglementaire, architecture, dossier technique, sécurité, plan ISO 27001, checklist de dépôt.
+Voir l’index [README.md](./README.md) et le suivi [09-PARCOURS_COMPLET_PA_ISO27001.md](./09-PARCOURS_COMPLET_PA_ISO27001.md) : cadre réglementaire, ISMS, inventaire code, checklist dépôt.
 
 ## 8. Contact dossier
 

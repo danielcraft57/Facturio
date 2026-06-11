@@ -243,6 +243,7 @@ Détail des axes produit + tableau cas d’usage × conformité : [POSITIONNEMEN
 - [Architecture](../development/ARCHITECTURE.md)
 - [Guide dev e-invoicing](../development/E_INVOICING.md)
 - [Dossier accréditation PA](../accreditation-pa/README.md)
+- [Parcours complet PA + ISO 27001](../accreditation-pa/09-PARCOURS_COMPLET_PA_ISO27001.md)
 - Module factures : `server/src/invoices/`
 
 ## Historique des décisions
@@ -251,3 +252,4 @@ Détail des axes produit + tableau cas d’usage × conformité : [POSITIONNEMEN
 |------|----------|
 | 2026-05 | Document créé ; stratégie par défaut = solution compatible + PA partenaire (à valider en phase 0). |
 | 2026-05 | Phase 1–2 partielles livrées (module e-invoicing, SIREN, XML, UI). Dossier [accreditation-pa/](../accreditation-pa/README.md) créé. |
+| 2026-06 | **Décision** : objectif immatriculation **PA DanielCraft / Facturio** ; parcours ISO 27001 + inventaire technique sur branche `feat/pa-iso27001-parcours`. |

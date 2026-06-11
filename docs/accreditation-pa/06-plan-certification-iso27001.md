@@ -2,6 +2,8 @@
 
 > Prérequis **obligatoire** pour une immatriculation en Plateforme Agréée (certificat valide ; certification « en cours » non recevable selon le guide DGFiP).
 
+**Guide complet avec checklists et planning** : [09-PARCOURS_COMPLET_PA_ISO27001.md](./09-PARCOURS_COMPLET_PA_ISO27001.md)
+
 ## Objectif
 
 Obtenir une certification **ISO/IEC 27001** couvrant le périmètre :

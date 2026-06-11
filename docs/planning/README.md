@@ -11,6 +11,8 @@ Documentation sur le planning et la roadmap du projet.
 - [Facturation électronique 2026–2027](./FACTURATION_ELECTRONIQUE_2026.md) - Réforme B2B, PA, Factur-X, e-reporting
 - [Conformité RGPD & réforme 2026](./CONFORMITE_RGPD_ET_FACTURATION_2026.md) - Audit devis/factures/Stripe/PA
 - [Dossier accréditation PA](../accreditation-pa/README.md) - Candidature immatriculation + checklist
+- [Parcours PA + ISO 27001](../accreditation-pa/09-PARCOURS_COMPLET_PA_ISO27001.md) - Guide complet, planning, avancement
+- [Inventaire code & pages PA](../accreditation-pa/10-INVENTAIRE_CODE_ET_PAGES_PA.md) - Fichiers à modifier (produit + infra)
 - [TODO - Liste complète](./TODO.md) - Toutes les tâches restantes
 - [Avancement du projet](./AVANCEMENT.md) - État actuel et progression
 
