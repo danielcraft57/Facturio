@@ -585,13 +585,21 @@ export class QuotesService {
 	private async nextQuoteNumber(): Promise<string> {
 		const year = new Date().getFullYear();
 		const scope = `quote-${year}`;
-		const counter = await this.prisma.counter.upsert({
-			where: { scope },
-			create: { scope, current: 1 },
-			update: { current: { increment: 1 } }
-		});
-		const padded = String(counter.current).padStart(4, '0');
-		return `DEV-${year}-${padded}`;
+		for (let attempt = 0; attempt < 100; attempt++) {
+			const counter = await this.prisma.counter.upsert({
+				where: { scope },
+				create: { scope, current: 1 },
+				update: { current: { increment: 1 } },
+			});
+			const padded = String(counter.current).padStart(4, '0');
+			const number = `DEV-${year}-${padded}`;
+			const taken = await this.prisma.quote.findUnique({
+				where: { number },
+				select: { id: true },
+			});
+			if (!taken) return number;
+		}
+		throw new BadRequestException('Impossible de générer un numéro de devis unique');
 	}
 
 	/**

@@ -16,6 +16,8 @@ Exécution : **`cd /opt/facturio/server`** (prod) avec `.env` et `DATABASE_URL`.
 | `npm run invoices:usage -- <cible>` | `purge-organization-invoices.js usage` |
 | `npm run invoices:list -- <cible> [filtres]` | `purge-organization-invoices.js list` |
 | `npm run invoices:purge -- <cible> [filtres] --confirm` | `purge-organization-invoices.js purge` |
+| `npm run commercial:stats -- <cible>` | `purge-organization-commercial.js stats` |
+| `npm run commercial:purge -- <cible> --confirm` | `purge-organization-commercial.js purge` |
 | `npm run user:add -- …` | `manage-user.js add` |
 | `npm run user:remove -- <email>` | `manage-user.js remove` |
 | `npm run user:list` | `manage-user.js list` |
@@ -36,6 +38,18 @@ Exécution : **`cd /opt/facturio/server`** (prod) avec `.env` et `DATABASE_URL`.
 node scripts/set-organization-plan.js set user@example.com agency --months=12
 node scripts/set-organization-plan.js set user@example.com free --clear-subscription
 ```
+
+### `purge-organization-commercial.js` — clients, devis et factures
+
+Suppression **définitive** des données commerciales d'une organisation (factures + devis + clients et dépendances). **Conserve** produits, utilisateurs, jetons API, plan SaaS.
+
+```bash
+node scripts/purge-organization-commercial.js stats user@example.com
+node scripts/purge-organization-commercial.js purge user@example.com --confirm
+npm run commercial:purge -- user@example.com --confirm
+```
+
+Windows (dev) : `scripts/windows/purge-commercial.ps1 -Target user@example.com -Command purge -Confirm`
 
 ### `purge-organization-invoices.js` — factures et quota Free
 

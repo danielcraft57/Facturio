@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -51,7 +51,11 @@ export class ClientsService {
 	 * }, 1);
 	 * ```
 	 */
-	async create(data: CreateClientDto, organizationId?: number) {
+	async create(
+		data: CreateClientDto,
+		organizationId?: number,
+		options?: { reuseExistingEmail?: boolean },
+	) {
 		// Validation nom
 		if (!data.name) {
 			throw new BadRequestException('Le nom est requis');
@@ -60,14 +64,39 @@ export class ClientsService {
 		if (!data.email) {
 			throw new BadRequestException('Email requis');
 		}
+		const email = data.email.trim();
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		if (!emailRegex.test(data.email)) {
+		if (!emailRegex.test(email)) {
 			throw new BadRequestException('Email invalide');
 		}
-		
+
+		const existing = await this.prisma.client.findUnique({ where: { email } });
+		if (existing) {
+			if (
+				organizationId != null &&
+				existing.organizationId != null &&
+				existing.organizationId !== organizationId
+			) {
+				throw new ConflictException(
+					'Cet email est déjà utilisé par un client d\'une autre organisation.',
+				);
+			}
+			if (options?.reuseExistingEmail) {
+				if (organizationId != null && existing.organizationId == null) {
+					return this.prisma.client.update({
+						where: { id: existing.id },
+						data: { organizationId, name: data.name.trim() },
+					});
+				}
+				return existing;
+			}
+			throw new ConflictException('Un client avec cet email existe déjà.');
+		}
+
 		const { technologyIds, ...rest } = data;
 		const cleanData: Record<string, unknown> = {
 			...rest,
+			email,
 			taxRateOverrideId: data.taxRateOverrideId || undefined,
 		};
 
