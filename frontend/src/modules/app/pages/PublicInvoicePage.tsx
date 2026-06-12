@@ -24,6 +24,7 @@ import { formatCurrency, formatDate } from '../../../utils/formatters'
 import { PublicDataProcessingNotice } from '../../legal/PublicDataProcessingNotice'
 import { InvoicePublicSkeleton } from '../../../components/loading/InvoicePublicSkeleton'
 import { resolveApiBaseUrl } from '../../../utils/resolveApiBaseUrl'
+import type { PublicInvoiceSummary } from './ClientInvoicePage'
 
 const api = ApiClient.getInstance()
 const API_BASE = resolveApiBaseUrl()
@@ -38,16 +39,17 @@ function InvoicePaymentForm({
   token: string
   amount: number
   currency: string
-  onSuccess: (paymentIntentId: string) => void
+  onSuccess: () => void
   onError: (message: string) => void
 }) {
   const stripe = useStripe()
   const elements = useElements()
   const [submitting, setSubmitting] = useState(false)
+  const [elementsReady, setElementsReady] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!stripe || !elements) return
+    if (!stripe || !elements || !elementsReady) return
 
     setSubmitting(true)
     const { error, paymentIntent } = await stripe.confirmPayment({
@@ -62,58 +64,104 @@ function InvoicePaymentForm({
       return
     }
     if (paymentIntent?.status === 'succeeded') {
-      onSuccess(paymentIntent.id)
+      await api.post(`public/invoices/${token}/confirm-payment`, {
+        paymentIntentId: paymentIntent.id,
+      })
+      onSuccess()
     }
   }
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-      <PaymentElement />
+      <PaymentElement onReady={() => setElementsReady(true)} />
       <Button
         type="submit"
         variant="contained"
         color="success"
         fullWidth
         sx={{ mt: 2 }}
-        disabled={!stripe || submitting}
+        disabled={!stripe || !elementsReady || submitting}
       >
-        {submitting ? <CircularProgress size={24} color="inherit" /> : `Payer ${formatCurrency(amount)} ${currency}`}
+        {submitting ? (
+          <CircularProgress size={24} color="inherit" />
+        ) : (
+          `Payer ${formatCurrency(amount)} ${currency}`
+        )}
       </Button>
     </Box>
   )
 }
 
+type CheckoutPayload = {
+  invoice?: PublicInvoiceSummary
+  payment?: {
+    clientSecret: string
+    stripePublishableKey?: string
+    bnplMethods?: string[]
+    amount?: number
+    installmentSequence?: number | null
+  }
+  paymentError?: string | null
+  error?: string
+}
+
 /**
  * Page publique d'affichage d'une facture par token.
- * Paiement via le Stripe **prestataire** (clés organisation), pas le Stripe plateforme Facturio.
+ * Paiement via le Stripe prestataire (clés organisation), montant = prochaine échéance si plan actif.
  */
 export function PublicInvoicePage() {
   const { token } = useParams<{ token: string }>()
-  const [invoice, setInvoice] = useState<any>(null)
+  const [invoice, setInvoice] = useState<PublicInvoiceSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [stripePromise, setStripePromise] = useState<StripeJsPromise | null>(null)
   const [orgPublishableKey, setOrgPublishableKey] = useState<string | null>(null)
+  const [bnplMethods, setBnplMethods] = useState<string[]>([])
+  const [checkoutAmount, setCheckoutAmount] = useState<number | null>(null)
+  const [checkoutInstallmentSequence, setCheckoutInstallmentSequence] = useState<number | null>(null)
 
-  const reloadInvoice = useCallback(() => {
+  const loadCheckout = useCallback(async () => {
     if (!token) return
-    return api.get<any>(`public/invoices/${token}`).then((res: any) => {
-      const data = res?.id ? res : res?.data?.data ?? res?.data
-      if (data?.id || data?.number) {
-        setInvoice(data)
-        const pk = data.stripePublishableKey?.trim() || null
-        if (pk) setOrgPublishableKey(pk)
-      } else if (res?.error) setError(res.error)
-      else setError('Facture introuvable')
-    }).catch(() => setError('Facture introuvable'))
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await api.get<CheckoutPayload | { data?: CheckoutPayload }>(
+        `public/invoices/${token}/checkout`,
+      )
+      const payload: CheckoutPayload | undefined =
+        res && typeof res === 'object' && 'invoice' in res
+          ? (res as CheckoutPayload)
+          : res && typeof res === 'object' && 'data' in res
+            ? (res as { data?: CheckoutPayload }).data
+            : undefined
+      if (!payload?.invoice) {
+        setError('Facture introuvable ou lien expiré')
+        return
+      }
+      setInvoice(payload.invoice)
+      setClientSecret(payload.payment?.clientSecret ?? null)
+      setBnplMethods(payload.payment?.bnplMethods ?? [])
+      setCheckoutAmount(payload.payment?.amount ?? null)
+      setCheckoutInstallmentSequence(payload.payment?.installmentSequence ?? null)
+      setPaymentError(payload.paymentError ?? null)
+      const pk =
+        payload.payment?.stripePublishableKey ||
+        payload.invoice.stripePublishableKey ||
+        null
+      setOrgPublishableKey(pk)
+    } catch {
+      setError('Facture introuvable')
+    } finally {
+      setLoading(false)
+    }
   }, [token])
 
   useEffect(() => {
-    reloadInvoice()
-  }, [reloadInvoice])
+    loadCheckout()
+  }, [loadCheckout])
 
   useEffect(() => {
     if (orgPublishableKey) {
@@ -123,58 +171,51 @@ export function PublicInvoicePage() {
     }
   }, [orgPublishableKey])
 
-  const canPayOnline = useMemo(() => {
-    if (!invoice || paymentSuccess) return false
-    const balance = Number(invoice.balance ?? invoice.total ?? 0)
-    return balance > 0 && !!invoice.stripeEnabled && !!orgPublishableKey
-  }, [invoice, paymentSuccess, orgPublishableKey])
+  const isPaid = useMemo(() => {
+    if (!invoice) return false
+    return invoice.balance <= 0 || invoice.status === 'PAID' || paymentSuccess
+  }, [invoice, paymentSuccess])
 
-  const startPayment = async () => {
-    if (!token) return
-    setPaymentError(null)
-    setPaymentLoading(true)
-    try {
-      const res: {
-        clientSecret?: string
-        stripePublishableKey?: string
-        data?: { clientSecret?: string; stripePublishableKey?: string }
-        error?: string
-      } = await api.post(`public/invoices/${token}/create-payment-intent`, {})
-      const nested = res?.data
-      const payload =
-        res?.clientSecret != null
-          ? res
-          : nested?.clientSecret != null
-            ? nested
-            : undefined
-      const secret = payload?.clientSecret
-      const pk = payload?.stripePublishableKey
-      if (secret) {
-        setClientSecret(secret)
-        if (pk) setOrgPublishableKey(pk)
-      } else {
-        setPaymentError(res?.error || 'Impossible de préparer le paiement')
-      }
-    } catch {
-      setPaymentError('Impossible de préparer le paiement')
-    } finally {
-      setPaymentLoading(false)
-    }
+  const isBelowStripeMinimum = useMemo(() => {
+    if (!invoice) return false
+    return invoice.balance > 0 && invoice.balance < 0.5
+  }, [invoice])
+
+  const showPayment = useMemo(() => {
+    return (
+      !isPaid &&
+      !!invoice?.canPayOnline &&
+      !!clientSecret &&
+      !!stripePromise &&
+      !isBelowStripeMinimum
+    )
+  }, [isPaid, invoice, clientSecret, stripePromise, isBelowStripeMinimum])
+
+  const payAmount = checkoutAmount ?? invoice?.balance ?? 0
+
+  const installmentHint = useMemo(() => {
+    if (!invoice?.nextInstallment) return null
+    const seq = checkoutInstallmentSequence ?? invoice.nextInstallment.sequence
+    const amount = checkoutAmount ?? invoice.nextInstallment.amount
+    return `Échéance ${seq} : ${formatCurrency(amount)} (échéancier ${invoice.installments?.length ?? ''} fois)`
+  }, [invoice, checkoutAmount, checkoutInstallmentSequence])
+
+  const bnplHint = useMemo(() => {
+    if (bnplMethods.length === 0) return null
+    const labels = bnplMethods
+      .map((m) => (m === 'klarna' ? 'Klarna' : m === 'alma' ? 'Alma' : m))
+      .join(' ou ')
+    return `Paiement en plusieurs fois disponible (${labels}) — réservé aux particuliers.`
+  }, [bnplMethods])
+
+  if (loading) {
+    return <InvoicePublicSkeleton />
   }
 
-  const handlePaymentSuccess = async (paymentIntentId: string) => {
-    if (token) {
-      await api.post(`public/invoices/${token}/confirm-payment`, { paymentIntentId })
-    }
-    setPaymentSuccess(true)
-    setClientSecret(null)
-    await reloadInvoice()
-  }
-
-  if (error) {
+  if (error || !invoice) {
     return (
       <Container maxWidth="sm" sx={{ py: 4 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error">{error || 'Facture introuvable'}</Alert>
         <Typography sx={{ mt: 2 }}>
           <RouterLink to="/">Retour à l'accueil</RouterLink>
         </Typography>
@@ -182,14 +223,8 @@ export function PublicInvoicePage() {
     )
   }
 
-  if (!invoice) {
-    return <InvoicePublicSkeleton />
-  }
-
-  const clientName = invoice.client?.name || invoice.client?.companyName || ''
+  const clientName = invoice.client?.name || ''
   const lines = invoice.lines || []
-  const balance = Number(invoice.balance ?? 0)
-  const isPaid = balance <= 0 || invoice.status === 'PAID'
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -198,7 +233,7 @@ export function PublicInvoicePage() {
           Facture {invoice.number}
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 2 }}>
-          Date : {formatDate(invoice.date || invoice.createdAt)} · Client : {clientName}
+          Date : {formatDate(invoice.date)} · Client : {clientName}
         </Typography>
         {invoice.dueDate && (
           <Typography color="text.secondary" sx={{ mb: 2 }}>
@@ -212,10 +247,40 @@ export function PublicInvoicePage() {
           </Alert>
         )}
 
-        {!isPaid && balance > 0 && (
+        {!isPaid && invoice.balance > 0 && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            Solde restant : {formatCurrency(balance)}
+            Solde restant : {formatCurrency(invoice.balance)}
+            {installmentHint && (
+              <>
+                <br />
+                {installmentHint}
+              </>
+            )}
           </Alert>
+        )}
+
+        {invoice.installments && invoice.installments.length > 0 && (
+          <Box sx={{ mb: 2, p: 1.5, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+              Plan de paiement
+            </Typography>
+            {invoice.installments.map((row) => (
+              <Typography
+                key={row.id}
+                variant="body2"
+                color={
+                  row.status === 'PAID'
+                    ? 'success.main'
+                    : row.overdue
+                      ? 'error.main'
+                      : 'text.secondary'
+                }
+              >
+                {row.sequence}. {formatDate(row.dueDate)} — {formatCurrency(row.amount)}
+                {row.status === 'PAID' ? ' · réglée' : row.overdue ? ' · en retard' : ''}
+              </Typography>
+            ))}
+          </Box>
         )}
 
         <TableContainer sx={{ mb: 3 }}>
@@ -229,12 +294,12 @@ export function PublicInvoicePage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {lines.map((line: any) => (
-                <TableRow key={line.id}>
+              {lines.map((line, index) => (
+                <TableRow key={`${line.description}-${index}`}>
                   <TableCell>{line.description}</TableCell>
                   <TableCell align="right">{line.quantity}</TableCell>
-                  <TableCell align="right">{formatCurrency(Number(line.unitPrice || 0))}</TableCell>
-                  <TableCell align="right">{formatCurrency(Number(line.total || 0))}</TableCell>
+                  <TableCell align="right">{formatCurrency(line.unitPrice)}</TableCell>
+                  <TableCell align="right">{formatCurrency(line.total)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -242,10 +307,10 @@ export function PublicInvoicePage() {
         </TableContainer>
 
         <Typography variant="h6" sx={{ mb: 3 }}>
-          Total TTC : {formatCurrency(Number(invoice.total || 0))}
+          Total TTC : {formatCurrency(invoice.total)}
         </Typography>
 
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: canPayOnline ? 3 : 0 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: showPayment ? 3 : 0 }}>
           <Button
             component="a"
             href={`${API_BASE}/public/invoices/${token}/pdf`}
@@ -255,18 +320,15 @@ export function PublicInvoicePage() {
           >
             Télécharger le PDF
           </Button>
-
-          {canPayOnline && !clientSecret && (
-            <Button
-              variant="contained"
-              color="success"
-              onClick={startPayment}
-              disabled={paymentLoading}
-            >
-              {paymentLoading ? 'Préparation...' : 'Payer en ligne'}
-            </Button>
-          )}
         </Box>
+
+        {!isPaid && invoice.canPayOnline && !clientSecret && (
+          <Alert severity={isBelowStripeMinimum ? 'info' : 'warning'} sx={{ mb: 2 }}>
+            {isBelowStripeMinimum
+              ? 'Le solde est inférieur à 0,50 EUR. Stripe ne permet pas un paiement en ligne sur ce montant.'
+              : "Le paiement en ligne est temporairement indisponible. Contactez l'émetteur de la facture."}
+          </Alert>
+        )}
 
         {paymentError && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPaymentError(null)}>
@@ -280,23 +342,44 @@ export function PublicInvoicePage() {
           </Alert>
         )}
 
-        {canPayOnline && clientSecret && stripePromise && (
+        {showPayment && (
           <Paper variant="outlined" sx={{ p: 2 }}>
             <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
               Paiement sécurisé par carte
             </Typography>
+            {installmentHint && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {installmentHint}
+              </Typography>
+            )}
+            <Typography variant="h5" fontWeight={800} color="success.main" sx={{ mb: 1 }}>
+              {formatCurrency(payAmount)}
+            </Typography>
+            {payAmount > 0 && payAmount < invoice.balance - 0.01 && (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                Solde facture : {formatCurrency(invoice.balance)}
+              </Typography>
+            )}
+            {bnplHint && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                {bnplHint}
+              </Alert>
+            )}
             <Elements
               stripe={stripePromise}
               options={{
-                clientSecret,
+                clientSecret: clientSecret!,
                 appearance: { theme: 'stripe' },
               }}
             >
               <InvoicePaymentForm
                 token={token!}
-                amount={balance}
+                amount={payAmount}
                 currency={invoice.currency || 'EUR'}
-                onSuccess={handlePaymentSuccess}
+                onSuccess={() => {
+                  setPaymentSuccess(true)
+                  loadCheckout()
+                }}
                 onError={setPaymentError}
               />
             </Elements>

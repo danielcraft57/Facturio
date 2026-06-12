@@ -348,6 +348,78 @@ export class EmailService {
 		});
 	}
 
+	/**
+	 * Relance liée à une échéance du plan de paiement métier.
+	 */
+	async sendInstallmentReminder(options: {
+		to: string;
+		clientName: string;
+		invoiceNumber: string;
+		invoiceDate: Date | string;
+		installmentSequence: number;
+		installmentAmount: number;
+		installmentDueDate: Date | string;
+		invoiceBalance: number;
+		daysUntilDue: number;
+		daysOverdue?: number;
+		kind: 'upcoming' | 'overdue' | 'manual';
+		paymentUrl?: string;
+		trackOpenUrl?: string;
+		pdfBuffer?: Buffer;
+		organization?: EmailOrganizationProfile;
+	}): Promise<void> {
+		const legalFooter = buildEmailLegalFooter(options.organization);
+		const dueFr = new Date(options.installmentDueDate).toLocaleDateString('fr-FR');
+		const subject =
+			options.kind === 'overdue' || (options.daysOverdue ?? 0) > 0
+				? `Échéance en retard — Facture ${options.invoiceNumber} (n°${options.installmentSequence})`
+				: `Rappel échéance — Facture ${options.invoiceNumber} (n°${options.installmentSequence})`;
+		const intro =
+			options.kind === 'overdue' || (options.daysOverdue ?? 0) > 0
+				? `L'échéance n°${options.installmentSequence} de votre facture <strong>${options.invoiceNumber}</strong> est en retard de ${options.daysOverdue ?? Math.abs(options.daysUntilDue)} jour(s).`
+				: options.daysUntilDue === 0
+					? `L'échéance n°${options.installmentSequence} de votre facture <strong>${options.invoiceNumber}</strong> arrive aujourd'hui.`
+					: `Nous vous rappelons l'échéance n°${options.installmentSequence} de votre facture <strong>${options.invoiceNumber}</strong> (dans ${options.daysUntilDue} jour(s)).`;
+
+		const payBtn = options.paymentUrl
+			? `<p style="margin:24px 0;"><a href="${options.paymentUrl}" style="background:#16a34a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;">Régler cette échéance en ligne</a></p>`
+			: '';
+
+		const html = `
+			<p>Bonjour ${options.clientName},</p>
+			<p>${intro}</p>
+			<ul>
+				<li><strong>Montant de l'échéance :</strong> ${this.formatCurrency(options.installmentAmount)}</li>
+				<li><strong>Date prévue :</strong> ${dueFr}</li>
+				<li><strong>Solde restant sur la facture :</strong> ${this.formatCurrency(options.invoiceBalance)}</li>
+			</ul>
+			${payBtn}
+			<p>Merci de procéder au règlement selon les modalités convenues.</p>
+			${legalFooter}
+			${options.trackOpenUrl ? `<img src="${options.trackOpenUrl}" alt="" width="1" height="1" style="display:none" />` : ''}
+		`;
+
+		const payLine = options.paymentUrl ? `\n\nRégler en ligne : ${options.paymentUrl}` : '';
+		const text = `Bonjour ${options.clientName},\n\nÉchéance n°${options.installmentSequence} — facture ${options.invoiceNumber} : ${this.formatCurrency(options.installmentAmount)} à régler avant le ${dueFr}. Solde facture : ${this.formatCurrency(options.invoiceBalance)}.${payLine}\n\nCordialement`;
+
+		await this.send({
+			from: this.invoiceFrom,
+			to: options.to,
+			subject,
+			html,
+			text,
+			attachments: options.pdfBuffer
+				? [
+						{
+							filename: `facture-${options.invoiceNumber}.pdf`,
+							content: options.pdfBuffer,
+							contentType: 'application/pdf',
+						},
+					]
+				: undefined,
+		});
+	}
+
 	/** Confirmation de paiement intégral — envoyé au client de la facture. */
 	async sendInvoicePaidToClient(options: {
 		to: string;

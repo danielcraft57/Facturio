@@ -72,11 +72,34 @@ export class PdfService {
 		const netDue = Math.max(0, Number((grossTotal - appliedCreditTotal).toFixed(2)));
 		const linesForPdf = invoice.lines || [];
 
+		let installmentSchedule: { sequence: number; amount: number; dueDate: Date; status: string }[] =
+			[];
+		if (invoice.id) {
+			const rows = await this.prisma.invoiceInstallment.findMany({
+				where: { invoiceId: invoice.id },
+				orderBy: { sequence: 'asc' },
+			});
+			installmentSchedule = rows.map((r) => ({
+				sequence: r.sequence,
+				amount: Number(r.amount),
+				dueDate: r.dueDate,
+				status: r.status,
+			}));
+		} else if (Array.isArray(invoice.installments)) {
+			installmentSchedule = invoice.installments.map((r: any) => ({
+				sequence: r.sequence,
+				amount: Number(r.amount),
+				dueDate: new Date(r.dueDate),
+				status: String(r.status ?? 'PENDING'),
+			}));
+		}
+
 		const document = {
 			...invoice,
 			...(paymentNote ? { paymentNote } : {}),
 			...(commitmentParagraph && !invoice.legalMention ? { legalMention: commitmentParagraph } : {}),
 			...(engagementBreakdown ? { engagementBreakdown } : {}),
+			...(installmentSchedule.length > 0 ? { installmentSchedule } : {}),
 		};
 
 		const pdfTitle = isDeposit

@@ -1,5 +1,6 @@
-import { IsArray, IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { InvoiceInstallmentRowDto } from './set-invoice-installments.dto';
 import { normalizeTaxRateDecimal } from '../../common/tax-rate.util';
 // On évite de dépendre des enums Prisma côté DTO pour rester stable
 export const INVOICE_STATUS_VALUES = ['DRAFT','SENT','PAID','OVERDUE','CANCELLED'] as const;
@@ -22,6 +23,23 @@ class InvoiceLineDto {
 	@IsNumber()
 	@Transform(({ value }) => normalizeTaxRateDecimal(value))
 	taxRate?: number;
+}
+
+/** Génération automatique d'échéances égales à la création. */
+export class CreateInvoiceInstallmentPresetDto {
+	@IsInt()
+	@Min(2)
+	@Max(24)
+	count!: number;
+
+	@IsDateString()
+	firstDueDate!: string;
+
+	@IsOptional()
+	@IsInt()
+	@Min(1)
+	@Max(12)
+	intervalMonths?: number;
 }
 
 export class CreateInvoiceDto {
@@ -92,6 +110,18 @@ export class CreateInvoiceDto {
 	@IsOptional()
 	@IsBoolean()
 	applyClientCredits?: boolean;
-}
 
+	/** Échéancier explicite (somme = total TTC). */
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => InvoiceInstallmentRowDto)
+	installments?: InvoiceInstallmentRowDto[];
+
+	/** Préréglage : parts égales (alternative à installments). */
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => CreateInvoiceInstallmentPresetDto)
+	installmentSchedule?: CreateInvoiceInstallmentPresetDto;
+}
 

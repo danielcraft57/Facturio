@@ -419,6 +419,20 @@ export function InvoiceStripeSection({ profile, onUpdated }: Props) {
             disabled={saving}
           />
 
+          {(paymentMethods.includes('klarna') || paymentMethods.includes('alma')) && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>
+                Paiement en plusieurs fois (Klarna / Alma)
+              </Typography>
+              <Typography variant="body2" component="div">
+                Réservé aux <strong>particuliers</strong> (B2C) : le client règle en 2x à 4x chez Klarna ou
+                Alma, vous êtes encaissé en une fois par Stripe. Activez le moyen dans votre Dashboard Stripe
+                (compte prestataire). Fourchettes indicatives en EUR : Klarna 1–1&nbsp;500&nbsp;€, Alma
+                50–5&nbsp;000&nbsp;€.
+              </Typography>
+            </Alert>
+          )}
+
           {success && autoSaveStatus === 'idle' && (
             <Alert severity="success" sx={{ mt: 2 }} onClose={() => setSuccess(false)}>
               Action effectuée

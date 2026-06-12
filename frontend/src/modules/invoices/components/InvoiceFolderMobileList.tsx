@@ -22,7 +22,9 @@ import {
 import { getRealtimeRowSx } from '../../../utils/realtimeRowHighlight'
 import type { RealtimeHighlightTone } from '../../../types/realtime'
 import { InvoiceRowActionsMenu } from './InvoiceRowActionsMenu'
+import { InvoiceInstallmentBadge } from './InvoiceInstallmentBadge'
 import { resolveInvoiceDisplayStatus } from '../invoiceDisplayStatus'
+import { resolveInvoiceDueDisplay } from '../../../utils/invoiceInstallmentLabels'
 import { DocumentFolderStatusChip } from '../../../components/finance/DocumentFolderStatusChip'
 import type { useDocumentFolderSelection } from '../../../hooks/useDocumentFolderSelection'
 
@@ -154,6 +156,23 @@ export function InvoiceFolderMobileList({
                       <Typography variant="caption" color="text.secondary">
                         {new Date(invoice.issueDate).toLocaleDateString('fr-FR')}
                       </Typography>
+                      {(() => {
+                        const due = resolveInvoiceDueDisplay(
+                          invoice.dueDate,
+                          invoice.installmentSummary,
+                        )
+                        if (!due) return null
+                        return (
+                          <Typography variant="caption" color="text.secondary">
+                            Échéance : {new Date(due).toLocaleDateString('fr-FR')}
+                          </Typography>
+                        )
+                      })()}
+                      {invoice.installmentSummary?.hasPlan && (
+                        <Box sx={{ mt: 0.5 }}>
+                          <InvoiceInstallmentBadge summary={invoice.installmentSummary} size="small" />
+                        </Box>
+                      )}
                     </Stack>
                     <Stack alignItems="flex-end" spacing={0.5} flexShrink={0}>
                       {(() => {
