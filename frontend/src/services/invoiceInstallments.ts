@@ -1,7 +1,25 @@
-import { apiClient, type ApiResponse } from './api'
+import { apiClient } from './api'
 import { unwrapApiPayload } from './clients'
+import type { ReceivableAgingBucket } from './receivables'
 
 export type InvoiceInstallmentStatus = 'PENDING' | 'PAID' | 'CANCELLED'
+
+export interface InstallmentAccountingLink {
+  entryId: number
+  journalCode: string
+  reference: string
+  date: string
+  memo: string | null
+  kind: 'sale' | 'payment'
+  posted: boolean
+}
+
+export interface InstallmentReceivableLink {
+  outstanding: number
+  agingBucket: ReceivableAgingBucket
+  daysPastDue: number
+  autoTracked: true
+}
 
 export interface InvoiceInstallment {
   id: number
@@ -12,6 +30,8 @@ export interface InvoiceInstallment {
   paymentId: number | null
   paidAt: string | null
   overdue: boolean
+  receivable?: InstallmentReceivableLink | null
+  accounting?: InstallmentAccountingLink | null
 }
 
 export interface InvoiceInstallmentInput {
@@ -19,10 +39,22 @@ export interface InvoiceInstallmentInput {
   dueDate: string
 }
 
+export interface InvoiceInstallmentsFinanceResponse {
+  installments: InvoiceInstallment[]
+  saleAccounting: InstallmentAccountingLink | null
+}
+
 export const invoiceInstallmentsService = {
-  async list(invoiceId: string): Promise<InvoiceInstallment[]> {
-    const res = await apiClient.get<InvoiceInstallment[]>(`factures/${invoiceId}/installments`)
-    return unwrapApiPayload(res) ?? []
+  async list(invoiceId: string): Promise<InvoiceInstallmentsFinanceResponse> {
+    const res = await apiClient.get<InvoiceInstallmentsFinanceResponse | InvoiceInstallment[]>(
+      `factures/${invoiceId}/installments`,
+    )
+    const payload = unwrapApiPayload(res)
+    if (payload && typeof payload === 'object' && 'installments' in payload) {
+      return payload as InvoiceInstallmentsFinanceResponse
+    }
+    const rows = Array.isArray(payload) ? payload : []
+    return { installments: rows, saleAccounting: null }
   },
 
   async setSchedule(

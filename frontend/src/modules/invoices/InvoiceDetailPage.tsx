@@ -588,6 +588,7 @@ export function InvoiceDetailPage() {
               {!isCancelled && (
                 <InvoiceInstallmentsPanel
                   installments={installments}
+                  saleAccounting={invoice.installmentSaleAccounting}
                   canEdit={canEditInstallments}
                   onConfigure={() => setInstallmentDialogOpen(true)}
                   canRemind={Boolean(invoice.sentAt && nextInstallment && !isFullySettled)}
@@ -1081,9 +1082,9 @@ export function InvoiceDetailPage() {
           invoiceTotal={invoice.total}
           existing={installments}
           canEdit={canEditInstallments}
-          onSaved={(rows) => {
-            setInstallments(rows)
-            toast.success(rows.length ? 'Échéancier enregistré' : 'Échéancier supprimé')
+          onSaved={() => {
+            void loadInvoice({ silent: true })
+            toast.success('Échéancier mis à jour')
           }}
         />
       )}

@@ -121,7 +121,7 @@ export class InvoicesController {
 
 	@Get(':id/installments')
 	listInstallments(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
-		return this.installments.listForInvoice(id, user.organizationId);
+		return this.installments.listForInvoiceWithFinance(id, user.organizationId);
 	}
 
 	@Put(':id/installments')

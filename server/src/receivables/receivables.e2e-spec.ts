@@ -34,6 +34,7 @@ describe('Receivables e2e', () => {
 	});
 
 	async function purgeOrgInvoices(organizationId: number) {
+		await prisma.invoiceInstallment.deleteMany({ where: { invoice: { organizationId } } });
 		await prisma.payment.deleteMany({ where: { invoice: { organizationId } } });
 		await prisma.invoiceLine.deleteMany({ where: { invoice: { organizationId } } });
 		await prisma.invoice.deleteMany({ where: { organizationId } });
@@ -59,10 +60,25 @@ describe('Receivables e2e', () => {
 		const res = await authenticatedRequest(app, testUser.cookies)
 			.get('/api/receivables')
 			.expect(200)
-			.then((r: { body: { summary: { totalOutstanding: number; invoiceCount: number } } }) => r.body);
+			.then(
+				(r: {
+					body: {
+						summary: {
+							totalOutstanding: number
+							invoiceCount: number
+							installmentCount: number
+							installmentOutstanding: number
+						}
+						installmentReceivables: unknown[]
+					}
+				}) => r.body,
+			);
 
 		expect(res.summary.totalOutstanding).toBe(0);
 		expect(res.summary.invoiceCount).toBe(0);
+		expect(res.summary.installmentCount).toBe(0);
+		expect(res.summary.installmentOutstanding).toBe(0);
+		expect(res.installmentReceivables).toEqual([]);
 	});
 
 	it('GET /receivables — agrège factures avec solde', async () => {

@@ -4,6 +4,11 @@ export interface InvoiceInstallmentInput {
 	dueDate: string | Date;
 }
 
+import type {
+	InstallmentAccountingLink,
+	InstallmentReceivableLink,
+} from './invoice-installment-finance.util';
+
 /** Échéance sérialisée pour l'API. */
 export interface InvoiceInstallmentDto {
 	id: number;
@@ -14,7 +19,17 @@ export interface InvoiceInstallmentDto {
 	paymentId: number | null;
 	paidAt: string | null;
 	overdue: boolean;
+	/** Créance analytique (échéance en attente). */
+	receivable?: InstallmentReceivableLink | null;
+	/** Écriture d'encaissement liée au paiement de l'échéance. */
+	accounting?: InstallmentAccountingLink | null;
 }
+
+/** Réponse enrichie liste échéancier (compta + créances). */
+export type InvoiceInstallmentsFinanceResponse = {
+	installments: InvoiceInstallmentDto[];
+	saleAccounting: InstallmentAccountingLink | null;
+};
 
 const AMOUNT_EPSILON = 0.01;
 

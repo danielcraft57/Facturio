@@ -799,8 +799,16 @@ export class InvoicesService {
 		invoice = await this.reconcileRemainderAwaitingSend(invoice);
 		const enriched = await this.enrichInvoiceWithSettlement(invoice, organizationId);
 		const emailEngagement = await getInvoiceEmailEngagement(this.prisma, enriched.id);
-		const installmentPlan = await this.installments.listForInvoice(enriched.id, organizationId);
-		return { ...enriched, emailEngagement, installments: installmentPlan };
+		const installmentFinance = await this.installments.listForInvoiceWithFinance(
+			enriched.id,
+			organizationId,
+		);
+		return {
+			...enriched,
+			emailEngagement,
+			installments: installmentFinance.installments,
+			installmentSaleAccounting: installmentFinance.saleAccounting,
+		};
 	}
 
 	/**

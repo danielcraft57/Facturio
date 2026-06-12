@@ -1,7 +1,7 @@
 import { apiClient, type ApiResponse } from './api'
 import type { DocumentFolder, DocumentFlags, DocumentFolderCounts } from '../types/documentFolders'
 import type { EmailEngagement } from '../modules/documents/documentEmailEngagement'
-import type { InvoiceInstallment } from './invoiceInstallments'
+import type { InstallmentAccountingLink, InvoiceInstallment } from './invoiceInstallments'
 import type { InvoiceInstallmentSummary } from '../utils/invoiceInstallmentLabels'
 import { normalizeDocumentFolderCounts } from '../types/documentFolders'
 
@@ -59,6 +59,8 @@ export interface Invoice {
   emailEngagement?: EmailEngagement
   /** Échéancier métier (paiement en plusieurs fois B2B). */
   installments?: InvoiceInstallment[]
+  /** Écriture de vente (411/706) liée à la facture. */
+  installmentSaleAccounting?: InstallmentAccountingLink | null
   /** Résumé pour listes (badge, prochaine échéance). */
   installmentSummary?: InvoiceInstallmentSummary | null
 }
@@ -215,6 +217,10 @@ export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
     installments: Array.isArray(raw.installments)
       ? (raw.installments as InvoiceInstallment[])
       : undefined,
+    installmentSaleAccounting:
+      raw.installmentSaleAccounting && typeof raw.installmentSaleAccounting === 'object'
+        ? (raw.installmentSaleAccounting as InstallmentAccountingLink)
+        : null,
     installmentSummary:
       raw.installmentSummary && typeof raw.installmentSummary === 'object'
         ? (raw.installmentSummary as InvoiceInstallmentSummary)

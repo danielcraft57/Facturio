@@ -1,10 +1,18 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { AccountingService } from '../accounting/accounting.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+	buildInstallmentReceivable,
+	invoicePaymentAccountingReference,
+	invoiceSaleAccountingReference,
+	type InstallmentAccountingLink,
+} from './invoice-installment-finance.util';
 import {
 	assertValidInstallmentSchedule,
 	buildEqualInstallmentSchedule,
 	type InvoiceInstallmentDto,
 	type InvoiceInstallmentInput,
+	type InvoiceInstallmentsFinanceResponse,
 	isInstallmentOverdue,
 	resolveInstallmentsCoveredByPayment,
 	resolveOnlineInstallmentAmount,
@@ -20,7 +28,10 @@ import {
  */
 @Injectable()
 export class InvoiceInstallmentsService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly accounting: AccountingService,
+	) {}
 
 	/**
 	 * Liste les échéances d'une facture.
@@ -35,6 +46,95 @@ export class InvoiceInstallmentsService {
 			orderBy: { sequence: 'asc' },
 		});
 		return rows.map((row) => this.toDto(row));
+	}
+
+	/**
+	 * Liste les échéances avec créances analytiques et liens vers les écritures comptables.
+	 *
+	 * @param invoiceId - ID facture
+	 * @param organizationId - Filtre multi-tenant optionnel
+	 */
+	async listForInvoiceWithFinance(
+		invoiceId: string,
+		organizationId?: number,
+	): Promise<InvoiceInstallmentsFinanceResponse> {
+		const invoice = await this.assertInvoiceAccess(invoiceId, organizationId);
+		const rows = await this.prisma.invoiceInstallment.findMany({
+			where: { invoiceId },
+			orderBy: { sequence: 'asc' },
+		});
+		if (rows.length === 0) {
+			return { installments: [], saleAccounting: null };
+		}
+
+		const references = [invoiceSaleAccountingReference(invoice.number)];
+		for (const row of rows) {
+			if (row.status === 'PAID' && row.paymentId != null) {
+				references.push(invoicePaymentAccountingReference(invoice.number, row.paymentId));
+			}
+		}
+
+		const entries = await this.accounting.findPostedEntriesByReferences(references);
+		const saleRef = invoiceSaleAccountingReference(invoice.number);
+		const saleEntry = entries.get(saleRef);
+		const saleAccounting: InstallmentAccountingLink | null = saleEntry
+			? {
+					entryId: saleEntry.id,
+					journalCode: saleEntry.journalCode,
+					reference: saleEntry.reference,
+					date: saleEntry.date,
+					memo: saleEntry.memo,
+					kind: 'sale',
+					posted: true,
+				}
+			: {
+					entryId: 0,
+					journalCode: 'VE',
+					reference: saleRef,
+					date: invoice.date.toISOString(),
+					memo: null,
+					kind: 'sale',
+					posted: false,
+				};
+
+		const installments = rows.map((row) => {
+			const dto = this.toDto(row);
+			dto.receivable = buildInstallmentReceivable(
+				row.dueDate,
+				Number(row.amount),
+				row.status,
+			);
+
+			if (row.status === 'PAID' && row.paymentId != null) {
+				const payRef = invoicePaymentAccountingReference(invoice.number, row.paymentId);
+				const payEntry = entries.get(payRef);
+				dto.accounting = payEntry
+					? {
+							entryId: payEntry.id,
+							journalCode: payEntry.journalCode,
+							reference: payEntry.reference,
+							date: payEntry.date,
+							memo: payEntry.memo,
+							kind: 'payment',
+							posted: true,
+						}
+					: {
+							entryId: 0,
+							journalCode: 'BQ',
+							reference: payRef,
+							date: row.paidAt?.toISOString() ?? new Date().toISOString(),
+							memo: null,
+							kind: 'payment',
+							posted: false,
+						};
+			} else {
+				dto.accounting = null;
+			}
+
+			return dto;
+		});
+
+		return { installments, saleAccounting };
 	}
 
 	/**

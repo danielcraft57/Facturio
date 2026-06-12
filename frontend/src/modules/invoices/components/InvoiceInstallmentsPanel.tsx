@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Chip,
+  Link,
   Stack,
   Table,
   TableBody,
@@ -10,14 +11,26 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import type { InvoiceInstallment } from '../../../services/invoiceInstallments'
+import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined'
+import { Link as RouterLink } from 'react-router-dom'
+import type {
+  InstallmentAccountingLink,
+  InvoiceInstallment,
+} from '../../../services/invoiceInstallments'
 import { formatCurrency, formatDate } from '../../../utils/formatters'
+import { AGING_BUCKET_LABELS } from '../../../services/receivables'
+import {
+  formatInstallmentAccountingLabel,
+  formatInstallmentReceivableLabel,
+} from '../../../utils/installmentFinanceLabels'
 
 type Props = {
   installments: InvoiceInstallment[]
+  saleAccounting?: InstallmentAccountingLink | null
   canEdit: boolean
   onConfigure: () => void
   /** Facture envoyée au client — requis pour relancer. */
@@ -39,11 +52,75 @@ function statusChip(row: InvoiceInstallment) {
   return <Chip size="small" label="À venir" color="warning" variant="outlined" />
 }
 
+function AccountingCell({ accounting }: { accounting: InstallmentAccountingLink | null | undefined }) {
+  if (!accounting) {
+    return (
+      <Typography variant="caption" color="text.secondary">
+        —
+      </Typography>
+    )
+  }
+  const label = formatInstallmentAccountingLabel(
+    accounting.journalCode,
+    accounting.reference,
+    accounting.posted,
+  )
+  return (
+    <Tooltip
+      title={
+        accounting.posted
+          ? `${accounting.reference} · ${formatDate(accounting.date)}`
+          : 'Écriture générée à l’encaissement ou à l’émission de la facture'
+      }
+    >
+      <Chip
+        size="small"
+        variant="outlined"
+        color={accounting.posted ? 'default' : 'warning'}
+        label={label}
+        component={RouterLink}
+        to="/comptabilite"
+        clickable
+        sx={{ maxWidth: '100%' }}
+      />
+    </Tooltip>
+  )
+}
+
+function ReceivableCell({ row }: { row: InvoiceInstallment }) {
+  if (row.status !== 'PENDING' || !row.receivable) {
+    return (
+      <Typography variant="caption" color="text.secondary">
+        —
+      </Typography>
+    )
+  }
+  const { receivable } = row
+  const label = formatInstallmentReceivableLabel(receivable.agingBucket, receivable.daysPastDue)
+  return (
+    <Stack spacing={0.25}>
+      <Chip
+        size="small"
+        color={receivable.daysPastDue > 0 ? 'error' : 'info'}
+        variant="outlined"
+        label={label}
+        component={RouterLink}
+        to="/creances"
+        clickable
+      />
+      <Typography variant="caption" color="text.secondary">
+        {AGING_BUCKET_LABELS[receivable.agingBucket]} · {formatCurrency(receivable.outstanding)}
+      </Typography>
+    </Stack>
+  )
+}
+
 /**
- * Affiche l'échéancier de paiement métier sur la fiche facture.
+ * Affiche l'échéancier de paiement métier sur la fiche facture (créances + compta).
  */
 export function InvoiceInstallmentsPanel({
   installments,
+  saleAccounting,
   canEdit,
   onConfigure,
   canRemind,
@@ -52,6 +129,9 @@ export function InvoiceInstallmentsPanel({
 }: Props) {
   const hasPlan = installments.length > 0
   const next = installments.find((r) => r.status === 'PENDING') ?? null
+  const pendingReceivableTotal = installments
+    .filter((r) => r.status === 'PENDING')
+    .reduce((sum, r) => sum + (r.receivable?.outstanding ?? r.amount), 0)
 
   return (
     <Box sx={{ mt: 3 }}>
@@ -83,7 +163,32 @@ export function InvoiceInstallmentsPanel({
       {!hasPlan && (
         <Alert severity="info" variant="outlined">
           Aucun échéancier. Proposez un paiement en plusieurs fois à votre client (ex. 3 mensualités
-          égales).
+          égales). Les créances et écritures comptables seront suivies automatiquement.
+        </Alert>
+      )}
+
+      {hasPlan && saleAccounting && (
+        <Alert
+          severity={saleAccounting.posted ? 'success' : 'info'}
+          variant="outlined"
+          icon={<AccountBalanceOutlinedIcon fontSize="inherit" />}
+          sx={{ mb: 1.5 }}
+        >
+          <Typography variant="body2">
+            <strong>Vente comptable :</strong>{' '}
+            {saleAccounting.posted ? (
+              <>
+                écriture {saleAccounting.journalCode} postée (
+                <Link component={RouterLink} to="/comptabilite" underline="hover">
+                  {saleAccounting.reference}
+                </Link>
+                )
+              </>
+            ) : (
+              <>sera générée à l&apos;émission de la facture ({saleAccounting.reference})</>
+            )}
+            . Chaque encaissement d&apos;échéance crée une écriture BQ (512/411).
+          </Typography>
         </Alert>
       )}
 
@@ -91,6 +196,15 @@ export function InvoiceInstallmentsPanel({
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Prochaine échéance : {formatCurrency(next.amount)} le {formatDate(next.dueDate)}
           {next.overdue ? ' (en retard)' : ''}
+          {pendingReceivableTotal > 0 && (
+            <>
+              {' '}
+              ·{' '}
+              <Link component={RouterLink} to="/creances" underline="hover">
+                {formatCurrency(pendingReceivableTotal)} en créances auto
+              </Link>
+            </>
+          )}
         </Typography>
       )}
 
@@ -103,6 +217,8 @@ export function InvoiceInstallmentsPanel({
                 <TableCell>Échéance</TableCell>
                 <TableCell align="right">Montant</TableCell>
                 <TableCell>Statut</TableCell>
+                <TableCell>Créance</TableCell>
+                <TableCell>Comptabilité</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -112,6 +228,12 @@ export function InvoiceInstallmentsPanel({
                   <TableCell>{formatDate(row.dueDate)}</TableCell>
                   <TableCell align="right">{formatCurrency(row.amount)}</TableCell>
                   <TableCell>{statusChip(row)}</TableCell>
+                  <TableCell>
+                    <ReceivableCell row={row} />
+                  </TableCell>
+                  <TableCell>
+                    <AccountingCell accounting={row.accounting} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

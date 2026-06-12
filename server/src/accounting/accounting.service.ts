@@ -390,6 +390,43 @@ export class AccountingService {
 	}
 
 	/**
+	 * Retrouve les écritures postées par leurs références (ex. VENTE FAC-001, PAIEMENT FAC-001#12).
+	 *
+	 * @param references - Références uniques à rechercher
+	 */
+	async findPostedEntriesByReferences(
+		references: string[],
+	): Promise<
+		Map<
+			string,
+			{ id: number; journalCode: string; reference: string; date: string; memo: string | null }
+		>
+	> {
+		const unique = [...new Set(references.filter(Boolean))];
+		const map = new Map<
+			string,
+			{ id: number; journalCode: string; reference: string; date: string; memo: string | null }
+		>();
+		if (!unique.length) return map;
+
+		const entries = await this.prisma.journalEntry.findMany({
+			where: { reference: { in: unique }, status: 'POSTED' },
+			include: { journal: true },
+		});
+		for (const entry of entries) {
+			if (!entry.reference) continue;
+			map.set(entry.reference, {
+				id: entry.id,
+				journalCode: entry.journal.code,
+				reference: entry.reference,
+				date: entry.date.toISOString(),
+				memo: entry.memo,
+			});
+		}
+		return map;
+	}
+
+	/**
 	 * Liste les mouvements (lignes d'écritures) sur une période.
 	 */
 	async listMovements(params: { start?: string; end?: string; organizationId?: number }) {
