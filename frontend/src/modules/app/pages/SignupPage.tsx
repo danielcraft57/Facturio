@@ -45,6 +45,7 @@ export function SignupPage() {
     firstName: '',
     lastName: '',
     organizationName: '',
+    betaInviteCode: '',
   })
 
   const {
@@ -124,6 +125,7 @@ export function SignupPage() {
         organizationName: formData.organizationName,
         acceptTerms: true,
         acceptPrivacy: true,
+        betaInviteCode: formData.betaInviteCode.trim() || undefined,
       })
       await setPendingFromEmail(formData.email)
       navigate('/auth/session?from=/installation', { replace: true })
@@ -235,6 +237,16 @@ export function SignupPage() {
               onChange={handleChange}
               margin="normal"
               required
+            />
+            <TextField
+              fullWidth
+              label="Code beta testeur (optionnel)"
+              name="betaInviteCode"
+              value={formData.betaInviteCode}
+              onChange={handleChange}
+              margin="normal"
+              autoComplete="off"
+              helperText="Si vous avez reçu une invitation : 3 mois gratuits avec accès complet."
             />
             <TextField
               fullWidth

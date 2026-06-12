@@ -42,6 +42,8 @@ export interface BuildPdfDocumentOptions {
 	signature?: string | null;
 	/** Date affichée dans le cadre signature (défaut : date du document) */
 	signatureDate?: Date | string;
+	/** Filigrane discret (plan Free). */
+	watermarkText?: string | null;
 }
 
 /**
@@ -60,8 +62,12 @@ export class PdfDocumentBuilder {
 	build(doc: PdfDoc, options: BuildPdfDocumentOptions): void {
 		const { marginX, contentWidth } = PDF_LAYOUT;
 		this.pageIndex = 1;
+		const watermarkText = options.watermarkText?.trim() || null;
 		doc.on('pageAdded', () => {
 			this.pageIndex += 1;
+			if (watermarkText) {
+				this.drawPlanWatermark(doc, watermarkText);
+			}
 		});
 
 		const headerBottom = this.drawHeader(doc, options);
@@ -111,6 +117,25 @@ export class PdfDocumentBuilder {
 
 			this.drawLegalFooterAt(doc, options, footerBandTop);
 		}
+
+		if (watermarkText) {
+			this.drawPlanWatermark(doc, watermarkText);
+		}
+	}
+
+	/** Filigrane plan Free en bas de page. */
+	private drawPlanWatermark(doc: PdfDoc, text: string): void {
+		const { marginX, contentWidth } = PDF_LAYOUT;
+		const pageHeight = doc.page?.height ?? 841.89;
+		doc.save();
+		doc.fontSize(8)
+			.fillColor('#9CA3AF')
+			.text(text, marginX, pageHeight - 42, {
+				width: contentWidth,
+				align: 'center',
+				lineBreak: false,
+			});
+		doc.restore();
 	}
 
 	/** Paiement + mentions légales en flux (évite une page 2 quasi vide). */

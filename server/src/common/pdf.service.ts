@@ -14,6 +14,10 @@ import {
 	buildProductQuoteLineDisplay,
 	productHasEnrichableContent,
 } from '../products/product-quote-description.util';
+import { SAAS_PLAN_LIMITS } from '../billing/saas-plan.limits';
+import { resolveEffectiveSaasPlan } from '../billing/saas-plan.util';
+
+const FREE_PLAN_PDF_WATERMARK = 'Essai gratuit Facturio — facturio.danielcraft.fr';
 
 /**
  * Génération PDF factures et devis — template corporate (bleu marine / rouge).
@@ -27,6 +31,31 @@ export class PdfService {
 	private readonly engagementContractBuilder = new EngagementContractPdfBuilder();
 
 	constructor(private readonly prisma: PrismaService) {}
+
+	private async resolvePdfWatermark(
+		organization?: { id?: number; organizationId?: number; saasPlan?: string; saasPlanExpiresAt?: Date | string | null } | null,
+	): Promise<string | null> {
+		const orgId = organization?.id ?? organization?.organizationId;
+		if (orgId == null) return null;
+
+		let saasPlan = organization?.saasPlan;
+		let saasPlanExpiresAt = organization?.saasPlanExpiresAt ?? null;
+		if (!saasPlan) {
+			const row = await this.prisma.organization.findUnique({
+				where: { id: orgId },
+				select: { saasPlan: true, saasPlanExpiresAt: true },
+			});
+			if (!row) return null;
+			saasPlan = row.saasPlan;
+			saasPlanExpiresAt = row.saasPlanExpiresAt;
+		}
+
+		const plan = resolveEffectiveSaasPlan({
+			saasPlan: saasPlan as never,
+			saasPlanExpiresAt: saasPlanExpiresAt ? new Date(saasPlanExpiresAt) : null,
+		});
+		return SAAS_PLAN_LIMITS[plan].pdfWatermark ? FREE_PLAN_PDF_WATERMARK : null;
+	}
 
 	private async resolveEngagementBreakdown(invoice: {
 		id: string;
@@ -85,6 +114,8 @@ export class PdfService {
 				? `Facture de solde ${invoice.number}`
 				: `Facture ${invoice.number}`;
 
+		const watermarkText = await this.resolvePdfWatermark(organization ?? { organizationId: invoice.organizationId });
+
 		return this.generatePdf({
 			kind: 'facture',
 			number: invoice.number,
@@ -102,6 +133,7 @@ export class PdfService {
 			},
 			organization,
 			pdfTitle,
+			watermarkText,
 		});
 	}
 
@@ -192,6 +224,7 @@ export class PdfService {
 
 	async generateQuotePdf(quote: any, organization?: any): Promise<Buffer> {
 		const lines = await this.enrichQuoteLinesForPdf(quote.lines || []);
+		const watermarkText = await this.resolvePdfWatermark(organization ?? { organizationId: quote.organizationId });
 		return this.generatePdf({
 			kind: 'devis',
 			number: quote.number,
@@ -206,7 +239,8 @@ export class PdfService {
 			},
 			organization,
 			expiryDate: quote.expiryDate,
-			pdfTitle: `Devis ${quote.number}`
+			pdfTitle: `Devis ${quote.number}`,
+			watermarkText,
 		});
 	}
 
@@ -260,6 +294,7 @@ export class PdfService {
 		signature?: string | null;
 		signatureDate?: Date | string;
 		pdfTitle: string;
+		watermarkText?: string | null;
 	}): Promise<Buffer> {
 		return new Promise((resolve, reject) => {
 			try {
@@ -293,6 +328,7 @@ export class PdfService {
 					expiryDate: params.expiryDate,
 					signature: (params as { signature?: string | null }).signature,
 					signatureDate: (params as { signatureDate?: Date | string }).signatureDate,
+					watermarkText: params.watermarkText ?? null,
 				});
 
 				doc.end();

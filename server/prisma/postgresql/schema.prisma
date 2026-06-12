@@ -166,6 +166,9 @@ model Organization {
   saasPlan                 SaasBillingPlan @default(FREE)
   saasPlanExpiresAt        DateTime?
   saasSubscriptionStatus   String?
+  /// Date d'activation du programme beta testeur (3 mois gratuits, accès complet).
+  betaTesterAt             DateTime?
+  betaInviteCode           BetaInviteCode?
   stripeCustomerId         String?
   stripeSubscriptionId     String?
   stripePlatformEvents     StripePlatformEvent[]
@@ -204,6 +207,23 @@ model Organization {
   @@index([siret])
   @@index([siren])
   @@index([vatNumber])
+}
+
+/// Code d'invitation beta testeur (usage unique, plafond global configurable).
+model BetaInviteCode {
+  id                     Int           @id @default(autoincrement())
+  /// Code saisi à l'inscription ou dans les paramètres (ex. FACTURIO-BETA-A1B2C3).
+  code                   String        @unique
+  /// Note interne (ex. prénom du testeur, canal d'acquisition).
+  note                   String?
+  /// Validité du code lui-même (pas la durée d'accès beta).
+  expiresAt              DateTime?
+  redeemedAt             DateTime?
+  redeemedOrganizationId Int?          @unique
+  redeemedOrganization Organization? @relation(fields: [redeemedOrganizationId], references: [id], onDelete: SetNull)
+  createdAt              DateTime      @default(now())
+
+  @@index([redeemedAt])
 }
 
 /// Jeton d'accès API publique (intégrations tierces, Bearer).

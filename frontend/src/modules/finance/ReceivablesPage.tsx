@@ -27,6 +27,7 @@ import {
 } from '@mui/material'
 import { Email, OpenInNew, Refresh } from '@mui/icons-material'
 import { PageHeader } from '../../components/finance/PageHeader'
+import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 import {
   financeCardSx,
   financeKpiGradients,
@@ -522,5 +523,6 @@ export function ReceivablesPage() {
         )}
       </Card>
     </Box>
+    </BillingFeatureGate>
   )
 }

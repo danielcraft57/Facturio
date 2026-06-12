@@ -10,13 +10,27 @@ describe('BillingService', () => {
 		invoice: {
 			count: jest.fn(),
 		},
+		quote: {
+			count: jest.fn(),
+		},
+		emailEvent: {
+			count: jest.fn(),
+		},
+		user: {
+			count: jest.fn(),
+		},
+	};
+
+	const betaTester = {
+		getBetaTesterStatus: jest.fn().mockResolvedValue(null),
 	};
 
 	let service: BillingService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		service = new BillingService(prisma as any);
+		betaTester.getBetaTesterStatus.mockResolvedValue(null);
+		service = new BillingService(prisma as never, betaTester as never);
 	});
 
 	it('expose la période de reset mensuel dans getUsage', async () => {
@@ -28,6 +42,8 @@ describe('BillingService', () => {
 			stripeSubscriptionId: null,
 		});
 		prisma.invoice.count.mockResolvedValue(3);
+		prisma.quote.count.mockResolvedValue(1);
+		prisma.emailEvent.count.mockResolvedValue(2);
 
 		const usage = await service.getUsage(1);
 		expect(usage.billingPeriod?.resetsAt).toBeDefined();
@@ -45,8 +61,43 @@ describe('BillingService', () => {
 			stripeSubscriptionId: null,
 		});
 		prisma.invoice.count.mockResolvedValue(25);
+		prisma.quote.count.mockResolvedValue(0);
+		prisma.emailEvent.count.mockResolvedValue(0);
 
 		await expect(service.assertCanCreateInvoice(1)).rejects.toBeInstanceOf(ForbiddenException);
+	});
+
+	it('bloque la création de devis si quota Free atteint', async () => {
+		prisma.organization.findUnique.mockResolvedValue({
+			saasPlan: SaasBillingPlan.FREE,
+			saasPlanExpiresAt: null,
+			saasSubscriptionStatus: null,
+			stripeCustomerId: null,
+			stripeSubscriptionId: null,
+		});
+		prisma.invoice.count.mockResolvedValue(0);
+		prisma.quote.count.mockResolvedValue(10);
+		prisma.emailEvent.count.mockResolvedValue(0);
+
+		await expect(service.assertCanCreateQuote(1)).rejects.toBeInstanceOf(ForbiddenException);
+	});
+
+	it('bloque la comptabilité sur plan Free', async () => {
+		prisma.organization.findUnique.mockResolvedValue({
+			saasPlan: SaasBillingPlan.FREE,
+			saasPlanExpiresAt: null,
+		});
+
+		await expect(service.assertCanUseAccounting(1)).rejects.toBeInstanceOf(ForbiddenException);
+	});
+
+	it('bloque le module finance sur plan Free', async () => {
+		prisma.organization.findUnique.mockResolvedValue({
+			saasPlan: SaasBillingPlan.FREE,
+			saasPlanExpiresAt: null,
+		});
+
+		await expect(service.assertCanUseFinanceModule(1)).rejects.toBeInstanceOf(ForbiddenException);
 	});
 
 	it('autorise Pro sans limite', async () => {

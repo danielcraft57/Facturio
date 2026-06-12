@@ -9,6 +9,7 @@ import { DocumentEmailCopiesService } from '../common/document-email-copies.serv
 import { parseTagsJson } from '../common/document-folder.util';
 import { buildEmailClickTrackUrl, buildEmailOpenTrackUrl } from '../common/email-track.util';
 import { recordInvoiceEmailSent } from '../common/email-engagement.util';
+import { BillingService } from '../billing/billing.service';
 
 @Injectable()
 export class InvoiceSendService {
@@ -19,6 +20,7 @@ export class InvoiceSendService {
 		private readonly organizations: OrganizationsService,
 		private readonly prisma: PrismaService,
 		private readonly documentCopies: DocumentEmailCopiesService,
+		private readonly billing: BillingService,
 	) {}
 
 	async sendByEmail(
@@ -27,6 +29,7 @@ export class InvoiceSendService {
 		dto?: SendInvoiceDto,
 		senderEmail?: string | null,
 	) {
+		await this.billing.assertCanSendDocumentEmail(organizationId);
 		const result = await this.invoices.sendInvoice(id, organizationId);
 		let invoice = await this.invoices.findOne(id, organizationId);
 

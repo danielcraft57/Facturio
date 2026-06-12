@@ -286,12 +286,13 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     period: '€ / mois',
     description: 'Découvrir Facturio et les tout petits volumes.',
     features: [
-      'Jusqu’à 25 factures / mois (réinitialisé chaque mois)',
-      '1 organisation',
-      'Devis & PDF illimités',
+      'Jusqu’à 25 factures / mois',
+      'Jusqu’à 10 devis / mois',
+      '20 emails document / mois',
+      'PDF avec filigrane Facturio',
       'Catalogue de base (seed)',
       'Score conformité (lecture)',
-      'Sans prospection ProspectLab',
+      'Sans compta FEC, créances, dettes ni API',
     ],
     cta: 'Commencer gratuitement',
     highlighted: false,
@@ -390,7 +391,7 @@ export const PRICING_FAQ = [
   },
   {
     q: 'Comment limiter l’accès sur le plan Free ?',
-    a: 'Maximum 25 factures créées par mois calendaire. Le compteur repart à zéro le 1er de chaque mois. Au-delà du quota, la création est bloquée jusqu’au mois suivant ou passage au plan Pro — devis et PDF restent disponibles.',
+    a: 'Quotas mensuels : 25 factures, 10 devis et 20 emails (envoi facture/devis/relance). Compta FEC, créances, dettes, API et prospection sont réservés au Pro. Les PDF Free portent un filigrane discret. Compteurs remis à zéro le 1er de chaque mois.',
   },
 ] as const
 

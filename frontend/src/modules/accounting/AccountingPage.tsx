@@ -52,6 +52,7 @@ import {
   type FinanceSummary,
 } from '../../services/accounting'
 import { unwrapApiPayload } from '../../services/clients'
+import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { PageHeader } from '../../components/finance/PageHeader'
 import {
@@ -621,6 +622,7 @@ export function AccountingPage() {
   const filteredMovements = filterMovementsByKind(movements, movementKindFilter)
 
   return (
+    <BillingFeatureGate feature="accounting" featureLabel="La comptabilité et l'export FEC">
     <Box sx={{ p: financePagePadding }}>
       <PageHeader
         title="Comptabilité"
@@ -964,5 +966,6 @@ export function AccountingPage() {
         </TabPanel>
       </Card>
     </Box>
+    </BillingFeatureGate>
   )
 }

@@ -13,6 +13,7 @@ import {
 	productHasEnrichableContent,
 } from '../products/product-quote-description.util';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
+import { BillingService } from '../billing/billing.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 import {
 	buildDocumentFolderWhere,
@@ -153,6 +154,7 @@ export class QuotesService {
 		private readonly invoices: InvoicesService,
 		private readonly products: ProductsService,
 		private readonly realtime: RealtimeEventsService,
+		private readonly billing: BillingService,
 	) {}
 
 	private async isInvoiceStripeConfigured(organizationId: number): Promise<boolean> {
@@ -651,6 +653,8 @@ export class QuotesService {
 		if (!organization) {
 			throw new NotFoundException(`Organisation avec l'ID ${orgId} introuvable`);
 		}
+
+		await this.billing.assertCanCreateQuote(orgId);
 
 		const lines = await this.resolveQuoteLines(rawLines, orgId);
 		const totals = this.computeTotals(lines);

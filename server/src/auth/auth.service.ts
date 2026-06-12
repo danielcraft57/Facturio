@@ -9,6 +9,7 @@ import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { AuthSessionService, type LoginDeviceContext } from './auth-session.service';
 import { UnverifiedAccountService } from '../common/unverified-account.service';
+import { BetaTesterService } from '../billing/beta-tester.service';
 
 /**
  * Service d'authentification
@@ -30,6 +31,7 @@ export class AuthService {
 		private emailService: EmailService,
 		private authSessionService: AuthSessionService,
 		private unverifiedAccountService: UnverifiedAccountService,
+		private betaTesterService: BetaTesterService,
 	) {}
 
 	private readonly logger = new Logger(AuthService.name);
@@ -70,6 +72,14 @@ export class AuthService {
 			throw new ConflictException('Cet email est déjà utilisé');
 		}
 
+		const betaCode = data.betaInviteCode?.trim();
+		if (betaCode) {
+			const validation = await this.betaTesterService.validateCode(betaCode);
+			if (!validation.valid) {
+				throw new BadRequestException(validation.message);
+			}
+		}
+
 		const hashedPassword = await bcrypt.hash(data.password, 12);
 		const organization = await this.prisma.organization.create({
 			data: {
@@ -101,6 +111,17 @@ export class AuthService {
 			include: { organization: true },
 		});
 
+		let betaRedemption: Awaited<ReturnType<BetaTesterService['redeemCode']>> | null = null;
+		if (betaCode) {
+			try {
+				betaRedemption = await this.betaTesterService.redeemCode(betaCode, organization.id);
+			} catch (error) {
+				await this.prisma.user.delete({ where: { id: user.id } });
+				await this.prisma.organization.delete({ where: { id: organization.id } });
+				throw error;
+			}
+		}
+
 		const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
 		const verifyUrl = `${baseUrl}/verifier-email/${verificationToken}`;
 		await this.emailService.sendVerifyEmail({
@@ -111,11 +132,15 @@ export class AuthService {
 
 		this.logger.log(`Signup success for ${data.email}, verification email sent (userId=${user.id})`);
 		const session = await this.finishLogin(user, {});
+		const betaMessage = betaRedemption
+			? ` Programme beta activé : accès complet jusqu'au ${new Date(betaRedemption.expiresAt).toLocaleDateString('fr-FR')}.`
+			: '';
 		return {
 			...session,
 			message:
-				'Compte créé. Configurez votre espace développeur, puis confirmez votre email pour accéder au tableau de bord.',
+				`Compte créé. Configurez votre espace développeur, puis confirmez votre email pour accéder au tableau de bord.${betaMessage}`,
 			emailVerificationPending: true,
+			betaTester: betaRedemption,
 		};
 	}
 

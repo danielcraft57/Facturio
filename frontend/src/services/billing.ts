@@ -15,20 +15,43 @@ export interface BillingSubscriptionInfo {
   hasActiveSubscription: boolean
 }
 
+export interface BetaTesterStatus {
+  active: boolean
+  startedAt: string | null
+  expiresAt: string | null
+  daysRemaining: number | null
+}
+
+export interface BetaInviteValidation {
+  valid: boolean
+  message: string
+  remainingSlots: number | null
+}
+
 export interface BillingUsage {
   plan: SaasBillingPlan
   planLabel: string
+  betaTester?: BetaTesterStatus | null
   limits: {
     plan: SaasBillingPlan
     label: string
     maxInvoicesPerMonth: number | null
+    maxQuotesPerMonth: number | null
+    maxEmailsPerMonth: number | null
     eInvoicing: boolean
     stripePayments: boolean
     prospection: boolean
     multiUser: boolean
     publicApi: boolean
+    accounting: boolean
+    financeModule: boolean
+    pdfWatermark: boolean
   }
-  usage: { invoicesThisMonth: number }
+  usage: {
+    invoicesThisMonth: number
+    quotesThisMonth: number
+    emailsSentThisMonth: number
+  }
   /** Mois calendaire courant ; le quota Free est remis à zéro à resetsAt. */
   billingPeriod?: {
     start: string
@@ -36,7 +59,11 @@ export interface BillingUsage {
     resetsAt: string
   }
   remainingInvoices: number | null
+  remainingQuotes: number | null
+  remainingEmails: number | null
   atLimit: boolean
+  atQuoteLimit: boolean
+  atEmailLimit: boolean
   subscription: BillingSubscriptionInfo | null
 }
 
@@ -61,4 +88,15 @@ export const billingService = {
   syncAfterCheckout: (): Promise<
     ApiResponse<{ synced: boolean; plan: SaasBillingPlan; subscriptionStatus: string | null }>
   > => apiClient.post('billing/sync-after-checkout', {}),
+
+  validateBetaInvite: (code: string): Promise<ApiResponse<BetaInviteValidation>> =>
+    apiClient.get<BetaInviteValidation>('billing/beta-invite/validate', {
+      params: { code: code.trim().toUpperCase() },
+    }),
+
+  redeemBetaInvite: (
+    code: string,
+  ): Promise<
+    ApiResponse<{ plan: SaasBillingPlan; planLabel: string; expiresAt: string; durationDays: number }>
+  > => apiClient.post('billing/beta-invite/redeem', { code: code.trim().toUpperCase() }),
 }

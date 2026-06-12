@@ -14,6 +14,7 @@ import {
   Link,
   Radio,
   RadioGroup,
+  TextField,
   Typography,
 } from '@mui/material'
 import CreditCardIcon from '@mui/icons-material/CreditCard'
@@ -99,6 +100,9 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
   const [checkoutPlan, setCheckoutPlan] = useState<'PRO' | 'PRO_EFACTURE' | null>(null)
   const [billingSchedule, setBillingSchedule] = useState<SaasCheckoutSchedule>('MONTHLY')
   const [portalLoading, setPortalLoading] = useState(false)
+  const [betaCode, setBetaCode] = useState('')
+  const [betaRedeemLoading, setBetaRedeemLoading] = useState(false)
+  const [betaSuccess, setBetaSuccess] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const loadUsage = useCallback(async (syncStripe = true) => {
@@ -135,6 +139,35 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Impossible de démarrer le paiement')
       setCheckoutPlan(null)
+    }
+  }
+
+  const handleRedeemBeta = async () => {
+    const code = betaCode.trim()
+    if (!code) {
+      setError('Saisissez un code d\'invitation beta.')
+      return
+    }
+    setBetaRedeemLoading(true)
+    setError(null)
+    setBetaSuccess(null)
+    try {
+      const res = await billingService.redeemBetaInvite(code)
+      const payload = unwrapApiPayload<{
+        planLabel: string
+        expiresAt: string
+      }>(res)
+      const end = formatPeriodEnd(payload.expiresAt)
+      setBetaSuccess(
+        `Programme beta activé : ${payload.planLabel}${end ? ` jusqu'au ${end}` : ''}.`,
+      )
+      setBetaCode('')
+      invalidateBillingUsageCache()
+      await loadUsage(false)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Code beta invalide ou indisponible')
+    } finally {
+      setBetaRedeemLoading(false)
     }
   }
 
@@ -182,6 +215,8 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
   const statusChip = sub?.status ? statusLabel(sub.status) : null
   const cancelScheduled = sub?.cancelAtPeriodEnd === true
   const isFree = usage.plan === 'FREE'
+  const betaActive = usage.betaTester?.active === true
+  const betaExpired = usage.betaTester != null && !betaActive
   const isPrepaidYearly = !isFree && sub && !sub.hasRecurringSubscription && !!periodLabel
   const max = usage.limits.maxInvoicesPerMonth
   const quotaPct =
@@ -199,6 +234,31 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
             <Chip label={statusChip.label} color={statusChip.color} size="small" variant="outlined" />
           )}
         </Box>
+
+        {betaActive && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Vous participez au programme beta testeurs.
+            {usage.betaTester?.daysRemaining != null
+              ? ` Il vous reste ${usage.betaTester.daysRemaining} jour(s) d'accès complet`
+              : ' Accès complet actif'}
+            {usage.betaTester?.expiresAt
+              ? ` (jusqu'au ${formatPeriodEnd(usage.betaTester.expiresAt) ?? '—'}).`
+              : '.'}
+            {' '}Merci de tester Facturio en conditions réelles : vos retours nous aident à améliorer le produit.
+          </Alert>
+        )}
+
+        {betaExpired && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Votre période beta testeur est terminée. Passez à un plan payant pour conserver l&apos;accès complet.
+          </Alert>
+        )}
+
+        {betaSuccess && (
+          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setBetaSuccess(null)}>
+            {betaSuccess}
+          </Alert>
+        )}
 
         <Typography variant="body2" color="text.secondary" component="div" sx={{ mb: 2 }}>
           Paiement de votre abonnement Facturio via Stripe (compte plateforme). Les encaissements de vos
@@ -219,6 +279,35 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
           </Box>{' '}
           côté serveur.
         </Typography>
+
+        {isFree && !usage.betaTester && (
+          <Box sx={{ mb: 2, p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+              Code beta testeur
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Vous avez reçu une invitation ? Activez 3 mois gratuits avec accès complet (plan Agence).
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'flex-start' }}>
+              <TextField
+                size="small"
+                label="Code d'invitation"
+                value={betaCode}
+                onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
+                placeholder="FACTURIO-BETA-XXXXXX"
+                sx={{ flex: '1 1 220px' }}
+              />
+              <Button
+                variant="outlined"
+                onClick={() => void handleRedeemBeta()}
+                disabled={betaRedeemLoading || betaCode.trim().length === 0}
+                sx={{ mt: 0.25 }}
+              >
+                {betaRedeemLoading ? 'Activation…' : 'Activer le code'}
+              </Button>
+            </Box>
+          </Box>
+        )}
 
         {isFree && (
           <FormControl component="fieldset" variant="standard" sx={{ mb: 2, width: '100%' }}>

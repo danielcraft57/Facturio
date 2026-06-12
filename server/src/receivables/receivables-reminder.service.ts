@@ -11,6 +11,7 @@ import {
 	RECEIVABLE_REMIND_COOLDOWN_DAYS,
 } from '../invoices/invoice-due-date.util';
 import { daysPastDue } from './receivables-aging.util';
+import { BillingService } from '../billing/billing.service';
 
 export type ReceivableRemindResult = {
 	sent: number;
@@ -28,6 +29,7 @@ export class ReceivablesReminderService {
 		private readonly email: EmailService,
 		private readonly pdf: PdfService,
 		private readonly organizations: OrganizationsService,
+		private readonly billing: BillingService,
 	) {}
 
 	@Cron(CronExpression.EVERY_DAY_AT_8AM)
@@ -54,6 +56,7 @@ export class ReceivablesReminderService {
 		organizationId: number,
 		opts?: { invoiceIds?: string[]; autoOnly?: boolean },
 	): Promise<ReceivableRemindResult> {
+		await this.billing.assertCanUseFinanceModule(organizationId);
 		const cooldownMs = RECEIVABLE_REMIND_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 		const cooldownSince = new Date(Date.now() - cooldownMs);
 
@@ -101,6 +104,7 @@ export class ReceivablesReminderService {
 			}
 
 			try {
+				await this.billing.assertCanSendDocumentEmail(organizationId);
 				const { invoice, daysOverdue, publicUrl } = await this.invoices.prepareReminder(
 					inv.id,
 					organizationId,

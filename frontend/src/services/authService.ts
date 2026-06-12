@@ -25,6 +25,8 @@ export interface SignupDto {
   acceptTerms: boolean
   acceptPrivacy: boolean
   technologyIds?: string[]
+  /** Code d'invitation beta testeur (3 mois gratuits, accès complet). */
+  betaInviteCode?: string
 }
 
 export interface User {

@@ -7,9 +7,10 @@ import { CommonModule } from '../common/common.module';
 import { AccountingModule } from '../accounting/accounting.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { ProductsModule } from '../products/products.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-	imports: [InvoicesModule, CommonModule, AccountingModule, OrganizationsModule, ProductsModule],
+	imports: [InvoicesModule, CommonModule, AccountingModule, OrganizationsModule, ProductsModule, BillingModule],
 	controllers: [QuotesController, PublicQuotesController],
 	providers: [QuotesService, QuoteSendService],
 	exports: [QuotesService, QuoteSendService],
