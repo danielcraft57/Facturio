@@ -1,7 +1,7 @@
 import { Box, Button, Card, CardContent, Chip, Container, Typography, alpha } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
 import { Link as RouterLink } from 'react-router-dom'
-import { CATALOG_PACKS, PRICING_ADDONS_INTRO, PRICING_PLANS } from '../constants/siteContent'
+import { CATALOG_PACKS, PRICING_ADDONS_INTRO, PRICING_PLANS, PRICING_SECTION } from '../constants/siteContent'
 import { EfactureRoadmapAlert } from './EfactureRoadmapAlert'
 import { ScrollReveal } from './ScrollReveal'
 
@@ -157,10 +157,10 @@ export function PricingSection({ showTitle = true }: { showTitle?: boolean }) {
         {showTitle && (
           <Box sx={{ textAlign: 'center', mb: 6 }}>
             <Typography variant="h2" sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, mb: 1.5 }}>
-              Tarifs simples, sans surprise
+              {PRICING_SECTION.title}
             </Typography>
             <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 600, mx: 'auto' }}>
-              Gratuit pour tester. Pro pour facturer au quotidien. Pro + e-facture pour anticiper septembre 2026.
+              {PRICING_SECTION.subtitle}
             </Typography>
           </Box>
         )}

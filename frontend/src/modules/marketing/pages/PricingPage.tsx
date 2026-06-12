@@ -6,7 +6,8 @@ import { PricingSection } from '../components/PricingCards'
 import { CtaSection } from '../components/CtaSection'
 import { ScrollReveal } from '../components/ScrollReveal'
 import { MarketingImage } from '../components/MarketingImage'
-import { CTA, PRICING_FAQ, REFORM_DATES } from '../constants/siteContent'
+import { BetaTesterPromo } from '../components/BetaTesterPromo'
+import { CTA, FREE_PLAN_SUMMARY, MARKETING_CTA, PRICING_FAQ, REFORM_DATES } from '../constants/siteContent'
 
 export function PricingPage() {
   return (
@@ -26,8 +27,7 @@ export function PricingPage() {
           <Grid size={{ xs: 12, md: 6 }}>
             <ScrollReveal>
               <Alert severity="success" sx={{ borderRadius: 2, height: '100%' }}>
-                <strong>Dogfooding DanielCraft</strong> — Facturio facture les prestations du site. Plan Free : 25
-                factures/mois ; Pro : illimité.
+                <strong>Plan Free</strong> — {FREE_PLAN_SUMMARY}. Pro : volumes et modules métier illimités.
               </Alert>
             </ScrollReveal>
           </Grid>
@@ -41,6 +41,8 @@ export function PricingPage() {
           </Grid>
         </Grid>
       </Container>
+
+      <BetaTesterPromo compact />
 
       <PricingSection showTitle={false} />
 
@@ -96,12 +98,12 @@ export function PricingPage() {
       </Container>
 
       <CtaSection
-        title="Commencez gratuit — montez en gamme quand vous scalez"
-        subtitle="25 factures/mois suffisent pour valider le produit. Pro dès que vous avez besoin de la compta ou dépassez le quota."
+        title={MARKETING_CTA.pricingTitle}
+        subtitle={MARKETING_CTA.pricingSubtitle}
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
-        secondaryLabel={CTA.reserveEfacture.label}
-        secondaryTo={CTA.reserveEfacture.to}
+        secondaryLabel={CTA.betaSignup.label}
+        secondaryTo={CTA.betaSignup.to}
       />
     </Box>
   )

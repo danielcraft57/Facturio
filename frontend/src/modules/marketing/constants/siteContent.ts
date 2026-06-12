@@ -5,6 +5,38 @@ export const SITE_TAGLINE = 'Facturez vos missions dev — conforme 2026'
 export const SITE_DESCRIPTION =
   'Devis, factures, TVA et pré-compta pour freelances développeurs et agences web. Catalogue de prestations numériques, score conformité e-facture et export FEC — sans tableur ni logiciel généraliste.'
 
+/** Résumé court des limites du plan Free — réutilisé sur toutes les pages publiques. */
+export const FREE_PLAN_SUMMARY =
+  '25 factures, 10 devis et 20 emails document / mois (PDF avec filigrane, sans compta FEC ni API)'
+
+export const BETA_PROGRAM = {
+  badge: 'Programme beta testeurs',
+  title: '3 mois gratuits avec accès complet',
+  description:
+    'Un code court partagé sur les réseaux (ex. DEV26) ? Même code pour tous, jusqu’à épuisement des places. Inscription ou Paramètres → Abonnement. Accès plan Agence pendant 90 jours.',
+  durationLabel: '90 jours',
+  steps: [
+    'Repérez le code campagne (3 à 6 lettres/chiffres)',
+    'Créez votre compte et collez le code à l’inscription',
+    'Profitez de toutes les fonctionnalités Pro et Agence pendant 3 mois',
+  ] as const,
+} as const
+
+export const PRICING_SECTION = {
+  title: 'Tarifs simples, sans surprise',
+  subtitle:
+    'Gratuit pour tester. Pro pour facturer au quotidien. Pro + e-facture pour anticiper septembre 2026.',
+} as const
+
+export const MARKETING_CTA = {
+  defaultTitle: 'Prêt à facturer comme un pro du numérique ?',
+  defaultSubtitle: `Créez votre compte en quelques minutes. ${FREE_PLAN_SUMMARY}.`,
+  landingTitle: 'Votre premier devis en 10 minutes',
+  landingSubtitle: `Compte gratuit, catalogue de démo inclus. Passez Pro quand vous dépassez les quotas Free ou avez besoin de la compta.`,
+  pricingTitle: 'Commencez gratuit — montez en gamme quand vous scalez',
+  pricingSubtitle: `Le plan Free (${FREE_PLAN_SUMMARY}) suffit pour valider le produit. Pro dès que vous avez besoin de la compta ou dépassez le quota.`,
+} as const
+
 export const EFACTURE_ROADMAP_DISCLAIMER =
   'Le connecteur Plateforme Agréée et l’e-reporting sont en cours de développement. Aujourd’hui : devis, factures PDF, score de conformité, export Factur-X (XML), paiements Stripe. Le palier Pro + e-facture réserve l’accès dès la mise en production PA.'
 
@@ -239,7 +271,7 @@ export const FEATURES_COMPTA = [
   },
   {
     title: 'Quotas par plan',
-    description: 'Free : 25 factures/mois ; Pro illimité — incitation claire à monter en gamme.',
+    description: 'Free : quotas mensuels ; Pro illimité — incitation claire à monter en gamme.',
   },
 ] as const
 
@@ -300,9 +332,9 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     period: '€ / mois',
     description: 'Le quotidien du freelance dev et de la micro-agence.',
     features: [
-      'Factures & devis illimités',
+      'Factures, devis & emails illimités',
       'Clients, catalogue & packs',
-      'Email, PDF & liens publics',
+      'Créances, dettes & API publique',
       'Stripe (votre compte)',
       'Export FEC & compta de base',
     ],
@@ -335,10 +367,10 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     period: '€ / mois',
     description: 'Petites équipes, studios et intégrateurs à plusieurs.',
     features: [
-      'Multi-utilisateurs (à venir)',
-      'Missions & acomptes avancés',
+      'Multi-utilisateurs par organisation',
+      'Tout Pro + e-facture inclus',
+      'Créances, dettes & API',
       'Support prioritaire',
-      'Branding PDF personnalisé',
       'Packs catalogue en option',
     ],
     cta: 'Parler à l’équipe',
@@ -382,7 +414,7 @@ export const PRICING_FAQ = [
   },
   {
     q: 'Les packs catalogue sont-ils obligatoires ?',
-    a: 'Non. Le seed DanielCraft suffit pour démarrer. Les packs (Agence web, Automatisation, Maintenance) accélèrent l’onboarding pour 12 à 19 € en achat unique ou +3 €/mois sur Pro.',
+    a: 'Non. Un catalogue de démonstration est fourni à l’inscription. Les packs (Agence web, Automatisation, Maintenance) accélèrent l’onboarding pour 12 à 19 € en achat unique ou +3 €/mois sur Pro.',
   },
   {
     q: 'Comment limiter l’accès sur le plan Free ?',
@@ -393,6 +425,7 @@ export const PRICING_FAQ = [
 /** Libellés CTA réutilisables */
 export const CTA = {
   signupFree: { label: 'Commencer gratuitement', to: '/signup' },
+  betaSignup: { label: 'S’inscrire avec un code beta', to: '/signup' },
   signupPro: { label: 'Passer Pro', to: '/parametres/abonnement' },
   efacture2026: { label: 'Préparer la réforme 2026', to: '/facturation-electronique' },
   pricing: { label: 'Comparer les offres', to: '/tarifs' },

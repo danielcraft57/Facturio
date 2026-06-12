@@ -32,6 +32,7 @@ import { StatsBar } from '../components/StatsBar'
 import { ScrollReveal } from '../components/ScrollReveal'
 import { MarketingImage } from '../components/MarketingImage'
 import { EfactureRoadmapAlert } from '../components/EfactureRoadmapAlert'
+import { BetaTesterPromo } from '../components/BetaTesterPromo'
 import {
   SITE_TAGLINE,
   SITE_DESCRIPTION,
@@ -40,6 +41,7 @@ import {
   VERTICAL_SEGMENTS,
   FEATURES,
   VALUE_PROPOSITIONS,
+  MARKETING_CTA,
   CTA,
 } from '../constants/siteContent'
 
@@ -112,6 +114,8 @@ export function LandingPage() {
       />
 
       <StatsBar />
+
+      <BetaTesterPromo />
 
       <MarketingScreensShowcase />
 
@@ -368,12 +372,12 @@ export function LandingPage() {
 
       <PricingSection />
       <CtaSection
-        title="Votre premier devis en 10 minutes"
-        subtitle="Compte gratuit, catalogue seed inclus. Passez Pro quand vous dépassez 25 factures/mois ou avez besoin de la compta."
+        title={MARKETING_CTA.landingTitle}
+        subtitle={MARKETING_CTA.landingSubtitle}
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
-        secondaryLabel={CTA.pricing.label}
-        secondaryTo={CTA.pricing.to}
+        secondaryLabel={CTA.betaSignup.label}
+        secondaryTo={CTA.betaSignup.to}
       />
     </Box>
   )

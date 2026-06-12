@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { SaasBillingPlan } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertBetaCodeFormat, normalizeBetaCode } from './beta-tester-code.util';
 import { readBetaTesterConfig } from './beta-tester.config';
 
 export interface BetaInviteValidation {
@@ -23,9 +24,28 @@ export interface BetaInviteRedemption {
 	durationDays: number;
 }
 
+export interface BetaProgramPublicStats {
+	maxSlots: number;
+	enrolledCount: number;
+	remainingSlots: number;
+	activeBetaCount: number;
+	durationDays: number;
+	programEndsAt: string | null;
+	programOpen: boolean;
+	codeMinLength: number;
+	codeMaxLength: number;
+	campaignCodes: Array<{
+		code: string;
+		label: string | null;
+		redemptionCount: number;
+		maxRedemptions: number | null;
+		expiresAt: string | null;
+	}>;
+}
+
 /**
- * Gestion du programme beta testeurs : codes d'invitation, plafond global,
- * activation de 3 mois d'accès complet sans Stripe.
+ * Programme beta testeurs : codes courts réutilisables (réseaux sociaux),
+ * plafond global de testeurs, durée d'accès configurable.
  */
 @Injectable()
 export class BetaTesterService {
@@ -34,26 +54,105 @@ export class BetaTesterService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	/**
-	 * Normalise un code saisi par l'utilisateur.
+	 * Normalise un code saisi.
 	 *
 	 * @param code - Code brut
-	 * @returns Code en majuscules sans espaces
 	 */
 	normalizeCode(code: string): string {
-		return code.trim().toUpperCase().replace(/\s+/g, '');
+		return normalizeBetaCode(code);
 	}
 
 	/**
-	 * Compte les codes déjà utilisés (places beta consommées).
+	 * Nombre d'organisations ayant activé le programme beta au moins une fois.
 	 */
-	async countRedeemedCodes(): Promise<number> {
-		return this.prisma.betaInviteCode.count({
-			where: { redeemedAt: { not: null } },
+	async countEnrolledBetaTesters(): Promise<number> {
+		return this.prisma.organization.count({
+			where: { betaTesterAt: { not: null } },
 		});
 	}
 
 	/**
-	 * Vérifie si un code peut encore être utilisé (sans authentification).
+	 * Testeurs beta dont la période d'accès n'est pas expirée.
+	 */
+	async countActiveBetaTesters(): Promise<number> {
+		return this.prisma.organization.count({
+			where: {
+				betaTesterAt: { not: null },
+				saasPlanExpiresAt: { gt: new Date() },
+			},
+		});
+	}
+
+	/**
+	 * Le programme accepte-t-il encore de nouvelles inscriptions ?
+	 */
+	isProgramOpen(config = readBetaTesterConfig()): boolean {
+		if (config.programEndsAt && config.programEndsAt < new Date()) {
+			return false;
+		}
+		return true;
+	}
+
+	async getRemainingGlobalSlots(): Promise<number> {
+		const config = readBetaTesterConfig();
+		if (!this.isProgramOpen(config)) return 0;
+		const enrolled = await this.countEnrolledBetaTesters();
+		return Math.max(0, config.maxSlots - enrolled);
+	}
+
+	/**
+	 * Statistiques publiques pour le site marketing et la CLI.
+	 */
+	async getPublicStats(): Promise<BetaProgramPublicStats> {
+		const config = readBetaTesterConfig();
+		const [enrolledCount, activeBetaCount, codes] = await Promise.all([
+			this.countEnrolledBetaTesters(),
+			this.countActiveBetaTesters(),
+			this.prisma.betaInviteCode.findMany({
+				where: { active: true },
+				orderBy: { code: 'asc' },
+				select: {
+					code: true,
+					label: true,
+					redemptionCount: true,
+					maxRedemptions: true,
+					expiresAt: true,
+				},
+			}),
+		]);
+
+		const programOpen = this.isProgramOpen(config);
+		const remainingSlots = programOpen
+			? Math.max(0, config.maxSlots - enrolledCount)
+			: 0;
+
+		const now = new Date();
+		const campaignCodes = codes
+			.filter((c) => !c.expiresAt || c.expiresAt > now)
+			.map((c) => ({
+				code: c.code,
+				label: c.label,
+				redemptionCount: c.redemptionCount,
+				maxRedemptions: c.maxRedemptions,
+				expiresAt: c.expiresAt?.toISOString() ?? null,
+			}));
+
+		return {
+			maxSlots: config.maxSlots,
+			enrolledCount,
+			remainingSlots,
+			activeBetaCount,
+			durationDays: config.durationDays,
+			programEndsAt: config.programEndsAt?.toISOString() ?? null,
+			programOpen,
+			codeMinLength: config.codeMinLength,
+			codeMaxLength: config.codeMaxLength,
+			campaignCodes,
+		};
+	}
+
+	/**
+	 * Vérifie si un code peut être utilisé (sans authentification).
 	 *
 	 * @param code - Code d'invitation
 	 */
@@ -64,13 +163,34 @@ export class BetaTesterService {
 			return { valid: false, message: 'Code d\'invitation requis.', remainingSlots: null };
 		}
 
-		const redeemedCount = await this.countRedeemedCodes();
-		const remainingSlots = Math.max(0, config.maxSlots - redeemedCount);
+		const remainingSlots = await this.getRemainingGlobalSlots();
+		if (!this.isProgramOpen(config)) {
+			return {
+				valid: false,
+				message: 'Le programme beta testeurs est terminé.',
+				remainingSlots: 0,
+			};
+		}
 		if (remainingSlots <= 0) {
 			return {
 				valid: false,
 				message: 'Le programme beta testeurs est complet pour le moment.',
 				remainingSlots: 0,
+			};
+		}
+
+		if (!/^[A-Z0-9]+$/.test(normalized)) {
+			return {
+				valid: false,
+				message: 'Le code ne peut contenir que des lettres et des chiffres.',
+				remainingSlots,
+			};
+		}
+		if (normalized.length < config.codeMinLength || normalized.length > config.codeMaxLength) {
+			return {
+				valid: false,
+				message: `Le code doit faire entre ${config.codeMinLength} et ${config.codeMaxLength} caractères.`,
+				remainingSlots,
 			};
 		}
 
@@ -80,16 +200,23 @@ export class BetaTesterService {
 		if (!invite) {
 			return { valid: false, message: 'Code d\'invitation inconnu.', remainingSlots };
 		}
-		if (invite.redeemedAt) {
-			return { valid: false, message: 'Ce code a déjà été utilisé.', remainingSlots };
+		if (!invite.active) {
+			return { valid: false, message: 'Ce code n\'est plus actif.', remainingSlots };
 		}
 		if (invite.expiresAt && invite.expiresAt < new Date()) {
 			return { valid: false, message: 'Ce code d\'invitation a expiré.', remainingSlots };
 		}
+		if (invite.maxRedemptions != null && invite.redemptionCount >= invite.maxRedemptions) {
+			return {
+				valid: false,
+				message: 'Ce code a atteint son nombre maximum d\'inscriptions.',
+				remainingSlots,
+			};
+		}
 
 		return {
 			valid: true,
-			message: `Accès complet gratuit pendant ${config.durationDays} jours.`,
+			message: `Accès complet gratuit pendant ${config.durationDays} jours (${remainingSlots} place(s) restante(s) au programme).`,
 			remainingSlots,
 		};
 	}
@@ -99,15 +226,14 @@ export class BetaTesterService {
 	 *
 	 * @param code - Code d'invitation
 	 * @param organizationId - Organisation cible
-	 * @throws {BadRequestException} Code invalide ou expiré
-	 * @throws {ConflictException} Code déjà utilisé ou org déjà beta
-	 * @throws {ForbiddenException} Plafond global atteint ou org non éligible
 	 */
 	async redeemCode(code: string, organizationId: number): Promise<BetaInviteRedemption> {
 		const config = readBetaTesterConfig();
 		const normalized = this.normalizeCode(code);
-		if (!normalized) {
-			throw new BadRequestException('Code d\'invitation requis.');
+		assertBetaCodeFormat(normalized, config.codeMinLength, config.codeMaxLength);
+
+		if (!this.isProgramOpen(config)) {
+			throw new ForbiddenException('Le programme beta testeurs est terminé.');
 		}
 
 		const org = await this.prisma.organization.findUnique({
@@ -135,8 +261,8 @@ export class BetaTesterService {
 			);
 		}
 
-		const redeemedCount = await this.countRedeemedCodes();
-		if (redeemedCount >= config.maxSlots) {
+		const enrolled = await this.countEnrolledBetaTesters();
+		if (enrolled >= config.maxSlots) {
 			throw new ForbiddenException('Le programme beta testeurs est complet pour le moment.');
 		}
 
@@ -146,11 +272,14 @@ export class BetaTesterService {
 		if (!invite) {
 			throw new BadRequestException('Code d\'invitation inconnu.');
 		}
-		if (invite.redeemedAt) {
-			throw new ConflictException('Ce code a déjà été utilisé.');
+		if (!invite.active) {
+			throw new BadRequestException('Ce code n\'est plus actif.');
 		}
 		if (invite.expiresAt && invite.expiresAt < new Date()) {
 			throw new BadRequestException('Ce code d\'invitation a expiré.');
+		}
+		if (invite.maxRedemptions != null && invite.redemptionCount >= invite.maxRedemptions) {
+			throw new ForbiddenException('Ce code a atteint son nombre maximum d\'inscriptions.');
 		}
 
 		const now = new Date();
@@ -158,12 +287,16 @@ export class BetaTesterService {
 		expiresAt.setDate(expiresAt.getDate() + config.durationDays);
 
 		await this.prisma.$transaction([
+			this.prisma.betaInviteRedemption.create({
+				data: {
+					betaInviteCodeId: invite.id,
+					organizationId,
+					redeemedAt: now,
+				},
+			}),
 			this.prisma.betaInviteCode.update({
 				where: { id: invite.id },
-				data: {
-					redeemedAt: now,
-					redeemedOrganizationId: organizationId,
-				},
+				data: { redemptionCount: { increment: 1 } },
 			}),
 			this.prisma.organization.update({
 				where: { id: organizationId },

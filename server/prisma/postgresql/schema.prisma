@@ -164,7 +164,7 @@ model Organization {
   saasSubscriptionStatus   String?
   /// Date d'activation du programme beta testeur (3 mois gratuits, accès complet).
   betaTesterAt             DateTime?
-  betaInviteCode           BetaInviteCode?
+  betaInviteRedemption     BetaInviteRedemption?
   stripeCustomerId         String?
   stripeSubscriptionId     String?
   stripePlatformEvents     StripePlatformEvent[]
@@ -204,21 +204,32 @@ model Organization {
   @@index([vatNumber])
 }
 
-/// Code d'invitation beta testeur (usage unique, plafond global configurable).
+/// Code d'invitation beta (réutilisable, ex. DEV26 pour les réseaux sociaux).
 model BetaInviteCode {
-  id                     Int           @id @default(autoincrement())
-  /// Code saisi à l'inscription ou dans les paramètres (ex. FACTURIO-BETA-A1B2C3).
-  code                   String        @unique
-  /// Note interne (ex. prénom du testeur, canal d'acquisition).
-  note                   String?
-  /// Validité du code lui-même (pas la durée d'accès beta).
-  expiresAt              DateTime?
-  redeemedAt             DateTime?
-  redeemedOrganizationId Int?          @unique
-  redeemedOrganization Organization? @relation(fields: [redeemedOrganizationId], references: [id], onDelete: SetNull)
-  createdAt              DateTime      @default(now())
+  id              Int                    @id @default(autoincrement())
+  code            String                 @unique
+  label           String?
+  note            String?
+  expiresAt       DateTime?
+  active          Boolean                @default(true)
+  maxRedemptions  Int?
+  redemptionCount Int                    @default(0)
+  createdAt       DateTime               @default(now())
+  redemptions     BetaInviteRedemption[]
 
-  @@index([redeemedAt])
+  @@index([active])
+}
+
+/// Inscription beta d'une organisation via un code (une fois par org).
+model BetaInviteRedemption {
+  id               Int            @id @default(autoincrement())
+  betaInviteCodeId Int
+  organizationId   Int            @unique
+  redeemedAt       DateTime       @default(now())
+  betaInviteCode   BetaInviteCode @relation(fields: [betaInviteCodeId], references: [id], onDelete: Cascade)
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([betaInviteCodeId])
 }
 
 /// Jeton d'accès API publique (intégrations tierces, Bearer).

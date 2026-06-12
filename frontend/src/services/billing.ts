@@ -28,6 +28,25 @@ export interface BetaInviteValidation {
   remainingSlots: number | null
 }
 
+export interface BetaProgramStats {
+  maxSlots: number
+  enrolledCount: number
+  remainingSlots: number
+  activeBetaCount: number
+  durationDays: number
+  programEndsAt: string | null
+  programOpen: boolean
+  codeMinLength: number
+  codeMaxLength: number
+  campaignCodes: Array<{
+    code: string
+    label: string | null
+    redemptionCount: number
+    maxRedemptions: number | null
+    expiresAt: string | null
+  }>
+}
+
 export interface BillingUsage {
   plan: SaasBillingPlan
   planLabel: string
@@ -88,9 +107,12 @@ export const billingService = {
     ApiResponse<{ synced: boolean; plan: SaasBillingPlan; subscriptionStatus: string | null }>
   > => apiClient.post('billing/sync-after-checkout', {}),
 
+  getBetaProgramStats: (): Promise<ApiResponse<BetaProgramStats>> =>
+    apiClient.get<BetaProgramStats>('billing/beta-program/stats'),
+
   validateBetaInvite: (code: string): Promise<ApiResponse<BetaInviteValidation>> =>
     apiClient.get<BetaInviteValidation>('billing/beta-invite/validate', {
-      params: { code: code.trim().toUpperCase() },
+      params: { code: code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') },
     }),
 
   redeemBetaInvite: (

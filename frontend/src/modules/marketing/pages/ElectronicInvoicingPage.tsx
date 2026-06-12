@@ -4,6 +4,7 @@ import { ReformTimeline } from '../components/ReformTimeline'
 import { CtaSection } from '../components/CtaSection'
 import { ScrollReveal } from '../components/ScrollReveal'
 import { MarketingImage } from '../components/MarketingImage'
+import { BetaTesterPromo } from '../components/BetaTesterPromo'
 import { CTA, REFORM_DATES } from '../constants/siteContent'
 import { EfactureRoadmapAlert } from '../components/EfactureRoadmapAlert'
 import { ReformScheduleSimulator } from '../components/ReformScheduleSimulator'
@@ -39,6 +40,8 @@ export function ElectronicInvoicingPage() {
         secondaryCta={CTA.signupFree}
         visual={<MarketingImage src="/images/facturio-efacture.png" alt="Schéma facturation électronique 2026" float={false} />}
       />
+
+      <BetaTesterPromo compact />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <ScrollReveal>

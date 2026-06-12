@@ -26,7 +26,7 @@ export function SalesTermsPage() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            CGV DanielCraft
+            CGV Facturio
           </Link>
           .
         </Alert>

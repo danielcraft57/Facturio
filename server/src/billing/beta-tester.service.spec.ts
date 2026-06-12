@@ -5,12 +5,17 @@ import { BetaTesterService } from './beta-tester.service';
 describe('BetaTesterService', () => {
 	const prisma = {
 		betaInviteCode: {
-			count: jest.fn(),
 			findUnique: jest.fn(),
+			findMany: jest.fn(),
 			update: jest.fn(),
+		},
+		betaInviteRedemption: {
+			create: jest.fn(),
+			count: jest.fn(),
 		},
 		organization: {
 			findUnique: jest.fn(),
+			count: jest.fn(),
 			update: jest.fn(),
 		},
 		$transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
@@ -20,38 +25,52 @@ describe('BetaTesterService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		process.env.BETA_TESTER_MAX_SLOTS = '2';
+		process.env.BETA_TESTER_MAX_SLOTS = '20';
 		process.env.BETA_TESTER_DURATION_DAYS = '90';
 		process.env.BETA_TESTER_PLAN = 'AGENCY';
+		process.env.BETA_TESTER_CODE_MIN_LENGTH = '3';
+		process.env.BETA_TESTER_CODE_MAX_LENGTH = '6';
 		service = new BetaTesterService(prisma as never);
 	});
 
-	it('valide un code disponible', async () => {
-		prisma.betaInviteCode.count.mockResolvedValue(0);
+	it('valide un code actif réutilisable', async () => {
+		prisma.organization.count.mockResolvedValue(5);
 		prisma.betaInviteCode.findUnique.mockResolvedValue({
 			id: 1,
-			code: 'FACTURIO-BETA-ABC123',
-			redeemedAt: null,
+			code: 'DEV26',
+			active: true,
 			expiresAt: null,
+			maxRedemptions: null,
+			redemptionCount: 12,
 		});
 
-		const result = await service.validateCode('facturio-beta-abc123');
+		const result = await service.validateCode('dev26');
 		expect(result.valid).toBe(true);
-		expect(result.remainingSlots).toBe(2);
+		expect(result.remainingSlots).toBe(15);
 	});
 
-	it('refuse un code déjà utilisé', async () => {
-		prisma.betaInviteCode.count.mockResolvedValue(1);
+	it('refuse un code inactif', async () => {
+		prisma.organization.count.mockResolvedValue(0);
 		prisma.betaInviteCode.findUnique.mockResolvedValue({
 			id: 1,
-			code: 'FACTURIO-BETA-USED01',
-			redeemedAt: new Date(),
+			code: 'OLD',
+			active: false,
 			expiresAt: null,
+			maxRedemptions: null,
+			redemptionCount: 0,
 		});
 
-		const result = await service.validateCode('FACTURIO-BETA-USED01');
+		const result = await service.validateCode('OLD');
 		expect(result.valid).toBe(false);
-		expect(result.message).toContain('déjà été utilisé');
+		expect(result.message).toContain('plus actif');
+	});
+
+	it('refuse un code trop long', async () => {
+		prisma.organization.count.mockResolvedValue(0);
+
+		const result = await service.validateCode('FACTURIO-BETA');
+		expect(result.valid).toBe(false);
+		expect(result.message).toContain('6 caractères');
 	});
 
 	it('active le plan Agence pour une org Free', async () => {
@@ -61,40 +80,43 @@ describe('BetaTesterService', () => {
 			betaTesterAt: null,
 			stripeSubscriptionId: null,
 		});
-		prisma.betaInviteCode.count.mockResolvedValue(0);
+		prisma.organization.count.mockResolvedValue(2);
 		prisma.betaInviteCode.findUnique.mockResolvedValue({
 			id: 5,
-			code: 'FACTURIO-BETA-NEW001',
-			redeemedAt: null,
+			code: 'DEV26',
+			active: true,
 			expiresAt: null,
+			maxRedemptions: null,
+			redemptionCount: 3,
 		});
+		prisma.betaInviteRedemption.create.mockResolvedValue({});
 		prisma.betaInviteCode.update.mockResolvedValue({});
 		prisma.organization.update.mockResolvedValue({});
 
-		const result = await service.redeemCode('FACTURIO-BETA-NEW001', 10);
+		const result = await service.redeemCode('DEV26', 10);
 		expect(result.plan).toBe(SaasBillingPlan.AGENCY);
-		expect(result.durationDays).toBe(90);
 		expect(prisma.$transaction).toHaveBeenCalled();
 	});
 
 	it('bloque si le plafond global est atteint', async () => {
+		process.env.BETA_TESTER_MAX_SLOTS = '2';
 		prisma.organization.findUnique.mockResolvedValue({
 			id: 10,
 			saasPlan: SaasBillingPlan.FREE,
 			betaTesterAt: null,
 			stripeSubscriptionId: null,
 		});
-		prisma.betaInviteCode.count.mockResolvedValue(2);
+		prisma.organization.count.mockResolvedValue(2);
 		prisma.betaInviteCode.findUnique.mockResolvedValue({
 			id: 5,
-			code: 'FACTURIO-BETA-LATE01',
-			redeemedAt: null,
+			code: 'DEV26',
+			active: true,
 			expiresAt: null,
+			maxRedemptions: null,
+			redemptionCount: 1,
 		});
 
-		await expect(service.redeemCode('FACTURIO-BETA-LATE01', 10)).rejects.toBeInstanceOf(
-			ForbiddenException,
-		);
+		await expect(service.redeemCode('DEV26', 10)).rejects.toBeInstanceOf(ForbiddenException);
 	});
 
 	it('refuse une org déjà beta', async () => {
@@ -105,23 +127,27 @@ describe('BetaTesterService', () => {
 			stripeSubscriptionId: null,
 		});
 
-		await expect(service.redeemCode('FACTURIO-BETA-X', 10)).rejects.toBeInstanceOf(
-			ConflictException,
-		);
+		await expect(service.redeemCode('DEV26', 10)).rejects.toBeInstanceOf(ConflictException);
 	});
 
-	it('refuse un code inconnu à l\'activation', async () => {
-		prisma.organization.findUnique.mockResolvedValue({
-			id: 10,
-			saasPlan: SaasBillingPlan.FREE,
-			betaTesterAt: null,
-			stripeSubscriptionId: null,
-		});
-		prisma.betaInviteCode.count.mockResolvedValue(0);
-		prisma.betaInviteCode.findUnique.mockResolvedValue(null);
+	it('expose les stats publiques', async () => {
+		prisma.organization.count
+			.mockResolvedValueOnce(4)
+			.mockResolvedValueOnce(3);
+		prisma.betaInviteCode.findMany.mockResolvedValue([
+			{
+				code: 'DEV26',
+				label: 'Twitter',
+				redemptionCount: 2,
+				maxRedemptions: null,
+				expiresAt: null,
+			},
+		]);
 
-		await expect(service.redeemCode('FACTURIO-BETA-NOPE', 10)).rejects.toBeInstanceOf(
-			BadRequestException,
-		);
+		const stats = await service.getPublicStats();
+		expect(stats.maxSlots).toBe(20);
+		expect(stats.enrolledCount).toBe(4);
+		expect(stats.remainingSlots).toBe(16);
+		expect(stats.campaignCodes[0].code).toBe('DEV26');
 	});
 });

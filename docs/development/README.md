@@ -8,6 +8,8 @@ Documentation pour les développeurs contribuant à Facturio.
 - [Guide de développement](./DEVELOPMENT.md) - Workflow et bonnes pratiques
 - [CI/CD](./CI_CD.md) - Intégration continue et déploiement
 - [E-invoicing](./E_INVOICING.md) - Module conformité réforme 2026
+- [Abonnements Stripe](./BILLING_STRIPE.md) - Checkout Pro, webhooks, portail client
+- [Beta testeurs](./BETA_TESTEURS.md) - Codes d'invitation, CLI, parcours testeur
 - [Optimisation](./OPTIMIZATION.md) - Optimisation des performances
 
 ## 🛠️ Stack technique

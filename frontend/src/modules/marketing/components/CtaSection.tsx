@@ -1,5 +1,6 @@
 import { Box, Button, Container, Paper, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
+import { MARKETING_CTA } from '../constants/siteContent'
 
 type CtaSectionProps = {
   title?: string
@@ -11,8 +12,8 @@ type CtaSectionProps = {
 }
 
 export function CtaSection({
-  title = 'Prêt à facturer comme un pro du numérique ?',
-  subtitle = 'Créez votre compte en quelques minutes. Utilisé au quotidien pour les prestations DanielCraft.',
+  title = MARKETING_CTA.defaultTitle,
+  subtitle = MARKETING_CTA.defaultSubtitle,
   primaryLabel = 'Créer mon compte gratuit',
   primaryTo = '/signup',
   secondaryLabel,

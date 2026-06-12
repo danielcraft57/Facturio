@@ -20,6 +20,12 @@ export class BillingController {
 		return this.billing.getUsage(user.organizationId);
 	}
 
+	/** Statistiques publiques du programme beta (places restantes, codes campagne). */
+	@Get('beta-program/stats')
+	getBetaProgramStats() {
+		return this.betaTester.getPublicStats();
+	}
+
 	/** Vérifie un code beta sans authentification (inscription). */
 	@Get('beta-invite/validate')
 	validateBetaInvite(@Query() query: ValidateBetaInviteDto) {

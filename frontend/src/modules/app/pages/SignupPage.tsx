@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link as RouterLink } from 'react-router-dom'
+import { useNavigate, Link as RouterLink, useSearchParams } from 'react-router-dom'
 import {
   Container,
   Box,
@@ -36,6 +36,7 @@ import { usePendingEmailVerification } from '../../../hooks/usePendingEmailVerif
  */
 export function SignupPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { signup, isLoading, error, clearError } = useAuthStore()
   const [resendSuccess, setResendSuccess] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -60,6 +61,13 @@ export function SignupPage() {
   const [localError, setLocalError] = useState<string | null>(null)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
+  useEffect(() => {
+    const rawCode = searchParams.get('beta') ?? searchParams.get('code')
+    if (!rawCode?.trim()) return
+    const code = rawCode.trim().toUpperCase()
+    setFormData((prev) => (prev.betaInviteCode === code ? prev : { ...prev, betaInviteCode: code }))
+  }, [searchParams])
+
   useEffect(() => {
     if (!authService.hasSessionToken()) return
     let cancelled = false
@@ -246,7 +254,11 @@ export function SignupPage() {
               onChange={handleChange}
               margin="normal"
               autoComplete="off"
-              helperText="Si vous avez reçu une invitation : 3 mois gratuits avec accès complet."
+              helperText={
+                formData.betaInviteCode.trim()
+                  ? 'Code détecté — 3 mois gratuits avec accès plan Agence après validation du compte.'
+                  : 'Code campagne court (ex. DEV26) : même code pour tous, jusqu’à épuisement des places.'
+              }
             />
             <TextField
               fullWidth
