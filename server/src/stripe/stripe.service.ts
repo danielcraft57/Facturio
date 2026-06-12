@@ -7,12 +7,23 @@ import { decryptOrgStripeSecrets } from '../crypto/organization-stripe-secrets.u
 import { SecretsCryptoService } from '../crypto/secrets-crypto.service';
 import { createStripeClient, type StripeClient } from './stripe-client';
 import { parseInvoiceStripePaymentMethodsStored } from './invoice-stripe-payment-methods';
+import {
+	ensureInvoicePaymentMethodTypes,
+	filterBnplPaymentMethodsForAmount,
+	resolveActiveBnplPaymentMethods,
+} from './invoice-bnpl-payment-methods.util';
+import { InvoiceInstallmentsService } from '../invoices/invoice-installments.service';
 
 export interface PaymentIntentResponse {
 	clientSecret: string;
 	amount: number;
 	currency: string;
 	stripePublishableKey: string;
+	/** Moyens BNPL (Klarna, Alma) effectivement proposés pour ce montant. */
+	bnplMethods: string[];
+	/** Échéance métier en cours (paiement fractionné B2B). */
+	installmentId: number | null;
+	installmentSequence: number | null;
 }
 
 export interface StripePaymentIntentPayload {
@@ -33,6 +44,7 @@ export class StripeService {
 		private readonly prisma: PrismaService,
 		private readonly payments: PaymentsService,
 		private readonly secretsCrypto: SecretsCryptoService,
+		private readonly installments: InvoiceInstallmentsService,
 	) {}
 
 	private resolveOrgStripe(org: {
@@ -110,11 +122,28 @@ export class StripeService {
 			throw new BadRequestException('Cette facture est déjà réglée');
 		}
 
-		const amountCents = Math.round(remaining * 100);
+		const online = await this.installments.resolveOnlinePaymentAmount(invoice.id, remaining);
+		const chargeAmount = online.amount;
+		if (chargeAmount <= 0) {
+			throw new BadRequestException('Aucune échéance à régler pour le moment');
+		}
+
+		let installmentSequence: number | null = null;
+		if (online.installmentId != null) {
+			const row = await this.prisma.invoiceInstallment.findUnique({
+				where: { id: online.installmentId },
+				select: { sequence: true },
+			});
+			installmentSequence = row?.sequence ?? null;
+		}
+
+		const amountCents = Math.round(chargeAmount * 100);
 		const currency = (invoice.currency || 'EUR').toLowerCase();
-		const paymentMethodTypes = parseInvoiceStripePaymentMethodsStored(
-			org.invoiceStripePaymentMethods,
+		const configuredMethods = parseInvoiceStripePaymentMethodsStored(org.invoiceStripePaymentMethods);
+		const paymentMethodTypes = ensureInvoicePaymentMethodTypes(
+			filterBnplPaymentMethodsForAmount(configuredMethods, chargeAmount, currency),
 		);
+		const bnplMethods = resolveActiveBnplPaymentMethods(configuredMethods, chargeAmount, currency);
 
 		const paymentIntent = await stripe.paymentIntents.create({
 			amount: amountCents,
@@ -124,6 +153,9 @@ export class StripeService {
 				organizationId: String(org.id),
 				publicToken: safeToken,
 				invoiceNumber: invoice.number,
+				...(online.installmentId != null
+					? { installmentId: String(online.installmentId) }
+					: {}),
 			},
 			payment_method_types: paymentMethodTypes,
 		});
@@ -134,9 +166,12 @@ export class StripeService {
 
 		return {
 			clientSecret: paymentIntent.client_secret,
-			amount: remaining,
+			amount: chargeAmount,
 			currency: invoice.currency || 'EUR',
 			stripePublishableKey: publishableKey,
+			bnplMethods,
+			installmentId: online.installmentId,
+			installmentSequence,
 		};
 	}
 

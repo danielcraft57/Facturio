@@ -66,6 +66,7 @@ describe('Quotes deposit e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM Quote');
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Refund');
+		await prisma.$executeRawUnsafe('DELETE FROM InvoiceInstallment');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirApplication');
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirLine');
@@ -322,5 +323,70 @@ describe('Quotes deposit e2e', () => {
 		await request(app.getHttpServer())
 			.post(`/api/public/quotes/${token}/reject`)
 			.expect(400);
+	});
+
+	it('GET public quote — expose le paiement en plusieurs fois dès 600 € TTC', async () => {
+		await ensureStripeConfigured(testUser.organizationId);
+		const { token } = await createSentQuote(500, 0.2);
+
+		const view = await request(app.getHttpServer())
+			.get(`/api/public/quotes/${token}`)
+			.expect(200)
+			.then(
+				(r: {
+					body: {
+						publicPaymentHints: {
+							smartInstallment: { eligible: boolean; count: number; preview: unknown[] } | null;
+						};
+					};
+				}) => r.body,
+			);
+
+		expect(view.publicPaymentHints.smartInstallment?.eligible).toBe(true);
+		expect(view.publicPaymentHints.smartInstallment?.count).toBe(2);
+		expect(view.publicPaymentHints.smartInstallment?.preview.length).toBe(2);
+	});
+
+	it('accept-pay INSTALLMENT avec acompte — 1re ligne acompte puis mensualités', async () => {
+		await ensureStripeConfigured(testUser.organizationId);
+		const { token, quote } = await createSentQuote(500, 0.2);
+		const total = Number(quote.total);
+
+		const accept = await request(app.getHttpServer())
+			.post(`/api/public/quotes/${token}/accept-pay`)
+			.send({ mode: 'INSTALLMENT', withDeposit: true, depositRate: 0.1 })
+			.expect(201)
+			.then(
+				(r: {
+					body: {
+						status: string;
+						invoiceToken: string;
+						initialPaymentAmount: number;
+						installmentCount: number;
+						withDeposit: boolean;
+					};
+				}) => r.body,
+			);
+
+		expect(accept.status).toBe('accepted');
+		expect(accept.invoiceToken).toBeTruthy();
+		expect(accept.installmentCount).toBe(3);
+		expect(accept.withDeposit).toBe(true);
+		expect(accept.initialPaymentAmount).toBeCloseTo(total * 0.1, 2);
+
+		const invoice = await prisma.invoice.findFirst({
+			where: { sourceQuoteId: quote.id },
+			include: { installments: { orderBy: { sequence: 'asc' } } },
+		});
+		expect(invoice?.installments?.length).toBe(3);
+		const sum = invoice!.installments!.reduce(
+			(s, row) => s + Number((row.amount as any)?.toNumber?.() ?? row.amount),
+			0,
+		);
+		expect(sum).toBeCloseTo(total, 2);
+		const first = Number(
+			(invoice!.installments![0].amount as any)?.toNumber?.() ?? invoice!.installments![0].amount,
+		);
+		expect(first).toBeCloseTo(total * 0.1, 2);
 	});
 });

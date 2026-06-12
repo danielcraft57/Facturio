@@ -10,6 +10,7 @@ import { assertValidPublicToken } from './public-token.util';
 import { buildPublicInvoiceUrl } from '../common/public-app-url';
 import { attachListEmailEngagementFlags, getInvoiceEmailEngagement } from '../common/email-engagement.util';
 import { InvoicePaymentNotificationService } from './invoice-payment-notification.service';
+import { InvoiceInstallmentsService } from './invoice-installments.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 import {
@@ -35,6 +36,7 @@ import { resolveEngagementBreakdownForInvoice } from './invoice-engagement-break
 import { notifyLinkedRemainderAfterDepositPaid } from './invoice-deposit-realtime.util';
 import { canAccessInvoiceByPublicToken } from './invoice-public-access.util';
 import { AvoirsService } from '../avoirs/avoirs.service';
+import { resolveInstallmentPublicLabel } from './invoice-installment.util';
 
 export type InvoiceNumberKind = 'standard' | 'deposit' | 'remainder';
 
@@ -88,6 +90,10 @@ export interface CreateInvoiceInput {
 	clientEmail?: string;
 	clientName?: string;
 	applyClientCredits?: boolean;
+	/** Échéancier métier (lignes explicites). */
+	installments?: { amount: number; dueDate: string | Date }[];
+	/** Parts égales à la création. */
+	installmentSchedule?: { count: number; firstDueDate: string | Date; intervalMonths?: number };
 }
 
 /**
@@ -152,6 +158,7 @@ export class InvoicesService {
 		private readonly paidNotifications: InvoicePaymentNotificationService,
 		private readonly realtime: RealtimeEventsService,
 		private readonly avoirs: AvoirsService,
+		private readonly installments: InvoiceInstallmentsService,
 	) {}
 
 	private async applyAvailableClientCredits(
@@ -648,6 +655,8 @@ export class InvoicesService {
 			return full;
 		}
 
+		await this.applyInstallmentScheduleOnCreate(created.id, totals.total, data, orgId);
+
 		const settled = await this.syncInvoiceFinancials(created.id, { organizationId: orgId });
 		const full = await this.findOne(created.id, orgId);
 		this.notifyInvoice(
@@ -657,6 +666,31 @@ export class InvoicesService {
 			{ number: full.number, status: full.status },
 		);
 		return full;
+	}
+
+	/**
+	 * Applique un échéancier à la création si demandé (hors facture déjà payée).
+	 */
+	private async applyInstallmentScheduleOnCreate(
+		invoiceId: string,
+		invoiceTotal: number,
+		data: CreateInvoiceInput,
+		organizationId: number,
+	): Promise<void> {
+		if (data.paidExternally || data.status === 'PAID') return;
+
+		let rows = data.installments;
+		if (!rows?.length && data.installmentSchedule) {
+			rows = this.installments.previewEqualSchedule(
+				invoiceTotal,
+				data.installmentSchedule.count,
+				data.installmentSchedule.firstDueDate,
+				data.installmentSchedule.intervalMonths ?? 1,
+			);
+		}
+		if (!rows?.length) return;
+
+		await this.installments.setSchedule(invoiceId, rows, organizationId);
 	}
 
 	/**
@@ -725,9 +759,16 @@ export class InvoicesService {
 				items.map((inv) => this.reconcileRemainderAwaitingSend(inv)),
 			);
 			const withEmailFlags = await attachListEmailEngagementFlags(this.prisma, reconciled, 'invoice');
+			const summaryMap = await this.installments.summarizeForInvoiceIds(
+				withEmailFlags.map((inv) => inv.id),
+			);
+			const invoices = withEmailFlags.map((inv) => ({
+				...inv,
+				installmentSummary: summaryMap.get(inv.id) ?? null,
+			}));
 			const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 0;
 			return {
-				invoices: withEmailFlags,
+				invoices,
 				total,
 				page,
 				limit: pageSize,
@@ -759,7 +800,16 @@ export class InvoicesService {
 		invoice = await this.reconcileRemainderAwaitingSend(invoice);
 		const enriched = await this.enrichInvoiceWithSettlement(invoice, organizationId);
 		const emailEngagement = await getInvoiceEmailEngagement(this.prisma, enriched.id);
-		return { ...enriched, emailEngagement };
+		const installmentFinance = await this.installments.listForInvoiceWithFinance(
+			enriched.id,
+			organizationId,
+		);
+		return {
+			...enriched,
+			emailEngagement,
+			installments: installmentFinance.installments,
+			installmentSaleAccounting: installmentFinance.saleAccounting,
+		};
 	}
 
 	/**
@@ -1149,6 +1199,7 @@ export class InvoicesService {
 		const payment = await this.prisma.payment.create({
 			data: { invoiceId: id, amount, date: date ? new Date(date) : undefined, method, notes }
 		});
+		await this.installments.allocatePayment(id, payment.id, amount);
 		const after = await this.syncInvoiceFinancials(id, { organizationId });
 		const newStatus = after.balance <= 0.01 ? 'PAID' : invoice.status;
 		// Comptabilisation de l'encaissement (512/411)
@@ -1244,6 +1295,12 @@ export class InvoicesService {
 		const tags = parseTagsJson(invoice.tags);
 		const presentation = resolveInvoiceDocumentPresentation(tags, invoice.legalMention, invoice.dueDate);
 		const engagementBreakdown = await this.buildEngagementBreakdown(invoice);
+		const installmentRows = await this.installments.listForInvoice(invoice.id);
+		const installments = installmentRows.map((row) => ({
+			...row,
+			label: resolveInstallmentPublicLabel(row.sequence, invoice.legalMention),
+		}));
+		const nextInstallment = installments.find((row) => row.status === 'PENDING') ?? null;
 		const appliedCreditTotal =
 			appliedCreditOverride ??
 			(invoice.appliedAvoirs ?? []).reduce(
@@ -1271,6 +1328,8 @@ export class InvoicesService {
 			stripeEnabled,
 			stripePublishableKey: org?.invoiceStripePublishableKey?.trim() || null,
 			canPayOnline,
+			installments: installments,
+			nextInstallment,
 			issuerName:
 				invoice.organization?.legalName ||
 				invoice.organization?.name ||
@@ -1495,9 +1554,13 @@ export class InvoicesService {
 		if (!token) {
 			throw new BadRequestException('Lien public de la facture indisponible');
 		}
+		const installmentPlan = await this.installments.listForInvoice(id, organizationId);
+		const nextInstallment = installmentPlan.find((row) => row.status === 'PENDING') ?? null;
+
 		let daysOverdue: number | undefined;
-		if (invoice.dueDate) {
-			const due = new Date(invoice.dueDate);
+		const dueRef = nextInstallment?.dueDate ?? invoice.dueDate;
+		if (dueRef) {
+			const due = new Date(dueRef);
 			const diff = Math.floor((Date.now() - due.getTime()) / (1000 * 60 * 60 * 24));
 			if (diff > 0) daysOverdue = diff;
 		}
@@ -1507,6 +1570,7 @@ export class InvoicesService {
 		return {
 			invoice,
 			daysOverdue,
+			reminderAmount: nextInstallment?.amount ?? Number(invoice.total),
 			publicUrl: InvoicesService.buildPublicPaymentUrl(token)
 		};
 	}

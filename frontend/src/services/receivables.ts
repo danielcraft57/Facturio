@@ -41,6 +41,21 @@ export type ReceivableClientRow = {
   aging: ReceivableAgingTotals
 }
 
+export type ReceivableInstallmentRow = {
+  id: number
+  sequence: number
+  invoiceId: string
+  invoiceNumber: string
+  clientId: string
+  clientName: string
+  dueDate: string
+  amount: number
+  daysPastDue: number
+  agingBucket: ReceivableAgingBucket
+  overdue: boolean
+  autoTracked: true
+}
+
 export type ReceivablesData = {
   summary: {
     totalOutstanding: number
@@ -48,9 +63,12 @@ export type ReceivablesData = {
     invoiceCount: number
     aging: ReceivableAgingTotals
     byKind: ReceivablesByKindTotals
+    installmentOutstanding: number
+    installmentCount: number
   }
   clients: ReceivableClientRow[]
   invoices: ReceivableInvoiceRow[]
+  installmentReceivables: ReceivableInstallmentRow[]
 }
 
 export type ReceivableRemindResult = {

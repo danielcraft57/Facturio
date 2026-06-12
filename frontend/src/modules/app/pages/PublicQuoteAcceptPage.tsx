@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, Link as RouterLink } from 'react-router-dom'
 import {
   Alert,
+  Box,
   Button,
+  Checkbox,
   CircularProgress,
   Container,
   FormControlLabel,
@@ -13,13 +15,19 @@ import {
   Typography,
 } from '@mui/material'
 import { ApiClient } from '../../../services/apiClient'
+import { formatCurrency, formatDate } from '../../../utils/formatters'
+import {
+  previewInstallmentWithDeposit,
+  resolveInitialInstallmentPayment,
+  type SmartInstallmentHint,
+} from '../../../utils/quoteSmartInstallment'
 
 const api = ApiClient.getInstance()
 
 function sanitizePublicClientError(message: string | undefined): string {
-  if (!message?.trim()) return 'Erreur lors de l’acceptation.'
+  if (!message?.trim()) return "Erreur lors de l'acceptation."
   if (message.includes('/parametres/paiements') || /stripe/i.test(message)) {
-    return 'Le règlement en ligne n’est pas disponible. Contactez votre prestataire pour finaliser ce devis.'
+    return "Le règlement en ligne n'est pas disponible. Contactez votre prestataire pour finaliser ce devis."
   }
   return message
 }
@@ -31,6 +39,10 @@ type PublicQuoteSummary = {
     hasDepositSplit?: boolean
     depositPaid?: boolean
     onlinePaymentAvailable?: boolean
+    quoteTotal?: number
+    smartInstallment?: SmartInstallmentHint | null
+    hasInstallmentInvoice?: boolean
+    installmentInvoiceToken?: string | null
   }
 }
 
@@ -41,20 +53,46 @@ type AcceptPayResponse = {
   remainderInvoiceToken?: string
   message?: string
   onlinePaymentAvailable?: boolean
+  initialPaymentAmount?: number
+  installmentCount?: number
+  withDeposit?: boolean
 }
+
+type PayMode = 'FULL' | 'DEPOSIT' | 'INSTALLMENT'
 
 /** Page publique : acceptation d'un devis par token. */
 export function PublicQuoteAcceptPage() {
   const { token } = useParams<{ token: string }>()
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState<string>('')
-  const [mode, setMode] = useState<'FULL' | 'DEPOSIT' | null>(null)
+  const [mode, setMode] = useState<PayMode | null>(null)
+  const [installmentWithDeposit, setInstallmentWithDeposit] = useState(false)
   const [depositInvoiceToken, setDepositInvoiceToken] = useState<string | null>(null)
   const [remainderInvoiceToken, setRemainderInvoiceToken] = useState<string | null>(null)
   const [invoiceToken, setInvoiceToken] = useState<string | null>(null)
   const [quoteSummary, setQuoteSummary] = useState<PublicQuoteSummary | null>(null)
   const [quoteLoading, setQuoteLoading] = useState(true)
   const [onlinePaymentAvailable, setOnlinePaymentAvailable] = useState(true)
+
+  const quoteTotal = quoteSummary?.publicPaymentHints?.quoteTotal ?? 0
+  const smartInstallment = quoteSummary?.publicPaymentHints?.smartInstallment ?? null
+  const hasInstallmentOption = Boolean(smartInstallment?.eligible)
+
+  const installmentPreview = useMemo(() => {
+    if (!smartInstallment?.preview?.length) return []
+    if (!installmentWithDeposit || mode !== 'INSTALLMENT') return smartInstallment.preview
+    return previewInstallmentWithDeposit(smartInstallment.preview, quoteTotal, 0.1)
+  }, [smartInstallment, installmentWithDeposit, mode, quoteTotal])
+
+  const initialInstallmentPayment = useMemo(() => {
+    if (!smartInstallment?.preview?.length || mode !== 'INSTALLMENT') return 0
+    return resolveInitialInstallmentPayment(
+      quoteTotal,
+      smartInstallment.preview,
+      installmentWithDeposit,
+      0.1,
+    )
+  }, [smartInstallment, mode, quoteTotal, installmentWithDeposit])
 
   const applyAcceptResponse = useCallback((body: AcceptPayResponse) => {
     if (body?.status !== 'accepted') return false
@@ -97,6 +135,9 @@ export function PublicQuoteAcceptPage() {
           const summary = body as PublicQuoteSummary
           setQuoteSummary(summary)
           setOnlinePaymentAvailable(summary.publicPaymentHints?.onlinePaymentAvailable !== false)
+          if (summary.publicPaymentHints?.hasInstallmentInvoice) {
+            setMode('INSTALLMENT')
+          }
         }
       } catch {
         if (!cancelled) setQuoteSummary(null)
@@ -109,7 +150,6 @@ export function PublicQuoteAcceptPage() {
     }
   }, [token])
 
-  // Si un split acompte/solde existe déjà, on force le mode DEPOSIT (FULL n'est plus autorisé).
   useEffect(() => {
     if (quoteLoading) return
     if (quoteSummary?.publicPaymentHints?.depositPaid) {
@@ -120,8 +160,17 @@ export function PublicQuoteAcceptPage() {
       setMode('DEPOSIT')
       return
     }
+    if (quoteSummary?.publicPaymentHints?.hasInstallmentInvoice) {
+      setMode('INSTALLMENT')
+      return
+    }
     setMode(null)
-  }, [quoteLoading, quoteSummary?.publicPaymentHints?.hasDepositSplit, quoteSummary?.publicPaymentHints?.depositPaid])
+  }, [
+    quoteLoading,
+    quoteSummary?.publicPaymentHints?.hasDepositSplit,
+    quoteSummary?.publicPaymentHints?.depositPaid,
+    quoteSummary?.publicPaymentHints?.hasInstallmentInvoice,
+  ])
 
   const handleAccept = async () => {
     if (!token) {
@@ -136,7 +185,10 @@ export function PublicQuoteAcceptPage() {
     setRemainderInvoiceToken(null)
     setInvoiceToken(null)
 
-    const effectiveMode: 'FULL' | 'DEPOSIT' | null = depositPaid
+    const hasDepositSplit = Boolean(quoteSummary?.publicPaymentHints?.hasDepositSplit)
+    const depositPaid = Boolean(quoteSummary?.publicPaymentHints?.depositPaid)
+
+    const effectiveMode: PayMode | null = depositPaid
       ? 'DEPOSIT'
       : hasDepositSplit
         ? 'DEPOSIT'
@@ -144,15 +196,18 @@ export function PublicQuoteAcceptPage() {
 
     if (onlinePaymentAvailable && !effectiveMode) {
       setStatus('error')
-      setMessage('Choisissez un mode de paiement : 100 % ou paiement acompte.')
+      setMessage('Choisissez un mode de paiement.')
       return
     }
 
     try {
       const res = onlinePaymentAvailable
         ? await api.post<AcceptPayResponse>(`public/quotes/${token}/accept-pay`, {
-            mode: effectiveMode === 'DEPOSIT' ? ('DEPOSIT' as const) : ('FULL' as const),
+            mode: effectiveMode === 'DEPOSIT' ? 'DEPOSIT' : effectiveMode === 'INSTALLMENT' ? 'INSTALLMENT' : 'FULL',
             ...(effectiveMode === 'DEPOSIT' ? { depositRate: 0.1 } : {}),
+            ...(effectiveMode === 'INSTALLMENT'
+              ? { withDeposit: installmentWithDeposit, depositRate: 0.1 }
+              : {}),
           })
         : await api.post<AcceptPayResponse>(`public/quotes/${token}/accept`, {})
       const body = (res as { data?: AcceptPayResponse }).data ?? (res as AcceptPayResponse)
@@ -162,7 +217,7 @@ export function PublicQuoteAcceptPage() {
       const errMsg =
         (res as { error?: string }).error ||
         (res as { message?: string }).message ||
-        'Erreur lors de l’acceptation.'
+        "Erreur lors de l'acceptation."
       setStatus('error')
       setMessage(errMsg)
     } catch (err: unknown) {
@@ -175,33 +230,57 @@ export function PublicQuoteAcceptPage() {
   const alreadyAccepted = quoteSummary?.status === 'ACCEPTED'
   const hasDepositSplit = Boolean(quoteSummary?.publicPaymentHints?.hasDepositSplit)
   const depositPaid = Boolean(quoteSummary?.publicPaymentHints?.depositPaid)
+  const hasInstallmentInvoice = Boolean(quoteSummary?.publicPaymentHints?.hasInstallmentInvoice)
   const isRejected = quoteSummary?.status === 'REJECTED'
   const isExpired = quoteSummary?.status === 'EXPIRED'
   const effectiveMode = depositPaid ? 'DEPOSIT' : hasDepositSplit ? 'DEPOSIT' : mode
   const canSubmit = onlinePaymentAvailable ? Boolean(effectiveMode) : true
   const depositFlow = onlinePaymentAvailable && (hasDepositSplit || mode === 'DEPOSIT')
-  const canReject = !isRejected && !isExpired && !alreadyAccepted && !hasDepositSplit && !depositPaid
+  const installmentFlow = onlinePaymentAvailable && (hasInstallmentInvoice || mode === 'INSTALLMENT')
+  const canReject =
+    !isRejected && !isExpired && !alreadyAccepted && !hasDepositSplit && !depositPaid && !hasInstallmentInvoice
+
   const pageTitle = !onlinePaymentAvailable
     ? 'Accepter le devis'
     : depositPaid
       ? 'Paiement du solde'
-      : alreadyAccepted && depositFlow
-        ? 'Paiement acompte'
-        : alreadyAccepted
-          ? 'Paiement du devis'
-          : depositFlow
-            ? 'Accepter et payer l’acompte'
-            : 'Accepter le devis'
+      : installmentFlow
+        ? 'Paiement en plusieurs fois'
+        : alreadyAccepted && depositFlow
+          ? 'Paiement acompte'
+          : alreadyAccepted
+            ? 'Paiement du devis'
+            : depositFlow
+              ? "Accepter et payer l'acompte"
+              : 'Accepter le devis'
 
-  /** Attendre le devis + l’effet qui force DEPOSIT si split, pour éviter le flash des radios. */
   const paymentHintsResolved =
     !quoteLoading &&
     (quoteSummary === null ||
       depositPaid ||
       !quoteSummary.publicPaymentHints?.hasDepositSplit ||
-      mode === 'DEPOSIT')
+      mode === 'DEPOSIT' ||
+      hasInstallmentInvoice ||
+      mode === 'INSTALLMENT')
   const showAcceptForm =
     paymentHintsResolved && status === 'idle' && !isRejected && !isExpired && quoteSummary !== null
+
+  const submitLabel = (() => {
+    if (!onlinePaymentAvailable) return 'Accepter le devis'
+    if (depositPaid) return 'Obtenir le lien de paiement du solde'
+    if (installmentFlow) {
+      if (alreadyAccepted) return 'Obtenir le lien de paiement'
+      if (installmentWithDeposit) {
+        return `Accepter et payer l'acompte (${formatCurrency(initialInstallmentPayment)})`
+      }
+      return `Accepter et payer la 1re échéance (${formatCurrency(initialInstallmentPayment)})`
+    }
+    if (depositFlow) {
+      return alreadyAccepted ? 'Obtenir le lien de paiement acompte' : "Accepter et payer l'acompte (10 %)"
+    }
+    if (alreadyAccepted) return 'Obtenir le lien de paiement 100%'
+    return 'Accepter et payer 100%'
+  })()
 
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
@@ -224,7 +303,7 @@ export function PublicQuoteAcceptPage() {
         {!quoteLoading && (isRejected || isExpired) && status === 'idle' && (
           <Alert severity="info" sx={{ mb: 2, textAlign: 'left' }}>
             {isRejected
-              ? 'Ce devis a été refusé. Aucune action supplémentaire n’est possible.'
+              ? "Ce devis a été refusé. Aucune action supplémentaire n'est possible."
               : 'Ce devis a expiré. Contactez votre prestataire pour un nouveau devis.'}
           </Alert>
         )}
@@ -238,15 +317,11 @@ export function PublicQuoteAcceptPage() {
             ) : (
               <>Ce devis est déjà accepté.</>
             )}{' '}
-            {hasDepositSplit
-              ? 'Obtenez ci-dessous le lien de paiement acompte.'
-              : 'Choisissez ci-dessous : paiement 100 % ou paiement acompte (10 %).'}
-          </Alert>
-        )}
-
-        {!quoteLoading && alreadyAccepted && depositPaid && status === 'idle' && showAcceptForm && (
-          <Alert severity="success" sx={{ mb: 2, textAlign: 'left' }}>
-            L&apos;acompte de ce devis est déjà réglé. Vous pouvez obtenir le lien pour payer le solde.
+            {hasInstallmentInvoice
+              ? 'Réglez la prochaine échéance via le lien ci-dessous.'
+              : hasDepositSplit
+                ? 'Obtenez ci-dessous le lien de paiement acompte.'
+                : 'Choisissez ci-dessous comment régler.'}
           </Alert>
         )}
 
@@ -264,53 +339,74 @@ export function PublicQuoteAcceptPage() {
             </Typography>
             <Typography color="text.secondary" sx={{ mb: 2 }}>
               {!onlinePaymentAvailable
-                ? 'En acceptant ce devis, vous confirmez votre accord. Le règlement en ligne n’est pas disponible : votre prestataire vous indiquera comment régler.'
-                : depositPaid
-                  ? 'L’acompte a déjà été réglé : vous pouvez payer le solde du devis.'
-                  : hasDepositSplit
-                    ? 'Un paiement acompte a déjà été initié pour ce devis. Réglez l’acompte ou attendez le solde.'
-                    : depositFlow
-                      ? 'Acceptez le devis et procédez au paiement acompte (10 %), ou payez l’intégralité en une fois.'
-                      : 'Choisissez comment vous souhaitez régler : en une fois ou par paiement acompte (10 %).'}
+                ? 'En acceptant ce devis, vous confirmez votre accord.'
+                : hasInstallmentInvoice
+                  ? 'Votre plan de paiement est actif : réglez la prochaine échéance en ligne.'
+                  : 'Choisissez comment régler : en une fois, par acompte 10 %, ou en plusieurs fois selon le montant.'}
             </Typography>
-            {!onlinePaymentAvailable && (
-              <Alert severity="info" sx={{ mb: 2, textAlign: 'left' }}>
-                Le paiement par carte n’est pas proposé pour ce devis.
-              </Alert>
-            )}
-            {onlinePaymentAvailable && !depositPaid && !hasDepositSplit && (
+
+            {onlinePaymentAvailable && !depositPaid && !hasDepositSplit && !hasInstallmentInvoice && (
               <RadioGroup
                 value={mode ?? ''}
-                onChange={(e) => setMode(e.target.value as 'FULL' | 'DEPOSIT')}
+                onChange={(e) => setMode(e.target.value as PayMode)}
                 name="pay-mode"
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, textAlign: 'left' }}
               >
                 <FormControlLabel
                   value="FULL"
                   control={<Radio />}
-                  disabled={hasDepositSplit}
-                  label="Paiement 100% (tout de suite)"
+                  label="Paiement 100 % (tout de suite)"
                 />
                 <FormControlLabel value="DEPOSIT" control={<Radio />} label="Paiement acompte (10 %)" />
+                {hasInstallmentOption && smartInstallment && (
+                  <FormControlLabel
+                    value="INSTALLMENT"
+                    control={<Radio />}
+                    label={`Paiement en plusieurs fois — ${smartInstallment.label} (${formatCurrency(quoteTotal)})`}
+                  />
+                )}
               </RadioGroup>
             )}
+
+            {mode === 'INSTALLMENT' && smartInstallment && !hasInstallmentInvoice && (
+              <Box sx={{ mb: 2, textAlign: 'left' }}>
+                <Alert severity="info" sx={{ mb: 1.5 }}>
+                  Plan proposé : <strong>{smartInstallment.label}</strong> sur{' '}
+                  {formatCurrency(quoteTotal)} TTC.
+                </Alert>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={installmentWithDeposit}
+                      onChange={(e) => setInstallmentWithDeposit(e.target.checked)}
+                    />
+                  }
+                  label="Verser un acompte de 10 % à la commande (réglé dès l'acceptation)"
+                />
+                <Stack spacing={0.5} sx={{ mt: 1, pl: 0.5 }}>
+                  {installmentPreview.map((row) => (
+                    <Typography key={`${row.sequence}-${row.label ?? 'ech'}`} variant="body2" color="text.secondary">
+                      {row.label ?? `Éch. ${row.sequence}`} — {formatDate(row.dueDate)} :{' '}
+                      {formatCurrency(row.amount)}
+                    </Typography>
+                  ))}
+                </Stack>
+                {initialInstallmentPayment > 0 && (
+                  <Typography variant="body2" fontWeight={700} sx={{ mt: 1 }}>
+                    À régler maintenant : {formatCurrency(initialInstallmentPayment)}
+                  </Typography>
+                )}
+              </Box>
+            )}
+
             {hasDepositSplit && !depositPaid && (
               <Alert severity="info" sx={{ mb: 2, textAlign: 'left' }}>
-                Le paiement à 100 % n’est plus disponible. Réglez d’abord le paiement acompte ; le solde sera payable ensuite.
+                Le paiement à 100 % n'est plus disponible. Réglez d'abord l'acompte.
               </Alert>
             )}
+
             <Button variant="contained" onClick={() => void handleAccept()} disabled={!canSubmit}>
-              {!onlinePaymentAvailable
-                ? 'Accepter le devis'
-                : depositPaid
-                  ? 'Obtenir le lien de paiement du solde'
-                  : depositFlow
-                    ? alreadyAccepted
-                      ? 'Obtenir le lien de paiement acompte'
-                      : 'Accepter et payer l’acompte (10 %)'
-                    : alreadyAccepted
-                      ? 'Obtenir le lien de paiement 100%'
-                      : 'Accepter et payer 100%'}
+              {submitLabel}
             </Button>
             {canReject && token && (
               <Button
@@ -334,7 +430,7 @@ export function PublicQuoteAcceptPage() {
             <Stack spacing={1} alignItems="center">
               {invoiceToken && (
                 <Button component={RouterLink} to={`/facture/${invoiceToken}`} variant="contained" color="primary">
-                  {onlinePaymentAvailable ? 'Payer la facture en ligne' : 'Voir la facture'}
+                  {onlinePaymentAvailable ? 'Payer en ligne' : 'Voir la facture'}
                 </Button>
               )}
               {depositInvoiceToken && (
@@ -344,11 +440,7 @@ export function PublicQuoteAcceptPage() {
                   variant="contained"
                   color={depositPaid ? 'inherit' : 'primary'}
                 >
-                  {depositPaid
-                    ? "Voir facture d'acompte"
-                    : onlinePaymentAvailable
-                      ? 'Paiement acompte en ligne'
-                      : "Voir facture d'acompte"}
+                  {depositPaid ? "Voir facture d'acompte" : 'Paiement acompte en ligne'}
                 </Button>
               )}
               {remainderInvoiceToken && (
@@ -358,20 +450,16 @@ export function PublicQuoteAcceptPage() {
                   variant="contained"
                   color="primary"
                 >
-                  {onlinePaymentAvailable ? 'Payer le solde en ligne' : 'Voir la facture de solde'}
+                  Payer le solde en ligne
                 </Button>
               )}
-              {remainderInvoiceToken && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  Si l&apos;acompte est déjà réglé, vous pouvez payer le solde ci-dessus.
-                </Typography>
-              )}
               <Button component={RouterLink} to="/" variant="text">
-                Retour à l&apos;accueil
+                Retour à l'accueil
               </Button>
             </Stack>
           </>
         )}
+
         {status === 'error' && (
           <>
             <Alert severity="error" sx={{ mb: 2, textAlign: 'left' }}>
@@ -381,7 +469,7 @@ export function PublicQuoteAcceptPage() {
               Réessayer
             </Button>
             <Button component={RouterLink} to="/" variant="outlined">
-              Retour à l&apos;accueil
+              Retour à l'accueil
             </Button>
           </>
         )}

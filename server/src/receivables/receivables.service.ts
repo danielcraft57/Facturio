@@ -15,6 +15,7 @@ import {
 	resolveReceivableQuoteId,
 } from './receivable-document-kind.util';
 import { buildReceivableInvoiceWhere } from './receivables-invoice-filter.util';
+import { buildInstallmentReceivable } from '../invoices/invoice-installment-finance.util';
 
 export type ReceivableInvoiceRow = {
 	id: string;
@@ -43,6 +44,22 @@ export type ReceivableClientRow = {
 	aging: ReceivableAgingTotals;
 };
 
+/** Créance analytique issue d'une échéance de plan de paiement. */
+export type ReceivableInstallmentRow = {
+	id: number;
+	sequence: number;
+	invoiceId: string;
+	invoiceNumber: string;
+	clientId: string;
+	clientName: string;
+	dueDate: string;
+	amount: number;
+	daysPastDue: number;
+	agingBucket: ReceivableAgingBucket;
+	overdue: boolean;
+	autoTracked: true;
+};
+
 export type ReceivablesByKindTotals = Record<ReceivableDocumentKind, number>;
 
 export type ReceivablesResponse = {
@@ -52,9 +69,12 @@ export type ReceivablesResponse = {
 		invoiceCount: number;
 		aging: ReceivableAgingTotals;
 		byKind: ReceivablesByKindTotals;
+		installmentOutstanding: number;
+		installmentCount: number;
 	};
 	clients: ReceivableClientRow[];
 	invoices: ReceivableInvoiceRow[];
+	installmentReceivables: ReceivableInstallmentRow[];
 };
 
 const BALANCE_EPSILON = 0.01;
@@ -165,6 +185,15 @@ export class ReceivablesService {
 
 		const clients = [...clientMap.values()].sort((a, b) => b.totalBalance - a.totalBalance);
 
+		const installmentReceivables = await this.loadInstallmentReceivables(
+			organizationId,
+			start,
+			end,
+		);
+		const installmentOutstanding = Number(
+			installmentReceivables.reduce((sum, row) => sum + row.amount, 0).toFixed(2),
+		);
+
 		return {
 			summary: {
 				totalOutstanding,
@@ -172,9 +201,74 @@ export class ReceivablesService {
 				invoiceCount: openRows.length,
 				aging: summaryAging,
 				byKind,
+				installmentOutstanding,
+				installmentCount: installmentReceivables.length,
 			},
 			clients,
 			invoices: openRows,
+			installmentReceivables,
 		};
+	}
+
+	/**
+	 * Créances automatiques par échéance (plans de paiement actifs).
+	 *
+	 * @param organizationId - Organisation
+	 * @param start - Filtre date facture (optionnel)
+	 * @param end - Filtre date facture (optionnel)
+	 */
+	private async loadInstallmentReceivables(
+		organizationId: number,
+		start?: Date,
+		end?: Date,
+	): Promise<ReceivableInstallmentRow[]> {
+		const invoiceWhere = buildReceivableInvoiceWhere(organizationId, { start, end });
+		const rows = await this.prisma.invoiceInstallment.findMany({
+			where: {
+				status: 'PENDING',
+				invoice: invoiceWhere as never,
+			},
+			include: {
+				invoice: {
+					select: {
+						id: true,
+						number: true,
+						clientId: true,
+						balance: true,
+						client: { select: { name: true } },
+					},
+				},
+			},
+			orderBy: [{ dueDate: 'asc' }, { sequence: 'asc' }],
+		});
+
+		const result: ReceivableInstallmentRow[] = [];
+		for (const row of rows) {
+			const balance = Number(row.invoice.balance ?? 0);
+			if (balance <= BALANCE_EPSILON) continue;
+
+			const receivable = buildInstallmentReceivable(
+				row.dueDate,
+				Number(row.amount),
+				row.status,
+			);
+			if (!receivable) continue;
+
+			result.push({
+				id: row.id,
+				sequence: row.sequence,
+				invoiceId: row.invoice.id,
+				invoiceNumber: row.invoice.number,
+				clientId: row.invoice.clientId,
+				clientName: row.invoice.client.name,
+				dueDate: row.dueDate.toISOString(),
+				amount: Number(row.amount),
+				daysPastDue: receivable.daysPastDue,
+				agingBucket: receivable.agingBucket,
+				overdue: receivable.daysPastDue > 0,
+				autoTracked: true,
+			});
+		}
+		return result;
 	}
 }

@@ -78,6 +78,29 @@ export class ConfigService {
 		return Number.isFinite(n) && n >= 0 ? n : 12;
 	}
 
+	/** Relances échéancier facture — désactiver avec INSTALLMENT_REMINDERS_ENABLED=0 */
+	get installmentRemindersEnabled(): boolean {
+		const raw = process.env.INSTALLMENT_REMINDERS_ENABLED;
+		if (raw === '0' || raw === 'false') return false;
+		return true;
+	}
+
+	/** Jours avant échéance pour la relance anticipée (défaut 3). */
+	get installmentReminderDaysBefore(): number {
+		const raw = process.env.INSTALLMENT_REMINDER_DAYS_BEFORE;
+		if (!raw) return 3;
+		const n = Number(raw);
+		return Number.isFinite(n) && n >= 0 ? n : 3;
+	}
+
+	/** Intervalle en jours entre relances « en retard » (défaut 7). */
+	get installmentReminderOverdueIntervalDays(): number {
+		const raw = process.env.INSTALLMENT_REMINDER_OVERDUE_INTERVAL_DAYS;
+		if (!raw) return 7;
+		const n = Number(raw);
+		return Number.isFinite(n) && n >= 1 ? n : 7;
+	}
+
 	// ========================================
 	// FACTURATION ÉLECTRONIQUE — PA PARTENAIRE
 	// ========================================

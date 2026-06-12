@@ -689,6 +689,44 @@ export class PdfDocumentBuilder {
 				cursorY += boxH + 8;
 			}
 		} else {
+			const schedule = options.document?.installmentSchedule as
+				| { sequence: number; amount: number; dueDate: Date | string; status: string }[]
+				| undefined;
+			if (schedule?.length) {
+				doc.font('Helvetica-Bold').fontSize(9).fillColor(PDF_THEME.navy);
+				doc.text('Échéancier de paiement', x, cursorY, { width });
+				cursorY = doc.y + PDF_LAYOUT.padSm;
+				const labelW = width * 0.55;
+				const amountW = width - labelW;
+				for (const row of schedule) {
+					const dueFr = new Date(row.dueDate).toLocaleDateString('fr-FR');
+					const statusLabel =
+						row.status === 'PAID'
+							? 'réglée'
+							: row.status === 'CANCELLED'
+								? 'annulée'
+								: 'à venir';
+					doc.font('Helvetica').fontSize(8.5).fillColor(PDF_THEME.text);
+					doc.text(`Échéance ${row.sequence} — ${dueFr} (${statusLabel})`, x, cursorY, {
+						width: labelW,
+					});
+					doc.text(this.formatCurrency(row.amount), x + labelW, cursorY, {
+						width: amountW,
+						align: 'right',
+					});
+					cursorY += 14;
+				}
+				cursorY += 6;
+				doc.font('Helvetica').fontSize(8).fillColor(PDF_THEME.textMuted);
+				doc.text(
+					'Le règlement en ligne porte sur la prochaine échéance en attente.',
+					x,
+					cursorY,
+					{ width },
+				);
+				cursorY = doc.y + PDF_LAYOUT.padSm;
+			}
+
 			const lines: string[] = [];
 			if (options.document?.paymentNote) {
 				lines.push(String(options.document.paymentNote));
