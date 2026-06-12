@@ -34,6 +34,11 @@ import {
 	DEFAULT_REMAINDER_DUE_POLICY,
 	DEFAULT_STANDARD_DUE_POLICY,
 } from '../invoices/invoice-due-date.util';
+import {
+	buildQuoteAcceptInstallmentSchedule,
+	resolveQuoteInstallmentInitialPayment,
+	suggestSmartInstallmentPlan,
+} from './quote-smart-installment.util';
 
 type ResolvedQuoteLine = {
 	productId?: number;
@@ -126,9 +131,11 @@ export interface PayQuoteDto {
  * Objectif : générer des factures publiques prêtes à être payées en ligne via Stripe.
  */
 export interface PublicAcceptDepositDto {
-	mode: 'FULL' | 'DEPOSIT';
+	mode: 'FULL' | 'DEPOSIT' | 'INSTALLMENT';
 	/** Par défaut : 0.1 => 10% */
 	depositRate?: number;
+	/** Échéancier : verser un acompte à la commande (réduit la 1re échéance). */
+	withDeposit?: boolean;
 }
 
 /**
@@ -346,6 +353,134 @@ export class QuotesService {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Paiement par échéancier intelligent : facture unique + plan de paiement.
+	 * Acompte optionnel à la commande (réduit la 1re échéance).
+	 */
+	private async publicAcceptInstallmentPayment(
+		quote: {
+			id: string;
+			clientId: string;
+			total: unknown;
+			expiryDate: Date | null;
+			lines: { description: string; quantity: number; unitPrice: unknown; taxRate: unknown; productId?: number | null }[];
+		},
+		orgId: number,
+		options: { withDeposit?: boolean; depositRate?: number },
+	) {
+		const depositTag = this.quoteDepositTag(quote.id);
+		const remainderTag = this.quoteRemainderTag(quote.id);
+		const existingSplit = await this.prisma.invoice.findFirst({
+			where: {
+				organizationId: orgId,
+				OR: [
+					{ tags: { contains: `"${depositTag}"` } },
+					{ tags: { contains: `"${remainderTag}"` } },
+				],
+			},
+		});
+		if (existingSplit) {
+			throw new BadRequestException(
+				'Un contrat acompte/solde existe déjà pour ce devis. Utilisez le lien de paiement existant.',
+			);
+		}
+
+		const quoteTotal = Number((quote.total as any)?.toNumber?.() ?? quote.total ?? 0);
+		if (!suggestSmartInstallmentPlan(quoteTotal)) {
+			throw new BadRequestException(
+				`Paiement en plusieurs fois indisponible pour ce montant (minimum ${300} € TTC). Choisissez un autre mode de règlement.`,
+			);
+		}
+
+		const withDeposit = Boolean(options.withDeposit);
+		const depositRate = options.depositRate ?? 0.1;
+		if (withDeposit && (depositRate <= 0 || depositRate >= 1)) {
+			throw new BadRequestException('depositRate doit être compris entre 0 et 1 (ex: 0.1)');
+		}
+
+		const acceptedAt = new Date();
+		let scheduleRows: { amount: number; dueDate: string | Date }[];
+		try {
+			scheduleRows = buildQuoteAcceptInstallmentSchedule(quoteTotal, acceptedAt, {
+				withDeposit,
+				depositRate,
+			});
+		} catch (err) {
+			throw new BadRequestException((err as Error).message);
+		}
+
+		const initialPayment = resolveQuoteInstallmentInitialPayment(
+			quoteTotal,
+			scheduleRows,
+			withDeposit,
+			depositRate,
+		);
+
+		const existingWithPlan = await this.prisma.invoice.findFirst({
+			where: { sourceQuoteId: quote.id, installments: { some: {} } },
+			include: { installments: { orderBy: { sequence: 'asc' } } },
+		});
+		if (existingWithPlan) {
+			const sent = await this.sendInvoiceForPublicPayment(existingWithPlan.id, existingWithPlan, orgId);
+			return {
+				status: 'accepted',
+				invoiceToken: sent.publicToken,
+				invoiceNumber: sent.number,
+				initialPaymentAmount: initialPayment,
+				installmentCount: existingWithPlan.installments.length,
+				withDeposit,
+				message: withDeposit
+					? `Plan actif. Réglez l'acompte (${initialPayment.toFixed(2)} €) puis les mensualités.`
+					: `Plan actif. Réglez la première échéance (${initialPayment.toFixed(2)} €).`,
+			};
+		}
+
+		if (!quote.lines?.length) {
+			throw new BadRequestException(
+				'Ce devis ne contient aucune ligne — impossible de générer la facture.',
+			);
+		}
+
+		const dueDate = computeInvoiceDueDate(DEFAULT_STANDARD_DUE_POLICY, {
+			baseDate: acceptedAt,
+			quoteExpiry: quote.expiryDate,
+		});
+
+		const invoice = await this.invoices.create(
+			{
+				clientId: quote.clientId,
+				sourceQuoteId: quote.id,
+				dueDate,
+				status: 'SENT',
+				lines: quote.lines.map((l) => ({
+					productId: l.productId ?? undefined,
+					description: l.description,
+					quantity: Number(l.quantity),
+					unitPrice: Number(l.unitPrice),
+					taxRate: Number(l.taxRate),
+				})),
+				installments: scheduleRows,
+				legalMention: withDeposit
+					? `Paiement en ${scheduleRows.length} fois — acompte ${(depositRate * 100).toFixed(0)} % à la commande.`
+					: `Paiement en ${scheduleRows.length} fois.`,
+			},
+			orgId,
+		);
+
+		const sent = await this.sendInvoiceForPublicPayment(invoice.id, invoice, orgId);
+		return {
+			status: 'accepted',
+			invoiceToken: sent.publicToken,
+			invoiceNumber: sent.number,
+			initialPaymentAmount: initialPayment,
+			installmentCount: scheduleRows.length,
+			withDeposit,
+			message: withDeposit
+				? `Devis accepté. Versez l'acompte (${initialPayment.toFixed(2)} €), puis les mensualités selon le calendrier.`
+				: `Devis accepté. Réglez la première échéance (${initialPayment.toFixed(2)} €), les suivantes selon le calendrier.`,
+		};
 	}
 
 	/** Paiement 100 % : facture unique liée au devis (idempotent). */
@@ -1004,6 +1139,35 @@ export class QuotesService {
 		})();
 
 		const onlinePaymentAvailable = await this.isInvoiceStripeConfigured(orgId);
+		const quoteTotal = Number((quote.total as any)?.toNumber?.() ?? quote.total ?? 0);
+		const smartPlan = suggestSmartInstallmentPlan(quoteTotal);
+		const installmentInvoice = await this.prisma.invoice.findFirst({
+			where: {
+				organizationId: orgId,
+				sourceQuoteId: quote.id,
+				installments: { some: {} },
+			},
+			select: { id: true, publicToken: true },
+		});
+
+		let installmentPreview: { sequence: number; amount: number; dueDate: string }[] = [];
+		if (smartPlan) {
+			try {
+				const rows = buildQuoteAcceptInstallmentSchedule(quoteTotal, new Date(), {
+					withDeposit: false,
+				});
+				installmentPreview = rows.map((row, index) => ({
+					sequence: index + 1,
+					amount: row.amount,
+					dueDate:
+						row.dueDate instanceof Date
+							? row.dueDate.toISOString()
+							: new Date(row.dueDate).toISOString(),
+				}));
+			} catch {
+				installmentPreview = [];
+			}
+		}
 
 		return {
 			...quote,
@@ -1011,6 +1175,18 @@ export class QuotesService {
 				hasDepositSplit: Boolean(deposit && remainder),
 				depositPaid,
 				onlinePaymentAvailable,
+				quoteTotal,
+				smartInstallment: smartPlan
+					? {
+							eligible: true,
+							count: smartPlan.count,
+							intervalMonths: smartPlan.intervalMonths,
+							label: smartPlan.label,
+							preview: installmentPreview,
+						}
+					: null,
+				hasInstallmentInvoice: Boolean(installmentInvoice),
+				installmentInvoiceToken: installmentInvoice?.publicToken ?? null,
 			},
 		};
 	}
@@ -1080,8 +1256,8 @@ export class QuotesService {
 	async publicAcceptWithDeposit(token: string, dto: PublicAcceptDepositDto | undefined, ip?: string) {
 		const body = dto ?? { mode: 'FULL' as const };
 		const mode = body.mode;
-		if (mode !== 'FULL' && mode !== 'DEPOSIT') {
-			throw new BadRequestException('mode doit être FULL ou DEPOSIT');
+		if (mode !== 'FULL' && mode !== 'DEPOSIT' && mode !== 'INSTALLMENT') {
+			throw new BadRequestException('mode doit être FULL, DEPOSIT ou INSTALLMENT');
 		}
 
 		const quote = await this.prisma.quote.findUnique({
@@ -1118,6 +1294,13 @@ export class QuotesService {
 		});
 
 		const orgId = quote.organizationId;
+
+		if (mode === 'INSTALLMENT') {
+			return this.publicAcceptInstallmentPayment(quote, orgId, {
+				withDeposit: Boolean(body.withDeposit),
+				depositRate: body.depositRate,
+			});
+		}
 
 		if (mode === 'FULL') {
 			// Si un split acompte/solde existe déjà pour ce devis, on interdit le paiement 100%

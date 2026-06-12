@@ -36,6 +36,7 @@ import { resolveEngagementBreakdownForInvoice } from './invoice-engagement-break
 import { notifyLinkedRemainderAfterDepositPaid } from './invoice-deposit-realtime.util';
 import { canAccessInvoiceByPublicToken } from './invoice-public-access.util';
 import { AvoirsService } from '../avoirs/avoirs.service';
+import { resolveInstallmentPublicLabel } from './invoice-installment.util';
 
 export type InvoiceNumberKind = 'standard' | 'deposit' | 'remainder';
 
@@ -1295,8 +1296,11 @@ export class InvoicesService {
 		const presentation = resolveInvoiceDocumentPresentation(tags, invoice.legalMention, invoice.dueDate);
 		const engagementBreakdown = await this.buildEngagementBreakdown(invoice);
 		const installmentRows = await this.installments.listForInvoice(invoice.id);
-		const nextInstallment =
-			installmentRows.find((row) => row.status === 'PENDING') ?? null;
+		const installments = installmentRows.map((row) => ({
+			...row,
+			label: resolveInstallmentPublicLabel(row.sequence, invoice.legalMention),
+		}));
+		const nextInstallment = installments.find((row) => row.status === 'PENDING') ?? null;
 		const appliedCreditTotal =
 			appliedCreditOverride ??
 			(invoice.appliedAvoirs ?? []).reduce(
@@ -1324,7 +1328,7 @@ export class InvoicesService {
 			stripeEnabled,
 			stripePublishableKey: org?.invoiceStripePublishableKey?.trim() || null,
 			canPayOnline,
-			installments: installmentRows,
+			installments: installments,
 			nextInstallment,
 			issuerName:
 				invoice.organization?.legalName ||

@@ -19,6 +19,8 @@ export interface InvoiceInstallmentDto {
 	paymentId: number | null;
 	paidAt: string | null;
 	overdue: boolean;
+	/** Libellé court pour l'affichage (ex. Acompte). */
+	label?: string | null;
 	/** Créance analytique (échéance en attente). */
 	receivable?: InstallmentReceivableLink | null;
 	/** Écriture d'encaissement liée au paiement de l'échéance. */
@@ -113,6 +115,22 @@ export function resolveOnlineInstallmentAmount(
 		return Math.max(0, invoiceBalance);
 	}
 	return Math.max(0, Math.min(invoiceBalance, nextPendingAmount));
+}
+
+/**
+ * Libellé affiché sur la page publique de paiement (acompte vs mensualité).
+ *
+ * @param sequence - Numéro d'échéance
+ * @param legalMention - Mention légale facture
+ */
+export function resolveInstallmentPublicLabel(
+	sequence: number,
+	legalMention: string | null | undefined,
+): string | null {
+	const withDeposit = /acompte/i.test(legalMention ?? '');
+	if (!withDeposit) return null;
+	if (sequence === 1) return 'Acompte';
+	return `Mensualité ${sequence - 1}`;
 }
 
 /**

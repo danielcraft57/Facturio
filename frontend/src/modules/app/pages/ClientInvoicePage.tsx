@@ -70,6 +70,7 @@ export interface PublicInvoiceSummary {
     dueDate: string
     status: string
     overdue: boolean
+    label?: string | null
   }[]
   nextInstallment?: {
     id: number
@@ -78,6 +79,7 @@ export interface PublicInvoiceSummary {
     dueDate: string
     status: string
     overdue: boolean
+    label?: string | null
   } | null
 }
 
@@ -443,9 +445,11 @@ export function ClientInvoicePage() {
   const pageTitle = invoice?.titleLabel ?? (isDeposit ? "Facture d'acompte" : isRemainder ? 'Facture de solde' : 'Facture')
   const installmentHint = useMemo(() => {
     if (!invoice?.nextInstallment) return null
-    const seq = checkoutInstallmentSequence ?? invoice.nextInstallment.sequence
-    const amount = checkoutAmount ?? invoice.nextInstallment.amount
-    return `Échéance ${seq} : ${formatCurrency(amount)} (échéancier ${invoice.installments?.length ?? ''} fois)`
+    const next = invoice.nextInstallment
+    const seq = checkoutInstallmentSequence ?? next.sequence
+    const amount = checkoutAmount ?? next.amount
+    const kind = next.label ?? `Échéance ${seq}`
+    return `${kind} : ${formatCurrency(amount)} (paiement en ${invoice.installments?.length ?? ''} fois)`
   }, [invoice, checkoutAmount, checkoutInstallmentSequence])
 
   const bnplHint = useMemo(() => {
@@ -689,7 +693,7 @@ export function ClientInvoicePage() {
                             : 'text.secondary'
                       }
                     >
-                      {row.sequence}. {formatDate(row.dueDate)} — {formatCurrency(row.amount)}
+                      {row.label ?? `${row.sequence}.`} {formatDate(row.dueDate)} — {formatCurrency(row.amount)}
                       {row.status === 'PAID' ? ' · réglée' : row.overdue ? ' · en retard' : ''}
                     </Typography>
                   ))}
