@@ -22,7 +22,7 @@ export function FeaturesPage() {
         compact
         badge="Disponible · En cours · À venir"
         title="Tout le cycle commercial, sans la compta lourde"
-        subtitle="Devis, factures, Stripe, TVA, prospection et pré-compta — plus la couche conformité 2026. Pas de sync bancaire : on reste léger."
+        subtitle="Devis, factures, Stripe, TVA et pré-compta — plus la couche conformité 2026. Pas de sync bancaire : on reste léger."
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.efacture2026}
         visual={<MarketingImage src="/images/facturio-features.png" alt="Fonctionnalités Facturio" float={false} />}
@@ -74,7 +74,7 @@ export function FeaturesPage() {
 
       <CtaSection
         title="Testez gratuitement — 25 factures/mois"
-        subtitle="Passez Pro pour l’illimité et ProspectLab. Réservez Pro + e-facture pour verrouiller la conformité PA."
+        subtitle="Passez Pro pour l’illimité et la compta. Réservez Pro + e-facture pour verrouiller la conformité PA."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
         secondaryLabel={CTA.pricing.label}

@@ -369,7 +369,7 @@ export function LandingPage() {
       <PricingSection />
       <CtaSection
         title="Votre premier devis en 10 minutes"
-        subtitle="Compte gratuit, catalogue seed inclus. Passez Pro quand vous dépassez 25 factures/mois ou activez la prospection."
+        subtitle="Compte gratuit, catalogue seed inclus. Passez Pro quand vous dépassez 25 factures/mois ou avez besoin de la compta."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
         secondaryLabel={CTA.pricing.label}

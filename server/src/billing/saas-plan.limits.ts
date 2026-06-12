@@ -2,7 +2,6 @@ import type { SaasBillingPlan } from '@prisma/client';
 
 export type SaasPlanFeature =
 	| 'eInvoicing'
-	| 'prospection'
 	| 'multiUser'
 	| 'publicApi'
 	| 'accounting'
@@ -18,7 +17,6 @@ export type SaasPlanLimits = {
 	maxEmailsPerMonth: number | null;
 	eInvoicing: boolean;
 	stripePayments: boolean;
-	prospection: boolean;
 	multiUser: boolean;
 	/** API REST publique + jetons Bearer */
 	publicApi: boolean;
@@ -39,7 +37,6 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 		maxEmailsPerMonth: 20,
 		eInvoicing: false,
 		stripePayments: true,
-		prospection: false,
 		multiUser: false,
 		publicApi: false,
 		accounting: false,
@@ -54,7 +51,6 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 		maxEmailsPerMonth: null,
 		eInvoicing: false,
 		stripePayments: true,
-		prospection: true,
 		multiUser: false,
 		publicApi: true,
 		accounting: true,
@@ -69,7 +65,6 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 		maxEmailsPerMonth: null,
 		eInvoicing: true,
 		stripePayments: true,
-		prospection: true,
 		multiUser: false,
 		publicApi: true,
 		accounting: true,
@@ -84,7 +79,6 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 		maxEmailsPerMonth: null,
 		eInvoicing: true,
 		stripePayments: true,
-		prospection: true,
 		multiUser: true,
 		publicApi: true,
 		accounting: true,

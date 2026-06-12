@@ -107,18 +107,6 @@ describe('BillingService', () => {
 		await expect(service.assertCanCreateInvoice(1)).resolves.toBeUndefined();
 	});
 
-	it('bloque la prospection sur plan Free', async () => {
-		prisma.organization.findUnique.mockResolvedValue({ saasPlan: SaasBillingPlan.FREE, saasPlanExpiresAt: null });
-
-		await expect(service.assertCanUseProspection(1)).rejects.toBeInstanceOf(ForbiddenException);
-	});
-
-	it('autorise la prospection sur plan Pro', async () => {
-		prisma.organization.findUnique.mockResolvedValue({ saasPlan: SaasBillingPlan.PRO, saasPlanExpiresAt: null });
-
-		await expect(service.assertCanUseProspection(1)).resolves.toBeUndefined();
-	});
-
 	it('bloque Factur-X sur plan Free', async () => {
 		prisma.organization.findUnique.mockResolvedValue({ saasPlan: SaasBillingPlan.FREE, saasPlanExpiresAt: null });
 

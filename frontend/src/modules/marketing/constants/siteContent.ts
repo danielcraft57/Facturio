@@ -211,10 +211,6 @@ export const FEATURES = [
 
 export const FEATURES_COMMERCIAL = [
   {
-    title: 'Prospection ProspectLab',
-    description: 'Pipeline, scoring et CRM léger — inclus dès le plan Pro.',
-  },
-  {
     title: 'Abonnements & MRR',
     description: 'Plans récurrents pour maintenance et licences SaaS livrées au client.',
   },
@@ -305,7 +301,6 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     description: 'Le quotidien du freelance dev et de la micro-agence.',
     features: [
       'Factures & devis illimités',
-      'Prospection ProspectLab',
       'Clients, catalogue & packs',
       'Email, PDF & liens publics',
       'Stripe (votre compte)',
@@ -391,7 +386,7 @@ export const PRICING_FAQ = [
   },
   {
     q: 'Comment limiter l’accès sur le plan Free ?',
-    a: 'Quotas mensuels : 25 factures, 10 devis et 20 emails (envoi facture/devis/relance). Compta FEC, créances, dettes, API et prospection sont réservés au Pro. Les PDF Free portent un filigrane discret. Compteurs remis à zéro le 1er de chaque mois.',
+    a: 'Quotas mensuels : 25 factures, 10 devis et 20 emails (envoi facture/devis/relance). Compta FEC, créances, dettes et API sont réservés au Pro. Les PDF Free portent un filigrane discret. Compteurs remis à zéro le 1er de chaque mois.',
   },
 ] as const
 

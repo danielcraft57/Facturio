@@ -10,7 +10,6 @@ const PRIVATE_PREFIXES = [
   '/factures',
   '/archives',
   '/produits',
-  '/prospection',
   '/taxes',
   '/abonnements',
   '/declarations',
@@ -60,7 +59,7 @@ const MARKETING: Record<string, RouteSeo> = {
   '/fonctionnalites': {
     title: 'Fonctionnalités',
     description:
-      'Devis, factures, Stripe, TVA, prospection, export FEC et conformité e-facture 2026 — outil vertical pour freelances tech et agences web.',
+      'Devis, factures, Stripe, TVA, export FEC et conformité e-facture 2026 — outil vertical pour freelances tech et agences web.',
     ogImage: '/images/facturio-features.png',
   },
   '/facturation-electronique': {
@@ -126,7 +125,6 @@ const APP_ROUTES: Record<string, RouteSeo> = {
   '/factures/archives': { title: 'Factures archivées', description: 'Consultez vos factures archivées.' },
   '/archives': { title: 'Archives', description: 'Documents archivés.' },
   '/produits': { title: 'Produits', description: 'Catalogue de prestations et tarifs.' },
-  '/prospection': { title: 'Prospection', description: 'Suivi des prospects et opportunités.' },
   '/taxes': { title: 'Fiscalité', description: 'TVA, déductions et simulations fiscales.' },
   '/abonnements': { title: 'Abonnements', description: 'Abonnements récurrents et facturation.' },
   '/declarations': { title: 'Déclarations', description: 'Déclarations et obligations.' },

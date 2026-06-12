@@ -88,7 +88,6 @@ const QuoteEditPage = lazy(() =>
   import('../quotes/QuoteEditPage').then((m) => ({ default: m.QuoteEditPage })),
 )
 const ProductsPage = lazy(() => import('../products/ProductsPage').then(m => ({ default: m.ProductsPage })))
-const ProspectsPage = lazy(() => import('../prospects/ProspectsPage').then(m => ({ default: m.ProspectsPage })))
 const TaxesPage = lazy(() => import('../taxes/TaxesPage').then(m => ({ default: m.TaxesPage })))
 const SubscriptionsPage = lazy(() => import('../subscriptions/SubscriptionsPage').then(m => ({ default: m.SubscriptionsPage })))
 const FilingsPage = lazy(() => import('../filings/FilingsPage').then(m => ({ default: m.FilingsPage })))
@@ -457,14 +456,6 @@ export function App() {
                     <Suspense fallback={<ProductCatalogRouteFallback />}>
                       <ProductsPage />
                     </Suspense>
-                  </PrivateRouteWrapper>
-                }
-              />
-              <Route
-                path="/prospection"
-                element={
-                  <PrivateRouteWrapper>
-                    <ProspectsPage />
                   </PrivateRouteWrapper>
                 }
               />

@@ -97,7 +97,7 @@ export function PricingPage() {
 
       <CtaSection
         title="Commencez gratuit — montez en gamme quand vous scalez"
-        subtitle="25 factures/mois suffisent pour valider le produit. Pro dès que vous prospectez ou dépassez le quota."
+        subtitle="25 factures/mois suffisent pour valider le produit. Pro dès que vous avez besoin de la compta ou dépassez le quota."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
         secondaryLabel={CTA.reserveEfacture.label}

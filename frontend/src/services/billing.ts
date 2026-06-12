@@ -40,7 +40,6 @@ export interface BillingUsage {
     maxEmailsPerMonth: number | null
     eInvoicing: boolean
     stripePayments: boolean
-    prospection: boolean
     multiUser: boolean
     publicApi: boolean
     accounting: boolean

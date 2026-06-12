@@ -4,7 +4,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { billingService, type BillingUsage } from '../../services/billing'
 import { unwrapApiPayload } from '../../services/clients'
 
-export type BillingGatedFeature = 'publicApi' | 'accounting' | 'financeModule' | 'prospection'
+export type BillingGatedFeature = 'publicApi' | 'accounting' | 'financeModule'
 
 type BillingFeatureGateProps = {
   children: ReactNode

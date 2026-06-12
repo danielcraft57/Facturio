@@ -8,6 +8,7 @@ import {
 	buildClientFolderWhere,
 	type ClientFolder,
 } from './client-folder.util';
+import { deriveClientStatus, syncClientStatusFromActivity } from './client-status.util';
 import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 
@@ -205,12 +206,34 @@ export class ClientsService {
 
 		const enriched = items.map((c) => {
 			const stats = invoiceStats.get(c.id);
+			const paidInvoiceCount = (stats?.revenueTotal ?? 0) > 0 ? 1 : 0;
+			const effectiveStatus = deriveClientStatus({
+				storedStatus: c.status,
+				archived: c.archivedAt != null,
+				paidInvoiceCount,
+				quoteCount: c._count.quotes,
+			});
 			return {
 				...c,
+				status: effectiveStatus,
 				revenueTotal: stats?.revenueTotal ?? 0,
 				lastInvoiceAt: stats?.lastInvoiceAt ?? null,
 			};
 		});
+
+		await Promise.all(
+			enriched
+				.filter((c) => {
+					const raw = items.find((i) => i.id === c.id);
+					return raw != null && c.status !== raw.status;
+				})
+				.map((c) =>
+					this.prisma.client.update({
+						where: { id: c.id },
+						data: { status: c.status },
+					}),
+				),
+		);
 
 		return {
 			items: enriched,
@@ -307,7 +330,8 @@ export class ClientsService {
 		}
 		const client = await this.prisma.client.findUnique({ where });
 		if (!client) throw new NotFoundException('Client non trouve');
-		return client;
+		const status = await syncClientStatusFromActivity(this.prisma, id);
+		return client.status === status ? client : { ...client, status };
 	}
 
 	/**
@@ -352,8 +376,9 @@ export class ClientsService {
 		}
 		await this.prisma.client.update({
 			where: { id },
-			data: { archivedAt: null, status: 'ACTIVE' },
+			data: { archivedAt: null },
 		});
+		await syncClientStatusFromActivity(this.prisma, id);
 		return { success: true };
 	}
 

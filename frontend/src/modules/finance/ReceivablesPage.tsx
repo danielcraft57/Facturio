@@ -203,6 +203,7 @@ export function ReceivablesPage() {
   const initialLoading = loading && data === null
 
   return (
+    <BillingFeatureGate feature="financeModule" featureLabel="Le suivi des créances clients">
     <Box sx={{ p: financePagePadding }}>
       <WorkspacePreparationDialog open={initialLoading} resource="creances" />
       <PageHeader

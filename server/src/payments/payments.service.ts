@@ -4,6 +4,7 @@ import { AccountingService } from '../accounting/accounting.service';
 import { InvoicePaymentNotificationService } from '../invoices/invoice-payment-notification.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { notifyLinkedRemainderAfterDepositPaid } from '../invoices/invoice-deposit-realtime.util';
+import { syncClientStatusFromActivity } from '../clients/client-status.util';
 
 /**
  * Données de création de paiement
@@ -129,6 +130,7 @@ export class PaymentsService {
 						`Notification paiement facture ${data.invoiceId}: ${(err as Error).message}`,
 					),
 				);
+			void syncClientStatusFromActivity(this.prisma, invoice.clientId);
 		}
 
 		const realtimeOrgId = organizationId ?? invoice.organizationId ?? undefined;

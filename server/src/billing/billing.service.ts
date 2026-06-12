@@ -225,15 +225,6 @@ export class BillingService {
 		}
 	}
 
-	async assertCanUseProspection(organizationId: number): Promise<void> {
-		const plan = await this.getOrganizationPlan(organizationId);
-		if (!this.hasFeature(plan, 'prospection')) {
-			throw new ForbiddenException(
-				`La prospection ProspectLab est réservée au plan Pro. Passez au plan Pro pour importer et consulter des prospects.`,
-			);
-		}
-	}
-
 	async assertCanUsePublicApi(organizationId: number): Promise<void> {
 		const plan = await this.getOrganizationPlan(organizationId);
 		if (!this.hasFeature(plan, 'publicApi')) {

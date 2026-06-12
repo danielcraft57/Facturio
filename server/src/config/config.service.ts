@@ -214,22 +214,6 @@ export class ConfigService {
 	}
 
 	// ========================================
-	// PROSPECTLAB
-	// ========================================
-
-	get prospectLabApiUrl(): string {
-		return process.env.PROSPECTLAB_API_URL || 'https://prospectlab.danielcraft.fr';
-	}
-
-	get prospectLabApiKey(): string {
-		return process.env.PROSPECTLAB_API_KEY || '';
-	}
-
-	get prospectLabConfigured(): boolean {
-		return !!process.env.PROSPECTLAB_API_KEY?.trim();
-	}
-
-	// ========================================
 	// STRIPE
 	// ========================================
 

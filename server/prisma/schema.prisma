@@ -64,8 +64,6 @@ model Organization {
   /// JSON : ["card","paypal",…] — voir invoice-stripe-payment-methods.ts
   invoiceStripePaymentMethods String?
   saasSubscriptionStatus      String?
-  prospectLabApiUrl           String?
-  prospectLabApiKey           String?
   /// IDs d'options tech-stack (voir server/data/catalog/tech-stack-choices.json)
   preferredTechnologies       Json?
   /// Renseigné après l’assistant post-inscription (stack + installation catalogue)
@@ -83,7 +81,6 @@ model Organization {
   documents                   OrganizationDocument[]
   Pack                        Pack[]
   products                    Product[]
-  prospects                   Prospect[]
   quotes                      Quote[]
   stripePlatformEvents        StripePlatformEvent[]
   subscriptions               Subscription[]
@@ -838,50 +835,6 @@ model JournalLine {
   entry       JournalEntry @relation(fields: [entryId], references: [id])
 }
 
-model Prospect {
-  id                    Int            @id @default(autoincrement())
-  companyName           String
-  industry              String
-  size                  CompanySize
-  website               String?
-  email                 String?
-  phone                 String?
-  address               String?
-  city                  String?
-  country               String
-  revenue               Decimal?
-  employees             Int?
-  description           String?
-  painPoints            String?
-  budget                BudgetRange?
-  decisionMakerName     String?
-  decisionMakerPosition String?
-  decisionMakerEmail    String?
-  decisionMakerPhone    String?
-  decisionMakerLinkedin String?
-  status                ProspectStatus @default(NEW)
-  sourceType            SourceType     @default(DIRECT)
-  sourceName            String?
-  sourceCost            Decimal?
-  sourceConversionRate  Decimal?
-  score                 Int            @default(50)
-  priority              Priority       @default(MEDIUM)
-  assignedTo            String?
-  lastContact           DateTime?
-  nextFollowUp          DateTime?
-  notes                 String?
-  tags                  String?
-  organizationId        Int?
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  organization          Organization?  @relation(fields: [organizationId], references: [id])
-
-  @@index([companyName])
-  @@index([industry])
-  @@index([status])
-  @@index([organizationId])
-}
-
 model Pack {
   id             Int           @id @default(autoincrement())
   name           String
@@ -1146,49 +1099,6 @@ enum AccountType {
 enum EntryStatus {
   DRAFT
   POSTED
-}
-
-enum ProspectStatus {
-  NEW
-  CONTACTED
-  QUALIFIED
-  PROPOSAL
-  NEGOTIATION
-  CLOSED_WON
-  CLOSED_LOST
-  DISQUALIFIED
-}
-
-enum CompanySize {
-  STARTUP
-  SMALL
-  MEDIUM
-  LARGE
-  ENTERPRISE
-}
-
-enum BudgetRange {
-  LOW
-  MEDIUM
-  HIGH
-  ENTERPRISE
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-enum SourceType {
-  ORGANIC
-  PAID
-  REFERRAL
-  PARTNERSHIP
-  EVENT
-  SOCIAL
-  DIRECT
 }
 
 enum PackType {
