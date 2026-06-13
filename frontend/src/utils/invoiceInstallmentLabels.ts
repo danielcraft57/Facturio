@@ -22,6 +22,9 @@ export function installmentBadgeLabel(summary: InvoiceInstallmentSummary): strin
       ? `Éch. ${summary.nextSequence} en retard`
       : 'Échéance en retard'
   }
+  if (summary.paidCount > 0 && summary.paidCount < summary.totalCount) {
+    return `${summary.paidCount}/${summary.totalCount} payée${summary.paidCount > 1 ? 's' : ''}`
+  }
   if (summary.pendingCount === 0 && summary.paidCount > 0) {
     return `${summary.totalCount}x réglé`
   }

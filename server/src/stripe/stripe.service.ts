@@ -275,6 +275,7 @@ export class StripeService {
 			method: 'STRIPE',
 			notes: stripeRef,
 		});
+		await this.installmentReleases.ensurePayableInstallment(invoiceId);
 	}
 
 	/** Remboursement Stripe (clés organisation) sur un PaymentIntent encaissé. */

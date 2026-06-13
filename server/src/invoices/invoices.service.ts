@@ -1214,6 +1214,7 @@ export class InvoicesService {
 			data: { invoiceId: id, amount, date: date ? new Date(date) : undefined, method, notes }
 		});
 		await this.installments.allocatePayment(id, payment.id, amount);
+		await this.installmentReleases.ensurePayableInstallment(id);
 		const after = await this.syncInvoiceFinancials(id, { organizationId });
 		const newStatus = after.balance <= 0.01 ? 'PAID' : invoice.status;
 		// Comptabilisation de l'encaissement (512/411)

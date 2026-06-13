@@ -121,9 +121,12 @@ export function EditableProductLinesTable({
                     }}
                     onChange={(_event, value) => {
                       if (value && typeof value !== 'string') {
+                        if (onProductPicked) {
+                          onProductPicked(index, value)
+                          return
+                        }
                         const label = (value.description ?? value.name ?? '').trim()
                         onLineChange(index, 'description', label)
-                        onProductPicked?.(index, value)
                       }
                     }}
                     renderOption={(props, option) => {

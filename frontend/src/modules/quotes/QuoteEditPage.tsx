@@ -392,7 +392,7 @@ export function QuoteEditPage() {
           onRemoveLine={handleRemoveLine}
           onLineChange={handleLineChange}
           onProductPicked={(index, product) => {
-            const label = (product.name ?? '').trim()
+            const label = (product.description ?? product.name ?? '').trim()
             setForm((prev) => {
               if (!prev) return prev
               const next = [...prev.lines]

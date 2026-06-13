@@ -36,4 +36,25 @@ describe('resolveInvoiceDisplayStatus', () => {
       }).label,
     ).toBe('Payée')
   })
+
+  it('affiche le progrès échéancier avant le statut email Cliqué', () => {
+    expect(
+      resolveInvoiceDisplayStatus({
+        status: 'sent',
+        total: 702,
+        balance: 390,
+        emailClicked: true,
+        installmentSummary: {
+          hasPlan: true,
+          totalCount: 2,
+          pendingCount: 1,
+          paidCount: 1,
+          nextSequence: 2,
+          nextAmount: 390,
+          nextDueDate: '2026-08-13',
+          hasOverdue: false,
+        },
+      }).label,
+    ).toBe('1/2 payée')
+  })
 })

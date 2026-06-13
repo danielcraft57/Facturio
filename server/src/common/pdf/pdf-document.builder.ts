@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import { parseTagsJson } from '../document-folder.util';
 import { formatPdfCurrency } from './pdf-currency.util';
+import { dedupeRepeatedDescription } from './pdf-text.util';
 import { getHeaderWaveImagePath } from './pdf-assets';
 import { buildFrenchLegalFooter, formatPostalAddress } from './pdf-legal-mentions';
 import { hasRenderableSignature, tryEmbedSignatureImage } from './pdf-signature.util';
@@ -77,10 +78,11 @@ export class PdfDocumentBuilder {
 
 		this.drawPartiesSection(doc, options);
 		this.drawDocumentMeta(doc, options);
+		this.drawEngagementPage1Banner(doc, options);
 
-		this.drawLinesTable(doc, options.lines, options.kind);
+		this.drawLinesTable(doc, options.lines, options.kind, options);
 		doc.y += PDF_LAYOUT.sectionGap;
-		this.drawTotals(doc, options.totals);
+		this.drawTotals(doc, options.totals, options);
 
 		const signatureValue =
 			options.signature ?? options.organization?.signature ?? null;
@@ -164,7 +166,7 @@ export class PdfDocumentBuilder {
 		const maxY = this.getPageMaxY(doc);
 		if (doc.y + bodyHeight > maxY) {
 			doc.addPage();
-			doc.y = (doc.page.margins?.top ?? 72) + PDF_LAYOUT.padSm;
+			doc.y = this.getContinuationPageStartY();
 		}
 
 		const blockY = doc.y;
@@ -210,7 +212,7 @@ export class PdfDocumentBuilder {
 
 		if (doc.y + bodyHeight > footerBandTop - 10) {
 			doc.addPage();
-			doc.y = doc.page.margins?.top ?? 72;
+			doc.y = this.getContinuationPageStartY();
 			footerBandTop = maxY - footerHeight;
 		}
 
@@ -223,6 +225,11 @@ export class PdfDocumentBuilder {
 		return pageHeight - bottomMargin;
 	}
 
+	/** Position Y de départ sur les pages 2+ (marges PDFKit top=0, ne pas utiliser doc.page.margins.top). */
+	private getContinuationPageStartY(): number {
+		return PDF_LAYOUT.continuationPageTop;
+	}
+
 	private getPageContentBottom(doc: PdfDoc, footerReserve = 230): number {
 		const pageHeight = doc.page.height;
 		const bottomMargin = doc.page.margins?.bottom ?? 50;
@@ -231,16 +238,69 @@ export class PdfDocumentBuilder {
 
 	private drawHeader(doc: PdfDoc, options: BuildPdfDocumentOptions): number {
 		const { pageWidth, headerHeight, marginX, contentWidth } = PDF_LAYOUT;
-		const label = options.kind === 'facture' ? 'Facture' : 'Devis';
+		const splitKind = this.resolveSplitInvoiceKind(options);
+		const label =
+			splitKind === 'deposit'
+				? "Facture d'acompte"
+				: splitKind === 'remainder'
+					? 'Facture de solde'
+					: splitKind === 'installment'
+						? 'Facture échéancier'
+						: options.kind === 'facture'
+							? 'Facture'
+							: 'Devis';
 		const title = `${label} n° ${options.number}`;
 
 		this.drawHeaderWaves(doc, pageWidth, headerHeight);
-		this.drawHeaderBackground(doc, pageWidth, headerHeight); // PNG optionnel si présent dans assets/
+		this.drawHeaderBackground(doc, pageWidth, headerHeight);
 
-		doc.fontSize(17)
+		doc.fontSize(splitKind ? 16 : 17)
 			.fillColor(PDF_THEME.white)
 			.font('Helvetica-Bold')
-			.text(title, marginX, 32, { width: contentWidth, align: 'center', lineGap: 2 });
+			.text(title, marginX, 30, { width: contentWidth, align: 'center', lineGap: 2 });
+
+		let metaY = 52;
+		const quoteRef = options.document?.sourceQuoteNumber as string | undefined;
+		if (splitKind === 'deposit') {
+			doc.fontSize(8.5)
+				.fillColor(PDF_THEME.white)
+				.font('Helvetica')
+				.text(
+					quoteRef ? `10 % TTC du devis n° ${quoteRef}` : '10 % TTC du devis accepté',
+					marginX,
+					metaY,
+					{ width: contentWidth, align: 'center', lineGap: 2 },
+				);
+			metaY += 14;
+		} else if (splitKind === 'installment') {
+			const schedule = options.document?.installmentSchedule as unknown[] | undefined;
+			const count = schedule?.length;
+			const countLabel =
+				count != null && count > 0
+					? `Solde en ${count} mensualité${count > 1 ? 's' : ''}`
+					: 'Solde échelonné';
+			doc.fontSize(8.5)
+				.fillColor(PDF_THEME.white)
+				.font('Helvetica')
+				.text(
+					quoteRef ? `${countLabel} — devis n° ${quoteRef}` : `${countLabel} — devis accepté`,
+					marginX,
+					metaY,
+					{ width: contentWidth, align: 'center', lineGap: 2 },
+				);
+			metaY += 14;
+		} else if (splitKind === 'remainder') {
+			doc.fontSize(8.5)
+				.fillColor(PDF_THEME.white)
+				.font('Helvetica')
+				.text(
+					quoteRef ? `Solde après acompte — devis n° ${quoteRef}` : 'Solde après acompte (devis accepté)',
+					marginX,
+					metaY,
+					{ width: contentWidth, align: 'center', lineGap: 2 },
+				);
+			metaY += 14;
+		}
 
 		if (options.date) {
 			doc.save();
@@ -251,7 +311,7 @@ export class PdfDocumentBuilder {
 				.text(
 					`Émis le ${new Date(options.date).toLocaleDateString('fr-FR')}`,
 					marginX,
-					56,
+					metaY,
 					{ width: contentWidth, align: 'center', lineGap: 2 },
 				);
 			doc.opacity(1);
@@ -259,6 +319,115 @@ export class PdfDocumentBuilder {
 		}
 
 		return PDF_LAYOUT.headerContentBottom;
+	}
+
+	/** Type de facture liée à un devis (acompte, solde, échéancier). */
+	private resolveSplitInvoiceKind(
+		options: BuildPdfDocumentOptions,
+	): 'deposit' | 'remainder' | 'installment' | null {
+		if (options.kind !== 'facture') return null;
+		const tags = parseTagsJson(options.document?.tags ?? null);
+		if (tags.includes('ACOMPTE_10')) return 'deposit';
+		if (tags.includes('SOLDE_APRES_ACOMPTE')) return 'remainder';
+		if (tags.includes('ECHEANCIER')) return 'installment';
+		return null;
+	}
+
+	/**
+	 * Bandeau page 1 : rappelle le montant total de la prestation (devis) et le rôle de cette facture.
+	 * Bonne pratique fiscale / art. 289 CGI — la facture d'acompte doit être clairement identifiable.
+	 */
+	private drawEngagementPage1Banner(doc: PdfDoc, options: BuildPdfDocumentOptions): void {
+		const breakdown = options.document?.engagementBreakdown as
+			| { contractTotal?: number; depositAmount?: number; remainderAmount?: number }
+			| undefined;
+		const splitKind = this.resolveSplitInvoiceKind(options);
+		if (!breakdown || !splitKind || !Number.isFinite(breakdown.contractTotal)) return;
+
+		const { marginX, contentWidth } = PDF_LAYOUT;
+		const contractTotal = Number(breakdown.contractTotal);
+		const depositAmount = Number(breakdown.depositAmount ?? 0);
+		const invoiceTotal = Number(options.totals?.total ?? options.document?.total ?? 0);
+		const quoteRef = options.document?.sourceQuoteNumber as string | undefined;
+		const bannerTop = doc.y + PDF_LAYOUT.padSm;
+		const pad = 12;
+		const innerW = contentWidth - pad * 2;
+		const labelW = innerW * 0.62;
+		const amountW = innerW - labelW;
+
+		let rowCount = 2;
+		if (splitKind === 'remainder') rowCount = 3;
+		if (splitKind === 'installment') rowCount = depositAmount > 0 ? 3 : 2;
+		const footnoteLines =
+			splitKind === 'deposit' || splitKind === 'installment' || splitKind === 'remainder' ? 14 : 0;
+		const bannerH = 36 + rowCount * 16 + footnoteLines + (splitKind === 'deposit' ? 4 : 8);
+
+		doc.save();
+		doc.roundedRect(marginX, bannerTop, contentWidth, bannerH, 5).fillAndStroke('#f8fafc', PDF_THEME.navyMid);
+		doc.restore();
+
+		let cursorY = bannerTop + pad;
+		doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_THEME.navy);
+		const bannerTitle = quoteRef
+			? `Prestation — devis n° ${quoteRef} accepté`
+			: 'Prestation — devis accepté';
+		doc.text(bannerTitle, marginX + pad, cursorY, { width: innerW });
+		cursorY += 14;
+
+		const drawRow = (label: string, amount: number, bold = false, muted = false) => {
+			doc
+				.font(bold ? 'Helvetica-Bold' : 'Helvetica')
+				.fontSize(bold ? 9 : 8.5)
+				.fillColor(muted ? PDF_THEME.textMuted : PDF_THEME.textDark);
+			doc.text(label, marginX + pad, cursorY, { width: labelW });
+			doc.text(this.formatCurrency(amount), marginX + pad + labelW, cursorY, {
+				width: amountW,
+				align: 'right',
+			});
+			cursorY += 16;
+		};
+
+		drawRow('Montant total de la prestation (TTC)', contractTotal, true);
+
+		if (splitKind === 'deposit') {
+			drawRow('Dont acompte sur cette facture (10 % TTC)', invoiceTotal, true);
+			doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+			doc.text(
+				'Les lignes ci-dessous reprennent la prestation au prorata de l\'acompte (10 %). Le solde sera facturé séparément.',
+				marginX + pad,
+				cursorY,
+				{ width: innerW, lineGap: 1 },
+			);
+			cursorY = doc.y + 4;
+		} else if (splitKind === 'remainder') {
+			drawRow('Acompte déjà réglé (10 % TTC)', depositAmount, false, true);
+			drawRow('Solde sur cette facture (TTC)', invoiceTotal, true);
+			doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+			doc.text(
+				'Les lignes ci-dessous reprennent la prestation au prorata du solde (90 % HT).',
+				marginX + pad,
+				cursorY,
+				{ width: innerW, lineGap: 1 },
+			);
+			cursorY = doc.y + 4;
+		} else if (splitKind === 'installment') {
+			if (depositAmount > 0) {
+				drawRow('Acompte déjà réglé (10 % TTC)', depositAmount, false, true);
+			}
+			drawRow('Solde échelonné sur cette facture (TTC)', invoiceTotal, true);
+			doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+			doc.text(
+				depositAmount > 0
+					? 'Lignes au prorata du solde (90 % HT). Règlement mensualité par mensualité — détail page suivante.'
+					: 'Lignes au prorata de la prestation. Règlement mensualité par mensualité — détail page suivante.',
+				marginX + pad,
+				cursorY,
+				{ width: innerW, lineGap: 1 },
+			);
+			cursorY = doc.y + 4;
+		}
+
+		doc.y = bannerTop + bannerH + PDF_LAYOUT.sectionGap;
 	}
 
 	/** Bandeau décoratif PNG (optionnel, < 400 Ko) par-dessus les vagues vectorielles */
@@ -366,7 +535,12 @@ export class PdfDocumentBuilder {
 		doc.y += PDF_LAYOUT.sectionGap;
 	}
 
-	private drawLinesTable(doc: PdfDoc, lines: any[], kind: PdfDocumentKind = 'facture'): void {
+	private drawLinesTable(
+		doc: PdfDoc,
+		lines: any[],
+		kind: PdfDocumentKind = 'facture',
+		options?: BuildPdfDocumentOptions,
+	): void {
 		if (!lines.length) return;
 
 		const {
@@ -403,7 +577,7 @@ export class PdfDocumentBuilder {
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
 			const quoteDisplay = kind === 'devis' ? (line.quoteLineDisplay as QuoteLineDisplay | undefined) : undefined;
-			const description = line.description || '';
+			const description = dedupeRepeatedDescription(line.description || '');
 			const useAlignedDeliverables =
 				kind === 'devis' && quoteDisplay && quoteLineUsesAlignedDeliverableRows(quoteDisplay);
 
@@ -445,7 +619,7 @@ export class PdfDocumentBuilder {
 						.rect(marginX, tableTop, contentWidth, rowY - tableTop)
 						.stroke();
 					doc.addPage();
-					tableTop = (doc.page.margins?.top ?? 72) + PDF_LAYOUT.padSm;
+					tableTop = this.getContinuationPageStartY();
 					rowY = this.drawTableHeader(doc, tableTop, cols, {
 						colDescW,
 						colUnitW,
@@ -491,10 +665,24 @@ export class PdfDocumentBuilder {
 
 		const hasRichLines = lines.some((line) => line.quoteLineDisplay);
 		if (!hasRichLines) {
+			const splitKind = options ? this.resolveSplitInvoiceKind(options) : null;
+			let footnote = 'Montants des lignes exprimés en HT (hors TVA).';
+			if (splitKind === 'deposit') {
+				footnote =
+					'Montants HT au prorata de l\'acompte (10 % du devis). Le total TTC ci-contre inclut la TVA.';
+			} else if (splitKind === 'installment' || splitKind === 'remainder') {
+				const breakdown = options?.document?.engagementBreakdown as
+					| { depositAmount?: number }
+					| undefined;
+				const hasDeposit = Number(breakdown?.depositAmount ?? 0) > 0.01;
+				footnote = hasDeposit
+					? 'Montants HT au prorata du solde (90 % du devis). Le total TTC ci-contre inclut la TVA.'
+					: 'Montants des lignes exprimés en HT (hors TVA). Le total TTC ci-contre inclut la TVA.';
+			}
 			doc.font('Helvetica')
 				.fontSize(7.5)
 				.fillColor(PDF_THEME.textMuted)
-				.text('Montants des lignes exprimés en HT (hors TVA).', marginX, rowY + 4, {
+				.text(footnote, marginX, rowY + 4, {
 					width: contentWidth,
 					align: 'left',
 				});
@@ -540,11 +728,49 @@ export class PdfDocumentBuilder {
 
 	private estimatePaymentBlockHeight(doc: PdfDoc, options: BuildPdfDocumentOptions): number {
 		const tags = parseTagsJson(options.document?.tags ?? null);
+		const isDeposit = tags.includes('ACOMPTE_10');
+		const isInstallment = tags.includes('ECHEANCIER');
+		const schedule = options.document?.installmentSchedule as
+			| { sequence: number; amount: number; dueDate: Date | string; status: string }[]
+			| undefined;
+		const hasSchedule = Boolean(schedule?.length);
 		const breakdown = options.document?.engagementBreakdown as
-			| { contractTotal?: number }
+			| { contractTotal?: number; depositAmount?: number; remainderAmount?: number }
 			| undefined;
 		const hasBreakdown = Boolean(breakdown && Number.isFinite(breakdown.contractTotal));
-		if (hasBreakdown) return 130;
+
+		if (hasBreakdown) {
+			let h = 28 + 8;
+			if (isDeposit) {
+				h += hasSchedule ? 118 : 98;
+				if (hasSchedule && schedule) {
+					h += 16 + 20 + schedule.length * 22 + 22;
+				}
+			} else if (isInstallment) {
+				h += 118;
+				if (hasSchedule && schedule) {
+					h += 16 + 20 + schedule.length * 22 + 22 + 52;
+				}
+			} else {
+				h += 15 * 3 + 8;
+				if (hasSchedule && schedule) {
+					h += 16 + 20 + schedule.length * 22 + 22 + 52;
+				} else {
+					h += 38;
+				}
+			}
+			if (options.document?.paymentNote) {
+				h +=
+					doc.heightOfString(String(options.document.paymentNote), { width: 260, lineGap: 3 }) + 8;
+			}
+			if (process.env.COMPANY_IBAN) h += 14;
+			return h;
+		}
+
+		if (hasSchedule && schedule) {
+			return 28 + 16 + 20 + schedule.length * 22 + 22 + 52 + 40;
+		}
+
 		let h = 28;
 		if (options.document?.paymentNote) {
 			h += doc.heightOfString(String(options.document.paymentNote), { width: 260, lineGap: 3 }) + 8;
@@ -554,18 +780,20 @@ export class PdfDocumentBuilder {
 		return h;
 	}
 
-	private drawTotals(doc: PdfDoc, totals: PdfTotals): void {
+	private drawTotals(doc: PdfDoc, totals: PdfTotals, options?: BuildPdfDocumentOptions): void {
 		const { marginX, contentWidth } = PDF_LAYOUT;
 		const boxWidth = 210;
 		const boxX = marginX + contentWidth - boxWidth;
 		const startY = doc.y;
 		const rowH = 18;
+		const splitKind = options ? this.resolveSplitInvoiceKind(options) : null;
 
 		const taxRate =
 			totals.subtotal > 0 ? Math.round((totals.tax / totals.subtotal) * 100) : 0;
 
 		doc.fontSize(9).fillColor(PDF_THEME.text).font('Helvetica');
-		doc.text('Sous-total', boxX, startY, { width: 100 })
+		const subtotalLabel = splitKind ? 'Sous-total HT (cette facture)' : 'Sous-total';
+		doc.text(subtotalLabel, boxX, startY, { width: 100 })
 			.text(this.formatCurrency(totals.subtotal), boxX + 100, startY, {
 				width: 110,
 				align: 'right',
@@ -605,7 +833,16 @@ export class PdfDocumentBuilder {
 
 		const barY = startY + rowH * rowOffset + 6;
 		const barH = 30;
-		const netLabel = hasCredit ? 'Net à payer' : 'Total TTC';
+		const netLabel =
+			splitKind === 'deposit'
+				? 'Total TTC — acompte'
+				: splitKind === 'remainder'
+					? 'Total TTC — solde'
+					: splitKind === 'installment'
+						? 'Total TTC — échéancier'
+						: hasCredit
+							? 'Net à payer'
+							: 'Total TTC';
 		const netAmount = hasCredit
 			? Number(totals.netDue ?? Math.max(0, totals.total - creditApplied))
 			: totals.total;
@@ -650,12 +887,14 @@ export class PdfDocumentBuilder {
 		x: number,
 		y: number,
 		width: number,
+		sectionOptions?: { title?: string; footnote?: string; preview?: boolean },
 	): number {
 		const totalCount = schedule.length;
+		const preview = sectionOptions?.preview === true;
 		let cursorY = y;
 
 		doc.font('Helvetica-Bold').fontSize(10).fillColor(PDF_THEME.navy);
-		doc.text('Échéancier de paiement', x, cursorY, { width });
+		doc.text(sectionOptions?.title ?? 'Échéancier de paiement', x, cursorY, { width });
 		cursorY = doc.y + 6;
 
 		const colN = width * 0.14;
@@ -685,7 +924,7 @@ export class PdfDocumentBuilder {
 
 		for (let i = 0; i < schedule.length; i++) {
 			const row = schedule[i];
-			const isPending = row.status === 'PENDING';
+			const isPending = !preview && row.status === 'PENDING';
 			const isPaid = row.status === 'PAID';
 			const bg = isPending ? '#eff6ff' : i % 2 === 1 ? PDF_THEME.rowAlt : PDF_THEME.white;
 
@@ -733,7 +972,8 @@ export class PdfDocumentBuilder {
 		cursorY += 4;
 		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
 		doc.text(
-			`Total des mensualités : ${this.formatCurrency(scheduleSum)} · Le paiement en ligne porte sur la mensualité « À régler ».`,
+			sectionOptions?.footnote ??
+				`Total des mensualités : ${this.formatCurrency(scheduleSum)} · Le paiement en ligne porte sur la mensualité « À régler ».`,
 			x,
 			cursorY,
 			{ width, lineGap: 2 },
@@ -788,6 +1028,230 @@ export class PdfDocumentBuilder {
 		return cursorY + boxH + PDF_LAYOUT.padSm;
 	}
 
+	/**
+	 * Synthèse visuelle acompte / solde / total devis (facture d'acompte).
+	 */
+	private drawEngagementOverviewCard(
+		doc: PdfDoc,
+		x: number,
+		y: number,
+		width: number,
+		params: {
+			contractTotal: number;
+			depositAmount: number;
+			remainder: number;
+			invoiceTotal: number;
+			hasSchedule: boolean;
+			scheduleCount?: number;
+		},
+	): number {
+		const { contractTotal, depositAmount, remainder, invoiceTotal, hasSchedule, scheduleCount } =
+			params;
+		const pad = 12;
+		const innerW = width - pad * 2;
+		const cardTop = y;
+		let cursorY = cardTop + pad;
+
+		doc.save();
+		doc.roundedRect(x, cardTop, width, 4, 2).fill(PDF_THEME.navy);
+		doc.restore();
+
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text('Prix total du devis (TTC)', x + pad, cursorY, { width: innerW * 0.62 });
+		doc.font('Helvetica-Bold').fontSize(12).fillColor(PDF_THEME.navy);
+		doc.text(this.formatCurrency(contractTotal), x + pad + innerW * 0.55, cursorY - 1, {
+			width: innerW * 0.45,
+			align: 'right',
+		});
+		cursorY += 22;
+
+		doc.save();
+		doc.strokeColor(PDF_THEME.border)
+			.lineWidth(0.5)
+			.moveTo(x + pad, cursorY)
+			.lineTo(x + width - pad, cursorY)
+			.stroke();
+		doc.restore();
+		cursorY += 10;
+
+		const nowBoxH = 36;
+		doc.roundedRect(x + pad, cursorY, innerW, nowBoxH, 4).fillAndStroke('#eff6ff', PDF_THEME.accent);
+		doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_THEME.navy);
+		doc.text('1. À payer maintenant — acompte 10 % (cette facture)', x + pad + 10, cursorY + 7, {
+			width: innerW - 20,
+		});
+		doc.font('Helvetica-Bold').fontSize(14).fillColor(PDF_THEME.accent);
+		doc.text(this.formatCurrency(invoiceTotal), x + pad + 10, cursorY + 18, {
+			width: innerW - 20,
+			align: 'right',
+		});
+		cursorY += nowBoxH + 10;
+
+		doc.font('Helvetica-Bold').fontSize(8.5).fillColor(PDF_THEME.textDark);
+		doc.text('2. Après l\'acompte', x + pad, cursorY, { width: innerW * 0.62 });
+		doc.text(this.formatCurrency(remainder), x + pad + innerW * 0.55, cursorY, {
+			width: innerW * 0.45,
+			align: 'right',
+		});
+		cursorY += 13;
+
+		const afterHint = hasSchedule
+			? scheduleCount != null && scheduleCount > 0
+				? `Réparti en ${scheduleCount} mensualité${scheduleCount > 1 ? 's' : ''} — facture échéancier séparée`
+				: 'Facture échéancier séparée'
+			: 'Facturé sur la facture de solde, après livraison';
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text(afterHint, x + pad, cursorY, { width: innerW, lineGap: 1 });
+		cursorY = doc.y + 8;
+
+		doc.save();
+		doc.roundedRect(x + pad, cursorY, innerW, 18, 3).fill('#f8fafc');
+		doc.restore();
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text(
+			`${this.formatCurrency(contractTotal)} = ${this.formatCurrency(depositAmount)} (acompte) + ${this.formatCurrency(remainder)} (suite)`,
+			x + pad + 6,
+			cursorY + 5,
+			{ width: innerW - 12, align: 'center' },
+		);
+		cursorY += 26;
+
+		doc.save();
+		doc.roundedRect(x, cardTop, width, cursorY - cardTop, 5)
+			.strokeColor(PDF_THEME.border)
+			.lineWidth(0.75)
+			.stroke();
+		doc.restore();
+
+		return cursorY + PDF_LAYOUT.padSm;
+	}
+
+	/**
+	 * Synthèse visuelle pour facture échéancier (ECH) — page 2.
+	 */
+	private drawInstallmentOverviewCard(
+		doc: PdfDoc,
+		x: number,
+		y: number,
+		width: number,
+		params: {
+			contractTotal: number;
+			depositAmount: number;
+			remainder: number;
+			invoiceTotal: number;
+			scheduleCount?: number;
+		},
+	): number {
+		const { contractTotal, depositAmount, remainder, invoiceTotal, scheduleCount } = params;
+		const pad = 12;
+		const innerW = width - pad * 2;
+		const cardTop = y;
+		let cursorY = cardTop + pad;
+
+		doc.save();
+		doc.roundedRect(x, cardTop, width, 4, 2).fill(PDF_THEME.navy);
+		doc.restore();
+
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text('Prix total du devis (TTC)', x + pad, cursorY, { width: innerW * 0.62 });
+		doc.font('Helvetica-Bold').fontSize(12).fillColor(PDF_THEME.navy);
+		doc.text(this.formatCurrency(contractTotal), x + pad + innerW * 0.55, cursorY - 1, {
+			width: innerW * 0.45,
+			align: 'right',
+		});
+		cursorY += 22;
+
+		doc.save();
+		doc.strokeColor(PDF_THEME.border)
+			.lineWidth(0.5)
+			.moveTo(x + pad, cursorY)
+			.lineTo(x + width - pad, cursorY)
+			.stroke();
+		doc.restore();
+		cursorY += 10;
+
+		if (depositAmount > 0.01) {
+			doc.font('Helvetica').fontSize(8.5).fillColor(PDF_THEME.textMuted);
+			doc.text('Acompte déjà réglé (10 % TTC)', x + pad, cursorY, { width: innerW * 0.62 });
+			doc.text(this.formatCurrency(depositAmount), x + pad + innerW * 0.55, cursorY, {
+				width: innerW * 0.45,
+				align: 'right',
+			});
+			cursorY += 16;
+		}
+
+		const boxH = 40;
+		doc.roundedRect(x + pad, cursorY, innerW, boxH, 4).fillAndStroke('#eff6ff', PDF_THEME.accent);
+		const scheduleLabel =
+			scheduleCount != null && scheduleCount > 0
+				? `Solde sur cette facture — ${scheduleCount} mensualité${scheduleCount > 1 ? 's' : ''} (TTC)`
+				: 'Solde échelonné sur cette facture (TTC)';
+		doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_THEME.navy);
+		doc.text(scheduleLabel, x + pad + 10, cursorY + 7, { width: innerW - 20 });
+		doc.font('Helvetica-Bold').fontSize(14).fillColor(PDF_THEME.accent);
+		doc.text(this.formatCurrency(invoiceTotal), x + pad + 10, cursorY + 20, {
+			width: innerW - 20,
+			align: 'right',
+		});
+		cursorY += boxH + 10;
+
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text(
+			'Vous réglez une mensualité à la fois (voir tableau ci-dessous). Les montants TTC incluent la TVA.',
+			x + pad,
+			cursorY,
+			{ width: innerW, lineGap: 1 },
+		);
+		cursorY = doc.y + 8;
+
+		doc.save();
+		doc.roundedRect(x + pad, cursorY, innerW, 18, 3).fill('#f8fafc');
+		doc.restore();
+		const formulaLeft = depositAmount > 0.01 ? depositAmount : 0;
+		const formulaRight = remainder > 0 ? remainder : invoiceTotal;
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text(
+			depositAmount > 0.01
+				? `${this.formatCurrency(contractTotal)} = ${this.formatCurrency(formulaLeft)} (acompte) + ${this.formatCurrency(formulaRight)} (mensualités)`
+				: `${this.formatCurrency(contractTotal)} = ${this.formatCurrency(invoiceTotal)} (mensualités)`,
+			x + pad + 6,
+			cursorY + 5,
+			{ width: innerW - 12, align: 'center' },
+		);
+		cursorY += 26;
+
+		doc.save();
+		doc.roundedRect(x, cardTop, width, cursorY - cardTop, 5)
+			.strokeColor(PDF_THEME.border)
+			.lineWidth(0.75)
+			.stroke();
+		doc.restore();
+
+		return cursorY + PDF_LAYOUT.padSm;
+	}
+
+	/** Encadré « montant de cette facture » (acompte ou solde). */
+	private drawThisInvoiceAmountBox(
+		doc: PdfDoc,
+		amount: number,
+		x: number,
+		y: number,
+		width: number,
+		label = 'Montant de cette facture',
+	): number {
+		const boxH = 30;
+		let cursorY = y + 4;
+		doc.roundedRect(x, cursorY, width, boxH, 4).fillAndStroke('#f8fafc', PDF_THEME.navy);
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text(label, x + 8, cursorY + 5, { width: width - 16 });
+		doc.font('Helvetica-Bold').fontSize(11).fillColor(PDF_THEME.navy);
+		doc.text(this.formatCurrency(amount), x + 8, cursorY + 14, {
+			width: width - 16,
+			align: 'right',
+		});
+		return cursorY + boxH + 8;
+	}
+
 	private drawPaymentBlock(
 		doc: PdfDoc,
 		options: BuildPdfDocumentOptions,
@@ -814,11 +1278,14 @@ export class PdfDocumentBuilder {
 		);
 
 		doc.fontSize(9).fillColor(PDF_THEME.navy).font('Helvetica-Bold');
-		const blockTitle = hasSchedule
-			? 'Paiement en plusieurs fois'
-			: hasBreakdown
-				? 'Récapitulatif du devis'
-				: 'Paiement';
+		const blockTitle =
+			(isDeposit || isInstallment) && hasBreakdown
+				? 'Comprendre votre paiement'
+				: hasSchedule && isInstallment
+					? 'Paiement en plusieurs fois'
+					: hasBreakdown
+						? 'Récapitulatif du devis'
+						: 'Paiement';
 		doc.text(blockTitle, x, y, { width });
 		let cursorY = doc.y + PDF_LAYOUT.padSm;
 
@@ -832,61 +1299,76 @@ export class PdfDocumentBuilder {
 			);
 			const labelW = width * 0.64;
 			const amountW = width - labelW;
-			const rows: { label: string; amount: number; bold?: boolean; muted?: boolean }[] = [
-				{ label: 'Total du devis', amount: totalContract },
-				{
-					label: isInstallment
-						? 'Acompte (10 %) — réglé'
-						: isRemainder
-							? 'Paiement acompte (10 %) — réglé'
-							: 'Paiement acompte (10 %)',
-					amount: depositAmount,
-					bold: isDeposit,
-					muted: isRemainder || isInstallment,
-				},
-				{
-					label: isInstallment
-						? 'Solde échelonné — sur cette facture'
-						: isDeposit
-							? 'Solde — facturé plus tard'
-							: 'Solde — sur cette facture',
-					amount: remainder,
-					bold: isRemainder || isInstallment,
-					muted: isDeposit,
-				},
-			];
 
-			for (const row of rows) {
-				doc
-					.font(row.bold ? 'Helvetica-Bold' : 'Helvetica')
-					.fontSize(8.5)
-					.fillColor(row.muted ? PDF_THEME.textMuted : PDF_THEME.text);
-				doc.text(row.label, x, cursorY, { width: labelW });
-				doc.text(this.formatCurrency(row.amount), x + labelW, cursorY, {
-					width: amountW,
-					align: 'right',
+			if (isDeposit) {
+				cursorY = this.drawEngagementOverviewCard(doc, x, cursorY, width, {
+					contractTotal: totalContract,
+					depositAmount,
+					remainder,
+					invoiceTotal,
+					hasSchedule,
+					scheduleCount: schedule?.length,
 				});
-				cursorY += 15;
-			}
 
-			if (hasSchedule && schedule) {
-				cursorY += 6;
-				cursorY = this.drawInstallmentScheduleSection(doc, schedule, x, cursorY, width);
-				cursorY = this.drawInstallmentDueNowBox(doc, schedule, invoiceBalance, x, cursorY, width);
-			} else if ((isDeposit || isRemainder) && invoiceTotal > 0) {
-				cursorY += 4;
-				const boxH = 30;
-				doc
-					.roundedRect(x, cursorY, width, boxH, 4)
-					.fillAndStroke('#f8fafc', PDF_THEME.navy);
-				doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
-				doc.text('Montant de cette facture', x + 8, cursorY + 5, { width: width - 16 });
-				doc.font('Helvetica-Bold').fontSize(11).fillColor(PDF_THEME.navy);
-				doc.text(this.formatCurrency(invoiceTotal), x + 8, cursorY + 14, {
-					width: width - 16,
-					align: 'right',
+				if (hasSchedule && schedule) {
+					const scheduleSum = schedule.reduce((s, r) => s + Number(r.amount), 0);
+					cursorY = this.drawInstallmentScheduleSection(doc, schedule, x, cursorY, width, {
+						title: 'Détail des mensualités (après l\'acompte)',
+						preview: true,
+						footnote:
+							`Total des mensualités : ${this.formatCurrency(scheduleSum)} · ` +
+							`Une facture échéancier dédiée vous sera transmise après règlement de l'acompte.`,
+					});
+				}
+			} else if (isInstallment) {
+				cursorY = this.drawInstallmentOverviewCard(doc, x, cursorY, width, {
+					contractTotal: totalContract,
+					depositAmount,
+					remainder,
+					invoiceTotal,
+					scheduleCount: schedule?.length,
 				});
-				cursorY += boxH + 8;
+
+				if (hasSchedule && schedule) {
+					cursorY += 4;
+					cursorY = this.drawInstallmentScheduleSection(doc, schedule, x, cursorY, width, {
+						title: 'Échéancier de paiement',
+					});
+					cursorY = this.drawInstallmentDueNowBox(doc, schedule, invoiceBalance, x, cursorY, width);
+				}
+			} else {
+				const rows: { label: string; amount: number; bold?: boolean; muted?: boolean }[] = [
+					{ label: 'Total du devis', amount: totalContract },
+					{
+						label: 'Paiement acompte (10 %) — réglé',
+						amount: depositAmount,
+						bold: false,
+						muted: true,
+					},
+					{
+						label: 'Solde — sur cette facture',
+						amount: remainder,
+						bold: true,
+						muted: false,
+					},
+				];
+
+				for (const row of rows) {
+					doc
+						.font(row.bold ? 'Helvetica-Bold' : 'Helvetica')
+						.fontSize(8.5)
+						.fillColor(row.muted ? PDF_THEME.textMuted : PDF_THEME.text);
+					doc.text(row.label, x, cursorY, { width: labelW });
+					doc.text(this.formatCurrency(row.amount), x + labelW, cursorY, {
+						width: amountW,
+						align: 'right',
+					});
+					cursorY += 15;
+				}
+
+				if (isRemainder && invoiceTotal > 0) {
+					cursorY = this.drawThisInvoiceAmountBox(doc, invoiceTotal, x, cursorY, width);
+				}
 			}
 		} else if (hasSchedule && schedule) {
 			cursorY = this.drawInstallmentScheduleSection(doc, schedule, x, cursorY, width);

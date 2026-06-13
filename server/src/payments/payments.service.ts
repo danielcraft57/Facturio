@@ -6,6 +6,7 @@ import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { notifyLinkedRemainderAfterDepositPaid } from '../invoices/invoice-deposit-realtime.util';
 import { syncClientStatusFromActivity } from '../clients/client-status.util';
 import { InvoiceInstallmentsService } from '../invoices/invoice-installments.service';
+import { InvoiceInstallmentReleaseService } from '../invoices/invoice-installment-release.service';
 
 /**
  * Données de création de paiement
@@ -58,6 +59,7 @@ export class PaymentsService {
 		private readonly paidNotifications: InvoicePaymentNotificationService,
 		private readonly realtime: RealtimeEventsService,
 		private readonly installments: InvoiceInstallmentsService,
+		private readonly installmentReleases: InvoiceInstallmentReleaseService,
 	) {}
 
 	async create(data: CreatePaymentDto, organizationId?: number) {
@@ -99,6 +101,7 @@ export class PaymentsService {
 		});
 
 		await this.installments.allocatePayment(data.invoiceId, payment.id, data.amount);
+		await this.installmentReleases.ensurePayableInstallment(data.invoiceId);
 
 		// Mettre à jour le solde de la facture (TTC − encaissements − avoirs imputés)
 		const newTotalPaid = totalPaid + data.amount;

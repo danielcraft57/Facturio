@@ -7,6 +7,7 @@ import {
 	buildDepositPaymentNote,
 	buildDepositCommitmentParagraph,
 	buildRemainderCommitmentParagraph,
+	parseQuoteIdFromSplitTags,
 } from '../invoices/invoice-deposit.util';
 import { resolveEngagementBreakdownForInvoice } from '../invoices/invoice-engagement-breakdown.util';
 import { PrismaService } from '../prisma/prisma.service';
@@ -67,6 +68,52 @@ export class PdfService {
 		return resolveEngagementBreakdownForInvoice(this.prisma, invoice);
 	}
 
+	/**
+	 * Charge l'échéancier de la facture ECH liée au devis (acompte seul n'a pas de lignes InvoiceInstallment).
+	 */
+	private async resolveLinkedInstallmentSchedule(
+		invoice: {
+			id?: string;
+			sourceQuoteId?: string | null;
+			organizationId?: number | null;
+			tags?: string | null;
+		},
+		existingSchedule: { sequence: number; amount: number; dueDate: Date; status: string }[],
+	): Promise<{ sequence: number; amount: number; dueDate: Date; status: string }[]> {
+		if (existingSchedule.length > 0) return existingSchedule;
+
+		const tags = parseTagsJson(invoice?.tags ?? null);
+		if (!tags.includes('ACOMPTE_10')) return existingSchedule;
+
+		const quoteId = invoice.sourceQuoteId ?? parseQuoteIdFromSplitTags(tags);
+		const orgId = invoice.organizationId;
+		if (!quoteId || orgId == null) return existingSchedule;
+
+		const installmentTag = `ECHEANCIER_OF:${quoteId}`;
+		const linked = await this.prisma.invoice.findFirst({
+			where: {
+				organizationId: orgId,
+				status: { not: 'CANCELLED' },
+				tags: { contains: `"${installmentTag}"` },
+				...(invoice.id ? { id: { not: invoice.id } } : {}),
+			},
+			select: { id: true },
+			orderBy: { createdAt: 'desc' },
+		});
+		if (!linked) return existingSchedule;
+
+		const rows = await this.prisma.invoiceInstallment.findMany({
+			where: { invoiceId: linked.id },
+			orderBy: { sequence: 'asc' },
+		});
+		return rows.map((r) => ({
+			sequence: r.sequence,
+			amount: Number(r.amount),
+			dueDate: r.dueDate,
+			status: r.status,
+		}));
+	}
+
 	async generateInvoicePdf(invoice: any, organization?: any): Promise<Buffer> {
 		const tags = parseTagsJson(invoice?.tags ?? null);
 		const dueDateFr = invoice?.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fr-FR') : null;
@@ -74,6 +121,16 @@ export class PdfService {
 		const isRemainder = tags.includes('SOLDE_APRES_ACOMPTE');
 		const isInstallment = tags.includes('ECHEANCIER');
 		const engagementBreakdown = await this.resolveEngagementBreakdown(invoice);
+
+		let sourceQuoteNumber: string | null = null;
+		const quoteIdForRef = invoice.sourceQuoteId ?? parseQuoteIdFromSplitTags(tags);
+		if (quoteIdForRef) {
+			const quoteRow = await this.prisma.quote.findUnique({
+				where: { id: quoteIdForRef },
+				select: { number: true },
+			});
+			sourceQuoteNumber = quoteRow?.number ?? null;
+		}
 
 		let installmentSchedule: { sequence: number; amount: number; dueDate: Date; status: string }[] =
 			[];
@@ -96,6 +153,8 @@ export class PdfService {
 				status: String(r.status ?? 'PENDING'),
 			}));
 		}
+
+		installmentSchedule = await this.resolveLinkedInstallmentSchedule(invoice, installmentSchedule);
 
 		let paymentNote: string | null = null;
 		if (isDeposit) {
@@ -147,6 +206,7 @@ export class PdfService {
 			...(paymentNote ? { paymentNote } : {}),
 			...(commitmentParagraph && !invoice.legalMention ? { legalMention: commitmentParagraph } : {}),
 			...(engagementBreakdown ? { engagementBreakdown } : {}),
+			...(sourceQuoteNumber ? { sourceQuoteNumber } : {}),
 			...(installmentSchedule.length > 0 ? { installmentSchedule } : {}),
 		};
 
