@@ -83,6 +83,7 @@ const EMPTY_BY_KIND: ReceivablesByKindTotals = {
 	standard: 0,
 	deposit: 0,
 	remainder: 0,
+	installment: 0,
 };
 
 @Injectable()

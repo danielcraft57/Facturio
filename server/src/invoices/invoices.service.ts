@@ -11,6 +11,7 @@ import { buildPublicInvoiceUrl } from '../common/public-app-url';
 import { attachListEmailEngagementFlags, getInvoiceEmailEngagement } from '../common/email-engagement.util';
 import { InvoicePaymentNotificationService } from './invoice-payment-notification.service';
 import { InvoiceInstallmentsService } from './invoice-installments.service';
+import { InvoiceInstallmentReleaseService } from './invoice-installment-release.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 import {
@@ -31,6 +32,7 @@ import {
 import {
 	computeInvoiceDueDate,
 	DEFAULT_REMAINDER_DUE_POLICY,
+	DEFAULT_STANDARD_DUE_POLICY,
 } from './invoice-due-date.util';
 import { resolveEngagementBreakdownForInvoice } from './invoice-engagement-breakdown.util';
 import { notifyLinkedRemainderAfterDepositPaid } from './invoice-deposit-realtime.util';
@@ -38,7 +40,7 @@ import { canAccessInvoiceByPublicToken } from './invoice-public-access.util';
 import { AvoirsService } from '../avoirs/avoirs.service';
 import { resolveInstallmentPublicLabel } from './invoice-installment.util';
 
-export type InvoiceNumberKind = 'standard' | 'deposit' | 'remainder';
+export type InvoiceNumberKind = 'standard' | 'deposit' | 'remainder' | 'installment';
 
 /**
  * Ligne de facture
@@ -94,6 +96,8 @@ export interface CreateInvoiceInput {
 	installments?: { amount: number; dueDate: string | Date }[];
 	/** Parts égales à la création. */
 	installmentSchedule?: { count: number; firstDueDate: string | Date; intervalMonths?: number };
+	/** Libération séquentielle des mensualités (ECH devis). */
+	installmentScheduleOptions?: { sequentialRelease?: boolean; deferFirst?: boolean };
 }
 
 /**
@@ -159,6 +163,7 @@ export class InvoicesService {
 		private readonly realtime: RealtimeEventsService,
 		private readonly avoirs: AvoirsService,
 		private readonly installments: InvoiceInstallmentsService,
+		private readonly installmentReleases: InvoiceInstallmentReleaseService,
 	) {}
 
 	private async applyAvailableClientCredits(
@@ -419,7 +424,14 @@ export class InvoicesService {
 
 	/** Numéro réservé pour une nouvelle facture (standard, acompte ou solde). */
 	async allocateInvoiceNumber(kind: InvoiceNumberKind = 'standard'): Promise<string> {
-		const prefix = kind === 'deposit' ? 'ACO' : kind === 'remainder' ? 'SOL' : 'FAC';
+		const prefix =
+			kind === 'deposit'
+				? 'ACO'
+				: kind === 'remainder'
+					? 'SOL'
+					: kind === 'installment'
+						? 'ECH'
+						: 'FAC';
 		return this.nextInvoiceNumber(prefix);
 	}
 
@@ -564,7 +576,9 @@ export class InvoicesService {
 				? 'deposit'
 				: data.number.startsWith('SOL-')
 					? 'remainder'
-					: 'standard';
+					: data.number.startsWith('ECH-')
+						? 'installment'
+						: 'standard';
 
 		let reservedNumber = data.number;
 		let created: Awaited<ReturnType<typeof this.prisma.invoice.create>> | null = null;
@@ -690,7 +704,7 @@ export class InvoicesService {
 		}
 		if (!rows?.length) return;
 
-		await this.installments.setSchedule(invoiceId, rows, organizationId);
+		await this.installments.setSchedule(invoiceId, rows, organizationId, data.installmentScheduleOptions);
 	}
 
 	/**
@@ -827,7 +841,7 @@ export class InvoicesService {
 		},
 	>(invoice: T): Promise<T> {
 		const tags = parseTagsJson(invoice.tags);
-		if (!tags.includes('SOLDE_APRES_ACOMPTE')) return invoice;
+		if (!tags.includes('SOLDE_APRES_ACOMPTE') && !tags.includes('ECHEANCIER')) return invoice;
 
 		const totalPaid = (invoice.payments ?? []).reduce((s, p) => s + Number(p.amount), 0);
 		const balance = Number(invoice.balance ?? 0);
@@ -1296,9 +1310,12 @@ export class InvoicesService {
 		const presentation = resolveInvoiceDocumentPresentation(tags, invoice.legalMention, invoice.dueDate);
 		const engagementBreakdown = await this.buildEngagementBreakdown(invoice);
 		const installmentRows = await this.installments.listForInvoice(invoice.id);
+		const invoiceTags = parseTagsJson(invoice.tags);
+		const isInstallmentDoc =
+			invoiceTags.includes('ECHEANCIER') || invoice.number.startsWith('ECH-');
 		const installments = installmentRows.map((row) => ({
 			...row,
-			label: resolveInstallmentPublicLabel(row.sequence, invoice.legalMention),
+			label: isInstallmentDoc ? `Mensualité ${row.sequence}` : resolveInstallmentPublicLabel(row.sequence, invoice.legalMention),
 		}));
 		const nextInstallment = installments.find((row) => row.status === 'PENDING') ?? null;
 		const appliedCreditTotal =
@@ -1426,6 +1443,7 @@ export class InvoicesService {
 			throw new NotFoundException('Facture introuvable');
 		}
 		const settlement = await this.syncInvoiceFinancials(invoice.id);
+		await this.installmentReleases.ensurePayableInstallment(invoice.id);
 		const totalPaid = invoice.payments.reduce((sum, p) => sum + Number(p.amount), 0);
 		return this.toPublicInvoiceDto(
 			invoice,
@@ -1445,12 +1463,14 @@ export class InvoicesService {
 	async ensurePublicPaymentLink(id: string, organizationId?: number) {
 		const invoice = await this.findOne(id, organizationId);
 		const tags = parseTagsJson(invoice.tags);
-		const isRemainderDraft =
-			tags.includes('SOLDE_APRES_ACOMPTE') &&
-			invoice.status !== 'PAID' &&
-			Number(invoice.balance) > 0;
+		const unpaid = invoice.status !== 'PAID' && Number(invoice.balance) > 0;
+		const isAwaitingEmitDraft =
+			unpaid &&
+			(tags.includes('SOLDE_APRES_ACOMPTE') ||
+				tags.includes('ECHEANCIER') ||
+				(tags.includes('ACOMPTE_10') && invoice.status === 'DRAFT'));
 
-		if (!isRemainderDraft) {
+		if (!isAwaitingEmitDraft) {
 			return this.sendInvoice(id, organizationId);
 		}
 
@@ -1509,10 +1529,13 @@ export class InvoicesService {
 			tags.filter((t) => t !== 'PENDING_EMIT'),
 		);
 		const isRemainder = tags.includes('SOLDE_APRES_ACOMPTE');
+		const isInstallment = tags.includes('ECHEANCIER');
 		const sentAt = new Date();
 		const dueDateOnSend = isRemainder
 			? computeInvoiceDueDate(DEFAULT_REMAINDER_DUE_POLICY, { baseDate: sentAt })
-			: undefined;
+			: isInstallment
+				? computeInvoiceDueDate(DEFAULT_STANDARD_DUE_POLICY, { baseDate: sentAt })
+				: undefined;
 		const updated = await this.prisma.invoice.update({
 			where: { id },
 			data: {

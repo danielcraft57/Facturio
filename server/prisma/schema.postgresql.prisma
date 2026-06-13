@@ -805,6 +805,7 @@ model AuthorityPayment {
 }
 
 enum InvoiceInstallmentStatus {
+  SCHEDULED
   PENDING
   PAID
   CANCELLED

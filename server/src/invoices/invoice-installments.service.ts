@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import type { InvoiceInstallmentStatus } from '@prisma/client';
 import { AccountingService } from '../accounting/accounting.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -21,6 +22,8 @@ import {
 	buildInvoiceInstallmentSummary,
 	type InvoiceInstallmentSummary,
 } from './invoice-installment-summary.util';
+import { resolveInitialInstallmentStatus } from './invoice-installment-status.util';
+import { parseTagsJson } from '../common/document-folder.util';
 
 /**
  * Gestion des échéanciers de paiement métier sur les factures (B2B).
@@ -148,6 +151,7 @@ export class InvoiceInstallmentsService {
 		invoiceId: string,
 		installments: InvoiceInstallmentInput[],
 		organizationId?: number,
+		options?: { sequentialRelease?: boolean; deferFirst?: boolean },
 	): Promise<InvoiceInstallmentDto[]> {
 		const invoice = await this.assertInvoiceAccess(invoiceId, organizationId, {
 			includePayments: true,
@@ -174,6 +178,13 @@ export class InvoiceInstallmentsService {
 			throw new BadRequestException((err as Error).message);
 		}
 
+		const tags = parseTagsJson(invoice.tags);
+		const sequential =
+			options?.sequentialRelease ??
+			(tags.includes('ECHEANCIER') || invoice.number.startsWith('ECH-'));
+		const deferFirst =
+			options?.deferFirst ?? tags.includes('PENDING_EMIT');
+
 		await this.prisma.$transaction([
 			this.prisma.invoiceInstallment.deleteMany({ where: { invoiceId } }),
 			...installments.map((row, index) =>
@@ -183,7 +194,10 @@ export class InvoiceInstallmentsService {
 						sequence: index + 1,
 						amount: row.amount,
 						dueDate: new Date(row.dueDate),
-						status: 'PENDING',
+						status: resolveInitialInstallmentStatus(index + 1, {
+							sequentialRelease: sequential,
+							deferFirst,
+						}) as InvoiceInstallmentStatus,
 					},
 				}),
 			),
@@ -300,7 +314,10 @@ export class InvoiceInstallmentsService {
 	 */
 	async cancelPendingInstallments(invoiceId: string): Promise<void> {
 		await this.prisma.invoiceInstallment.updateMany({
-			where: { invoiceId, status: 'PENDING' },
+			where: {
+				invoiceId,
+				status: { in: ['PENDING', 'SCHEDULED'] as InvoiceInstallmentStatus[] },
+			},
 			data: { status: 'CANCELLED' },
 		});
 	}

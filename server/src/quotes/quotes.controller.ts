@@ -232,6 +232,11 @@ export class PublicQuotesController {
 		return this.quotes.publicAcceptWithDeposit(token, body, req.ip);
 	}
 
+	@Post(':token/reset-payment-choice')
+	async resetPaymentChoice(@Param('token') token: string) {
+		return this.quotes.publicResetPaymentChoice(token);
+	}
+
 	@Post(':token/reject')
 	async reject(@Param('token') token: string) {
 		return this.quotes.publicReject(token);

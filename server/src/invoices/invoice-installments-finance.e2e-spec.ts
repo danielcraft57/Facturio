@@ -27,6 +27,10 @@ describe('Échéancier — finance (e2e)', () => {
 		await app.init();
 		prisma = app.get(PrismaService);
 		testUser = await createTestUser(app, prisma);
+		await prisma.organization.update({
+			where: { id: testUser.organizationId },
+			data: { saasPlan: 'PRO' },
+		});
 	});
 
 	afterAll(async () => {

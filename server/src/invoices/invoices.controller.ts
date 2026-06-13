@@ -37,6 +37,7 @@ import {
 	SetInvoiceInstallmentsDto,
 } from './dto/set-invoice-installments.dto';
 import { InvoiceInstallmentReminderService } from './invoice-installment-reminder.service';
+import { InvoiceInstallmentReleaseService } from './invoice-installment-release.service';
 
 @Controller(['invoices', 'factures'])
 export class InvoicesController {
@@ -49,6 +50,7 @@ export class InvoicesController {
 		private readonly refunds: RefundsService,
 		private readonly installments: InvoiceInstallmentsService,
 		private readonly installmentReminders: InvoiceInstallmentReminderService,
+		private readonly installmentReleases: InvoiceInstallmentReleaseService,
 	) {}
 
 	@Post()
@@ -136,6 +138,28 @@ export class InvoicesController {
 	@Delete(':id/installments')
 	clearInstallments(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.installments.clearSchedule(id, user.organizationId);
+	}
+
+	@Post(':id/installments/:installmentId/release')
+	async releaseInstallment(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Param('installmentId', ParseIntPipe) installmentId: number,
+		@CurrentUser() user: any,
+	) {
+		const rows = await this.installments.listForInvoice(id, user.organizationId);
+		if (!rows.some((r) => r.id === installmentId)) {
+			throw new BadRequestException('Échéance introuvable sur cette facture');
+		}
+		const sent = await this.installmentReleases.releaseInstallment(installmentId, {
+			force: true,
+			organizationId: user.organizationId,
+		});
+		if (!sent) {
+			throw new BadRequestException(
+				'Impossible d’envoyer cette mensualité (acompte non payé, échéance déjà active, etc.)',
+			);
+		}
+		return { success: true, installmentId };
 	}
 
 	@Post(':id/installments/:installmentId/remind')

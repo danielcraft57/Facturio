@@ -3,6 +3,7 @@ export interface InvoiceInstallmentSummary {
   hasPlan: boolean
   totalCount: number
   pendingCount: number
+  scheduledCount?: number
   paidCount: number
   nextSequence: number | null
   nextAmount: number | null

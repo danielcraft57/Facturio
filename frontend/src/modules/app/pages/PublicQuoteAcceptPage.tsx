@@ -43,6 +43,8 @@ type PublicQuoteSummary = {
     smartInstallment?: SmartInstallmentHint | null
     hasInstallmentInvoice?: boolean
     installmentInvoiceToken?: string | null
+    hasInstallmentDeposit?: boolean
+    canResetPaymentChoice?: boolean
   }
 }
 
@@ -56,6 +58,7 @@ type AcceptPayResponse = {
   initialPaymentAmount?: number
   installmentCount?: number
   withDeposit?: boolean
+  installmentInvoiceNumber?: string
 }
 
 type PayMode = 'FULL' | 'DEPOSIT' | 'INSTALLMENT'
@@ -73,6 +76,33 @@ export function PublicQuoteAcceptPage() {
   const [quoteSummary, setQuoteSummary] = useState<PublicQuoteSummary | null>(null)
   const [quoteLoading, setQuoteLoading] = useState(true)
   const [onlinePaymentAvailable, setOnlinePaymentAvailable] = useState(true)
+  const [resetting, setResetting] = useState(false)
+  const [canResetAfterAccept, setCanResetAfterAccept] = useState(false)
+
+  const reloadQuoteSummary = useCallback(async () => {
+    if (!token) return
+    setQuoteLoading(true)
+    try {
+      const res = await api.get<PublicQuoteSummary>(`public/quotes/${token}`)
+      const body = (res as { data?: PublicQuoteSummary }).data ?? res
+      const summary = body as PublicQuoteSummary
+      setQuoteSummary(summary)
+      setOnlinePaymentAvailable(summary.publicPaymentHints?.onlinePaymentAvailable !== false)
+      if (summary.publicPaymentHints?.hasInstallmentInvoice) {
+        setMode('INSTALLMENT')
+      } else if (!summary.publicPaymentHints?.hasDepositSplit) {
+        setMode(null)
+      }
+      if (summary.publicPaymentHints?.hasInstallmentDeposit) {
+        setInstallmentWithDeposit(true)
+      }
+      setCanResetAfterAccept(Boolean(summary.publicPaymentHints?.canResetPaymentChoice))
+    } catch {
+      setQuoteSummary(null)
+    } finally {
+      setQuoteLoading(false)
+    }
+  }, [token])
 
   const quoteTotal = quoteSummary?.publicPaymentHints?.quoteTotal ?? 0
   const smartInstallment = quoteSummary?.publicPaymentHints?.smartInstallment ?? null
@@ -101,22 +131,34 @@ export function PublicQuoteAcceptPage() {
       setOnlinePaymentAvailable(false)
     }
     setStatus('success')
-    if (body.invoiceToken) {
-      setInvoiceToken(body.invoiceToken)
-      setMessage(body.message || 'Devis accepté. Votre facture est prête à être réglée.')
-      return true
-    }
+    setCanResetAfterAccept(true)
+
     if (body.depositInvoiceToken) {
       setDepositInvoiceToken(body.depositInvoiceToken)
-      setRemainderInvoiceToken(body.remainderInvoiceToken ?? null)
+      if (body.invoiceToken) {
+        setInvoiceToken(body.invoiceToken)
+      } else {
+        setInvoiceToken(null)
+        setRemainderInvoiceToken(body.remainderInvoiceToken ?? null)
+      }
       setMessage(
         body.message ||
-          (body.remainderInvoiceToken
-            ? 'Acompte déjà réglé. Vous pouvez payer le solde.'
-            : 'Devis accepté. Vous pouvez procéder au paiement acompte (10 %).'),
+          (body.invoiceToken
+            ? 'Acompte réglé. Passez au paiement des mensualités.'
+            : body.installmentInvoiceNumber
+              ? `Devis accepté. Réglez l'acompte, puis les mensualités sur ${body.installmentInvoiceNumber}.`
+              : 'Devis accepté. Vous pouvez procéder au paiement acompte (10 %).'),
       )
       return true
     }
+
+    if (body.invoiceToken) {
+      setInvoiceToken(body.invoiceToken)
+      setDepositInvoiceToken(null)
+      setMessage(body.message || 'Devis accepté. Votre facture est prête à être réglée.')
+      return true
+    }
+
     setMessage(body.message || 'Devis accepté.')
     return true
   }, [])
@@ -126,34 +168,17 @@ export function PublicQuoteAcceptPage() {
       setQuoteLoading(false)
       return
     }
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await api.get<PublicQuoteSummary>(`public/quotes/${token}`)
-        const body = (res as { data?: PublicQuoteSummary }).data ?? res
-        if (!cancelled) {
-          const summary = body as PublicQuoteSummary
-          setQuoteSummary(summary)
-          setOnlinePaymentAvailable(summary.publicPaymentHints?.onlinePaymentAvailable !== false)
-          if (summary.publicPaymentHints?.hasInstallmentInvoice) {
-            setMode('INSTALLMENT')
-          }
-        }
-      } catch {
-        if (!cancelled) setQuoteSummary(null)
-      } finally {
-        if (!cancelled) setQuoteLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [token])
+    void reloadQuoteSummary()
+  }, [token, reloadQuoteSummary])
 
   useEffect(() => {
     if (quoteLoading) return
     if (quoteSummary?.publicPaymentHints?.depositPaid) {
-      setMode(null)
+      if (quoteSummary?.publicPaymentHints?.hasInstallmentInvoice) {
+        setMode('INSTALLMENT')
+      } else {
+        setMode(null)
+      }
       return
     }
     if (quoteSummary?.publicPaymentHints?.hasDepositSplit) {
@@ -164,6 +189,9 @@ export function PublicQuoteAcceptPage() {
       setMode('INSTALLMENT')
       return
     }
+    if (quoteSummary?.publicPaymentHints?.hasInstallmentDeposit) {
+      setInstallmentWithDeposit(true)
+    }
     setMode(null)
   }, [
     quoteLoading,
@@ -171,6 +199,31 @@ export function PublicQuoteAcceptPage() {
     quoteSummary?.publicPaymentHints?.depositPaid,
     quoteSummary?.publicPaymentHints?.hasInstallmentInvoice,
   ])
+
+  const handleResetPaymentChoice = async () => {
+    if (!token) return
+    setResetting(true)
+    setMessage('')
+    try {
+      const res = await api.post<{ message?: string }>(`public/quotes/${token}/reset-payment-choice`, {})
+      const body = (res as { data?: { message?: string } }).data ?? (res as { message?: string })
+      setStatus('idle')
+      setInvoiceToken(null)
+      setDepositInvoiceToken(null)
+      setRemainderInvoiceToken(null)
+      setMode(null)
+      setInstallmentWithDeposit(false)
+      setCanResetAfterAccept(false)
+      setMessage(body.message || 'Vous pouvez choisir un autre mode de paiement.')
+      await reloadQuoteSummary()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string }
+      setStatus('error')
+      setMessage(e?.response?.data?.message || e?.message || 'Impossible de réinitialiser le plan de paiement.')
+    } finally {
+      setResetting(false)
+    }
+  }
 
   const handleAccept = async () => {
     if (!token) {
@@ -188,11 +241,19 @@ export function PublicQuoteAcceptPage() {
     const hasDepositSplit = Boolean(quoteSummary?.publicPaymentHints?.hasDepositSplit)
     const depositPaid = Boolean(quoteSummary?.publicPaymentHints?.depositPaid)
 
-    const effectiveMode: PayMode | null = depositPaid
-      ? 'DEPOSIT'
-      : hasDepositSplit
+    const hasInstallmentAfterDeposit =
+      Boolean(quoteSummary?.publicPaymentHints?.hasInstallmentInvoice) &&
+      Boolean(quoteSummary?.publicPaymentHints?.depositPaid)
+
+    const hasInstallmentDeposit = Boolean(quoteSummary?.publicPaymentHints?.hasInstallmentDeposit)
+
+    const effectiveMode: PayMode | null = hasInstallmentAfterDeposit
+      ? 'INSTALLMENT'
+      : depositPaid
         ? 'DEPOSIT'
-        : mode
+        : hasDepositSplit
+          ? 'DEPOSIT'
+          : mode
 
     if (onlinePaymentAvailable && !effectiveMode) {
       setStatus('error')
@@ -206,7 +267,10 @@ export function PublicQuoteAcceptPage() {
             mode: effectiveMode === 'DEPOSIT' ? 'DEPOSIT' : effectiveMode === 'INSTALLMENT' ? 'INSTALLMENT' : 'FULL',
             ...(effectiveMode === 'DEPOSIT' ? { depositRate: 0.1 } : {}),
             ...(effectiveMode === 'INSTALLMENT'
-              ? { withDeposit: installmentWithDeposit, depositRate: 0.1 }
+              ? {
+                  withDeposit: hasInstallmentDeposit || installmentWithDeposit,
+                  depositRate: 0.1,
+                }
               : {}),
           })
         : await api.post<AcceptPayResponse>(`public/quotes/${token}/accept`, {})
@@ -231,6 +295,9 @@ export function PublicQuoteAcceptPage() {
   const hasDepositSplit = Boolean(quoteSummary?.publicPaymentHints?.hasDepositSplit)
   const depositPaid = Boolean(quoteSummary?.publicPaymentHints?.depositPaid)
   const hasInstallmentInvoice = Boolean(quoteSummary?.publicPaymentHints?.hasInstallmentInvoice)
+  const canResetPaymentChoice = Boolean(quoteSummary?.publicPaymentHints?.canResetPaymentChoice)
+  const showResetPaymentChoice = canResetPaymentChoice || (status === 'success' && canResetAfterAccept)
+  const successDepositPending = Boolean(depositInvoiceToken && !invoiceToken)
   const isRejected = quoteSummary?.status === 'REJECTED'
   const isExpired = quoteSummary?.status === 'EXPIRED'
   const effectiveMode = depositPaid ? 'DEPOSIT' : hasDepositSplit ? 'DEPOSIT' : mode
@@ -267,7 +334,11 @@ export function PublicQuoteAcceptPage() {
 
   const submitLabel = (() => {
     if (!onlinePaymentAvailable) return 'Accepter le devis'
-    if (depositPaid) return 'Obtenir le lien de paiement du solde'
+    if (depositPaid) {
+      return hasInstallmentInvoice
+        ? 'Obtenir le lien de paiement échéancier'
+        : 'Obtenir le lien de paiement du solde'
+    }
     if (installmentFlow) {
       if (alreadyAccepted) return 'Obtenir le lien de paiement'
       if (installmentWithDeposit) {
@@ -318,7 +389,7 @@ export function PublicQuoteAcceptPage() {
               <>Ce devis est déjà accepté.</>
             )}{' '}
             {hasInstallmentInvoice
-              ? 'Réglez la prochaine échéance via le lien ci-dessous.'
+              ? 'Réglez la prochaine échéance via le lien ci-dessous, ou changez de mode de paiement si vous n’avez encore rien réglé.'
               : hasDepositSplit
                 ? 'Obtenez ci-dessous le lien de paiement acompte.'
                 : 'Choisissez ci-dessous comment régler.'}
@@ -334,6 +405,11 @@ export function PublicQuoteAcceptPage() {
 
         {showAcceptForm && (
           <>
+            {message && status === 'idle' && (
+              <Alert severity="success" sx={{ mb: 2, textAlign: 'left' }}>
+                {message}
+              </Alert>
+            )}
             <Typography variant="h6" sx={{ mb: 1, fontWeight: 800 }}>
               {pageTitle}
             </Typography>
@@ -405,9 +481,20 @@ export function PublicQuoteAcceptPage() {
               </Alert>
             )}
 
-            <Button variant="contained" onClick={() => void handleAccept()} disabled={!canSubmit}>
+            <Button variant="contained" onClick={() => void handleAccept()} disabled={!canSubmit || resetting}>
               {submitLabel}
             </Button>
+            {canResetPaymentChoice && (
+              <Button
+                variant="text"
+                color="inherit"
+                disabled={resetting}
+                onClick={() => void handleResetPaymentChoice()}
+                sx={{ display: 'block', mt: 1.5, mx: 'auto' }}
+              >
+                {resetting ? 'Réinitialisation…' : 'Changer de mode de paiement'}
+              </Button>
+            )}
             {canReject && token && (
               <Button
                 component={RouterLink}
@@ -428,9 +515,13 @@ export function PublicQuoteAcceptPage() {
               {message}
             </Alert>
             <Stack spacing={1} alignItems="center">
-              {invoiceToken && (
+              {invoiceToken && !successDepositPending && (
                 <Button component={RouterLink} to={`/facture/${invoiceToken}`} variant="contained" color="primary">
-                  {onlinePaymentAvailable ? 'Payer en ligne' : 'Voir la facture'}
+                  {onlinePaymentAvailable
+                    ? depositPaid
+                      ? 'Payer les mensualités'
+                      : 'Payer en ligne'
+                    : 'Voir la facture'}
                 </Button>
               )}
               {depositInvoiceToken && (
@@ -438,9 +529,9 @@ export function PublicQuoteAcceptPage() {
                   component={RouterLink}
                   to={`/facture/${depositInvoiceToken}`}
                   variant="contained"
-                  color={depositPaid ? 'inherit' : 'primary'}
+                  color="primary"
                 >
-                  {depositPaid ? "Voir facture d'acompte" : 'Paiement acompte en ligne'}
+                  {depositPaid ? "Voir facture d'acompte" : 'Payer l\'acompte en ligne'}
                 </Button>
               )}
               {remainderInvoiceToken && (
@@ -453,9 +544,17 @@ export function PublicQuoteAcceptPage() {
                   Payer le solde en ligne
                 </Button>
               )}
-              <Button component={RouterLink} to="/" variant="text">
-                Retour à l'accueil
-              </Button>
+              {showResetPaymentChoice && token && (
+                <Button
+                  variant="text"
+                  color="inherit"
+                  disabled={resetting}
+                  onClick={() => void handleResetPaymentChoice()}
+                  sx={{ display: 'block', mt: 1 }}
+                >
+                  {resetting ? 'Réinitialisation…' : 'Changer de mode de paiement'}
+                </Button>
+              )}
             </Stack>
           </>
         )}

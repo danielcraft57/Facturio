@@ -2,7 +2,7 @@ import { apiClient } from './api'
 import { unwrapApiPayload } from './clients'
 import type { ReceivableAgingBucket } from './receivables'
 
-export type InvoiceInstallmentStatus = 'PENDING' | 'PAID' | 'CANCELLED'
+export type InvoiceInstallmentStatus = 'SCHEDULED' | 'PENDING' | 'PAID' | 'CANCELLED'
 
 export interface InstallmentAccountingLink {
   entryId: number
@@ -73,6 +73,10 @@ export const invoiceInstallmentsService = {
 
   async remind(invoiceId: string, installmentId: number): Promise<void> {
     await apiClient.post(`factures/${invoiceId}/installments/${installmentId}/remind`, {})
+  },
+
+  async release(invoiceId: string, installmentId: number): Promise<void> {
+    await apiClient.post(`factures/${invoiceId}/installments/${installmentId}/release`, {})
   },
 
   async previewEqual(

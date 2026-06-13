@@ -12,6 +12,7 @@ export function canAccessInvoiceByPublicToken(invoice: {
 	const tags = parseTagsJson(invoice.tags);
 	if (invoice.status === 'PAID') return true;
 	if (tags.includes('SOLDE_APRES_ACOMPTE')) return true;
+	if (tags.includes('ECHEANCIER')) return true;
 	if (tags.includes('ACOMPTE_10')) return true;
 	return false;
 }

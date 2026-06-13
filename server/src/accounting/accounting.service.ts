@@ -649,6 +649,7 @@ export class AccountingService {
 		const tags = parseTagsJson(invoice.tags);
 		const isDeposit = tags.includes('ACOMPTE_10');
 		const isRemainder = tags.includes('SOLDE_APRES_ACOMPTE');
+		const isInstallment = tags.includes('ECHEANCIER');
 		const lines = [
 			{ accountCode: params.customerAccountCode ?? '411', debit: total, description: `Client — ${invoice.number}` },
 			{
@@ -658,7 +659,9 @@ export class AccountingService {
 					? 'Prestations — acompte 10 %'
 					: isRemainder
 						? 'Prestations — solde après acompte'
-						: 'Prestations de services',
+						: isInstallment
+							? 'Prestations — échéancier'
+							: 'Prestations de services',
 			},
 			{ accountCode: params.vatCollectedAccountCode ?? '44571', credit: tax, description: 'TVA collectée 20 %' },
 		].filter((l) => (l.debit ?? 0) > 0 || (l.credit ?? 0) > 0);
@@ -666,7 +669,9 @@ export class AccountingService {
 			? `Facture d'acompte ${invoice.number}`
 			: isRemainder
 				? `Facture de solde ${invoice.number}`
-				: `Facture ${invoice.number}`;
+				: isInstallment
+					? `Facture échéancier ${invoice.number}`
+					: `Facture ${invoice.number}`;
 		return this.postEntry({
 			journalCode: 'VE',
 			date: params.date ?? invoice.date,

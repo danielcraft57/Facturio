@@ -15,7 +15,7 @@ export interface InvoiceInstallmentDto {
 	sequence: number;
 	amount: number;
 	dueDate: string;
-	status: 'PENDING' | 'PAID' | 'CANCELLED';
+	status: 'SCHEDULED' | 'PENDING' | 'PAID' | 'CANCELLED';
 	paymentId: number | null;
 	paidAt: string | null;
 	overdue: boolean;
@@ -127,10 +127,10 @@ export function resolveInstallmentPublicLabel(
 	sequence: number,
 	legalMention: string | null | undefined,
 ): string | null {
-	const withDeposit = /acompte/i.test(legalMention ?? '');
-	if (!withDeposit) return null;
-	if (sequence === 1) return 'Acompte';
-	return `Mensualité ${sequence - 1}`;
+	if (!/échéancier|mensualité/i.test(legalMention ?? '')) {
+		if (!legalMention?.includes('ECHEANCIER')) return null;
+	}
+	return `Mensualité ${sequence}`;
 }
 
 /**

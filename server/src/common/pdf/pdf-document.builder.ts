@@ -51,6 +51,8 @@ export interface BuildPdfDocumentOptions {
  */
 export class PdfDocumentBuilder {
 	private pageIndex = 1;
+	/** Évite la récursion pageAdded → text → pageAdded sur le filigrane. */
+	private drawingWatermark = false;
 
 	constructor(private readonly logger?: { warn: (msg: string, err?: unknown) => void }) {}
 
@@ -65,7 +67,7 @@ export class PdfDocumentBuilder {
 		const watermarkText = options.watermarkText?.trim() || null;
 		doc.on('pageAdded', () => {
 			this.pageIndex += 1;
-			if (watermarkText) {
+			if (watermarkText && !this.drawingWatermark) {
 				this.drawPlanWatermark(doc, watermarkText);
 			}
 		});
@@ -125,17 +127,23 @@ export class PdfDocumentBuilder {
 
 	/** Filigrane plan Free en bas de page. */
 	private drawPlanWatermark(doc: PdfDoc, text: string): void {
-		const { marginX, contentWidth } = PDF_LAYOUT;
-		const pageHeight = doc.page?.height ?? 841.89;
-		doc.save();
-		doc.fontSize(8)
-			.fillColor('#9CA3AF')
-			.text(text, marginX, pageHeight - 42, {
-				width: contentWidth,
-				align: 'center',
-				lineBreak: false,
-			});
-		doc.restore();
+		if (this.drawingWatermark) return;
+		this.drawingWatermark = true;
+		try {
+			const { marginX, contentWidth } = PDF_LAYOUT;
+			const pageHeight = doc.page?.height ?? 841.89;
+			doc.save();
+			doc.fontSize(8)
+				.fillColor('#9CA3AF')
+				.text(text, marginX, pageHeight - 42, {
+					width: contentWidth,
+					align: 'center',
+					lineBreak: false,
+				});
+			doc.restore();
+		} finally {
+			this.drawingWatermark = false;
+		}
 	}
 
 	/** Paiement + mentions légales en flux (évite une page 2 quasi vide). */
@@ -616,6 +624,170 @@ export class PdfDocumentBuilder {
 		doc.y = barY + barH + 8;
 	}
 
+	private formatInstallmentStatusLabel(status: string): string {
+		switch (status) {
+			case 'PAID':
+				return 'Réglée';
+			case 'PENDING':
+				return 'À régler';
+			case 'SCHEDULED':
+				return 'Programmée';
+			case 'CANCELLED':
+				return 'Annulée';
+			default:
+				return status;
+		}
+	}
+
+	/**
+	 * Tableau d'échéancier lisible (mensualités, dates, montants, statuts).
+	 *
+	 * @returns Position Y après le bloc
+	 */
+	private drawInstallmentScheduleSection(
+		doc: PdfDoc,
+		schedule: { sequence: number; amount: number; dueDate: Date | string; status: string }[],
+		x: number,
+		y: number,
+		width: number,
+	): number {
+		const totalCount = schedule.length;
+		let cursorY = y;
+
+		doc.font('Helvetica-Bold').fontSize(10).fillColor(PDF_THEME.navy);
+		doc.text('Échéancier de paiement', x, cursorY, { width });
+		cursorY = doc.y + 6;
+
+		const colN = width * 0.14;
+		const colDate = width * 0.28;
+		const colAmount = width * 0.28;
+		const colStatus = width - colN - colDate - colAmount;
+		const rowH = 22;
+		const headerH = 20;
+
+		doc.save();
+		doc.roundedRect(x, cursorY, width, headerH, 3).fill(PDF_THEME.navyMid);
+		doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PDF_THEME.white);
+		doc.text('N°', x + 6, cursorY + 6, { width: colN - 8, lineBreak: false });
+		doc.text('Date', x + colN, cursorY + 6, { width: colDate - 4, lineBreak: false });
+		doc.text('Montant TTC', x + colN + colDate, cursorY + 6, {
+			width: colAmount - 4,
+			align: 'right',
+			lineBreak: false,
+		});
+		doc.text('Statut', x + colN + colDate + colAmount, cursorY + 6, {
+			width: colStatus - 6,
+			align: 'right',
+			lineBreak: false,
+		});
+		doc.restore();
+		cursorY += headerH;
+
+		for (let i = 0; i < schedule.length; i++) {
+			const row = schedule[i];
+			const isPending = row.status === 'PENDING';
+			const isPaid = row.status === 'PAID';
+			const bg = isPending ? '#eff6ff' : i % 2 === 1 ? PDF_THEME.rowAlt : PDF_THEME.white;
+
+			doc.save();
+			doc.rect(x, cursorY, width, rowH).fill(bg);
+			if (isPending) {
+				doc.rect(x, cursorY, 3, rowH).fill(PDF_THEME.accent);
+			}
+			doc.restore();
+
+			const dueFr = new Date(row.dueDate).toLocaleDateString('fr-FR');
+			const statusLabel = this.formatInstallmentStatusLabel(row.status);
+			const statusColor = isPaid
+				? '#15803d'
+				: isPending
+					? PDF_THEME.accent
+					: PDF_THEME.textMuted;
+
+			doc.font(isPending ? 'Helvetica-Bold' : 'Helvetica')
+				.fontSize(8.5)
+				.fillColor(PDF_THEME.textDark);
+			doc.text(`${row.sequence}/${totalCount}`, x + 6, cursorY + 7, {
+				width: colN - 8,
+				lineBreak: false,
+			});
+			doc.text(dueFr, x + colN, cursorY + 7, { width: colDate - 4, lineBreak: false });
+			doc.text(this.formatCurrency(row.amount), x + colN + colDate, cursorY + 7, {
+				width: colAmount - 4,
+				align: 'right',
+				lineBreak: false,
+			});
+			doc.font('Helvetica-Bold')
+				.fontSize(7.5)
+				.fillColor(statusColor);
+			doc.text(statusLabel, x + colN + colDate + colAmount, cursorY + 7, {
+				width: colStatus - 6,
+				align: 'right',
+				lineBreak: false,
+			});
+
+			cursorY += rowH;
+		}
+
+		const scheduleSum = schedule.reduce((s, r) => s + Number(r.amount), 0);
+		cursorY += 4;
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text(
+			`Total des mensualités : ${this.formatCurrency(scheduleSum)} · Le paiement en ligne porte sur la mensualité « À régler ».`,
+			x,
+			cursorY,
+			{ width, lineGap: 2 },
+		);
+		return doc.y + PDF_LAYOUT.padSm;
+	}
+
+	/**
+	 * Encadré « montant à régler maintenant » pour la prochaine mensualité active.
+	 */
+	private drawInstallmentDueNowBox(
+		doc: PdfDoc,
+		schedule: { sequence: number; amount: number; dueDate: Date | string; status: string }[],
+		invoiceBalance: number,
+		x: number,
+		y: number,
+		width: number,
+	): number {
+		const pending = schedule.find((r) => r.status === 'PENDING');
+		if (!pending) {
+			const allPaid = schedule.every((r) => r.status === 'PAID');
+			if (allPaid) {
+				doc.font('Helvetica').fontSize(8.5).fillColor('#15803d');
+				doc.text('Toutes les mensualités sont réglées.', x, y, { width });
+				return doc.y + PDF_LAYOUT.padSm;
+			}
+			return y;
+		}
+
+		const totalCount = schedule.length;
+		const dueFr = new Date(pending.dueDate).toLocaleDateString('fr-FR');
+		const boxH = 44;
+		let cursorY = y + 4;
+
+		doc.roundedRect(x, cursorY, width, boxH, 4).fillAndStroke('#eff6ff', PDF_THEME.accent);
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text(`À régler maintenant — Mensualité ${pending.sequence}/${totalCount}`, x + 10, cursorY + 6, {
+			width: width - 20,
+		});
+		doc.font('Helvetica-Bold').fontSize(13).fillColor(PDF_THEME.navy);
+		doc.text(this.formatCurrency(pending.amount), x + 10, cursorY + 18, {
+			width: width - 20,
+			align: 'right',
+		});
+		doc.font('Helvetica').fontSize(7.5).fillColor(PDF_THEME.textMuted);
+		doc.text(
+			`Échéance le ${dueFr} · Solde restant sur la facture : ${this.formatCurrency(invoiceBalance)}`,
+			x + 10,
+			cursorY + 32,
+			{ width: width - 20 },
+		);
+		return cursorY + boxH + PDF_LAYOUT.padSm;
+	}
+
 	private drawPaymentBlock(
 		doc: PdfDoc,
 		options: BuildPdfDocumentOptions,
@@ -627,13 +799,27 @@ export class PdfDocumentBuilder {
 		const tags = parseTagsJson(options.document?.tags ?? null);
 		const isDeposit = tags.includes('ACOMPTE_10');
 		const isRemainder = tags.includes('SOLDE_APRES_ACOMPTE');
+		const isInstallment = tags.includes('ECHEANCIER');
+		const schedule = options.document?.installmentSchedule as
+			| { sequence: number; amount: number; dueDate: Date | string; status: string }[]
+			| undefined;
+		const hasSchedule = Boolean(schedule?.length);
 		const breakdown = options.document?.engagementBreakdown as
 			| { contractTotal?: number; depositAmount?: number; remainderAmount?: number }
 			| undefined;
 		const hasBreakdown = Boolean(breakdown && Number.isFinite(breakdown.contractTotal));
+		const invoiceTotal = Number(options.totals?.total ?? options.document?.total ?? 0);
+		const invoiceBalance = Number(
+			options.document?.balance ?? options.totals?.netDue ?? invoiceTotal,
+		);
 
 		doc.fontSize(9).fillColor(PDF_THEME.navy).font('Helvetica-Bold');
-		doc.text(hasBreakdown ? 'Récapitulatif du devis' : 'Paiement', x, y, { width });
+		const blockTitle = hasSchedule
+			? 'Paiement en plusieurs fois'
+			: hasBreakdown
+				? 'Récapitulatif du devis'
+				: 'Paiement';
+		doc.text(blockTitle, x, y, { width });
 		let cursorY = doc.y + PDF_LAYOUT.padSm;
 
 		if (hasBreakdown && breakdown) {
@@ -649,15 +835,23 @@ export class PdfDocumentBuilder {
 			const rows: { label: string; amount: number; bold?: boolean; muted?: boolean }[] = [
 				{ label: 'Total du devis', amount: totalContract },
 				{
-					label: isRemainder ? 'Paiement acompte (10 %) — réglé' : 'Paiement acompte (10 %)',
+					label: isInstallment
+						? 'Acompte (10 %) — réglé'
+						: isRemainder
+							? 'Paiement acompte (10 %) — réglé'
+							: 'Paiement acompte (10 %)',
 					amount: depositAmount,
 					bold: isDeposit,
-					muted: isRemainder,
+					muted: isRemainder || isInstallment,
 				},
 				{
-					label: isDeposit ? 'Solde — facturé plus tard' : 'Solde — sur cette facture',
+					label: isInstallment
+						? 'Solde échelonné — sur cette facture'
+						: isDeposit
+							? 'Solde — facturé plus tard'
+							: 'Solde — sur cette facture',
 					amount: remainder,
-					bold: isRemainder,
+					bold: isRemainder || isInstallment,
 					muted: isDeposit,
 				},
 			];
@@ -668,12 +862,18 @@ export class PdfDocumentBuilder {
 					.fontSize(8.5)
 					.fillColor(row.muted ? PDF_THEME.textMuted : PDF_THEME.text);
 				doc.text(row.label, x, cursorY, { width: labelW });
-				doc.text(this.formatCurrency(row.amount), x + labelW, cursorY, { width: amountW, align: 'right' });
+				doc.text(this.formatCurrency(row.amount), x + labelW, cursorY, {
+					width: amountW,
+					align: 'right',
+				});
 				cursorY += 15;
 			}
 
-			const invoiceTotal = Number(options.totals?.total ?? options.document?.total ?? 0);
-			if ((isDeposit || isRemainder) && invoiceTotal > 0) {
+			if (hasSchedule && schedule) {
+				cursorY += 6;
+				cursorY = this.drawInstallmentScheduleSection(doc, schedule, x, cursorY, width);
+				cursorY = this.drawInstallmentDueNowBox(doc, schedule, invoiceBalance, x, cursorY, width);
+			} else if ((isDeposit || isRemainder) && invoiceTotal > 0) {
 				cursorY += 4;
 				const boxH = 30;
 				doc
@@ -688,45 +888,24 @@ export class PdfDocumentBuilder {
 				});
 				cursorY += boxH + 8;
 			}
-		} else {
-			const schedule = options.document?.installmentSchedule as
-				| { sequence: number; amount: number; dueDate: Date | string; status: string }[]
-				| undefined;
-			if (schedule?.length) {
-				doc.font('Helvetica-Bold').fontSize(9).fillColor(PDF_THEME.navy);
-				doc.text('Échéancier de paiement', x, cursorY, { width });
-				cursorY = doc.y + PDF_LAYOUT.padSm;
-				const labelW = width * 0.55;
-				const amountW = width - labelW;
-				for (const row of schedule) {
-					const dueFr = new Date(row.dueDate).toLocaleDateString('fr-FR');
-					const statusLabel =
-						row.status === 'PAID'
-							? 'réglée'
-							: row.status === 'CANCELLED'
-								? 'annulée'
-								: 'à venir';
-					doc.font('Helvetica').fontSize(8.5).fillColor(PDF_THEME.text);
-					doc.text(`Échéance ${row.sequence} — ${dueFr} (${statusLabel})`, x, cursorY, {
-						width: labelW,
-					});
-					doc.text(this.formatCurrency(row.amount), x + labelW, cursorY, {
-						width: amountW,
-						align: 'right',
-					});
-					cursorY += 14;
-				}
-				cursorY += 6;
-				doc.font('Helvetica').fontSize(8).fillColor(PDF_THEME.textMuted);
-				doc.text(
-					'Le règlement en ligne porte sur la prochaine échéance en attente.',
-					x,
-					cursorY,
-					{ width },
-				);
-				cursorY = doc.y + PDF_LAYOUT.padSm;
-			}
+		} else if (hasSchedule && schedule) {
+			cursorY = this.drawInstallmentScheduleSection(doc, schedule, x, cursorY, width);
+			cursorY = this.drawInstallmentDueNowBox(doc, schedule, invoiceBalance, x, cursorY, width);
 
+			const lines: string[] = [];
+			if (options.document?.paymentNote) {
+				lines.push(String(options.document.paymentNote));
+			} else if (options.kind === 'facture') {
+				lines.push('Mode de règlement : virement bancaire ou carte bancaire en ligne.');
+			}
+			if (iban) lines.push(`IBAN : ${iban}`);
+
+			doc.fontSize(8.5).fillColor(PDF_THEME.text).font('Helvetica');
+			for (const line of lines) {
+				doc.text(`• ${line}`, x, cursorY, { width, lineGap: 4 });
+				cursorY = doc.y + 4;
+			}
+		} else {
 			const lines: string[] = [];
 			if (options.document?.paymentNote) {
 				lines.push(String(options.document.paymentNote));

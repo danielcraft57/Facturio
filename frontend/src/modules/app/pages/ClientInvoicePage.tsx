@@ -211,18 +211,25 @@ function InvoicePaymentRecap({
   invoice,
   isPaid,
   isDeposit,
+  checkoutAmount,
 }: {
   invoice: PublicInvoiceSummary
   isPaid: boolean
   isDeposit: boolean
+  checkoutAmount?: number | null
 }) {
   const breakdown = invoice.engagementBreakdown
   const isRemainder = invoice.documentKind === 'remainder'
   const hasSplit = Boolean(breakdown)
+  const nextInst = invoice.nextInstallment
+  const instCount = invoice.installments?.length ?? 0
 
   const creditApplied = invoice.appliedCreditTotal ?? 0
   const settledByCreditOnly =
     isPaid && creditApplied > 0.01 && invoice.balance <= 0.01
+
+  const amountDueNow =
+    checkoutAmount ?? nextInst?.amount ?? (!isPaid ? invoice.balance : 0)
 
   if (!hasSplit && !isDeposit && !isRemainder) {
     if (isPaid) {
@@ -237,14 +244,21 @@ function InvoicePaymentRecap({
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: 'grey.50' }}>
         <Typography variant="overline" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-          À régler
+          {nextInst && instCount > 0
+            ? `Échéance ${nextInst.sequence}/${instCount} — à régler`
+            : 'À régler'}
         </Typography>
         <Typography variant="h5" fontWeight={800}>
-          {formatCurrency(invoice.balance)}
+          {formatCurrency(amountDueNow)}
         </Typography>
+        {nextInst && instCount > 0 && (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Solde restant sur cette facture : {formatCurrency(invoice.balance)}
+          </Typography>
+        )}
         {invoice.dueDate && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Échéance le {formatDate(invoice.dueDate)}
+            Échéance le {formatDate(nextInst?.dueDate ?? invoice.dueDate)}
           </Typography>
         )}
       </Paper>
@@ -252,7 +266,7 @@ function InvoicePaymentRecap({
   }
 
   const depositDone = isRemainder || (isDeposit && isPaid)
-  const payingNow = !isPaid ? invoice.balance : 0
+  const payingNow = !isPaid ? amountDueNow : 0
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 2.5, borderRadius: 2 }}>
@@ -307,11 +321,18 @@ function InvoicePaymentRecap({
             }}
           >
             <Typography variant="caption" color="text.secondary" display="block">
-              Montant de cette facture
+              {nextInst && instCount > 0
+                ? `Échéance ${nextInst.sequence}/${instCount} — montant à régler`
+                : 'Montant de cette facture'}
             </Typography>
             <Typography variant="h5" fontWeight={800} sx={{ lineHeight: 1.2 }}>
               {formatCurrency(payingNow)}
             </Typography>
+            {nextInst && instCount > 0 && (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                Solde restant : {formatCurrency(invoice.balance)}
+              </Typography>
+            )}
           </Box>
         </>
       )}
@@ -507,7 +528,12 @@ export function ClientInvoicePage() {
               {invoice.dueDate ? ` · Échéance ${formatDate(invoice.dueDate)}` : ''}
             </Typography>
 
-            <InvoicePaymentRecap invoice={invoice} isPaid={isPaid} isDeposit={isDeposit} />
+            <InvoicePaymentRecap
+              invoice={invoice}
+              isPaid={isPaid}
+              isDeposit={isDeposit}
+              checkoutAmount={checkoutAmount}
+            />
 
             {(invoice.appliedCreditTotal ?? 0) > 0 && (
               <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>

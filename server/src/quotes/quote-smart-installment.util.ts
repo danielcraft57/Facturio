@@ -30,7 +30,6 @@ function capInstallmentCount(totalTtc: number, desired: number): number {
 
 /**
  * Propose un nombre d'échéances adapté au montant TTC (devis B2B).
- * Paliers pensés pour les petits devis (2x dès 300 €) et les gros (jusqu'à 10x).
  *
  * @param totalTtc - Total TTC du devis
  */
@@ -62,115 +61,115 @@ export function suggestSmartInstallmentPlan(totalTtc: number): SmartInstallmentP
 }
 
 /**
- * Réduit la première échéance du montant d'acompte et rééquilibre la dernière ligne.
- * Conservé pour les tests et d'éventuels plans manuels.
+ * Échéancier ECH après acompte ACO séparé : 1re mensualité réduite du montant acompte,
+ * les suivantes répartissent le solde (somme = total devis − acompte).
  *
- * @param rows - Échéances (somme = total)
- * @param total - Total TTC facture
- * @param depositAmount - Acompte versé à la commande
+ * @param quoteTotal - Total TTC du devis
+ * @param depositAmount - Montant déjà facturé sur ACO
+ * @param acceptedAt - Date d'acceptation
+ * @param options - deferFirstDue : 1re mensualité à J+30
  */
-export function applyDepositToFirstInstallment(
-	rows: InvoiceInstallmentInput[],
-	total: number,
+export function buildQuoteInstallmentScheduleAfterDeposit(
+	quoteTotal: number,
 	depositAmount: number,
+	acceptedAt: Date,
+	options?: { deferFirstDue?: boolean },
 ): InvoiceInstallmentInput[] {
-	if (depositAmount <= 0) return rows;
-
+	const plan = suggestSmartInstallmentPlan(quoteTotal);
+	if (!plan) {
+		throw new Error('Montant insuffisant pour un échéancier');
+	}
 	const deposit = Number(depositAmount.toFixed(2));
-	const copy = rows.map((row) => ({
-		amount: Number(row.amount),
-		dueDate: row.dueDate,
-	}));
-
-	copy[0].amount = Number((copy[0].amount - deposit).toFixed(2));
-	if (copy[0].amount < 0.01) {
-		throw new Error('Acompte trop élevé par rapport à la première échéance');
+	const remainder = Number((quoteTotal - deposit).toFixed(2));
+	if (remainder < MIN_INSTALLMENT_AMOUNT * 2) {
+		throw new Error('Montant trop faible pour combiner acompte et mensualités');
 	}
 
-	const sumExceptLast = copy.slice(0, -1).reduce((sum, row) => sum + row.amount, 0);
-	copy[copy.length - 1].amount = Number((total - sumExceptLast).toFixed(2));
+	const deferFirstDue = Boolean(options?.deferFirstDue);
+	const firstDue = deferFirstDue
+		? computeInvoiceDueDate('days_30', { baseDate: acceptedAt })
+		: computeInvoiceDueDate('on_acceptance', { baseDate: acceptedAt });
 
-	assertValidInstallmentSchedule(copy, total);
-	return copy;
+	const equalOnFull = buildEqualInstallmentSchedule(
+		quoteTotal,
+		plan.count,
+		firstDue,
+		plan.intervalMonths,
+	);
+	let firstAmount = Number((equalOnFull[0].amount - deposit).toFixed(2));
+	if (firstAmount < 0.01) {
+		throw new Error('Acompte trop élevé par rapport à la première mensualité');
+	}
+
+	if (plan.count === 1) {
+		throw new Error('Plan invalide');
+	}
+
+	if (plan.count === 2) {
+		const secondAmount = Number((remainder - firstAmount).toFixed(2));
+		const secondDue = new Date(firstDue);
+		secondDue.setMonth(secondDue.getMonth() + plan.intervalMonths);
+		const rows = [
+			{ amount: firstAmount, dueDate: firstDue },
+			{ amount: secondAmount, dueDate: secondDue },
+		];
+		assertValidInstallmentSchedule(rows, remainder);
+		return rows;
+	}
+
+	const tailTotal = Number((remainder - firstAmount).toFixed(2));
+	const tailFirstDue = new Date(firstDue);
+	tailFirstDue.setMonth(tailFirstDue.getMonth() + plan.intervalMonths);
+	const tailRows = buildEqualInstallmentSchedule(
+		tailTotal,
+		plan.count - 1,
+		tailFirstDue,
+		plan.intervalMonths,
+	);
+
+	const rows: InvoiceInstallmentInput[] = [
+		{ amount: firstAmount, dueDate: firstDue },
+		...tailRows,
+	];
+	assertValidInstallmentSchedule(rows, remainder);
+	return rows;
 }
 
 /**
- * Construit l'échéancier à appliquer sur la facture issue d'un devis accepté.
- * Avec acompte : 1re ligne = acompte à régler tout de suite, puis mensualités sur le solde.
+ * Construit l'échéancier sur une facture ECH (montant = total ou solde selon le cas).
  *
- * @param totalTtc - Total TTC
- * @param acceptedAt - Date d'acceptation
- * @param options - Acompte optionnel à la commande
+ * @param totalTtc - Montant TTC couvert par la facture ECH
+ * @param acceptedAt - Date d'acceptation du devis
+ * @param options - deferFirstDue : 1re mensualité à J+30
  */
 export function buildQuoteAcceptInstallmentSchedule(
 	totalTtc: number,
 	acceptedAt: Date,
-	options?: { withDeposit?: boolean; depositRate?: number },
+	options?: { deferFirstDue?: boolean },
 ): InvoiceInstallmentInput[] {
 	const plan = suggestSmartInstallmentPlan(totalTtc);
 	if (!plan) {
 		throw new Error('Montant insuffisant pour un échéancier');
 	}
 
-	const withDeposit = Boolean(options?.withDeposit);
+	const deferFirstDue = Boolean(options?.deferFirstDue);
+	const firstDue = deferFirstDue
+		? computeInvoiceDueDate('days_30', { baseDate: acceptedAt })
+		: computeInvoiceDueDate('on_acceptance', { baseDate: acceptedAt });
 
-	if (withDeposit) {
-		const rate = options?.depositRate ?? 0.1;
-		if (rate <= 0 || rate >= 1) {
-			throw new Error('depositRate invalide');
-		}
-		const depositAmount = Number((totalTtc * rate).toFixed(2));
-		const remaining = Number((totalTtc - depositAmount).toFixed(2));
-		if (remaining < MIN_INSTALLMENT_AMOUNT * 2) {
-			throw new Error('Montant trop faible pour combiner acompte et mensualités');
-		}
-		const firstDue = computeInvoiceDueDate('days_30', { baseDate: acceptedAt });
-		const monthlyRows = buildEqualInstallmentSchedule(
-			remaining,
-			plan.count,
-			firstDue,
-			plan.intervalMonths,
-		);
-		const rows: InvoiceInstallmentInput[] = [
-			{
-				amount: depositAmount,
-				dueDate: computeInvoiceDueDate('on_acceptance', { baseDate: acceptedAt }),
-			},
-			...monthlyRows,
-		];
-		assertValidInstallmentSchedule(rows, totalTtc);
-		return rows;
-	}
-
-	const firstDue = computeInvoiceDueDate('on_acceptance', { baseDate: acceptedAt });
-	const rows = buildEqualInstallmentSchedule(
+	return buildEqualInstallmentSchedule(
 		totalTtc,
 		plan.count,
 		firstDue,
 		plan.intervalMonths,
 	);
-	return rows;
 }
 
 /**
- * Montant à régler en ligne juste après acceptation (acompte ou 1re échéance).
+ * Montant à régler en ligne juste après acceptation (1re échéance ECH ou acompte ACO).
  *
- * @param _totalTtc - Total TTC (conservé pour compatibilité API)
- * @param rows - Échéancier retenu
- * @param withDeposit - Acompte à la commande
- * @param depositRate - Taux d'acompte
+ * @param rows - Échéances de la facture ECH
  */
-export function resolveQuoteInstallmentInitialPayment(
-	_totalTtc: number,
-	rows: InvoiceInstallmentInput[],
-	withDeposit: boolean,
-	depositRate = 0.1,
-): number {
-	if (withDeposit && rows.length > 0) {
-		return Number(rows[0].amount);
-	}
-	if (withDeposit) {
-		return Number((_totalTtc * depositRate).toFixed(2));
-	}
+export function resolveQuoteInstallmentInitialPayment(rows: InvoiceInstallmentInput[]): number {
 	return Number(rows[0]?.amount ?? 0);
 }

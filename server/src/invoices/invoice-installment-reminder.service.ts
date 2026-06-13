@@ -10,6 +10,7 @@ import {
 	resolveInstallmentReminderKind,
 } from './invoice-installment-reminder.util';
 import { buildEmailClickTrackUrl, buildEmailOpenTrackUrl } from '../common/email-track.util';
+import { InvoiceInstallmentReleaseService } from './invoice-installment-release.service';
 const REMINDER_EVENT_TYPE = 'installment_reminder';
 
 /**
@@ -25,10 +26,20 @@ export class InvoiceInstallmentReminderService {
 		private readonly pdf: PdfService,
 		private readonly organizations: OrganizationsService,
 		private readonly config: ConfigService,
+		private readonly releases: InvoiceInstallmentReleaseService,
 	) {}
 
 	@Cron(CronExpression.EVERY_DAY_AT_8AM)
 	async runScheduledReminders(): Promise<void> {
+		try {
+			const released = await this.releases.processScheduledReleases();
+			if (released > 0) {
+				this.logger.log(`Émission mensualités : ${released} email(s) envoyé(s)`);
+			}
+		} catch (err) {
+			this.logger.warn(`Émission mensualités échouée : ${(err as Error).message}`);
+		}
+
 		if (!this.config.installmentRemindersEnabled) return;
 		try {
 			const sent = await this.processDueReminders();

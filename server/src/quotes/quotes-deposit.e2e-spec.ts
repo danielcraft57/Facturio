@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StripeService } from '../stripe/stripe.service';
 import { createTestUser, authenticatedRequest } from '../common/test-helpers/auth.helper';
 import { seedChartOfAccounts } from '../../prisma/seeds/base.seed';
+import { parseTagsJson } from '../common/document-folder.util';
 
 const mockStripeService = {
 	isOrgStripeConfigured: () => true,
@@ -347,7 +348,73 @@ describe('Quotes deposit e2e', () => {
 		expect(view.publicPaymentHints.smartInstallment?.preview.length).toBe(2);
 	});
 
-	it('accept-pay INSTALLMENT avec acompte — 1re ligne acompte puis mensualités', async () => {
+	it('accept-pay INSTALLMENT sans acompte — ECH en brouillon, mensualités programmées', async () => {
+		await ensureStripeConfigured(testUser.organizationId);
+		const { token, quote } = await createSentQuote(500, 0.2);
+		const total = Number(quote.total);
+
+		const accept = await request(app.getHttpServer())
+			.post(`/api/public/quotes/${token}/accept-pay`)
+			.send({ mode: 'INSTALLMENT', withDeposit: false })
+			.expect(201)
+			.then(
+				(r: {
+					body: {
+						status: string;
+						invoiceToken: string;
+						invoiceNumber: string;
+						initialPaymentAmount: number;
+						installmentCount: number;
+					};
+				}) => r.body,
+			);
+
+		expect(accept.status).toBe('accepted');
+		expect(accept.invoiceNumber).toMatch(/^ECH-/);
+		expect(accept.installmentCount).toBeGreaterThanOrEqual(2);
+
+		const installment = await prisma.invoice.findFirst({
+			where: { number: accept.invoiceNumber },
+			include: { installments: { orderBy: { sequence: 'asc' } } },
+		});
+		expect(installment?.status).toBe('DRAFT');
+		expect(parseTagsJson(installment!.tags)).toContain('PENDING_EMIT');
+		expect(installment!.installments!.every((row) => row.status === 'SCHEDULED')).toBe(true);
+
+		const echSum = installment!.installments!.reduce(
+			(s, row) => s + Number((row.amount as any)?.toNumber?.() ?? row.amount),
+			0,
+		);
+		expect(echSum).toBeCloseTo(total, 2);
+
+		const reset = await request(app.getHttpServer())
+			.post(`/api/public/quotes/${token}/reset-payment-choice`)
+			.expect(201)
+			.then((r: { body: { ok: boolean } }) => r.body);
+		expect(reset.ok).toBe(true);
+
+		const afterReset = await prisma.invoice.findFirst({
+			where: { number: accept.invoiceNumber },
+		});
+		expect(afterReset?.status).toBe('CANCELLED');
+
+		const view = await request(app.getHttpServer())
+			.get(`/api/public/quotes/${token}`)
+			.expect(200)
+			.then((r: { body: { publicPaymentHints: { hasInstallmentInvoice: boolean; canResetPaymentChoice: boolean } } }) => r.body);
+		expect(view.publicPaymentHints.hasInstallmentInvoice).toBe(false);
+		expect(view.publicPaymentHints.canResetPaymentChoice).toBe(false);
+
+		const reaccept = await request(app.getHttpServer())
+			.post(`/api/public/quotes/${token}/accept-pay`)
+			.send({ mode: 'INSTALLMENT', withDeposit: true, depositRate: 0.1 })
+			.expect(201)
+			.then((r: { body: { depositInvoiceNumber: string; installmentInvoiceNumber: string } }) => r.body);
+		expect(reaccept.depositInvoiceNumber).toMatch(/^ACO-/);
+		expect(reaccept.installmentInvoiceNumber).toMatch(/^ECH-/);
+	});
+
+	it('accept-pay INSTALLMENT avec acompte — ACO + ECH, acompte non compté comme mensualité', async () => {
 		await ensureStripeConfigured(testUser.organizationId);
 		const { token, quote } = await createSentQuote(500, 0.2);
 		const total = Number(quote.total);
@@ -360,7 +427,9 @@ describe('Quotes deposit e2e', () => {
 				(r: {
 					body: {
 						status: string;
-						invoiceToken: string;
+						depositInvoiceToken: string;
+						depositInvoiceNumber: string;
+						installmentInvoiceNumber: string;
 						initialPaymentAmount: number;
 						installmentCount: number;
 						withDeposit: boolean;
@@ -369,24 +438,300 @@ describe('Quotes deposit e2e', () => {
 			);
 
 		expect(accept.status).toBe('accepted');
-		expect(accept.invoiceToken).toBeTruthy();
-		expect(accept.installmentCount).toBe(3);
+		expect(accept.depositInvoiceNumber).toMatch(/^ACO-/);
+		expect(accept.installmentInvoiceNumber).toMatch(/^ECH-/);
 		expect(accept.withDeposit).toBe(true);
 		expect(accept.initialPaymentAmount).toBeCloseTo(total * 0.1, 2);
+		expect(accept.installmentCount).toBeGreaterThanOrEqual(2);
 
-		const invoice = await prisma.invoice.findFirst({
-			where: { sourceQuoteId: quote.id },
+		const deposit = await prisma.invoice.findFirst({
+			where: { number: accept.depositInvoiceNumber },
+			include: { installments: true, payments: true },
+		});
+		const installment = await prisma.invoice.findFirst({
+			where: { number: accept.installmentInvoiceNumber },
 			include: { installments: { orderBy: { sequence: 'asc' } } },
 		});
-		expect(invoice?.installments?.length).toBe(3);
-		const sum = invoice!.installments!.reduce(
+
+		expect(deposit?.installments?.length ?? 0).toBe(0);
+		expect(deposit?.status).toBe('DRAFT');
+		expect(installment?.status).toBe('DRAFT');
+		expect(installment?.installments?.length).toBe(accept.installmentCount);
+		const echSum = installment!.installments!.reduce(
 			(s, row) => s + Number((row.amount as any)?.toNumber?.() ?? row.amount),
 			0,
 		);
-		expect(sum).toBeCloseTo(total, 2);
-		const first = Number(
-			(invoice!.installments![0].amount as any)?.toNumber?.() ?? invoice!.installments![0].amount,
+		expect(echSum).toBeCloseTo(total * 0.9, 2);
+		const firstInstallment = Number(
+			(installment!.installments![0].amount as any)?.toNumber?.() ??
+				installment!.installments![0].amount,
 		);
-		expect(first).toBeCloseTo(total * 0.1, 2);
+		const depositAmount = total * 0.1;
+		const equalFirst = total / accept.installmentCount;
+		expect(firstInstallment).toBeCloseTo(equalFirst - depositAmount, 2);
+		expect(installment!.installments!.every((row) => row.status === 'SCHEDULED')).toBe(true);
+
+		const veDeposit = await prisma.journalEntry.findFirst({
+			where: { reference: `VENTE ${deposit!.number}`, journal: { code: 'VE' } },
+		});
+		expect(veDeposit).toBeNull();
+	});
+
+	describe('reset-payment-choice — changements et blocages après paiement', () => {
+		async function publicHints(token: string) {
+			return request(app.getHttpServer())
+				.get(`/api/public/quotes/${token}`)
+				.expect(200)
+				.then(
+					(r: {
+						body: {
+							publicPaymentHints: {
+								canResetPaymentChoice?: boolean;
+								hasInstallmentInvoice?: boolean;
+								hasDepositSplit?: boolean;
+							};
+						};
+					}) => r.body.publicPaymentHints,
+				);
+		}
+
+		async function payInvoice(invoiceId: string, amount: number) {
+			await authenticatedRequest(app, testUser.cookies)
+				.post(`/api/invoices/${invoiceId}/payments`)
+				.send({ amount, method: 'bank_transfer' })
+				.expect(201);
+		}
+
+		it('canResetPaymentChoice=true tant qu’aucun encaissement (FULL)', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token } = await createSentQuote(400, 0.2);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'FULL' })
+				.expect(201);
+
+			const hints = await publicHints(token);
+			expect(hints.canResetPaymentChoice).toBe(true);
+		});
+
+		it('reset puis passage FULL → INSTALLMENT sans acompte', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token } = await createSentQuote(500, 0.2);
+
+			const full = await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'FULL' })
+				.expect(201)
+				.then((r: { body: { invoiceNumber?: string } }) => r.body);
+			expect(full.invoiceNumber).toMatch(/^FAC-/);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/reset-payment-choice`)
+				.expect(201);
+
+			const installment = await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'INSTALLMENT', withDeposit: false })
+				.expect(201)
+				.then((r: { body: { invoiceNumber?: string } }) => r.body);
+			expect(installment.invoiceNumber).toMatch(/^ECH-/);
+
+			const hints = await publicHints(token);
+			expect(hints.hasInstallmentInvoice).toBe(true);
+			expect(hints.canResetPaymentChoice).toBe(true);
+		});
+
+		it('reset puis passage INSTALLMENT sans acompte → FULL', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token, quote } = await createSentQuote(500, 0.2);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'INSTALLMENT', withDeposit: false })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/reset-payment-choice`)
+				.expect(201);
+
+			const full = await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'FULL' })
+				.expect(201)
+				.then((r: { body: { invoiceNumber?: string } }) => r.body);
+			expect(full.invoiceNumber).toMatch(/^FAC-/);
+
+			const fac = await prisma.invoice.findFirst({
+				where: { sourceQuoteId: quote.id, status: { not: 'CANCELLED' } },
+			});
+			expect(fac?.number).toMatch(/^FAC-/);
+		});
+
+		it('reset puis passage INSTALLMENT+acompte → DEPOSIT classique', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token } = await createSentQuote(500, 0.2);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'INSTALLMENT', withDeposit: true, depositRate: 0.1 })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/reset-payment-choice`)
+				.expect(201);
+
+			const deposit = await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'DEPOSIT', depositRate: 0.1 })
+				.expect(201)
+				.then((r: { body: { depositInvoiceNumber?: string; remainderInvoiceNumber?: string } }) => r.body);
+			expect(deposit.depositInvoiceNumber).toMatch(/^ACO-/);
+			expect(deposit.remainderInvoiceNumber).toMatch(/^SOL-/);
+
+			const hints = await publicHints(token);
+			expect(hints.hasDepositSplit).toBe(true);
+			expect(hints.hasInstallmentInvoice).toBeFalsy();
+		});
+
+		it('reset sans plan actif — réponse ok', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token } = await createSentQuote(100, 0.2);
+
+			const res = await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/reset-payment-choice`)
+				.expect(201)
+				.then((r: { body: { ok: boolean; message?: string } }) => r.body);
+			expect(res.ok).toBe(true);
+			expect(res.message).toMatch(/aucun plan/i);
+		});
+
+		it('reset refusé après paiement acompte (INSTALLMENT + acompte)', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token } = await createSentQuote(500, 0.2);
+
+			const accept = await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'INSTALLMENT', withDeposit: true, depositRate: 0.1 })
+				.expect(201)
+				.then((r: { body: { depositInvoiceNumber?: string } }) => r.body);
+
+			const deposit = await prisma.invoice.findFirst({
+				where: { number: accept.depositInvoiceNumber! },
+			});
+			await payInvoice(deposit!.id, Number(deposit!.total));
+
+			const hints = await publicHints(token);
+			expect(hints.canResetPaymentChoice).toBe(false);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/reset-payment-choice`)
+				.expect(400);
+		});
+
+		it('reset refusé après paiement facture FULL', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token } = await createSentQuote(200, 0.2);
+
+			const accept = await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'FULL' })
+				.expect(201)
+				.then((r: { body: { invoiceNumber?: string } }) => r.body);
+
+			const invoice = await prisma.invoice.findFirst({
+				where: { number: accept.invoiceNumber! },
+			});
+			await payInvoice(invoice!.id, Number(invoice!.total));
+
+			const hints = await publicHints(token);
+			expect(hints.canResetPaymentChoice).toBe(false);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/reset-payment-choice`)
+				.expect(400);
+		});
+
+		it('reset refusé après encaissement partiel sur échéancier ECH', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token } = await createSentQuote(500, 0.2);
+
+			const accept = await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'INSTALLMENT', withDeposit: false })
+				.expect(201)
+				.then((r: { body: { invoiceNumber?: string } }) => r.body);
+
+			const ech = await prisma.invoice.findFirst({
+				where: { number: accept.invoiceNumber! },
+				include: { installments: { orderBy: { sequence: 'asc' } } },
+			});
+			expect(ech?.installments?.length).toBeGreaterThan(0);
+
+			const firstAmount = Number(
+				(ech!.installments![0].amount as { toNumber?: () => number })?.toNumber?.() ??
+					ech!.installments![0].amount,
+			);
+			await payInvoice(ech!.id, firstAmount);
+
+			const hints = await publicHints(token);
+			expect(hints.canResetPaymentChoice).toBe(false);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/reset-payment-choice`)
+				.expect(400);
+		});
+
+		it('reset après DEPOSIT puis accept INSTALLMENT — pas de blocage SOL annulée', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token } = await createSentQuote(500, 0.2);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'DEPOSIT', depositRate: 0.1 })
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/reset-payment-choice`)
+				.expect(201);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'INSTALLMENT', withDeposit: false })
+				.expect(201)
+				.then((r: { body: { invoiceNumber?: string } }) => r.body)
+				.then((body) => {
+					expect(body.invoiceNumber).toMatch(/^ECH-/);
+				});
+		});
+
+		it('reset annule toutes les factures liées (ACO + ECH)', async () => {
+			await ensureStripeConfigured(testUser.organizationId);
+			const { token } = await createSentQuote(500, 0.2);
+
+			const accept = await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/accept-pay`)
+				.send({ mode: 'INSTALLMENT', withDeposit: true, depositRate: 0.1 })
+				.expect(201)
+				.then(
+					(r: {
+						body: { depositInvoiceNumber?: string; installmentInvoiceNumber?: string };
+					}) => r.body,
+				);
+
+			await request(app.getHttpServer())
+				.post(`/api/public/quotes/${token}/reset-payment-choice`)
+				.expect(201);
+
+			const deposit = await prisma.invoice.findFirst({
+				where: { number: accept.depositInvoiceNumber! },
+			});
+			const installment = await prisma.invoice.findFirst({
+				where: { number: accept.installmentInvoiceNumber! },
+			});
+			expect(deposit?.status).toBe('CANCELLED');
+			expect(installment?.status).toBe('CANCELLED');
+			expect(deposit?.sourceQuoteId).toBeNull();
+		});
 	});
 });

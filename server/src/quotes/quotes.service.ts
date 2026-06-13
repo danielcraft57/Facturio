@@ -27,6 +27,7 @@ import type { UpdateQuoteDocumentFlagsDto } from './dto/quote-document-folder.dt
 import { generateEntityId } from '../common/entity-id';
 import {
 	buildDepositCommitmentParagraph,
+	buildInstallmentCommitmentParagraph,
 	buildRemainderCommitmentParagraph,
 } from '../invoices/invoice-deposit.util';
 import {
@@ -37,6 +38,8 @@ import {
 } from '../invoices/invoice-due-date.util';
 import {
 	buildQuoteAcceptInstallmentSchedule,
+	buildQuoteInstallmentScheduleAfterDeposit,
+	MIN_INSTALLMENT_TOTAL,
 	resolveQuoteInstallmentInitialPayment,
 	suggestSmartInstallmentPlan,
 } from './quote-smart-installment.util';
@@ -264,6 +267,133 @@ export class QuotesService {
 		return `SOLDE_APRES_ACOMPTE_OF:${quoteId}`;
 	}
 
+	private quoteInstallmentTag(quoteId: string): string {
+		return `ECHEANCIER_OF:${quoteId}`;
+	}
+
+	/**
+	 * Lignes prorata acompte / solde pour split ACO + SOL ou ACO + ECH.
+	 */
+	private buildDepositRemainderQuoteLines(
+		quote: {
+			total: unknown;
+			lines: { description: string; quantity: number; unitPrice: unknown; taxRate: unknown }[];
+		},
+		depositRate: number,
+	) {
+		const linesDeposit = quote.lines.map((l) => ({
+			productId: null as number | null,
+			description: l.description,
+			quantity: Number(l.quantity),
+			unitPrice: Number(l.unitPrice) * depositRate,
+			taxRate: Number(l.taxRate),
+		}));
+		const linesRemainderRaw = quote.lines.map((l) => ({
+			productId: null as number | null,
+			description: l.description,
+			quantity: Number(l.quantity),
+			unitPrice: Number(l.unitPrice) * (1 - depositRate),
+			taxRate: Number(l.taxRate),
+		}));
+
+		const quoteTotal = Number((quote.total as any)?.toNumber?.() ?? quote.total ?? 0);
+		const depositTotal = Number((quoteTotal * depositRate).toFixed(2));
+		const remainderTarget = Number((quoteTotal - depositTotal).toFixed(2));
+		const remainderComputed = linesRemainderRaw.reduce(
+			(sum, l) => sum + l.quantity * l.unitPrice * (1 + l.taxRate),
+			0,
+		);
+		const remainderDiff = Number((remainderTarget - remainderComputed).toFixed(2));
+		const last = linesRemainderRaw[linesRemainderRaw.length - 1];
+		if (last && Math.abs(remainderDiff) > 0.0001) {
+			const denom = last.quantity * (1 + last.taxRate);
+			if (denom !== 0) {
+				last.unitPrice = Number((last.unitPrice + remainderDiff / denom).toFixed(4));
+			}
+		}
+
+		return { linesDeposit, linesRemainderRaw, quoteTotal, depositTotal, remainderTarget };
+	}
+
+	private async findQuoteInstallmentInvoice(orgId: number, quoteId: string) {
+		const installmentTag = this.quoteInstallmentTag(quoteId);
+		return this.prisma.invoice.findFirst({
+			where: {
+				organizationId: orgId,
+				tags: { contains: `"${installmentTag}"` },
+				status: { not: 'CANCELLED' },
+				archivedAt: null,
+			},
+			include: { installments: { orderBy: { sequence: 'asc' } } },
+		});
+	}
+
+	/**
+	 * Libère sourceQuoteId sur les factures annulées (contrainte unique Prisma).
+	 *
+	 * @param quoteId - ID du devis
+	 */
+	private async releaseCancelledQuoteSourceLinks(quoteId: string): Promise<void> {
+		await this.prisma.invoice.updateMany({
+			where: { sourceQuoteId: quoteId, status: 'CANCELLED' },
+			data: { sourceQuoteId: null },
+		});
+	}
+
+	/**
+	 * Factures actives liées à un devis (acompte, solde, échéancier, FAC directe).
+	 */
+	private async findActiveInvoicesLinkedToQuote(orgId: number, quoteId: string) {
+		const depositTag = this.quoteDepositTag(quoteId);
+		const remainderTag = this.quoteRemainderTag(quoteId);
+		const installmentTag = this.quoteInstallmentTag(quoteId);
+		return this.prisma.invoice.findMany({
+			where: {
+				organizationId: orgId,
+				status: { not: 'CANCELLED' },
+				archivedAt: null,
+				OR: [
+					{ sourceQuoteId: quoteId },
+					{ tags: { contains: `"${depositTag}"` } },
+					{ tags: { contains: `"${remainderTag}"` } },
+					{ tags: { contains: `"${installmentTag}"` } },
+				],
+			},
+			include: {
+				payments: true,
+				installments: { orderBy: { sequence: 'asc' } },
+			},
+		});
+	}
+
+	/**
+	 * Lien de paiement public pour une facture ECH : brouillon sans email tant que non émise.
+	 */
+	private async resolvePublicInstallmentPaymentLink(
+		invoiceId: string,
+		invoice: { organizationId: number | null; status?: string; tags?: string | null },
+		orgId: number,
+	) {
+		const tags = parseTagsJson(invoice.tags ?? null);
+		const awaitingEmit =
+			tags.includes('PENDING_EMIT') ||
+			(tags.includes('ECHEANCIER') && invoice.status === 'DRAFT');
+		if (awaitingEmit) {
+			return this.ensureRemainderPublicPaymentLink(invoiceId, invoice, orgId);
+		}
+		return this.sendInvoiceForPublicPayment(invoiceId, invoice, orgId);
+	}
+
+	private async isQuoteDepositPaid(deposit: { id: string; status: string; balance: unknown }) {
+		const full = await this.prisma.invoice.findUnique({
+			where: { id: deposit.id },
+			include: { payments: true },
+		});
+		if (!full) return false;
+		const bal = Number((full.balance as any)?.toNumber?.() ?? full.balance ?? 0);
+		return full.status === 'PAID' || bal <= 0 || (full.payments?.length ?? 0) > 0;
+	}
+
 	private isQuoteDepositInvoice(invoice: { tags: string | null }, quoteId: string): boolean {
 		const tags = parseTagsJson(invoice.tags);
 		return tags.includes('ACOMPTE_10') || tags.includes(this.quoteDepositTag(quoteId));
@@ -271,6 +401,21 @@ export class QuotesService {
 
 	private resolveInvoiceOrgId(invoice: { organizationId: number | null }, fallbackOrgId: number): number {
 		return invoice.organizationId ?? fallbackOrgId;
+	}
+
+	/**
+	 * Lien de paiement public pour une facture ACO : brouillon sans passage « envoyée ».
+	 */
+	private async resolvePublicDepositPaymentLink(
+		invoiceId: string,
+		invoice: { organizationId: number | null; status?: string; tags?: string | null },
+		orgId: number,
+	) {
+		const tags = parseTagsJson(invoice.tags ?? null);
+		if (tags.includes('ACOMPTE_10') && invoice.status === 'DRAFT') {
+			return this.ensureRemainderPublicPaymentLink(invoiceId, invoice, orgId);
+		}
+		return this.sendInvoiceForPublicPayment(invoiceId, invoice, orgId);
 	}
 
 	private async sendInvoiceForPublicPayment(
@@ -299,8 +444,8 @@ export class QuotesService {
 		quote: { id: string; clientId: string; total: unknown },
 		orgId: number,
 	) {
-		const bySource = await this.prisma.invoice.findUnique({
-			where: { sourceQuoteId: quote.id },
+		const bySource = await this.prisma.invoice.findFirst({
+			where: { sourceQuoteId: quote.id, status: { not: 'CANCELLED' }, archivedAt: null },
 		});
 		if (bySource) return bySource;
 
@@ -309,6 +454,8 @@ export class QuotesService {
 			where: {
 				organizationId: orgId,
 				tags: { contains: `"${depositTag}"` },
+				status: { not: 'CANCELLED' },
+				archivedAt: null,
 			},
 		});
 		if (byDepositTag) {
@@ -332,6 +479,7 @@ export class QuotesService {
 				clientId: quote.clientId,
 				sourceQuoteId: null,
 				archivedAt: null,
+				status: { not: 'CANCELLED' },
 			},
 			orderBy: { createdAt: 'desc' },
 			take: 15,
@@ -339,6 +487,10 @@ export class QuotesService {
 		const fullOrphans = candidates.filter((inv) => {
 			const tags = parseTagsJson(inv.tags);
 			if (tags.includes('ACOMPTE_10') || tags.includes('SOLDE_APRES_ACOMPTE')) return false;
+			if (tags.includes('ECHEANCIER') || tags.some((t) => t.startsWith('ECHEANCIER_OF:'))) {
+				return false;
+			}
+			if (inv.status === 'CANCELLED') return false;
 			if (Math.abs(Number(inv.total) - quoteTotal) > 0.02) return false;
 			return true;
 		});
@@ -358,8 +510,7 @@ export class QuotesService {
 	}
 
 	/**
-	 * Paiement par échéancier intelligent : facture unique + plan de paiement.
-	 * Acompte optionnel à la commande (réduit la 1re échéance).
+	 * Paiement en plusieurs fois : facture ECH (+ facture ACO si acompte à la commande).
 	 */
 	private async publicAcceptInstallmentPayment(
 		quote: {
@@ -374,18 +525,19 @@ export class QuotesService {
 	) {
 		const depositTag = this.quoteDepositTag(quote.id);
 		const remainderTag = this.quoteRemainderTag(quote.id);
-		const existingSplit = await this.prisma.invoice.findFirst({
+		const installmentTag = this.quoteInstallmentTag(quote.id);
+
+		const existingSol = await this.prisma.invoice.findFirst({
 			where: {
 				organizationId: orgId,
-				OR: [
-					{ tags: { contains: `"${depositTag}"` } },
-					{ tags: { contains: `"${remainderTag}"` } },
-				],
+				tags: { contains: `"${remainderTag}"` },
+				status: { not: 'CANCELLED' },
+				archivedAt: null,
 			},
 		});
-		if (existingSplit) {
+		if (existingSol) {
 			throw new BadRequestException(
-				'Un contrat acompte/solde existe déjà pour ce devis. Utilisez le lien de paiement existant.',
+				'Un contrat acompte/solde est déjà actif pour ce devis. Utilisez le lien existant ou « Changer de mode de paiement » si vous n’avez encore rien réglé.',
 			);
 		}
 
@@ -403,39 +555,92 @@ export class QuotesService {
 		}
 
 		const acceptedAt = new Date();
-		let scheduleRows: { amount: number; dueDate: string | Date }[];
-		try {
-			scheduleRows = buildQuoteAcceptInstallmentSchedule(quoteTotal, acceptedAt, {
-				withDeposit,
-				depositRate,
-			});
-		} catch (err) {
-			throw new BadRequestException((err as Error).message);
+		await this.releaseCancelledQuoteSourceLinks(quote.id);
+		const existingDeposit = await this.prisma.invoice.findFirst({
+			where: {
+				organizationId: orgId,
+				tags: { contains: `"${depositTag}"` },
+				status: { not: 'CANCELLED' },
+				archivedAt: null,
+			},
+		});
+		const existingInstallment = await this.findQuoteInstallmentInvoice(orgId, quote.id);
+
+		if (withDeposit && existingDeposit && existingInstallment) {
+			const depositSent = await this.resolvePublicDepositPaymentLink(
+				existingDeposit.id,
+				existingDeposit,
+				orgId,
+			);
+			const depositPaid = await this.isQuoteDepositPaid(existingDeposit);
+			if (depositPaid) {
+				const installmentLink = await this.ensureRemainderPublicPaymentLink(
+					existingInstallment.id,
+					existingInstallment,
+					orgId,
+				);
+				return {
+					status: 'accepted',
+					depositInvoiceToken: depositSent.publicToken,
+					depositInvoiceNumber: depositSent.number,
+					invoiceToken: installmentLink.publicToken,
+					installmentInvoiceNumber: existingInstallment.number,
+					installmentCount: existingInstallment.installments.length,
+					withDeposit: true,
+					message: 'Acompte réglé. Réglez la prochaine mensualité sur la facture échéancier.',
+				};
+			}
+			return {
+				status: 'accepted',
+				depositInvoiceToken: depositSent.publicToken,
+				depositInvoiceNumber: depositSent.number,
+				installmentInvoiceNumber: existingInstallment.number,
+				installmentCount: existingInstallment.installments.length,
+				withDeposit: true,
+				initialPaymentAmount: Number((quoteTotal * depositRate).toFixed(2)),
+				message: `Versez l'acompte (${(quoteTotal * depositRate).toFixed(2)} €) sur la facture ${depositSent.number}.`,
+			};
 		}
 
-		const initialPayment = resolveQuoteInstallmentInitialPayment(
-			quoteTotal,
-			scheduleRows,
-			withDeposit,
-			depositRate,
-		);
+		if (!withDeposit && existingInstallment) {
+			if (existingDeposit && !(await this.isQuoteDepositPaid(existingDeposit))) {
+				const depositLink = await this.resolvePublicDepositPaymentLink(
+					existingDeposit.id,
+					existingDeposit,
+					orgId,
+				);
+				const depositAmount = Number((quoteTotal * depositRate).toFixed(2));
+				return {
+					status: 'accepted',
+					depositInvoiceToken: depositLink.publicToken,
+					depositInvoiceNumber: depositLink.number,
+					installmentInvoiceNumber: existingInstallment.number,
+					installmentCount: existingInstallment.installments.length,
+					withDeposit: true,
+					initialPaymentAmount: depositAmount,
+					message: `Versez d'abord l'acompte (${depositAmount.toFixed(2)} €) sur ${depositLink.number}, puis les mensualités suivront.`,
+				};
+			}
 
-		const existingWithPlan = await this.prisma.invoice.findFirst({
-			where: { sourceQuoteId: quote.id, installments: { some: {} } },
-			include: { installments: { orderBy: { sequence: 'asc' } } },
-		});
-		if (existingWithPlan) {
-			const sent = await this.sendInvoiceForPublicPayment(existingWithPlan.id, existingWithPlan, orgId);
+			const sent = await this.resolvePublicInstallmentPaymentLink(
+				existingInstallment.id,
+				existingInstallment,
+				orgId,
+			);
+			const initialPayment = resolveQuoteInstallmentInitialPayment(
+				existingInstallment.installments.map((row) => ({
+					amount: Number(row.amount),
+					dueDate: row.dueDate,
+				})),
+			);
 			return {
 				status: 'accepted',
 				invoiceToken: sent.publicToken,
 				invoiceNumber: sent.number,
+				installmentCount: existingInstallment.installments.length,
+				withDeposit: false,
 				initialPaymentAmount: initialPayment,
-				installmentCount: existingWithPlan.installments.length,
-				withDeposit,
-				message: withDeposit
-					? `Plan actif. Réglez l'acompte (${initialPayment.toFixed(2)} €) puis les mensualités.`
-					: `Plan actif. Réglez la première échéance (${initialPayment.toFixed(2)} €).`,
+				message: `Plan actif. Réglez la première mensualité (${initialPayment.toFixed(2)} €).`,
 			};
 		}
 
@@ -445,17 +650,146 @@ export class QuotesService {
 			);
 		}
 
+		if (withDeposit) {
+			const { linesDeposit, linesRemainderRaw, depositTotal, remainderTarget } =
+				this.buildDepositRemainderQuoteLines(quote, depositRate);
+
+			let scheduleRows: { amount: number; dueDate: string | Date }[];
+			try {
+				scheduleRows = buildQuoteInstallmentScheduleAfterDeposit(
+					quoteTotal,
+					depositTotal,
+					acceptedAt,
+					{ deferFirstDue: true },
+				);
+			} catch (err) {
+				throw new BadRequestException((err as Error).message);
+			}
+
+			if (!suggestSmartInstallmentPlan(quoteTotal)) {
+				throw new BadRequestException(
+					'Le solde après acompte est trop faible pour un paiement en plusieurs fois.',
+				);
+			}
+
+			const depositDue = computeInvoiceDueDate(DEFAULT_DEPOSIT_DUE_POLICY, {
+				baseDate: acceptedAt,
+				quoteExpiry: quote.expiryDate,
+			});
+			const depositDueFr = depositDue.toLocaleDateString('fr-FR');
+			const depositMention = buildDepositCommitmentParagraph(depositDueFr);
+			const installmentMention = buildInstallmentCommitmentParagraph(scheduleRows.length);
+
+			let depositInvoice =
+				existingDeposit ??
+				(await this.invoices.create(
+					{
+						clientId: quote.clientId,
+						sourceQuoteId: quote.id,
+						status: 'DRAFT',
+						number: await this.invoices.allocateInvoiceNumber('deposit'),
+						dueDate: depositDue,
+						legalMention: depositMention,
+						lines: linesDeposit.map((l) => ({
+							productId: undefined,
+							description: l.description,
+							quantity: l.quantity,
+							unitPrice: l.unitPrice,
+							taxRate: l.taxRate,
+						})),
+					},
+					orgId,
+				));
+
+			const installmentDue = computeInvoiceDueDate(DEFAULT_STANDARD_DUE_POLICY, {
+				baseDate: acceptedAt,
+				quoteExpiry: quote.expiryDate,
+			});
+
+			const installmentInvoice = await this.invoices.create(
+				{
+					clientId: quote.clientId,
+					status: 'DRAFT',
+					number: await this.invoices.allocateInvoiceNumber('installment'),
+					dueDate: installmentDue,
+					legalMention: installmentMention,
+					lines: linesRemainderRaw.map((l) => ({
+						productId: undefined,
+						description: l.description,
+						quantity: l.quantity,
+						unitPrice: l.unitPrice,
+						taxRate: l.taxRate,
+					})),
+					installments: scheduleRows,
+					installmentScheduleOptions: { sequentialRelease: true, deferFirst: true },
+				},
+				orgId,
+			);
+
+			const depositTags = serializeTagsJson([
+				...parseTagsJson(depositInvoice.tags),
+				depositTag,
+				'ACOMPTE_10',
+			]);
+			const installmentTags = serializeTagsJson([
+				...parseTagsJson(installmentInvoice.tags),
+				installmentTag,
+				'ECHEANCIER',
+				'PENDING_EMIT',
+			]);
+
+			await this.prisma.invoice.update({
+				where: { id: depositInvoice.id },
+				data: { tags: depositTags, legalMention: depositMention },
+			});
+			await this.prisma.invoice.update({
+				where: { id: installmentInvoice.id },
+				data: { tags: installmentTags, legalMention: installmentMention },
+			});
+
+			const taggedDeposit = await this.prisma.invoice.findUnique({
+				where: { id: depositInvoice.id },
+			});
+			const depositSent = await this.resolvePublicDepositPaymentLink(
+				depositInvoice.id,
+				taggedDeposit ?? depositInvoice,
+				orgId,
+			);
+
+			return {
+				status: 'accepted',
+				depositInvoiceToken: depositSent.publicToken,
+				depositInvoiceNumber: depositSent.number,
+				installmentInvoiceNumber: installmentInvoice.number,
+				installmentCount: scheduleRows.length,
+				withDeposit: true,
+				initialPaymentAmount: depositTotal,
+				message: `Devis accepté. Versez l'acompte (${depositTotal.toFixed(2)} €) sur ${depositSent.number}, puis les mensualités sur ${installmentInvoice.number}.`,
+			};
+		}
+
+		let scheduleRows: { amount: number; dueDate: string | Date }[];
+		try {
+			scheduleRows = buildQuoteAcceptInstallmentSchedule(quoteTotal, acceptedAt, {
+				deferFirstDue: false,
+			});
+		} catch (err) {
+			throw new BadRequestException((err as Error).message);
+		}
+
+		const initialPayment = resolveQuoteInstallmentInitialPayment(scheduleRows);
 		const dueDate = computeInvoiceDueDate(DEFAULT_STANDARD_DUE_POLICY, {
 			baseDate: acceptedAt,
 			quoteExpiry: quote.expiryDate,
 		});
 
-		const invoice = await this.invoices.create(
+		const installmentInvoice = await this.invoices.create(
 			{
 				clientId: quote.clientId,
 				sourceQuoteId: quote.id,
 				dueDate,
-				status: 'SENT',
+				status: 'DRAFT',
+				number: await this.invoices.allocateInvoiceNumber('installment'),
 				lines: quote.lines.map((l) => ({
 					productId: l.productId ?? undefined,
 					description: l.description,
@@ -464,24 +798,38 @@ export class QuotesService {
 					taxRate: Number(l.taxRate),
 				})),
 				installments: scheduleRows,
-				legalMention: withDeposit
-					? `Paiement en ${scheduleRows.length} fois — acompte ${(depositRate * 100).toFixed(0)} % à la commande.`
-					: `Paiement en ${scheduleRows.length} fois.`,
+				legalMention: `Paiement en ${scheduleRows.length} mensualités.`,
+				installmentScheduleOptions: { sequentialRelease: true, deferFirst: true },
 			},
 			orgId,
 		);
 
-		const sent = await this.sendInvoiceForPublicPayment(invoice.id, invoice, orgId);
+		const taggedInstallment = await this.prisma.invoice.update({
+			where: { id: installmentInvoice.id },
+			data: {
+				tags: serializeTagsJson([
+					...parseTagsJson(installmentInvoice.tags),
+					installmentTag,
+					'ECHEANCIER',
+					'PENDING_EMIT',
+				]),
+			},
+		});
+
+		const link = await this.resolvePublicInstallmentPaymentLink(
+			taggedInstallment.id,
+			taggedInstallment,
+			orgId,
+		);
+
 		return {
 			status: 'accepted',
-			invoiceToken: sent.publicToken,
-			invoiceNumber: sent.number,
+			invoiceToken: link.publicToken,
+			invoiceNumber: link.number,
 			initialPaymentAmount: initialPayment,
 			installmentCount: scheduleRows.length,
-			withDeposit,
-			message: withDeposit
-				? `Devis accepté. Versez l'acompte (${initialPayment.toFixed(2)} €), puis les mensualités selon le calendrier.`
-				: `Devis accepté. Réglez la première échéance (${initialPayment.toFixed(2)} €), les suivantes selon le calendrier.`,
+			withDeposit: false,
+			message: `Devis accepté. Votre échéancier est prêt — réglez la première mensualité (${initialPayment.toFixed(2)} €) via le lien ci-dessous.`,
 		};
 	}
 
@@ -495,6 +843,7 @@ export class QuotesService {
 		},
 		orgId: number,
 	) {
+		await this.releaseCancelledQuoteSourceLinks(quote.id);
 		const remainderTag = this.quoteRemainderTag(quote.id);
 		const linked = await this.resolveInvoiceLinkedToQuote(quote, orgId);
 
@@ -1127,11 +1476,21 @@ export class QuotesService {
 		const remainderTag = this.quoteRemainderTag(quote.id);
 		const [deposit, remainder] = await Promise.all([
 			this.prisma.invoice.findFirst({
-				where: { organizationId: orgId, tags: { contains: `"${depositTag}"` } },
+				where: {
+					organizationId: orgId,
+					tags: { contains: `"${depositTag}"` },
+					status: { not: 'CANCELLED' },
+					archivedAt: null,
+				},
 				select: { id: true, status: true, balance: true },
 			}),
 			this.prisma.invoice.findFirst({
-				where: { organizationId: orgId, tags: { contains: `"${remainderTag}"` } },
+				where: {
+					organizationId: orgId,
+					tags: { contains: `"${remainderTag}"` },
+					status: { not: 'CANCELLED' },
+					archivedAt: null,
+				},
 				select: { id: true, status: true, balance: true },
 			}),
 		]);
@@ -1145,21 +1504,39 @@ export class QuotesService {
 		const onlinePaymentAvailable = await this.isInvoiceStripeConfigured(orgId);
 		const quoteTotal = Number((quote.total as any)?.toNumber?.() ?? quote.total ?? 0);
 		const smartPlan = suggestSmartInstallmentPlan(quoteTotal);
-		const installmentInvoice = await this.prisma.invoice.findFirst({
-			where: {
-				organizationId: orgId,
-				sourceQuoteId: quote.id,
-				installments: { some: {} },
-			},
-			select: { id: true, publicToken: true },
-		});
+		const installmentInvoice = orgId
+			? await this.findQuoteInstallmentInvoice(orgId, quote.id)
+			: null;
+
+		const linkedInvoices = orgId
+			? await this.findActiveInvoicesLinkedToQuote(orgId, quote.id)
+			: [];
+		const canResetPaymentChoice =
+			linkedInvoices.length > 0 &&
+			linkedInvoices.every((inv) => {
+				if (inv.status === 'PAID') return false;
+				const bal = Number((inv.balance as any)?.toNumber?.() ?? inv.balance ?? 0);
+				if (bal <= 0.01) return false;
+				if ((inv.payments?.length ?? 0) > 0) return false;
+				if (inv.installments?.some((row) => row.status === 'PAID')) return false;
+				return true;
+			});
 
 		let installmentPreview: { sequence: number; amount: number; dueDate: string }[] = [];
 		if (smartPlan) {
 			try {
-				const rows = buildQuoteAcceptInstallmentSchedule(quoteTotal, new Date(), {
-					withDeposit: false,
-				});
+				const previewBaseDate = new Date();
+				const rows =
+					deposit && !depositPaid
+						? buildQuoteInstallmentScheduleAfterDeposit(
+								quoteTotal,
+								Number((quoteTotal * 0.1).toFixed(2)),
+								previewBaseDate,
+								{ deferFirstDue: true },
+							)
+						: buildQuoteAcceptInstallmentSchedule(quoteTotal, previewBaseDate, {
+								deferFirstDue: Boolean(deposit),
+							});
 				installmentPreview = rows.map((row, index) => ({
 					sequence: index + 1,
 					amount: row.amount,
@@ -1177,6 +1554,7 @@ export class QuotesService {
 			...quote,
 			publicPaymentHints: {
 				hasDepositSplit: Boolean(deposit && remainder),
+				hasInstallmentDeposit: Boolean(deposit && installmentInvoice),
 				depositPaid,
 				onlinePaymentAvailable,
 				quoteTotal,
@@ -1191,7 +1569,79 @@ export class QuotesService {
 					: null,
 				hasInstallmentInvoice: Boolean(installmentInvoice),
 				installmentInvoiceToken: installmentInvoice?.publicToken ?? null,
+				canResetPaymentChoice,
 			},
+		};
+	}
+
+	/**
+	 * Annule les factures non réglées liées au devis pour permettre un autre mode de paiement.
+	 *
+	 * @param token - Token public du devis
+	 * @returns Confirmation
+	 * @throws {BadRequestException} Si un paiement a déjà été reçu
+	 */
+	async publicResetPaymentChoice(token: string) {
+		const quote = await this.prisma.quote.findUnique({
+			where: { publicToken: token },
+			select: { id: true, status: true, organizationId: true },
+		});
+		if (!quote) throw new NotFoundException('Devis introuvable');
+		if (quote.status === QuoteStatus.REJECTED) {
+			throw new BadRequestException('Ce devis a été refusé');
+		}
+		if (quote.status === QuoteStatus.EXPIRED) {
+			throw new BadRequestException('Ce devis a expiré');
+		}
+		const orgId = quote.organizationId;
+		if (!orgId) {
+			throw new BadRequestException('Organisation manquante pour ce devis');
+		}
+
+		const linked = await this.findActiveInvoicesLinkedToQuote(orgId, quote.id);
+		if (linked.length === 0) {
+			return {
+				ok: true,
+				message: 'Aucun plan de paiement actif à réinitialiser.',
+			};
+		}
+
+		for (const inv of linked) {
+			const bal = Number((inv.balance as any)?.toNumber?.() ?? inv.balance ?? 0);
+			if (inv.status === 'PAID' || bal <= 0.01) {
+				throw new BadRequestException(
+					'Impossible de changer de mode : un paiement a déjà été reçu sur ce devis.',
+				);
+			}
+			if ((inv.payments?.length ?? 0) > 0) {
+				throw new BadRequestException(
+					'Impossible de changer de mode : un encaissement est déjà enregistré.',
+				);
+			}
+			if (inv.installments?.some((row) => row.status === 'PAID')) {
+				throw new BadRequestException(
+					'Impossible de changer de mode : une mensualité a déjà été réglée.',
+				);
+			}
+		}
+
+		await this.prisma.$transaction(
+			linked.map((inv) =>
+				this.prisma.invoice.update({
+					where: { id: inv.id },
+					data: { status: 'CANCELLED', sourceQuoteId: null },
+				}),
+			),
+		);
+
+		await this.releaseCancelledQuoteSourceLinks(quote.id);
+
+		this.notifyQuote(orgId, 'updated', quote.id, {});
+
+		return {
+			ok: true,
+			message:
+				'Plan de paiement annulé. Vous pouvez choisir un autre mode de règlement ci-dessous.',
 		};
 	}
 
@@ -1314,9 +1764,12 @@ export class QuotesService {
 			const existingSplit = await this.prisma.invoice.findFirst({
 				where: {
 					organizationId: orgId,
+					status: { not: 'CANCELLED' },
+					archivedAt: null,
 					OR: [
 						{ tags: { contains: `"${depositTag}"` } },
 						{ tags: { contains: `"${remainderTag}"` } },
+						{ tags: { contains: `"${this.quoteInstallmentTag(quote.id)}"` } },
 					],
 				},
 			});

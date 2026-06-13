@@ -37,6 +37,18 @@ type Props = {
   canRemind?: boolean
   onRemind?: (installmentId: number) => void | Promise<void>
   reminding?: boolean
+  onRelease?: (installmentId: number) => void | Promise<void>
+  releasing?: boolean
+}
+
+/** Indique si une mensualité programmée peut être envoyée au client. */
+function canReleaseScheduledRow(row: InvoiceInstallment, all: InvoiceInstallment[]): boolean {
+  if (row.status !== 'SCHEDULED') return false
+  for (const prev of all) {
+    if (prev.sequence >= row.sequence) continue
+    if (prev.status !== 'PAID') return false
+  }
+  return true
 }
 
 function statusChip(row: InvoiceInstallment) {
@@ -46,10 +58,13 @@ function statusChip(row: InvoiceInstallment) {
   if (row.status === 'CANCELLED') {
     return <Chip size="small" label="Annulée" variant="outlined" />
   }
+  if (row.status === 'SCHEDULED') {
+    return <Chip size="small" label="Programmée" variant="outlined" />
+  }
   if (row.overdue) {
     return <Chip size="small" label="En retard" color="error" variant="outlined" />
   }
-  return <Chip size="small" label="À venir" color="warning" variant="outlined" />
+  return <Chip size="small" label="À régler" color="warning" variant="outlined" />
 }
 
 function AccountingCell({ accounting }: { accounting: InstallmentAccountingLink | null | undefined }) {
@@ -126,9 +141,13 @@ export function InvoiceInstallmentsPanel({
   canRemind,
   onRemind,
   reminding,
+  onRelease,
+  releasing,
 }: Props) {
   const hasPlan = installments.length > 0
   const next = installments.find((r) => r.status === 'PENDING') ?? null
+  const nextReleasable =
+    installments.find((r) => canReleaseScheduledRow(r, installments)) ?? null
   const pendingReceivableTotal = installments
     .filter((r) => r.status === 'PENDING')
     .reduce((sum, r) => sum + (r.receivable?.outstanding ?? r.amount), 0)
@@ -141,6 +160,17 @@ export function InvoiceInstallmentsPanel({
           <Typography variant="h6">Échéancier de paiement</Typography>
         </Stack>
         <Stack direction="row" spacing={1}>
+          {nextReleasable && onRelease && (
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              disabled={releasing}
+              onClick={() => onRelease(nextReleasable.id)}
+            >
+              Envoyer la mensualité
+            </Button>
+          )}
           {canRemind && next && onRemind && (
             <Button
               size="small"
@@ -190,6 +220,13 @@ export function InvoiceInstallmentsPanel({
             . Chaque encaissement d&apos;échéance crée une écriture BQ (512/411).
           </Typography>
         </Alert>
+      )}
+
+      {nextReleasable && !next && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Mensualité n°{nextReleasable.sequence} programmée ({formatCurrency(nextReleasable.amount)}{' '}
+          le {formatDate(nextReleasable.dueDate)}) — envoyez-la au client ou attendez le cron (J-3).
+        </Typography>
       )}
 
       {next && (

@@ -28,7 +28,11 @@ import { InvoiceInstallmentReminderService } from './invoice-installment-reminde
 		InvoiceInstallmentsModule,
 	],
 	controllers: [InvoicesController, PublicInvoicesController],
-	providers: [InvoicesService, InvoiceSendService, InvoiceInstallmentReminderService],
+	providers: [
+		InvoicesService,
+		InvoiceSendService,
+		InvoiceInstallmentReminderService,
+	],
 	exports: [InvoicesService, InvoiceSendService, InvoiceInstallmentsModule],
 })
 export class InvoicesModule {}

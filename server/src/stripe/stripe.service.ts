@@ -13,6 +13,7 @@ import {
 	resolveActiveBnplPaymentMethods,
 } from './invoice-bnpl-payment-methods.util';
 import { InvoiceInstallmentsService } from '../invoices/invoice-installments.service';
+import { InvoiceInstallmentReleaseService } from '../invoices/invoice-installment-release.service';
 
 export interface PaymentIntentResponse {
 	clientSecret: string;
@@ -45,6 +46,7 @@ export class StripeService {
 		private readonly payments: PaymentsService,
 		private readonly secretsCrypto: SecretsCryptoService,
 		private readonly installments: InvoiceInstallmentsService,
+		private readonly installmentReleases: InvoiceInstallmentReleaseService,
 	) {}
 
 	private resolveOrgStripe(org: {
@@ -121,6 +123,8 @@ export class StripeService {
 		if (remaining <= 0) {
 			throw new BadRequestException('Cette facture est déjà réglée');
 		}
+
+		await this.installmentReleases.ensurePayableInstallment(invoice.id);
 
 		const online = await this.installments.resolveOnlinePaymentAmount(invoice.id, remaining);
 		const chargeAmount = online.amount;

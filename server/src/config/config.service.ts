@@ -85,6 +85,13 @@ export class ConfigService {
 		return true;
 	}
 
+	/** Activation auto des mensualités SCHEDULED (cron J-N) — INSTALLMENT_AUTO_RELEASE_ENABLED=0 pour désactiver */
+	get installmentAutoReleaseEnabled(): boolean {
+		const raw = process.env.INSTALLMENT_AUTO_RELEASE_ENABLED;
+		if (raw === '0' || raw === 'false') return false;
+		return true;
+	}
+
 	/** Jours avant échéance pour la relance anticipée (défaut 3). */
 	get installmentReminderDaysBefore(): number {
 		const raw = process.env.INSTALLMENT_REMINDER_DAYS_BEFORE;

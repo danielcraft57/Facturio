@@ -167,6 +167,15 @@ export class EmailService {
 		invoiceDate: Date | string;
 		clientName: string;
 		total: number;
+		/** Contexte échéancier ECH : montant à régler maintenant (pas le total facture). */
+		installmentContext?: {
+			sequence: number;
+			totalCount: number;
+			amountDue: number;
+			balanceRemaining: number;
+			dueDate: Date | string;
+			contractTotal?: number;
+		};
 		pdfBuffer: Buffer;
 		extraAttachments?: { filename: string; content: Buffer; contentType?: string }[];
 		trackOpenUrl?: string;
@@ -191,6 +200,7 @@ export class EmailService {
 			invoiceDate: options.invoiceDate,
 			clientName: options.clientName,
 			total: options.total,
+			installmentContext: options.installmentContext,
 			trackOpenUrl: copy ? undefined : options.trackOpenUrl,
 			paymentUrl: copy ? undefined : options.paymentUrl,
 			alreadyPaid: copy ? undefined : options.alreadyPaid,
@@ -218,6 +228,10 @@ export class EmailService {
 			? '\n\nCopie à titre informatif (document envoyé au client). Aucun lien de paiement en ligne dans ce message.\n'
 			: '';
 
+		const amountLabel = options.installmentContext
+			? `Échéance ${options.installmentContext.sequence}/${options.installmentContext.totalCount} : ${this.formatCurrency(options.installmentContext.amountDue)}`
+			: `d'un montant de ${this.formatCurrency(options.total)}`;
+
 		await this.send({
 			from: this.invoiceFrom,
 			to: options.to,
@@ -228,8 +242,10 @@ export class EmailService {
 				(copy
 					? `Copie de la facture ${options.invoiceNumber} `
 					: `Veuillez trouver ci-joint la facture ${options.invoiceNumber} `) +
-				`du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')} ` +
-				`d'un montant de ${this.formatCurrency(options.total)}.${copyNote}${paidNote}${paymentLine}\n` +
+				`du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')} ${amountLabel}.${copyNote}${paidNote}${paymentLine}\n` +
+				(options.installmentContext
+					? `Solde restant sur cette facture : ${this.formatCurrency(options.installmentContext.balanceRemaining)}.\n`
+					: '') +
 				`Cordialement,\n${company}`,
 			attachments: [
 				{
@@ -362,7 +378,7 @@ export class EmailService {
 		invoiceBalance: number;
 		daysUntilDue: number;
 		daysOverdue?: number;
-		kind: 'upcoming' | 'overdue' | 'manual';
+		kind: 'issue' | 'upcoming' | 'overdue' | 'manual';
 		paymentUrl?: string;
 		trackOpenUrl?: string;
 		pdfBuffer?: Buffer;
@@ -371,15 +387,19 @@ export class EmailService {
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const dueFr = new Date(options.installmentDueDate).toLocaleDateString('fr-FR');
 		const subject =
-			options.kind === 'overdue' || (options.daysOverdue ?? 0) > 0
-				? `Échéance en retard — Facture ${options.invoiceNumber} (n°${options.installmentSequence})`
-				: `Rappel échéance — Facture ${options.invoiceNumber} (n°${options.installmentSequence})`;
+			options.kind === 'issue'
+				? `Mensualité n°${options.installmentSequence} à régler — Facture ${options.invoiceNumber}`
+				: options.kind === 'overdue' || (options.daysOverdue ?? 0) > 0
+					? `Échéance en retard — Facture ${options.invoiceNumber} (n°${options.installmentSequence})`
+					: `Rappel échéance — Facture ${options.invoiceNumber} (n°${options.installmentSequence})`;
 		const intro =
-			options.kind === 'overdue' || (options.daysOverdue ?? 0) > 0
-				? `L'échéance n°${options.installmentSequence} de votre facture <strong>${options.invoiceNumber}</strong> est en retard de ${options.daysOverdue ?? Math.abs(options.daysUntilDue)} jour(s).`
-				: options.daysUntilDue === 0
-					? `L'échéance n°${options.installmentSequence} de votre facture <strong>${options.invoiceNumber}</strong> arrive aujourd'hui.`
-					: `Nous vous rappelons l'échéance n°${options.installmentSequence} de votre facture <strong>${options.invoiceNumber}</strong> (dans ${options.daysUntilDue} jour(s)).`;
+			options.kind === 'issue'
+				? `Votre mensualité n°${options.installmentSequence} sur la facture <strong>${options.invoiceNumber}</strong> est maintenant à régler.`
+				: options.kind === 'overdue' || (options.daysOverdue ?? 0) > 0
+					? `L'échéance n°${options.installmentSequence} de votre facture <strong>${options.invoiceNumber}</strong> est en retard de ${options.daysOverdue ?? Math.abs(options.daysUntilDue)} jour(s).`
+					: options.daysUntilDue === 0
+						? `L'échéance n°${options.installmentSequence} de votre facture <strong>${options.invoiceNumber}</strong> arrive aujourd'hui.`
+						: `Nous vous rappelons l'échéance n°${options.installmentSequence} de votre facture <strong>${options.invoiceNumber}</strong> (dans ${options.daysUntilDue} jour(s)).`;
 
 		const payBtn = options.paymentUrl
 			? `<p style="margin:24px 0;"><a href="${options.paymentUrl}" style="background:#16a34a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;">Régler cette échéance en ligne</a></p>`
@@ -434,7 +454,7 @@ export class EmailService {
 		replyTo?: string;
 		attachments?: { filename: string; content: Buffer; contentType?: string }[];
 		paidContext?: {
-			kind: 'deposit' | 'remainder' | 'standard';
+			kind: 'deposit' | 'remainder' | 'installment' | 'standard';
 			contractTotal?: number;
 			remainderAmount?: number;
 		};
@@ -761,6 +781,14 @@ export class EmailService {
 		invoiceDate: Date | string;
 		clientName: string;
 		total: number;
+		installmentContext?: {
+			sequence: number;
+			totalCount: number;
+			amountDue: number;
+			balanceRemaining: number;
+			dueDate: Date | string;
+			contractTotal?: number;
+		};
 		trackOpenUrl?: string;
 		paymentUrl?: string;
 		alreadyPaid?: boolean;
@@ -812,7 +840,24 @@ export class EmailService {
 		const greeting = data.informativeCopy ? 'Bonjour,' : `Bonjour ${data.clientName},`;
 		const intro = data.informativeCopy
 			? `Copie de la facture <strong>${data.invoiceNumber}</strong> du ${dateStr} (client : ${data.clientName}).`
-			: `Veuillez trouver ci-joint la facture <strong>${data.invoiceNumber}</strong> du ${dateStr}.`;
+			: data.installmentContext
+				? `Veuillez trouver ci-joint la facture <strong>${data.invoiceNumber}</strong> du ${dateStr}. Réglez la mensualité ci-dessous.`
+				: `Veuillez trouver ci-joint la facture <strong>${data.invoiceNumber}</strong> du ${dateStr}.`;
+
+		const inst = data.installmentContext;
+		const dueFr = inst ? new Date(inst.dueDate).toLocaleDateString('fr-FR') : '';
+		const amountBlock = inst
+			? emailAmountHighlight(
+					`Échéance ${inst.sequence}/${inst.totalCount} — ${this.formatCurrency(inst.amountDue)} à régler`,
+				) +
+				emailParagraph(
+					`<strong>Date prévue :</strong> ${dueFr}<br>` +
+						`<strong>Solde restant sur cette facture :</strong> ${this.formatCurrency(inst.balanceRemaining)}` +
+						(inst.contractTotal != null
+							? `<br><span style="color:#64748b;font-size:13px;">Montant total du contrat : ${this.formatCurrency(inst.contractTotal)}</span>`
+							: ''),
+				)
+			: emailAmountHighlight(`Montant total : ${this.formatCurrency(data.total)}`);
 
 		return renderFacturioEmailLayout({
 			title: `Facture ${data.invoiceNumber}`,
@@ -823,7 +868,7 @@ export class EmailService {
 				copyBanner +
 				emailParagraph(greeting) +
 				emailParagraph(intro) +
-				emailAmountHighlight(`Montant total : ${this.formatCurrency(data.total)}`) +
+				amountBlock +
 				statusBlock +
 				actions,
 			footerHtml: `<p>${data.legalFooter}</p>`,
@@ -841,7 +886,7 @@ export class EmailService {
 		invoiceViewUrl?: string;
 		attachments?: { filename: string; content: Buffer; contentType?: string }[];
 		paidContext?: {
-			kind: 'deposit' | 'remainder' | 'standard';
+			kind: 'deposit' | 'remainder' | 'installment' | 'standard';
 			contractTotal?: number;
 			remainderAmount?: number;
 		};

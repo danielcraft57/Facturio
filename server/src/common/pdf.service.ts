@@ -72,34 +72,8 @@ export class PdfService {
 		const dueDateFr = invoice?.dueDate ? new Date(invoice.dueDate).toLocaleDateString('fr-FR') : null;
 		const isDeposit = tags.includes('ACOMPTE_10');
 		const isRemainder = tags.includes('SOLDE_APRES_ACOMPTE');
+		const isInstallment = tags.includes('ECHEANCIER');
 		const engagementBreakdown = await this.resolveEngagementBreakdown(invoice);
-		let paymentNote: string | null = null;
-		if (isDeposit) {
-			paymentNote =
-				invoice?.status === 'PAID'
-					? 'Paiement acompte reçu — merci pour votre règlement.'
-					: buildDepositPaymentNote(dueDateFr);
-		} else if (isRemainder) {
-			paymentNote =
-				invoice?.status === 'PAID'
-					? 'Solde reçu — merci, votre devis est entièrement réglé.'
-					: dueDateFr
-						? `Solde du devis — à régler avant le ${dueDateFr} (paiement en ligne par carte bancaire).`
-						: `Solde du devis (paiement en ligne par carte bancaire).`;
-		}
-
-		const commitmentParagraph = isDeposit
-			? buildDepositCommitmentParagraph(dueDateFr)
-			: isRemainder
-				? buildRemainderCommitmentParagraph(dueDateFr)
-				: null;
-
-		const appliedCreditTotal = Array.isArray(invoice?.appliedAvoirs)
-			? invoice.appliedAvoirs.reduce((sum: number, a: any) => sum + Number(a.amount ?? 0), 0)
-			: 0;
-		const grossTotal = Number(invoice.total ?? 0);
-		const netDue = Math.max(0, Number((grossTotal - appliedCreditTotal).toFixed(2)));
-		const linesForPdf = invoice.lines || [];
 
 		let installmentSchedule: { sequence: number; amount: number; dueDate: Date; status: string }[] =
 			[];
@@ -123,6 +97,51 @@ export class PdfService {
 			}));
 		}
 
+		let paymentNote: string | null = null;
+		if (isDeposit) {
+			paymentNote =
+				invoice?.status === 'PAID'
+					? 'Paiement acompte reçu — merci pour votre règlement.'
+					: buildDepositPaymentNote(dueDateFr);
+		} else if (isRemainder) {
+			paymentNote =
+				invoice?.status === 'PAID'
+					? 'Solde reçu — merci, votre devis est entièrement réglé.'
+					: dueDateFr
+						? `Solde du devis — à régler avant le ${dueDateFr} (paiement en ligne par carte bancaire).`
+						: `Solde du devis (paiement en ligne par carte bancaire).`;
+		} else if (isInstallment && installmentSchedule.length > 0) {
+			const pending = installmentSchedule.find((r) => r.status === 'PENDING');
+			const totalCount = installmentSchedule.length;
+			if (pending) {
+				const dueFr = new Date(pending.dueDate).toLocaleDateString('fr-FR');
+				const amountFr = new Intl.NumberFormat('fr-FR', {
+					style: 'currency',
+					currency: 'EUR',
+					maximumFractionDigits: 0,
+				}).format(pending.amount);
+				paymentNote =
+					`Réglez la mensualité ${pending.sequence}/${totalCount} (${amountFr}) ` +
+					`avant le ${dueFr} — carte bancaire en ligne ou virement.`;
+			} else {
+				paymentNote =
+					'Facture échelonnée — le tableau ci-dessus détaille chaque mensualité et son statut.';
+			}
+		}
+
+		const commitmentParagraph = isDeposit
+			? buildDepositCommitmentParagraph(dueDateFr)
+			: isRemainder
+				? buildRemainderCommitmentParagraph(dueDateFr)
+				: null;
+
+		const appliedCreditTotal = Array.isArray(invoice?.appliedAvoirs)
+			? invoice.appliedAvoirs.reduce((sum: number, a: any) => sum + Number(a.amount ?? 0), 0)
+			: 0;
+		const grossTotal = Number(invoice.total ?? 0);
+		const netDue = Math.max(0, Number((grossTotal - appliedCreditTotal).toFixed(2)));
+		const linesForPdf = invoice.lines || [];
+
 		const document = {
 			...invoice,
 			...(paymentNote ? { paymentNote } : {}),
@@ -135,7 +154,9 @@ export class PdfService {
 			? `Facture d'acompte ${invoice.number}`
 			: isRemainder
 				? `Facture de solde ${invoice.number}`
-				: `Facture ${invoice.number}`;
+				: isInstallment
+					? `Facture échéancier ${invoice.number}`
+					: `Facture ${invoice.number}`;
 
 		const watermarkText = await this.resolvePdfWatermark(organization ?? { organizationId: invoice.organizationId });
 

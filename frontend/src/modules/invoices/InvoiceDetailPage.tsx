@@ -103,6 +103,7 @@ export function InvoiceDetailPage() {
   const [installments, setInstallments] = useState<InvoiceInstallment[]>([])
   const [installmentDialogOpen, setInstallmentDialogOpen] = useState(false)
   const [installmentReminding, setInstallmentReminding] = useState(false)
+  const [installmentReleasing, setInstallmentReleasing] = useState(false)
   const toast = useToast()
   const panelHighlight = useRealtimePanelHighlight('invoices', id)
   const initialLoadDone = useRef(false)
@@ -591,8 +592,26 @@ export function InvoiceDetailPage() {
                   saleAccounting={invoice.installmentSaleAccounting}
                   canEdit={canEditInstallments}
                   onConfigure={() => setInstallmentDialogOpen(true)}
-                  canRemind={Boolean(invoice.sentAt && nextInstallment && !isFullySettled)}
+                  canRemind={Boolean(
+                    (invoice.sentAt || nextInstallment) && nextInstallment && !isFullySettled,
+                  )}
                   reminding={installmentReminding}
+                  releasing={installmentReleasing}
+                  onRelease={async (installmentId) => {
+                    if (!id) return
+                    setInstallmentReleasing(true)
+                    try {
+                      await invoiceInstallmentsService.release(id, installmentId)
+                      toast.success('Mensualité envoyée au client')
+                      await loadInvoice()
+                    } catch (err: unknown) {
+                      toast.error(
+                        err instanceof Error ? err.message : 'Envoi de la mensualité impossible',
+                      )
+                    } finally {
+                      setInstallmentReleasing(false)
+                    }
+                  }}
                   onRemind={async (installmentId) => {
                     if (!id) return
                     setInstallmentReminding(true)
