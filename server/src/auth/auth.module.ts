@@ -8,6 +8,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from '../common/common.module';
+import { BillingModule } from '../billing/billing.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { EmailVerifiedGuard } from './guards/email-verified.guard';
 
@@ -15,6 +16,7 @@ import { EmailVerifiedGuard } from './guards/email-verified.guard';
 	imports: [
 		PrismaModule,
 		CommonModule,
+		BillingModule,
 		PassportModule,
 		JwtModule.register({
 			secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',

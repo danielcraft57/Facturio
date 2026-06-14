@@ -9,6 +9,7 @@ export type InvoiceStripePaymentMethodId =
   | 'paypal'
   | 'bancontact'
   | 'klarna'
+  | 'alma'
   | 'amazon_pay'
   | 'eps'
   | 'mb_way'
@@ -59,11 +60,20 @@ export const INVOICE_STRIPE_PAYMENT_METHOD_OPTIONS: InvoiceStripePaymentMethodOp
   },
   {
     id: 'klarna',
-    label: 'Klarna',
+    label: 'Klarna — paiement en 3x ou différé (particuliers)',
     shortLabel: 'Klarna',
     brandColor: '#0A0B09',
     tileBg: '#FFF0F5',
     iconSlug: 'klarna',
+    FallbackIcon: AccountBalanceWalletIcon,
+  },
+  {
+    id: 'alma',
+    label: 'Alma — paiement en 2x, 3x ou 4x (particuliers)',
+    shortLabel: 'Alma',
+    brandColor: '#FA5022',
+    tileBg: '#FFF3EE',
+    iconSlug: 'alma',
     FallbackIcon: AccountBalanceWalletIcon,
   },
   {

@@ -10,7 +10,7 @@ import { EmailService } from '../common/email.service';
 import { PdfService } from '../common/pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildSubscriptionInvoicePdfPayload } from './subscription-invoice-pdf';
-import { SAAS_PLAN_LIMITS } from './saas-plan.limits';
+import { getSaasPlanLimits } from './saas-plan.limits';
 import { createStripeClient } from '../stripe/stripe-client';
 import type { SaasCheckoutSchedule } from './dto/create-checkout.dto';
 
@@ -819,7 +819,7 @@ export class PlatformStripeService {
 	private async notifySubscriptionActivated(orgId: number, plan: SaasBillingPlan) {
 		const recipient = await this.resolveBillingEmail(orgId);
 		if (!recipient) return;
-		const limits = SAAS_PLAN_LIMITS[plan];
+		const limits = getSaasPlanLimits(plan);
 		await this.emailService.sendSubscriptionActivated({
 			to: recipient.email,
 			firstName: recipient.firstName,
@@ -848,7 +848,7 @@ export class PlatformStripeService {
 	private async notifySubscriptionCanceled(orgId: number, plan: SaasBillingPlan) {
 		const recipient = await this.resolveBillingEmail(orgId);
 		if (!recipient) return;
-		const limits = SAAS_PLAN_LIMITS[plan];
+		const limits = getSaasPlanLimits(plan);
 		await this.emailService.sendSubscriptionCanceled({
 			to: recipient.email,
 			firstName: recipient.firstName,

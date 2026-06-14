@@ -8,7 +8,9 @@ import {
 	Patch,
 	Post,
 	Query,
+	UseGuards,
 } from '@nestjs/common';
+import { FinanceModulePlanGuard } from '../billing/guards/finance-module-plan.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SendDocumentEmailDto } from '../common/dto/send-document-email.dto';
 import { CreatePayableCreditorDto } from './dto/create-payable-creditor.dto';
@@ -23,6 +25,7 @@ import { buildPublicPayableDebtUrl } from '../common/public-app-url';
 import { PayablesDebtSendService } from './payables-debt-send.service';
 import { PayablesService } from './payables.service';
 
+@UseGuards(FinanceModulePlanGuard)
 @Controller('payables')
 export class PayablesController {
 	constructor(

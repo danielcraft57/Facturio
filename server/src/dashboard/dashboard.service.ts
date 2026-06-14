@@ -94,6 +94,9 @@ export class DashboardService {
 		const newClientsThisMonth = await this.prisma.client.count({
 			where: { ...orgFilter, createdAt: { gte: thisMonthStart, lte: thisMonthEnd } }
 		});
+		const prospectClients = await this.prisma.client.count({
+			where: { ...orgFilter, status: 'PROSPECT' }
+		});
 
 		// Top clients par revenus (optimisé: une seule requête au lieu de N+1)
 		const topClientsData = await this.prisma.invoice.groupBy({
@@ -248,7 +251,7 @@ export class DashboardService {
 				total: totalClients,
 				active: activeClients,
 				inactive: totalClients - activeClients,
-				prospects: 0, // TODO: à implémenter quand on aura le modèle Prospect
+				prospects: prospectClients,
 				newThisMonth: newClientsThisMonth
 			},
 			topClients,

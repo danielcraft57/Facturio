@@ -1,6 +1,8 @@
 import { apiClient, type ApiResponse } from './api'
 import type { DocumentFolder, DocumentFlags, DocumentFolderCounts } from '../types/documentFolders'
 import type { EmailEngagement } from '../modules/documents/documentEmailEngagement'
+import type { InstallmentAccountingLink, InvoiceInstallment } from './invoiceInstallments'
+import type { InvoiceInstallmentSummary } from '../utils/invoiceInstallmentLabels'
 import { normalizeDocumentFolderCounts } from '../types/documentFolders'
 
 // Types pour les factures
@@ -55,6 +57,12 @@ export interface Invoice {
   balance?: number
   settlement?: 'A_PAYER' | 'SOLDEE_CB' | 'SOLDEE_AVOIR' | 'SOLDEE_MIXTE' | 'ANNULEE'
   emailEngagement?: EmailEngagement
+  /** Échéancier métier (paiement en plusieurs fois B2B). */
+  installments?: InvoiceInstallment[]
+  /** Écriture de vente (411/706) liée à la facture. */
+  installmentSaleAccounting?: InstallmentAccountingLink | null
+  /** Résumé pour listes (badge, prochaine échéance). */
+  installmentSummary?: InvoiceInstallmentSummary | null
 }
 
 export interface CreateInvoiceData {
@@ -72,6 +80,12 @@ export interface CreateInvoiceData {
   externalPaymentMethod?: string
   clientEmail?: string
   applyClientCredits?: boolean
+  /** Paiement en plusieurs fois à la création. */
+  installmentSchedule?: {
+    count: number
+    firstDueDate: string
+    intervalMonths?: number
+  }
 }
 
 export interface UpdateInvoiceData extends Partial<CreateInvoiceData> {
@@ -200,6 +214,17 @@ export function normalizeInvoiceFromApi(raw: Record<string, unknown>): Invoice {
           : undefined,
     settlement: raw.settlement as Invoice['settlement'] | undefined,
     emailEngagement: raw.emailEngagement as EmailEngagement | undefined,
+    installments: Array.isArray(raw.installments)
+      ? (raw.installments as InvoiceInstallment[])
+      : undefined,
+    installmentSaleAccounting:
+      raw.installmentSaleAccounting && typeof raw.installmentSaleAccounting === 'object'
+        ? (raw.installmentSaleAccounting as InstallmentAccountingLink)
+        : null,
+    installmentSummary:
+      raw.installmentSummary && typeof raw.installmentSummary === 'object'
+        ? (raw.installmentSummary as InvoiceInstallmentSummary)
+        : null,
   }
 }
 
@@ -259,6 +284,9 @@ export function toCreateInvoiceApiBody(data: CreateInvoiceData): Record<string, 
   if (data.clientEmail?.trim()) body.clientEmail = data.clientEmail.trim()
   if (data.newClientName?.trim()) body.clientName = data.newClientName.trim()
   if (data.applyClientCredits !== undefined) body.applyClientCredits = data.applyClientCredits
+  if (data.installmentSchedule && !data.paidExternally) {
+    body.installmentSchedule = data.installmentSchedule
+  }
   return body
 }
 

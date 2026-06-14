@@ -7,7 +7,7 @@ import {
   Checkbox,
   Alert,
   Stack,
-
+  MenuItem,
   InputAdornment,
   alpha,
   useTheme,
@@ -68,6 +68,11 @@ interface CreateInvoiceData {
   externalPaymentMethod?: string
   clientEmail?: string
   applyClientCredits?: boolean
+  installmentSchedule?: {
+    count: number
+    firstDueDate: string
+    intervalMonths?: number
+  }
 }
 
 interface CreateInvoiceDialogProps {
@@ -111,11 +116,21 @@ export function CreateInvoiceDialog({
   const [willCreateClient, setWillCreateClient] = useState(false)
   const [clientQuery, setClientQuery] = useState('')
   const [createClientError, setCreateClientError] = useState<string | null>(null)
+  const [splitPayments, setSplitPayments] = useState(false)
+  const [splitCount, setSplitCount] = useState(3)
+  const [splitFirstDue, setSplitFirstDue] = useState('')
+  const [splitIntervalMonths, setSplitIntervalMonths] = useState(1)
 
   useEffect(() => {
     if (!open) return
     submitInFlightRef.current = false
     setSubmitInFlight(false)
+    const nextMonth = new Date()
+    nextMonth.setMonth(nextMonth.getMonth() + 1)
+    setSplitFirstDue(nextMonth.toISOString().slice(0, 10))
+    setSplitPayments(false)
+    setSplitCount(3)
+    setSplitIntervalMonths(1)
   }, [open])
 
   useEffect(() => {
@@ -299,6 +314,15 @@ export function CreateInvoiceDialog({
           unitPrice: Math.round(Number(it.unitPrice) || 0),
         })),
         currency: 'EUR',
+        ...(splitPayments && !formData.paidExternally && splitFirstDue
+          ? {
+              installmentSchedule: {
+                count: splitCount,
+                firstDueDate: splitFirstDue,
+                intervalMonths: splitIntervalMonths,
+              },
+            }
+          : {}),
       }
       await onSubmit(payload)
     } finally {
@@ -483,6 +507,65 @@ export function CreateInvoiceDialog({
                 sx={financeFieldSx}
               />
             </Box>
+            {!formData.paidExternally && (
+              <Box sx={{ mt: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={splitPayments}
+                      onChange={(e) => setSplitPayments(e.target.checked)}
+                    />
+                  }
+                  label="Paiement en plusieurs fois (échéancier)"
+                />
+                {splitPayments && (
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' },
+                      gap: 2,
+                      mt: 1,
+                    }}
+                  >
+                    <TextField
+                      select
+                      label="Nombre d'échéances"
+                      value={splitCount}
+                      onChange={(e) => setSplitCount(Number(e.target.value))}
+                      fullWidth
+                      sx={financeFieldSx}
+                    >
+                      {[2, 3, 4, 6].map((n) => (
+                        <MenuItem key={n} value={n}>
+                          {n} fois
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      label="1re échéance"
+                      type="date"
+                      value={splitFirstDue}
+                      onChange={(e) => setSplitFirstDue(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                      sx={financeFieldSx}
+                    />
+                    <TextField
+                      select
+                      label="Intervalle"
+                      value={splitIntervalMonths}
+                      onChange={(e) => setSplitIntervalMonths(Number(e.target.value))}
+                      fullWidth
+                      sx={financeFieldSx}
+                    >
+                      <MenuItem value={1}>Chaque mois</MenuItem>
+                      <MenuItem value={2}>Tous les 2 mois</MenuItem>
+                      <MenuItem value={3}>Tous les 3 mois</MenuItem>
+                    </TextField>
+                  </Box>
+                )}
+              </Box>
+            )}
           </Box>
 
           <FinanceFormTotalsBox

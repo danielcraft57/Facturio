@@ -49,7 +49,6 @@ describe('Filings e2e', () => {
 		await prisma.invoice.deleteMany({});
 		await prisma.subscription.deleteMany({});
 		await prisma.pack.deleteMany({});
-		await prisma.prospect.deleteMany({});
 		await prisma.taxSimulation.deleteMany({});
 		await prisma.taxCredit.deleteMany({});
 		await prisma.amortization.deleteMany({});

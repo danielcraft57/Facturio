@@ -63,6 +63,24 @@ export interface PublicInvoiceSummary {
     depositAmount: number
     remainderAmount: number
   } | null
+  installments?: {
+    id: number
+    sequence: number
+    amount: number
+    dueDate: string
+    status: string
+    overdue: boolean
+    label?: string | null
+  }[]
+  nextInstallment?: {
+    id: number
+    sequence: number
+    amount: number
+    dueDate: string
+    status: string
+    overdue: boolean
+    label?: string | null
+  } | null
 }
 
 function StripeCheckoutForm({
@@ -193,18 +211,25 @@ function InvoicePaymentRecap({
   invoice,
   isPaid,
   isDeposit,
+  checkoutAmount,
 }: {
   invoice: PublicInvoiceSummary
   isPaid: boolean
   isDeposit: boolean
+  checkoutAmount?: number | null
 }) {
   const breakdown = invoice.engagementBreakdown
   const isRemainder = invoice.documentKind === 'remainder'
   const hasSplit = Boolean(breakdown)
+  const nextInst = invoice.nextInstallment
+  const instCount = invoice.installments?.length ?? 0
 
   const creditApplied = invoice.appliedCreditTotal ?? 0
   const settledByCreditOnly =
     isPaid && creditApplied > 0.01 && invoice.balance <= 0.01
+
+  const amountDueNow =
+    checkoutAmount ?? nextInst?.amount ?? (!isPaid ? invoice.balance : 0)
 
   if (!hasSplit && !isDeposit && !isRemainder) {
     if (isPaid) {
@@ -219,14 +244,21 @@ function InvoicePaymentRecap({
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: 'grey.50' }}>
         <Typography variant="overline" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-          À régler
+          {nextInst && instCount > 0
+            ? `Échéance ${nextInst.sequence}/${instCount} — à régler`
+            : 'À régler'}
         </Typography>
         <Typography variant="h5" fontWeight={800}>
-          {formatCurrency(invoice.balance)}
+          {formatCurrency(amountDueNow)}
         </Typography>
+        {nextInst && instCount > 0 && (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Solde restant sur cette facture : {formatCurrency(invoice.balance)}
+          </Typography>
+        )}
         {invoice.dueDate && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Échéance le {formatDate(invoice.dueDate)}
+            Échéance le {formatDate(nextInst?.dueDate ?? invoice.dueDate)}
           </Typography>
         )}
       </Paper>
@@ -234,7 +266,7 @@ function InvoicePaymentRecap({
   }
 
   const depositDone = isRemainder || (isDeposit && isPaid)
-  const payingNow = !isPaid ? invoice.balance : 0
+  const payingNow = !isPaid ? amountDueNow : 0
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 2.5, borderRadius: 2 }}>
@@ -289,11 +321,18 @@ function InvoicePaymentRecap({
             }}
           >
             <Typography variant="caption" color="text.secondary" display="block">
-              Montant de cette facture
+              {nextInst && instCount > 0
+                ? `Échéance ${nextInst.sequence}/${instCount} — montant à régler`
+                : 'Montant de cette facture'}
             </Typography>
             <Typography variant="h5" fontWeight={800} sx={{ lineHeight: 1.2 }}>
               {formatCurrency(payingNow)}
             </Typography>
+            {nextInst && instCount > 0 && (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                Solde restant : {formatCurrency(invoice.balance)}
+              </Typography>
+            )}
           </Box>
         </>
       )}
@@ -329,6 +368,9 @@ export function ClientInvoicePage() {
   const [loading, setLoading] = useState(true)
   const [stripePromise, setStripePromise] = useState<StripeJsPromise | null>(null)
   const [orgPublishableKey, setOrgPublishableKey] = useState<string | null>(null)
+  const [bnplMethods, setBnplMethods] = useState<string[]>([])
+  const [checkoutAmount, setCheckoutAmount] = useState<number | null>(null)
+  const [checkoutInstallmentSequence, setCheckoutInstallmentSequence] = useState<number | null>(null)
 
   const loadCheckout = useCallback(async () => {
     if (!token) return
@@ -337,7 +379,13 @@ export function ClientInvoicePage() {
     try {
       type CheckoutPayload = {
         invoice?: PublicInvoiceSummary
-        payment?: { clientSecret: string; stripePublishableKey?: string }
+        payment?: {
+          clientSecret: string
+          stripePublishableKey?: string
+          bnplMethods?: string[]
+          amount?: number
+          installmentSequence?: number | null
+        }
         paymentError?: string | null
         error?: string
       }
@@ -356,6 +404,9 @@ export function ClientInvoicePage() {
       }
       setInvoice(payload.invoice)
       setClientSecret(payload.payment?.clientSecret ?? null)
+      setBnplMethods(payload.payment?.bnplMethods ?? [])
+      setCheckoutAmount(payload.payment?.amount ?? null)
+      setCheckoutInstallmentSequence(payload.payment?.installmentSequence ?? null)
       setPaymentError(payload.paymentError ?? null)
       const pk =
         payload.payment?.stripePublishableKey ||
@@ -413,8 +464,26 @@ export function ClientInvoicePage() {
     invoice?.documentKind === 'remainder' || invoice?.tags?.includes('SOLDE_APRES_ACOMPTE'),
   )
   const pageTitle = invoice?.titleLabel ?? (isDeposit ? "Facture d'acompte" : isRemainder ? 'Facture de solde' : 'Facture')
+  const installmentHint = useMemo(() => {
+    if (!invoice?.nextInstallment) return null
+    const next = invoice.nextInstallment
+    const seq = checkoutInstallmentSequence ?? next.sequence
+    const amount = checkoutAmount ?? next.amount
+    const kind = next.label ?? `Échéance ${seq}`
+    return `${kind} : ${formatCurrency(amount)} (paiement en ${invoice.installments?.length ?? ''} fois)`
+  }, [invoice, checkoutAmount, checkoutInstallmentSequence])
+
+  const bnplHint = useMemo(() => {
+    if (bnplMethods.length === 0) return null
+    const labels = bnplMethods
+      .map((m) => (m === 'klarna' ? 'Klarna' : m === 'alma' ? 'Alma' : m))
+      .join(' ou ')
+    return `Paiement en plusieurs fois disponible (${labels}) — réservé aux particuliers.`
+  }, [bnplMethods])
+
   const paymentContextLabel = useMemo(() => {
     if (!invoice) return null
+    if (installmentHint) return installmentHint
     if (isDeposit && invoice.engagementBreakdown) {
       return `Acompte de ${formatCurrency(invoice.balance)} sur ${formatCurrency(invoice.engagementBreakdown.contractTotal)}`
     }
@@ -422,7 +491,7 @@ export function ClientInvoicePage() {
       return `Solde restant du devis (${formatCurrency(invoice.engagementBreakdown.contractTotal)} au total)`
     }
     return null
-  }, [invoice, isDeposit, isRemainder])
+  }, [invoice, isDeposit, isRemainder, installmentHint])
 
   if (loading) {
     return <InvoicePublicSkeleton />
@@ -459,7 +528,12 @@ export function ClientInvoicePage() {
               {invoice.dueDate ? ` · Échéance ${formatDate(invoice.dueDate)}` : ''}
             </Typography>
 
-            <InvoicePaymentRecap invoice={invoice} isPaid={isPaid} isDeposit={isDeposit} />
+            <InvoicePaymentRecap
+              invoice={invoice}
+              isPaid={isPaid}
+              isDeposit={isDeposit}
+              checkoutAmount={checkoutAmount}
+            />
 
             {(invoice.appliedCreditTotal ?? 0) > 0 && (
               <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
@@ -603,17 +677,53 @@ export function ClientInvoicePage() {
                   Vous payez
                 </Typography>
                 <Typography variant="h4" fontWeight={800} color="success.main">
-                  {formatCurrency(invoice.balance)}
+                  {formatCurrency(checkoutAmount ?? invoice.balance)}
                 </Typography>
+                {(checkoutAmount ?? 0) > 0 &&
+                  (checkoutAmount ?? 0) < invoice.balance - 0.01 && (
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                      Solde facture : {formatCurrency(invoice.balance)}
+                    </Typography>
+                  )}
               </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Carte bancaire sécurisée via Stripe.
+              <Typography variant="body2" color="text.secondary" sx={{ mb: bnplHint ? 1 : 2 }}>
+                Paiement sécurisé via Stripe (carte et autres moyens activés par votre prestataire).
               </Typography>
+              {bnplHint && (
+                <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+                  {bnplHint}
+                </Alert>
+              )}
 
               {paymentError && (
                 <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPaymentError(null)}>
                   {paymentError}
                 </Alert>
+              )}
+
+              {invoice.installments && invoice.installments.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700} display="block" sx={{ mb: 0.5 }}>
+                    Plan de paiement
+                  </Typography>
+                  {invoice.installments.map((row) => (
+                    <Typography
+                      key={row.id}
+                      variant="caption"
+                      display="block"
+                      color={
+                        row.status === 'PAID'
+                          ? 'success.main'
+                          : row.overdue
+                            ? 'error.main'
+                            : 'text.secondary'
+                      }
+                    >
+                      {row.label ?? `${row.sequence}.`} {formatDate(row.dueDate)} — {formatCurrency(row.amount)}
+                      {row.status === 'PAID' ? ' · réglée' : row.overdue ? ' · en retard' : ''}
+                    </Typography>
+                  ))}
+                </Box>
               )}
 
               <Elements
@@ -625,7 +735,7 @@ export function ClientInvoicePage() {
               >
                 <StripeCheckoutForm
                   token={token!}
-                  amount={invoice.balance}
+                  amount={checkoutAmount ?? invoice.balance}
                   currency={invoice.currency}
                   submitLabel="Confirmer le paiement"
                   onSuccess={() => {

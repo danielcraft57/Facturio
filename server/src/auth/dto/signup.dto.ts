@@ -62,5 +62,12 @@ export class SignupDto {
 	@IsArray()
 	@IsString({ each: true })
 	technologyIds?: string[];
+
+	/** Code d'invitation beta testeur (optionnel, 3 mois gratuits accès complet). */
+	@IsOptional()
+	@IsString({ message: 'Code beta invalide' })
+	@MaxLength(64, { message: 'Code beta trop long' })
+	@Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+	betaInviteCode?: string;
 }
 

@@ -1,5 +1,7 @@
 import { apiClient } from './api'
 import { resolveApiBaseUrl } from '../utils/resolveApiBaseUrl'
+import { consumeOAuthAccessTokenFromHash } from '../utils/oauthHashToken'
+import { getDeviceFingerprint } from '../utils/deviceFingerprint'
 
 /**
  * Types pour l'authentification
@@ -16,6 +18,15 @@ export interface DeviceVerificationResponse {
   email?: string
 }
 
+export interface GoogleLoginOptions {
+  /** Code beta campagne (ex. DEV26). */
+  betaInviteCode?: string
+  /** Inscription vs connexion simple. */
+  intent?: 'signup' | 'login'
+  acceptTerms?: boolean
+  acceptPrivacy?: boolean
+}
+
 export interface SignupDto {
   email: string
   password: string
@@ -25,6 +36,8 @@ export interface SignupDto {
   acceptTerms: boolean
   acceptPrivacy: boolean
   technologyIds?: string[]
+  /** Code d'invitation beta testeur (3 mois gratuits, accès complet). */
+  betaInviteCode?: string
 }
 
 export interface User {
@@ -199,6 +212,7 @@ class AuthService {
    * @throws {Error} Si l'utilisateur n'est pas authentifié
    */
   async bootstrapSession(deviceFingerprint: string): Promise<AuthResponse | DeviceVerificationResponse> {
+    consumeOAuthAccessTokenFromHash()
     const response = await apiClient.post<AuthResponse | DeviceVerificationResponse>(
       `${this.baseUrl}/session/bootstrap`,
       { deviceFingerprint },
@@ -290,12 +304,28 @@ class AuthService {
 
   /**
    * Démarre l'authentification Google OAuth
-   * 
-   * Redirige vers l'endpoint Google du backend
+   *
+   * @param options - Contexte signup (code beta, consentements)
    */
-  loginWithGoogle(): void {
+  async loginWithGoogle(options?: GoogleLoginOptions): Promise<void> {
     const apiUrl = resolveApiBaseUrl()
-    window.location.href = `${apiUrl}/auth/google`
+    const params = new URLSearchParams()
+    const fingerprint = await getDeviceFingerprint()
+    params.set('deviceFingerprint', fingerprint)
+    if (options?.betaInviteCode?.trim()) {
+      params.set('beta', options.betaInviteCode.trim().toUpperCase())
+    }
+    if (options?.intent) {
+      params.set('intent', options.intent)
+    }
+    if (options?.acceptTerms) {
+      params.set('acceptTerms', '1')
+    }
+    if (options?.acceptPrivacy) {
+      params.set('acceptPrivacy', '1')
+    }
+    const qs = params.toString()
+    window.location.href = `${apiUrl}/auth/google${qs ? `?${qs}` : ''}`
   }
 }
 

@@ -40,7 +40,13 @@ export async function resolveEngagementBreakdownForInvoice(
 	const isSplit =
 		tags.includes('ACOMPTE_10') ||
 		tags.includes('SOLDE_APRES_ACOMPTE') ||
-		tags.some((t) => t.startsWith('ACOMPTE_10_OF:') || t.startsWith('SOLDE_APRES_ACOMPTE_OF:'));
+		tags.includes('ECHEANCIER') ||
+		tags.some(
+			(t) =>
+				t.startsWith('ACOMPTE_10_OF:') ||
+				t.startsWith('SOLDE_APRES_ACOMPTE_OF:') ||
+				t.startsWith('ECHEANCIER_OF:'),
+		);
 	if (!isSplit) return null;
 
 	const orgId = invoice.organizationId;
@@ -63,8 +69,9 @@ export async function resolveEngagementBreakdownForInvoice(
 
 	const depositTag = `ACOMPTE_10_OF:${quoteId}`;
 	const remainderTag = `SOLDE_APRES_ACOMPTE_OF:${quoteId}`;
+	const installmentTag = `ECHEANCIER_OF:${quoteId}`;
 
-	const [depositRow, remainderRow, quoteRow] = await Promise.all([
+	const [depositRow, remainderRow, installmentRow, quoteRow] = await Promise.all([
 		prisma.invoice.findFirst({
 			where: {
 				organizationId: orgId,
@@ -87,6 +94,14 @@ export async function resolveEngagementBreakdownForInvoice(
 			select: { total: true },
 			orderBy: { createdAt: 'desc' },
 		}),
+		prisma.invoice.findFirst({
+			where: {
+				organizationId: orgId,
+				tags: { contains: `"${installmentTag}"` },
+			},
+			select: { total: true },
+			orderBy: { createdAt: 'desc' },
+		}),
 		prisma.quote.findUnique({
 			where: { id: quoteId },
 			select: { total: true },
@@ -94,7 +109,11 @@ export async function resolveEngagementBreakdownForInvoice(
 	]);
 
 	let depositAmount = depositRow ? toAmount(depositRow.total) : 0;
-	let remainderAmount = remainderRow ? toAmount(remainderRow.total) : 0;
+	let remainderAmount = remainderRow
+		? toAmount(remainderRow.total)
+		: installmentRow
+			? toAmount(installmentRow.total)
+			: 0;
 
 	if (depositAmount <= 0 && tags.includes('ACOMPTE_10')) {
 		depositAmount = toAmount(invoice.total);

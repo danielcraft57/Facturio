@@ -33,6 +33,10 @@ describe('Accounting e2e', () => {
 
 		// Créer un utilisateur de test
 		testUser = await createTestUser(app, prisma);
+		await prisma.organization.update({
+			where: { id: testUser.organizationId },
+			data: { saasPlan: 'PRO' },
+		});
 	});
 
 	afterAll(async () => {

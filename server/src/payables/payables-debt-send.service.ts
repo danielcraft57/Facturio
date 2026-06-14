@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { resolveEmailIssuerDisplayName } from '../common/email-legal-footer';
 import { buildPublicPayableDebtUrl } from '../common/public-app-url';
+import { BillingService } from '../billing/billing.service';
 
 @Injectable()
 export class PayablesDebtSendService {
@@ -26,6 +27,7 @@ export class PayablesDebtSendService {
 		private readonly realtime: RealtimeEventsService,
 		private readonly documentCopies: DocumentEmailCopiesService,
 		private readonly payables: PayablesService,
+		private readonly billing: BillingService,
 	) {}
 
 	async ensurePublicToken(debtId: number, organizationId: number): Promise<string> {
@@ -50,6 +52,7 @@ export class PayablesDebtSendService {
 		senderEmail?: string | null,
 	) {
 		if (organizationId == null) throw new BadRequestException('Organisation requise');
+		await this.billing.assertCanSendDocumentEmail(organizationId);
 
 		const debt = await this.prisma.payableDebt.findFirst({
 			where: { id: debtId, organizationId },
@@ -141,6 +144,7 @@ export class PayablesDebtSendService {
 		senderEmail?: string | null,
 	) {
 		if (organizationId == null) throw new BadRequestException('Organisation requise');
+		await this.billing.assertCanSendDocumentEmail(organizationId);
 
 		const paymentAmount = Number(dto.paymentAmount.toFixed(2));
 		if (paymentAmount <= 0) {

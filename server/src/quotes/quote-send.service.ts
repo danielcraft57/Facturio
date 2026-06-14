@@ -8,6 +8,7 @@ import { DocumentEmailCopiesService } from '../common/document-email-copies.serv
 import type { SendDocumentEmailDto } from '../common/dto/send-document-email.dto';
 import { buildEmailClickTrackUrl, buildEmailOpenTrackUrl } from '../common/email-track.util';
 import { recordQuoteEmailSent } from '../common/email-engagement.util';
+import { BillingService } from '../billing/billing.service';
 
 @Injectable()
 export class QuoteSendService {
@@ -18,6 +19,7 @@ export class QuoteSendService {
 		private readonly organizations: OrganizationsService,
 		private readonly prisma: PrismaService,
 		private readonly documentCopies: DocumentEmailCopiesService,
+		private readonly billing: BillingService,
 	) {}
 
 	async sendByEmail(
@@ -26,6 +28,7 @@ export class QuoteSendService {
 		dto?: SendDocumentEmailDto,
 		senderEmail?: string | null,
 	) {
+		await this.billing.assertCanSendDocumentEmail(organizationId);
 		const result = await this.quotes.sendQuote(id, organizationId);
 		const token = result.publicToken;
 		const organization = await this.organizations.getProfile(organizationId).catch(() => undefined);

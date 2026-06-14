@@ -1,6 +1,6 @@
 import { Box, Container, Link, Stack, Typography, alpha } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
-import { DANIELCRAFT_PUBLISHER } from '../../legal/danielcraftPublisher'
+import { DANIELCRAFT_PUBLISHER, FACTURIO_SERVICE } from '../../legal/danielcraftPublisher'
 
 const PRODUCT_LINKS = [
   { to: '/fonctionnalites', label: 'Fonctionnalités' },
@@ -82,18 +82,9 @@ export function PublicFooter() {
           }}
         >
           <Typography variant="caption" color="text.disabled">
-            © {new Date().getFullYear()} {DANIELCRAFT_PUBLISHER.tradeName} · SIRET {DANIELCRAFT_PUBLISHER.siret}
+            © {new Date().getFullYear()} {FACTURIO_SERVICE.name} · {DANIELCRAFT_PUBLISHER.legalName} · SIRET{' '}
+            {DANIELCRAFT_PUBLISHER.siret}
           </Typography>
-          <Link
-            href={DANIELCRAFT_PUBLISHER.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="caption"
-            color="text.disabled"
-            underline="hover"
-          >
-            {DANIELCRAFT_PUBLISHER.websiteLabel}
-          </Link>
         </Box>
       </Container>
     </Box>

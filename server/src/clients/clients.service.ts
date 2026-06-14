@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -8,6 +8,7 @@ import {
 	buildClientFolderWhere,
 	type ClientFolder,
 } from './client-folder.util';
+import { deriveClientStatus, syncClientStatusFromActivity } from './client-status.util';
 import { CatalogPersonalizationService } from '../catalog/catalog-personalization.service';
 import { groupByYearAndMonth } from '../common/archive-group.util';
 
@@ -51,7 +52,11 @@ export class ClientsService {
 	 * }, 1);
 	 * ```
 	 */
-	async create(data: CreateClientDto, organizationId?: number) {
+	async create(
+		data: CreateClientDto,
+		organizationId?: number,
+		options?: { reuseExistingEmail?: boolean },
+	) {
 		// Validation nom
 		if (!data.name) {
 			throw new BadRequestException('Le nom est requis');
@@ -60,14 +65,39 @@ export class ClientsService {
 		if (!data.email) {
 			throw new BadRequestException('Email requis');
 		}
+		const email = data.email.trim();
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		if (!emailRegex.test(data.email)) {
+		if (!emailRegex.test(email)) {
 			throw new BadRequestException('Email invalide');
 		}
-		
+
+		const existing = await this.prisma.client.findUnique({ where: { email } });
+		if (existing) {
+			if (
+				organizationId != null &&
+				existing.organizationId != null &&
+				existing.organizationId !== organizationId
+			) {
+				throw new ConflictException(
+					'Cet email est déjà utilisé par un client d\'une autre organisation.',
+				);
+			}
+			if (options?.reuseExistingEmail) {
+				if (organizationId != null && existing.organizationId == null) {
+					return this.prisma.client.update({
+						where: { id: existing.id },
+						data: { organizationId, name: data.name.trim() },
+					});
+				}
+				return existing;
+			}
+			throw new ConflictException('Un client avec cet email existe déjà.');
+		}
+
 		const { technologyIds, ...rest } = data;
 		const cleanData: Record<string, unknown> = {
 			...rest,
+			email,
 			taxRateOverrideId: data.taxRateOverrideId || undefined,
 		};
 
@@ -176,12 +206,34 @@ export class ClientsService {
 
 		const enriched = items.map((c) => {
 			const stats = invoiceStats.get(c.id);
+			const paidInvoiceCount = (stats?.revenueTotal ?? 0) > 0 ? 1 : 0;
+			const effectiveStatus = deriveClientStatus({
+				storedStatus: c.status,
+				archived: c.archivedAt != null,
+				paidInvoiceCount,
+				quoteCount: c._count.quotes,
+			});
 			return {
 				...c,
+				status: effectiveStatus,
 				revenueTotal: stats?.revenueTotal ?? 0,
 				lastInvoiceAt: stats?.lastInvoiceAt ?? null,
 			};
 		});
+
+		await Promise.all(
+			enriched
+				.filter((c) => {
+					const raw = items.find((i) => i.id === c.id);
+					return raw != null && c.status !== raw.status;
+				})
+				.map((c) =>
+					this.prisma.client.update({
+						where: { id: c.id },
+						data: { status: c.status },
+					}),
+				),
+		);
 
 		return {
 			items: enriched,
@@ -278,7 +330,8 @@ export class ClientsService {
 		}
 		const client = await this.prisma.client.findUnique({ where });
 		if (!client) throw new NotFoundException('Client non trouve');
-		return client;
+		const status = await syncClientStatusFromActivity(this.prisma, id);
+		return client.status === status ? client : { ...client, status };
 	}
 
 	/**
@@ -323,8 +376,9 @@ export class ClientsService {
 		}
 		await this.prisma.client.update({
 			where: { id },
-			data: { archivedAt: null, status: 'ACTIVE' },
+			data: { archivedAt: null },
 		});
+		await syncClientStatusFromActivity(this.prisma, id);
 		return { success: true };
 	}
 

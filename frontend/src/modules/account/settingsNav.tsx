@@ -8,6 +8,8 @@ import StorageIcon from '@mui/icons-material/Storage'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
 import VpnKeyIcon from '@mui/icons-material/VpnKey'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
+import SpeedIcon from '@mui/icons-material/Speed'
+import type { BillingUsage } from '../../services/billing'
 
 export type SettingsNavSection = 'compte' | 'facturation' | 'donnees' | 'api'
 
@@ -19,12 +21,19 @@ export type SettingsNavItem = {
   section?: SettingsNavSection
   /** Réservé aux plans Pro (API publique) */
   requiresPro?: boolean
+  /** Visible uniquement sur le plan Free */
+  requiresFree?: boolean
+}
+
+export type SettingsNavFilter = {
+  publicApiEnabled?: boolean
+  isFreePlan?: boolean
 }
 
 export const settingsNavItems: SettingsNavItem[] = [
   {
     to: '/parametres',
-    label: 'Vue d’ensemble',
+    label: "Vue d'ensemble",
     description: 'Accès rapide à tous les réglages',
     icon: <DashboardCustomizeIcon fontSize="small" />,
   },
@@ -38,14 +47,22 @@ export const settingsNavItems: SettingsNavItem[] = [
   {
     to: '/parametres/abonnement',
     label: 'Abonnement',
-    description: 'Plan Free, Pro, quotas',
+    description: 'Plan Free, Pro, facturation Stripe',
     icon: <CardMembershipIcon fontSize="small" />,
     section: 'compte',
   },
   {
+    to: '/parametres/quotas',
+    label: 'Quotas & usage',
+    description: 'Limites mensuelles du plan Free',
+    icon: <SpeedIcon fontSize="small" />,
+    section: 'compte',
+    requiresFree: true,
+  },
+  {
     to: '/parametres/facturation-electronique',
     label: 'Réforme 2026',
-    description: 'Conformité e-facture & Factur-X',
+    description: 'Conformité e-facture, export Factur-X — connecteur PA à venir',
     icon: <VerifiedUserIcon fontSize="small" />,
     section: 'facturation',
   },
@@ -91,4 +108,33 @@ export const settingsNavItems: SettingsNavItem[] = [
 export function isSettingsPathActive(pathname: string, to: string): boolean {
   if (to === '/parametres') return pathname === '/parametres'
   return pathname === to || pathname.startsWith(`${to}/`)
+}
+
+/**
+ * Construit le filtre menu paramètres à partir de l'usage billing.
+ *
+ * @param usage - Usage billing courant (null si non chargé)
+ */
+export function settingsNavFilterFromUsage(usage: BillingUsage | null | undefined): SettingsNavFilter {
+  return {
+    publicApiEnabled: usage?.limits.publicApi === true,
+    isFreePlan: usage?.plan === 'FREE',
+  }
+}
+
+/**
+ * Filtre les entrées réservées Pro ou Free selon le plan effectif.
+ *
+ * @param items - Entrées menu paramètres
+ * @param filter - Options de filtrage (API publique, plan Free)
+ */
+export function filterSettingsNavItems(
+  items: SettingsNavItem[],
+  filter: SettingsNavFilter = {},
+): SettingsNavItem[] {
+  return items.filter((item) => {
+    if (item.requiresPro && filter.publicApiEnabled !== true) return false
+    if (item.requiresFree && filter.isFreePlan !== true) return false
+    return true
+  })
 }

@@ -6,6 +6,7 @@ import { SignupDto } from './dto/signup.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { RateLimitService } from '../common/rate-limit.middleware';
+import { decodeGoogleOAuthState } from './google-oauth-state.util';
 
 /**
  * Controller d'authentification
@@ -239,14 +240,52 @@ export class AuthController {
 	@Get('google/callback')
 	@UseGuards(GoogleAuthGuard)
 	async googleCallback(@Req() req: Request, @Res() res: Response) {
-		const deviceContext = this.buildDeviceContext(req);
-		const result = await this.authService.validateGoogleUser(req.user as any, deviceContext);
-		const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-		if ((result as { needDeviceVerification?: boolean }).needDeviceVerification) {
-			return res.redirect(`${frontendUrl}/auth/session?pending=device`);
+		const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+		const signupContext = decodeGoogleOAuthState(
+			typeof req.query.state === 'string' ? req.query.state : null,
+		);
+
+		try {
+			const deviceContext = this.buildDeviceContext(req, signupContext?.deviceFingerprint);
+			const result = await this.authService.validateGoogleUser(
+				req.user as any,
+				deviceContext,
+				signupContext || {},
+			);
+			if ((result as { needDeviceVerification?: boolean }).needDeviceVerification) {
+				return res.redirect(`${frontendUrl}/auth/session?pending=device`);
+			}
+			const accessToken = (result as { access_token: string }).access_token;
+			this.setAuthCookie(res, accessToken);
+			const nodeEnv = process.env.NODE_ENV || 'dev';
+			const isDev = nodeEnv === 'dev' || nodeEnv === 'development';
+			const betaActivated = Boolean((result as { betaTester?: unknown }).betaTester);
+			const redirectParams = new URLSearchParams({ from: '/installation' });
+			if (betaActivated) {
+				redirectParams.set('beta_activated', '1');
+			}
+			const redirectBase = `${frontendUrl}/auth/session?${redirectParams.toString()}`;
+			if (isDev) {
+				return res.redirect(`${redirectBase}#access_token=${encodeURIComponent(accessToken)}`);
+			}
+			return res.redirect(redirectBase);
+		} catch (error) {
+			let message = 'Connexion Google impossible. Réessayez ou inscrivez-vous par email.';
+			if (error instanceof BadRequestException) {
+				const response = error.getResponse();
+				if (typeof response === 'string') {
+					message = response;
+				} else if (response && typeof response === 'object' && 'message' in response) {
+					const raw = (response as { message?: string | string[] }).message;
+					message = Array.isArray(raw) ? raw.join(', ') : String(raw ?? message);
+				}
+			}
+			const params = new URLSearchParams({ oauth_error: message });
+			if (signupContext?.betaInviteCode) {
+				params.set('beta', signupContext.betaInviteCode);
+			}
+			return res.redirect(`${frontendUrl}/signup?${params.toString()}`);
 		}
-		this.setAuthCookie(res, (result as { access_token: string }).access_token);
-		res.redirect(`${frontendUrl}/auth/session`);
 	}
 
 	private buildDeviceContext(req: Request, deviceFingerprint?: string) {

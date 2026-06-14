@@ -390,6 +390,43 @@ export class AccountingService {
 	}
 
 	/**
+	 * Retrouve les écritures postées par leurs références (ex. VENTE FAC-001, PAIEMENT FAC-001#12).
+	 *
+	 * @param references - Références uniques à rechercher
+	 */
+	async findPostedEntriesByReferences(
+		references: string[],
+	): Promise<
+		Map<
+			string,
+			{ id: number; journalCode: string; reference: string; date: string; memo: string | null }
+		>
+	> {
+		const unique = [...new Set(references.filter(Boolean))];
+		const map = new Map<
+			string,
+			{ id: number; journalCode: string; reference: string; date: string; memo: string | null }
+		>();
+		if (!unique.length) return map;
+
+		const entries = await this.prisma.journalEntry.findMany({
+			where: { reference: { in: unique }, status: 'POSTED' },
+			include: { journal: true },
+		});
+		for (const entry of entries) {
+			if (!entry.reference) continue;
+			map.set(entry.reference, {
+				id: entry.id,
+				journalCode: entry.journal.code,
+				reference: entry.reference,
+				date: entry.date.toISOString(),
+				memo: entry.memo,
+			});
+		}
+		return map;
+	}
+
+	/**
 	 * Liste les mouvements (lignes d'écritures) sur une période.
 	 */
 	async listMovements(params: { start?: string; end?: string; organizationId?: number }) {
@@ -612,6 +649,7 @@ export class AccountingService {
 		const tags = parseTagsJson(invoice.tags);
 		const isDeposit = tags.includes('ACOMPTE_10');
 		const isRemainder = tags.includes('SOLDE_APRES_ACOMPTE');
+		const isInstallment = tags.includes('ECHEANCIER');
 		const lines = [
 			{ accountCode: params.customerAccountCode ?? '411', debit: total, description: `Client — ${invoice.number}` },
 			{
@@ -621,7 +659,9 @@ export class AccountingService {
 					? 'Prestations — acompte 10 %'
 					: isRemainder
 						? 'Prestations — solde après acompte'
-						: 'Prestations de services',
+						: isInstallment
+							? 'Prestations — échéancier'
+							: 'Prestations de services',
 			},
 			{ accountCode: params.vatCollectedAccountCode ?? '44571', credit: tax, description: 'TVA collectée 20 %' },
 		].filter((l) => (l.debit ?? 0) > 0 || (l.credit ?? 0) > 0);
@@ -629,7 +669,9 @@ export class AccountingService {
 			? `Facture d'acompte ${invoice.number}`
 			: isRemainder
 				? `Facture de solde ${invoice.number}`
-				: `Facture ${invoice.number}`;
+				: isInstallment
+					? `Facture échéancier ${invoice.number}`
+					: `Facture ${invoice.number}`;
 		return this.postEntry({
 			journalCode: 'VE',
 			date: params.date ?? invoice.date,

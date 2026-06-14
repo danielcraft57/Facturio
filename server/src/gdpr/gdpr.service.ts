@@ -89,7 +89,7 @@ export class GdprService {
 			exportedAt: new Date().toISOString(),
 			format: 'facturio-gdpr-export-v1',
 			notice:
-				'Export RGPD : ne contient pas les clés secrètes (Stripe, ProspectLab). Conservez ce fichier de manière sécurisée.',
+				'Export RGPD : ne contient pas les clés secrètes Stripe. Conservez ce fichier de manière sécurisée.',
 			organization: safeOrg,
 			users: org.users,
 			clients: org.clients,

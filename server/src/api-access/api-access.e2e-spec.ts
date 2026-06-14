@@ -76,6 +76,25 @@ describe('API publique (api-access)', () => {
 			.expect(200);
 	});
 
+	it('POST /api/public/clients réutilise le client si email déjà connu (org)', async () => {
+		const email = uniqueEmail('api-client-dup');
+		const first = await request(app.getHttpServer())
+			.post('/api/public/clients')
+			.set(bearer())
+			.send({ name: 'Client A', email, countryCode: 'FR' })
+			.expect(201)
+			.then((r: { body: { id: string } }) => r.body);
+
+		const second = await request(app.getHttpServer())
+			.post('/api/public/clients')
+			.set(bearer())
+			.send({ name: 'Client B', email, countryCode: 'FR' })
+			.expect(201)
+			.then((r: { body: { id: string } }) => r.body);
+
+		expect(second.id).toBe(first.id);
+	});
+
 	it('crée une facture payée externe avec nouvel email (fiche client auto)', async () => {
 		const email = uniqueEmail('api-new-client');
 

@@ -88,7 +88,6 @@ const QuoteEditPage = lazy(() =>
   import('../quotes/QuoteEditPage').then((m) => ({ default: m.QuoteEditPage })),
 )
 const ProductsPage = lazy(() => import('../products/ProductsPage').then(m => ({ default: m.ProductsPage })))
-const ProspectsPage = lazy(() => import('../prospects/ProspectsPage').then(m => ({ default: m.ProspectsPage })))
 const TaxesPage = lazy(() => import('../taxes/TaxesPage').then(m => ({ default: m.TaxesPage })))
 const SubscriptionsPage = lazy(() => import('../subscriptions/SubscriptionsPage').then(m => ({ default: m.SubscriptionsPage })))
 const FilingsPage = lazy(() => import('../filings/FilingsPage').then(m => ({ default: m.FilingsPage })))
@@ -111,6 +110,9 @@ const SettingsCompanyPage = lazy(() =>
 )
 const SettingsBillingPage = lazy(() =>
   import('../account/pages/SettingsBillingPage').then(m => ({ default: m.SettingsBillingPage })),
+)
+const SettingsQuotasPage = lazy(() =>
+  import('../account/pages/SettingsQuotasPage').then(m => ({ default: m.SettingsQuotasPage })),
 )
 const SettingsEInvoicingPage = lazy(() =>
   import('../account/pages/SettingsEInvoicingPage').then(m => ({ default: m.SettingsEInvoicingPage })),
@@ -461,14 +463,6 @@ export function App() {
                 }
               />
               <Route
-                path="/prospection"
-                element={
-                  <PrivateRouteWrapper>
-                    <ProspectsPage />
-                  </PrivateRouteWrapper>
-                }
-              />
-              <Route
                 path="/taxes"
                 element={
                   <PrivateRouteWrapper>
@@ -565,6 +559,7 @@ export function App() {
                 <Route index element={<SettingsIndexPage />} />
                 <Route path="entreprise" element={<SettingsCompanyPage />} />
                 <Route path="abonnement" element={<SettingsBillingPage />} />
+                <Route path="quotas" element={<SettingsQuotasPage />} />
                 <Route path="facturation-electronique" element={<SettingsEInvoicingPage />} />
                 <Route path="paiements" element={<SettingsPaymentsPage />} />
                 <Route path="confidentialite" element={<SettingsPrivacyPage />} />

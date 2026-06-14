@@ -74,7 +74,7 @@ export class PublicApiController {
 	@Post('clients')
 	@RequireApiScopes('clients.write')
 	createClient(@Body() data: CreateClientDto, @ApiOrganizationId() orgId: number) {
-		return this.clients.create(data, orgId);
+		return this.clients.create(data, orgId, { reuseExistingEmail: true });
 	}
 
 	@Patch('clients/:id')

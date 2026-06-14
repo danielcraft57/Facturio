@@ -53,6 +53,7 @@ import {
   filterItemsByDocumentSearch,
 } from '../../utils/financeDocumentSearch'
 import { CreateInvoiceDialog } from './components/CreateInvoiceDialog'
+import { InvoiceInstallmentBadge } from './components/InvoiceInstallmentBadge'
 import { InvoiceFolderMobileList } from './components/InvoiceFolderMobileList'
 import { InvoiceRowActionsMenu } from './components/InvoiceRowActionsMenu'
 import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInvoiceDialog'
@@ -113,6 +114,7 @@ import {
 import { patchInvoiceFromRealtimeDetail } from '../../utils/financeRealtimeListPatch'
 import { scheduleDebounced } from '../../utils/scheduleDebounced'
 import type { FinanceRealtimeDetail } from '../../types/realtime'
+import { resolveInvoiceDueDisplay } from '../../utils/invoiceInstallmentLabels'
 
 export function InvoicesPage() {
   const { folder: folderParam } = useParams<{ folder?: string }>()
@@ -613,6 +615,11 @@ export function InvoicesPage() {
                         <Typography variant="caption" color="text.secondary" noWrap display="block">
                           {new Date(invoice.issueDate).toLocaleDateString('fr-FR')}
                         </Typography>
+                        {invoice.installmentSummary?.hasPlan && (
+                          <Box sx={{ mt: 0.5 }}>
+                            <InvoiceInstallmentBadge summary={invoice.installmentSummary} />
+                          </Box>
+                        )}
                       </TableCell>
                       <TableCell sx={documentFolderColClientSx}>
                         <DocumentFolderPartyCell
@@ -639,9 +646,13 @@ export function InvoicesPage() {
                       </TableCell>
                       <TableCell sx={documentFolderColDueSx}>
                         <Typography variant="body2" noWrap>
-                          {invoice.dueDate
-                            ? new Date(invoice.dueDate).toLocaleDateString('fr-FR')
-                            : '—'}
+                          {(() => {
+                            const due = resolveInvoiceDueDisplay(
+                              invoice.dueDate,
+                              invoice.installmentSummary,
+                            )
+                            return due ? new Date(due).toLocaleDateString('fr-FR') : '—'
+                          })()}
                         </Typography>
                       </TableCell>
                       <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>

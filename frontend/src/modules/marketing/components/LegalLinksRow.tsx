@@ -9,7 +9,7 @@ const LINKS = [
   { to: '/privacy', label: 'Confidentialité' },
 ] as const
 
-/** Liens légaux Facturio + renvoi site DanielCraft (accueil). */
+/** Liens légaux Facturio (pages marketing). */
 export function LegalLinksRow() {
   return (
     <Box
@@ -25,8 +25,7 @@ export function LegalLinksRow() {
           Informations légales
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Facturio est édité par {DANIELCRAFT_PUBLISHER.legalName} ({DANIELCRAFT_PUBLISHER.tradeName}) — SIRET{' '}
-          {DANIELCRAFT_PUBLISHER.siret}
+          Facturio est édité par {DANIELCRAFT_PUBLISHER.legalName} — SIRET {DANIELCRAFT_PUBLISHER.siret}
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', mb: 2 }}>
           {LINKS.map((link) => (
@@ -42,16 +41,6 @@ export function LegalLinksRow() {
             </Button>
           ))}
         </Box>
-        <Button
-          component="a"
-          href={DANIELCRAFT_PUBLISHER.website}
-          target="_blank"
-          rel="noopener noreferrer"
-          size="small"
-          color="inherit"
-        >
-          {DANIELCRAFT_PUBLISHER.websiteLabel}
-        </Button>
       </Box>
     </Box>
   )

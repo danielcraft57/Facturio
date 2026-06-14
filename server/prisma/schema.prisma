@@ -50,6 +50,18 @@ model Organization {
   updatedAt                   DateTime                  @updatedAt
   saasPlan                    SaasBillingPlan           @default(FREE)
   saasPlanExpiresAt           DateTime?
+  /// Date d'activation du programme beta testeur (3 mois gratuits, accès complet).
+  betaTesterAt                DateTime?
+  /// Email de bienvenue beta envoyé (évite les doublons sur relance batch).
+  betaWelcomeEmailSentAt      DateTime?
+  /// Rappels email fin période beta (cron quotidien).
+  betaReminder60SentAt        DateTime?
+  betaReminder30SentAt        DateTime?
+  betaReminder7SentAt         DateTime?
+  betaExpiredNoticeSentAt     DateTime?
+  /// JSON { invoices?: "YYYY-MM", quotes?: "YYYY-MM", emails?: "YYYY-MM" }
+  freeQuotaEmailsSentMonth    Json?
+  betaInviteRedemption        BetaInviteRedemption?
   stripeCustomerId            String?
   stripeSubscriptionId        String?
   invoiceStripePublishableKey String?
@@ -61,8 +73,6 @@ model Organization {
   /// JSON : ["card","paypal",…] — voir invoice-stripe-payment-methods.ts
   invoiceStripePaymentMethods String?
   saasSubscriptionStatus      String?
-  prospectLabApiUrl           String?
-  prospectLabApiKey           String?
   /// IDs d'options tech-stack (voir server/data/catalog/tech-stack-choices.json)
   preferredTechnologies       Json?
   /// Renseigné après l’assistant post-inscription (stack + installation catalogue)
@@ -80,7 +90,6 @@ model Organization {
   documents                   OrganizationDocument[]
   Pack                        Pack[]
   products                    Product[]
-  prospects                   Prospect[]
   quotes                      Quote[]
   stripePlatformEvents        StripePlatformEvent[]
   subscriptions               Subscription[]
@@ -94,6 +103,38 @@ model Organization {
   @@index([siret])
   @@index([siren])
   @@index([vatNumber])
+}
+
+/// Code d'invitation beta (réutilisable, ex. DEV26 pour les réseaux sociaux).
+model BetaInviteCode {
+  id              Int                    @id @default(autoincrement())
+  /// 3 à 6 caractères A-Z0-9 — partageable sur les réseaux.
+  code            String                 @unique
+  /// Libellé campagne (ex. « LinkedIn juin »).
+  label           String?
+  note            String?
+  /// Fin de validité du code (pas la durée d'accès beta par testeur).
+  expiresAt       DateTime?
+  active          Boolean                @default(true)
+  /// Plafond d'inscriptions via ce code (null = seulement le plafond global).
+  maxRedemptions  Int?
+  redemptionCount Int                    @default(0)
+  createdAt       DateTime               @default(now())
+  redemptions     BetaInviteRedemption[]
+
+  @@index([active])
+}
+
+/// Inscription beta d'une organisation via un code (une fois par org).
+model BetaInviteRedemption {
+  id               Int            @id @default(autoincrement())
+  betaInviteCodeId Int
+  organizationId   Int            @unique
+  redeemedAt       DateTime       @default(now())
+  betaInviteCode   BetaInviteCode @relation(fields: [betaInviteCodeId], references: [id], onDelete: Cascade)
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([betaInviteCodeId])
 }
 
 /// Jeton d'accès API publique (intégrations tierces, Bearer).
@@ -294,6 +335,7 @@ model Invoice {
   client              Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   lines               InvoiceLine[]
   payments            Payment[]
+  installments        InvoiceInstallment[]
   refunds             Refund[]
   taxDeductions       TaxDeduction[]
 
@@ -628,16 +670,45 @@ model AuthorityPayment {
   filing    Filing?       @relation(fields: [filingId], references: [id])
 }
 
-model Payment {
-  id        Int      @id @default(autoincrement())
+enum InvoiceInstallmentStatus {
+  SCHEDULED
+  PENDING
+  PAID
+  CANCELLED
+}
+
+/// Échéance d'un plan de paiement métier sur une facture (B2B).
+model InvoiceInstallment {
+  id        Int                      @id @default(autoincrement())
   invoiceId String
-  amount    Decimal  @default(0)
-  date      DateTime @default(now())
-  method    String?
-  notes     String?
-  createdAt DateTime @default(now())
-  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
-  refunds   Refund[]
+  sequence  Int
+  amount    Decimal                  @default(0)
+  dueDate   DateTime
+  status    InvoiceInstallmentStatus @default(PENDING)
+  paymentId Int?
+  paidAt    DateTime?
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+  invoice   Invoice                  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  payment   Payment?                 @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([invoiceId, sequence])
+  @@index([invoiceId])
+  @@index([invoiceId, status])
+  @@index([dueDate])
+}
+
+model Payment {
+  id                     Int                    @id @default(autoincrement())
+  invoiceId              String
+  amount                 Decimal                @default(0)
+  date                   DateTime               @default(now())
+  method                 String?
+  notes                  String?
+  createdAt              DateTime               @default(now())
+  invoice                Invoice                @relation(fields: [invoiceId], references: [id])
+  installmentAllocations InvoiceInstallment[]
+  refunds                Refund[]
 }
 
 enum PayableDebtStatus {
@@ -816,50 +887,6 @@ model JournalLine {
   credit      Decimal      @default(0)
   account     Account      @relation(fields: [accountId], references: [id])
   entry       JournalEntry @relation(fields: [entryId], references: [id])
-}
-
-model Prospect {
-  id                    Int            @id @default(autoincrement())
-  companyName           String
-  industry              String
-  size                  CompanySize
-  website               String?
-  email                 String?
-  phone                 String?
-  address               String?
-  city                  String?
-  country               String
-  revenue               Decimal?
-  employees             Int?
-  description           String?
-  painPoints            String?
-  budget                BudgetRange?
-  decisionMakerName     String?
-  decisionMakerPosition String?
-  decisionMakerEmail    String?
-  decisionMakerPhone    String?
-  decisionMakerLinkedin String?
-  status                ProspectStatus @default(NEW)
-  sourceType            SourceType     @default(DIRECT)
-  sourceName            String?
-  sourceCost            Decimal?
-  sourceConversionRate  Decimal?
-  score                 Int            @default(50)
-  priority              Priority       @default(MEDIUM)
-  assignedTo            String?
-  lastContact           DateTime?
-  nextFollowUp          DateTime?
-  notes                 String?
-  tags                  String?
-  organizationId        Int?
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  organization          Organization?  @relation(fields: [organizationId], references: [id])
-
-  @@index([companyName])
-  @@index([industry])
-  @@index([status])
-  @@index([organizationId])
 }
 
 model Pack {
@@ -1126,49 +1153,6 @@ enum AccountType {
 enum EntryStatus {
   DRAFT
   POSTED
-}
-
-enum ProspectStatus {
-  NEW
-  CONTACTED
-  QUALIFIED
-  PROPOSAL
-  NEGOTIATION
-  CLOSED_WON
-  CLOSED_LOST
-  DISQUALIFIED
-}
-
-enum CompanySize {
-  STARTUP
-  SMALL
-  MEDIUM
-  LARGE
-  ENTERPRISE
-}
-
-enum BudgetRange {
-  LOW
-  MEDIUM
-  HIGH
-  ENTERPRISE
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-enum SourceType {
-  ORGANIC
-  PAID
-  REFERRAL
-  PARTNERSHIP
-  EVENT
-  SOCIAL
-  DIRECT
 }
 
 enum PackType {

@@ -22,6 +22,7 @@ import {
 import type { SxProps, Theme } from '@mui/material/styles'
 import { Refresh as RefreshIcon } from '@mui/icons-material'
 import { DocumentFolderPageShell } from '../../components/finance/DocumentFolderPageShell'
+import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
 import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell'
 import { DocumentFolderStatusChip } from '../../components/finance/DocumentFolderStatusChip'
@@ -336,6 +337,7 @@ export function PayablesPage() {
   )
 
   return (
+    <BillingFeatureGate feature="financeModule" featureLabel="Le suivi des dettes fournisseurs">
     <DocumentFolderPageShell
       resource="dettes"
       folderBasePath="/dettes"
@@ -645,5 +647,6 @@ export function PayablesPage() {
         }}
       />
     </DocumentFolderPageShell>
+    </BillingFeatureGate>
   )
 }

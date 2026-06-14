@@ -60,6 +60,12 @@ import { useRealtimePanelHighlight } from '../../hooks/useRealtimeRowHighlight'
 import { getRealtimePanelSx } from '../../utils/realtimeRowHighlight'
 import { isDocumentFolder } from '../../types/documentFolders'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { InvoiceInstallmentsPanel } from './components/InvoiceInstallmentsPanel'
+import { InvoiceInstallmentScheduleDialog } from './components/InvoiceInstallmentScheduleDialog'
+import {
+  invoiceInstallmentsService,
+  type InvoiceInstallment,
+} from '../../services/invoiceInstallments'
 
 interface Payment {
   id: number
@@ -94,6 +100,10 @@ export function InvoiceDetailPage() {
   const [cancelDepositOpen, setCancelDepositOpen] = useState(false)
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
+  const [installments, setInstallments] = useState<InvoiceInstallment[]>([])
+  const [installmentDialogOpen, setInstallmentDialogOpen] = useState(false)
+  const [installmentReminding, setInstallmentReminding] = useState(false)
+  const [installmentReleasing, setInstallmentReleasing] = useState(false)
   const toast = useToast()
   const panelHighlight = useRealtimePanelHighlight('invoices', id)
   const initialLoadDone = useRef(false)
@@ -122,6 +132,7 @@ export function InvoiceDetailPage() {
     try {
       const data = await invoiceService.getInvoice(id)
       setInvoice(data)
+      setInstallments(data.installments ?? [])
       if (!opts?.silent) setLoading(false)
       initialLoadDone.current = true
       void loadPayments(data.total)
@@ -326,6 +337,9 @@ export function InvoiceDetailPage() {
     !depositRefunded &&
     payments.some((p) => (p.refundableAmount ?? p.amount) > 0.01)
   const hasStripePayments = payments.some((p) => p.notes?.startsWith('stripe:'))
+  const canEditInstallments =
+    !isCancelled && payments.length === 0 && !installments.some((i) => i.status === 'PAID')
+  const nextInstallment = installments.find((i) => i.status === 'PENDING') ?? null
 
   const handleRestore = async () => {
     if (!id) return
@@ -572,6 +586,49 @@ export function InvoiceDetailPage() {
                 </Box>
               </Box>
 
+              {!isCancelled && (
+                <InvoiceInstallmentsPanel
+                  installments={installments}
+                  saleAccounting={invoice.installmentSaleAccounting}
+                  canEdit={canEditInstallments}
+                  onConfigure={() => setInstallmentDialogOpen(true)}
+                  canRemind={Boolean(
+                    (invoice.sentAt || nextInstallment) && nextInstallment && !isFullySettled,
+                  )}
+                  reminding={installmentReminding}
+                  releasing={installmentReleasing}
+                  onRelease={async (installmentId) => {
+                    if (!id) return
+                    setInstallmentReleasing(true)
+                    try {
+                      await invoiceInstallmentsService.release(id, installmentId)
+                      toast.success('Mensualité envoyée au client')
+                      await loadInvoice()
+                    } catch (err: unknown) {
+                      toast.error(
+                        err instanceof Error ? err.message : 'Envoi de la mensualité impossible',
+                      )
+                    } finally {
+                      setInstallmentReleasing(false)
+                    }
+                  }}
+                  onRemind={async (installmentId) => {
+                    if (!id) return
+                    setInstallmentReminding(true)
+                    try {
+                      await invoiceInstallmentsService.remind(id, installmentId)
+                      toast.success('Relance échéance envoyée')
+                    } catch (err: unknown) {
+                      toast.error(
+                        err instanceof Error ? err.message : 'Envoi de la relance impossible',
+                      )
+                    } finally {
+                      setInstallmentReminding(false)
+                    }
+                  }}
+                />
+              )}
+
               {/* Historique des paiements */}
               {payments.length > 0 && (
                 <>
@@ -815,7 +872,12 @@ export function InvoiceDetailPage() {
                       variant="contained"
                       startIcon={<Payment />}
                       onClick={() => {
-                        setPaymentAmount(Math.min(remainingAmount, invoice.total))
+                        setPaymentAmount(
+                          Math.min(
+                            nextInstallment?.amount ?? remainingAmount,
+                            remainingAmount,
+                          ),
+                        )
                         setPaymentDialogOpen(true)
                       }}
                       color="success"
@@ -1030,6 +1092,21 @@ export function InvoiceDetailPage() {
         onSend={handleSendEmail}
         sending={sendingEmail}
       />
+
+      {invoice && (
+        <InvoiceInstallmentScheduleDialog
+          open={installmentDialogOpen}
+          onClose={() => setInstallmentDialogOpen(false)}
+          invoiceId={invoice.id}
+          invoiceTotal={invoice.total}
+          existing={installments}
+          canEdit={canEditInstallments}
+          onSaved={() => {
+            void loadInvoice({ silent: true })
+            toast.success('Échéancier mis à jour')
+          }}
+        />
+      )}
     </Box>
   )
 }

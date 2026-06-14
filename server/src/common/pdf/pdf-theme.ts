@@ -17,6 +17,10 @@ export const PDF_THEME = {
 
 export const PDF_LAYOUT = {
 	pageWidth: 595.28,
+	/** Marge blanche au-dessus du bandeau bleu (respiration visuelle). */
+	marginTop: 44,
+	/** Marge haute des pages 2+ (PDFKit top=0 sur page 1). */
+	continuationPageTop: 72,
 	marginX: 50,
 	contentWidth: 495.28,
 	padSm: 8,

@@ -10,7 +10,6 @@ const PRIVATE_PREFIXES = [
   '/factures',
   '/archives',
   '/produits',
-  '/prospection',
   '/taxes',
   '/abonnements',
   '/declarations',
@@ -60,13 +59,13 @@ const MARKETING: Record<string, RouteSeo> = {
   '/fonctionnalites': {
     title: 'Fonctionnalités',
     description:
-      'Devis, factures, Stripe, TVA, prospection, export FEC et conformité e-facture 2026 — outil vertical pour freelances tech et agences web.',
+      'Devis, factures, Stripe, TVA, export FEC et conformité e-facture 2026 — outil vertical pour freelances tech et agences web.',
     ogImage: '/images/facturio-features.png',
   },
   '/facturation-electronique': {
     title: 'Facturation électronique',
     description:
-      'Préparez la réforme 2026 : conformité, Factur-X et feuille de route Plateforme Agréée intégrée à votre flux de facturation.',
+      'Préparez la réforme 2026 : score conformité, export Factur-X (XML) — connecteur Plateforme Agréée en feuille de route.',
     ogImage: '/images/facturio-efacture.png',
   },
   '/tarifs': {
@@ -126,7 +125,6 @@ const APP_ROUTES: Record<string, RouteSeo> = {
   '/factures/archives': { title: 'Factures archivées', description: 'Consultez vos factures archivées.' },
   '/archives': { title: 'Archives', description: 'Documents archivés.' },
   '/produits': { title: 'Produits', description: 'Catalogue de prestations et tarifs.' },
-  '/prospection': { title: 'Prospection', description: 'Suivi des prospects et opportunités.' },
   '/taxes': { title: 'Fiscalité', description: 'TVA, déductions et simulations fiscales.' },
   '/abonnements': { title: 'Abonnements', description: 'Abonnements récurrents et facturation.' },
   '/declarations': { title: 'Déclarations', description: 'Déclarations et obligations.' },
@@ -150,6 +148,7 @@ const APP_ROUTES: Record<string, RouteSeo> = {
   '/parametres': { title: 'Paramètres', description: 'Paramètres de votre compte et organisation.' },
   '/parametres/entreprise': { title: 'Entreprise', description: 'Identité légale et coordonnées de facturation.' },
   '/parametres/abonnement': { title: 'Abonnement', description: 'Formule et facturation de votre compte.' },
+  '/parametres/quotas': { title: 'Quotas & usage', description: 'Limites mensuelles du plan Free.' },
   '/parametres/facturation-electronique': {
     title: 'Facturation électronique',
     description: 'Options e-facture et conformité.',

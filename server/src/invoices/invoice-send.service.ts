@@ -9,6 +9,8 @@ import { DocumentEmailCopiesService } from '../common/document-email-copies.serv
 import { parseTagsJson } from '../common/document-folder.util';
 import { buildEmailClickTrackUrl, buildEmailOpenTrackUrl } from '../common/email-track.util';
 import { recordInvoiceEmailSent } from '../common/email-engagement.util';
+import { BillingService } from '../billing/billing.service';
+import { InvoiceInstallmentReleaseService } from './invoice-installment-release.service';
 
 @Injectable()
 export class InvoiceSendService {
@@ -19,6 +21,8 @@ export class InvoiceSendService {
 		private readonly organizations: OrganizationsService,
 		private readonly prisma: PrismaService,
 		private readonly documentCopies: DocumentEmailCopiesService,
+		private readonly billing: BillingService,
+		private readonly installmentReleases: InvoiceInstallmentReleaseService,
 	) {}
 
 	async sendByEmail(
@@ -27,7 +31,9 @@ export class InvoiceSendService {
 		dto?: SendInvoiceDto,
 		senderEmail?: string | null,
 	) {
+		await this.billing.assertCanSendDocumentEmail(organizationId);
 		const result = await this.invoices.sendInvoice(id, organizationId);
+		await this.installmentReleases.ensurePayableInstallment(id);
 		let invoice = await this.invoices.findOne(id, organizationId);
 
 		const overrideEmail = (dto?.email ?? dto?.to)?.trim();
@@ -90,12 +96,29 @@ export class InvoiceSendService {
 			(invoice.client as { companyName?: string })?.companyName ||
 			'';
 
+		const nextInstallment =
+			invoice.installments?.find(
+				(row: { status: string }) => row.status === 'PENDING',
+			) ?? null;
+		const installmentContext =
+			nextInstallment && (invoice.installments?.length ?? 0) > 0
+				? {
+						sequence: nextInstallment.sequence,
+						totalCount: invoice.installments!.length,
+						amountDue: Number(nextInstallment.amount),
+						balanceRemaining: Number(invoice.balance),
+						dueDate: nextInstallment.dueDate,
+						contractTotal: Number(invoice.total),
+					}
+				: undefined;
+
 		await this.email.sendInvoice({
 			to,
 			invoiceNumber: invoice.number,
 			invoiceDate: invoice.date,
 			clientName,
-			total: Number(invoice.total),
+			total: installmentContext?.amountDue ?? Number(invoice.total),
+			installmentContext,
 			pdfBuffer: pdf,
 			extraAttachments,
 			trackOpenUrl,
@@ -117,7 +140,7 @@ export class InvoiceSendService {
 			invoiceNumber: invoice.number,
 			invoiceDate: invoice.date,
 			clientName,
-			total: Number(invoice.total),
+			total: installmentContext?.amountDue ?? Number(invoice.total),
 			pdfBuffer: pdf,
 			extraAttachments,
 			organization,

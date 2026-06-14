@@ -20,6 +20,8 @@ import { useAuthStore } from '../../../stores/authStore'
 import { authService } from '../../../services/authService'
 import type { DeviceVerificationResponse } from '../../../services/authService'
 import { PendingEmailVerificationCard } from '../../../components/auth/PendingEmailVerificationCard'
+import { DisabledActionTooltip, formatDisabledReasons } from '../../../components/auth/DisabledActionTooltip'
+import { getLoginSubmitDisabledReasons } from './signupDisabledReasons'
 import { usePendingEmailVerification } from '../../../hooks/usePendingEmailVerification'
 
 /**
@@ -112,11 +114,15 @@ export function LoginPage() {
     }
   }
 
-  const handleGoogleLogin = () => {
-    authService.loginWithGoogle()
+  const handleGoogleLogin = async () => {
+    await authService.loginWithGoogle({ intent: 'login' })
   }
 
   const displayError = localError || error
+
+  const canSubmit = email.trim().length > 0 && password.length > 0
+  const submitDisabled = isLoading || !canSubmit
+  const submitDisabledReasons = getLoginSubmitDisabledReasons({ email, password, isLoading })
 
   return (
     <Container maxWidth="sm">
@@ -208,16 +214,21 @@ export function LoginPage() {
                 Mot de passe oublié ?
               </Link>
             </Box>
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              sx={{ mt: 3, py: 1.5 }}
-              disabled={isLoading}
+            <DisabledActionTooltip
+              disabled={submitDisabled}
+              title={formatDisabledReasons(submitDisabledReasons)}
             >
-              {isLoading ? 'Connexion...' : 'Se connecter'}
-            </Button>
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                sx={{ mt: 3, py: 1.5 }}
+                disabled={submitDisabled}
+              >
+                {isLoading ? 'Connexion...' : 'Se connecter'}
+              </Button>
+            </DisabledActionTooltip>
           </Box>
 
           <Divider sx={{ my: 3 }}>

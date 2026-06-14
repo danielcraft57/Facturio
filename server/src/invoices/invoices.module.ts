@@ -11,6 +11,8 @@ import { BillingModule } from '../billing/billing.module';
 import { InvoicePaymentNotificationModule } from './invoice-payment-notification.module';
 import { RefundsModule } from '../refunds/refunds.module';
 import { AvoirsModule } from '../avoirs/avoirs.module';
+import { InvoiceInstallmentsModule } from './invoice-installments.module';
+import { InvoiceInstallmentReminderService } from './invoice-installment-reminder.service';
 
 @Module({
 	imports: [
@@ -23,10 +25,15 @@ import { AvoirsModule } from '../avoirs/avoirs.module';
 		InvoicePaymentNotificationModule,
 		RefundsModule,
 		AvoirsModule,
+		InvoiceInstallmentsModule,
 	],
 	controllers: [InvoicesController, PublicInvoicesController],
-	providers: [InvoicesService, InvoiceSendService],
-	exports: [InvoicesService, InvoiceSendService],
+	providers: [
+		InvoicesService,
+		InvoiceSendService,
+		InvoiceInstallmentReminderService,
+	],
+	exports: [InvoicesService, InvoiceSendService, InvoiceInstallmentsModule],
 })
 export class InvoicesModule {}
 

@@ -15,7 +15,6 @@ import { seedInvoices } from './seeds/invoices.seed';
 import { seedQuotes } from './seeds/quotes.seed';
 import { seedSubscriptions } from './seeds/subscriptions.seed';
 import { seedFilings } from './seeds/filings.seed';
-import { seedProspects } from './seeds/prospects.seed';
 import { seedPacks } from './seeds/packs.seed';
 
 const prisma = createSeedPrismaClient();
@@ -97,12 +96,7 @@ async function main(): Promise<void> {
 	await seedFilings(prisma);
 	console.log('✅ Déclarations créées\n');
 
-	// 9. Prospects (ignoré si la table n'existe pas, ex. sans migration Prospect)
-	console.log('🎯 Seeds des prospects...');
-	await seedOrSkip(prisma, 'Prospect', () => seedProspects(prisma));
-	console.log('✅ Prospects créés\n');
-
-	// 10. Packs (ignoré si la table n'existe pas)
+	// 9. Packs (ignoré si la table n'existe pas)
 	console.log('📦 Seeds des packs...');
 	await seedOrSkip(prisma, 'Pack', () => seedPacks(prisma, products));
 	console.log('✅ Packs créés\n');

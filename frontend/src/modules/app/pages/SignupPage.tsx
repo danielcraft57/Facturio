@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link as RouterLink } from 'react-router-dom'
+import { useNavigate, Link as RouterLink, useSearchParams } from 'react-router-dom'
 import {
   Container,
   Box,
@@ -23,7 +23,14 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { useAuthStore } from '../../../stores/authStore'
 import { authService } from '../../../services/authService'
 import { PendingEmailVerificationCard } from '../../../components/auth/PendingEmailVerificationCard'
+import { DisabledActionTooltip, formatDisabledReasons } from '../../../components/auth/DisabledActionTooltip'
+import {
+  getGoogleSignupDisabledReasons,
+  getSignupSubmitDisabledReasons,
+} from './signupDisabledReasons'
 import { usePendingEmailVerification } from '../../../hooks/usePendingEmailVerification'
+import { GA_EVENTS } from '../../../config/analyticsEvents'
+import { trackGoogleAnalyticsEvent } from '../../../utils/googleAnalytics'
 
 /**
  * Page d'inscription
@@ -36,6 +43,7 @@ import { usePendingEmailVerification } from '../../../hooks/usePendingEmailVerif
  */
 export function SignupPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { signup, isLoading, error, clearError } = useAuthStore()
   const [resendSuccess, setResendSuccess] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -45,6 +53,7 @@ export function SignupPage() {
     firstName: '',
     lastName: '',
     organizationName: '',
+    betaInviteCode: '',
   })
 
   const {
@@ -59,6 +68,19 @@ export function SignupPage() {
   const [localError, setLocalError] = useState<string | null>(null)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
+  useEffect(() => {
+    const rawCode = searchParams.get('beta') ?? searchParams.get('code')
+    if (!rawCode?.trim()) return
+    const code = rawCode.trim().toUpperCase()
+    setFormData((prev) => (prev.betaInviteCode === code ? prev : { ...prev, betaInviteCode: code }))
+  }, [searchParams])
+
+  useEffect(() => {
+    const oauthError = searchParams.get('oauth_error')
+    if (!oauthError?.trim()) return
+    setLocalError(oauthError.trim())
+  }, [searchParams])
+
   useEffect(() => {
     if (!authService.hasSessionToken()) return
     let cancelled = false
@@ -116,6 +138,9 @@ export function SignupPage() {
     }
 
     try {
+      trackGoogleAnalyticsEvent(GA_EVENTS.SIGNUP_STARTED, {
+        has_beta_code: formData.betaInviteCode.trim().length > 0,
+      })
       await signup({
         email: formData.email,
         password: formData.password,
@@ -124,6 +149,10 @@ export function SignupPage() {
         organizationName: formData.organizationName,
         acceptTerms: true,
         acceptPrivacy: true,
+        betaInviteCode: formData.betaInviteCode.trim() || undefined,
+      })
+      trackGoogleAnalyticsEvent(GA_EVENTS.SIGNUP_COMPLETED, {
+        has_beta_code: Boolean(formData.betaInviteCode.trim()),
       })
       await setPendingFromEmail(formData.email)
       navigate('/auth/session?from=/installation', { replace: true })
@@ -132,9 +161,26 @@ export function SignupPage() {
     }
   }
 
-  const handleGoogleLogin = () => {
-    authService.loginWithGoogle()
+  const handleGoogleLogin = async () => {
+    setLocalError(null)
+    clearError()
+    if (!acceptTerms || !acceptPrivacy) {
+      setLocalError('Vous devez accepter les CGU et la politique de confidentialité')
+      return
+    }
+    trackGoogleAnalyticsEvent(GA_EVENTS.SIGNUP_STARTED, {
+      has_beta_code: formData.betaInviteCode.trim().length > 0,
+      method: 'google',
+    })
+    await authService.loginWithGoogle({
+      intent: 'signup',
+      betaInviteCode: formData.betaInviteCode.trim() || undefined,
+      acceptTerms: true,
+      acceptPrivacy: true,
+    })
   }
+
+  const canUseGoogleSignup = acceptTerms && acceptPrivacy
 
   const displayError = localError || error
 
@@ -147,6 +193,19 @@ export function SignupPage() {
     formData.password.length >= 8 &&
     formData.confirmPassword.length > 0 &&
     formData.password === formData.confirmPassword
+
+  const submitDisabled = isLoading || !canSubmit
+  const submitDisabledReasons = getSignupSubmitDisabledReasons({
+    pending: Boolean(pending),
+    email: formData.email,
+    organizationName: formData.organizationName,
+    password: formData.password,
+    confirmPassword: formData.confirmPassword,
+    acceptTerms,
+    acceptPrivacy,
+    isLoading,
+  })
+  const googleDisabledReasons = getGoogleSignupDisabledReasons({ acceptTerms, acceptPrivacy })
 
   return (
     <Container maxWidth="sm">
@@ -235,6 +294,20 @@ export function SignupPage() {
               onChange={handleChange}
               margin="normal"
               required
+            />
+            <TextField
+              fullWidth
+              label="Code beta testeur (optionnel)"
+              name="betaInviteCode"
+              value={formData.betaInviteCode}
+              onChange={handleChange}
+              margin="normal"
+              autoComplete="off"
+              helperText={
+                formData.betaInviteCode.trim()
+                  ? 'Code détecté — 3 mois gratuits avec accès plan Agence après validation du compte.'
+                  : 'Code campagne court (ex. DEV26) : même code pour tous, jusqu’à épuisement des places.'
+              }
             />
             <TextField
               fullWidth
@@ -399,20 +472,25 @@ export function SignupPage() {
                 s&apos;appliquent aux abonnements payants Facturio.
               </Typography>
             </Box>
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              sx={{ mt: 2, py: 1.5 }}
-              disabled={isLoading || !canSubmit}
+            <DisabledActionTooltip
+              disabled={submitDisabled}
+              title={formatDisabledReasons(submitDisabledReasons)}
             >
-              {isLoading
-                ? 'Création du compte...'
-                : pending
-                  ? 'Compte en attente — voir le message ci-dessus'
-                  : 'Créer mon compte'}
-            </Button>
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                sx={{ mt: 2, py: 1.5 }}
+                disabled={submitDisabled}
+              >
+                {isLoading
+                  ? 'Création du compte...'
+                  : pending
+                    ? 'Compte en attente — voir le message ci-dessus'
+                    : 'Créer mon compte'}
+              </Button>
+            </DisabledActionTooltip>
           </Box>
 
           <Divider sx={{ my: 3 }}>
@@ -421,16 +499,29 @@ export function SignupPage() {
             </Typography>
           </Divider>
 
-          <Button
-            fullWidth
-            variant="outlined"
-            size="large"
-            startIcon={<GoogleIcon />}
-            onClick={handleGoogleLogin}
-            sx={{ mb: 3, py: 1.5 }}
+          <DisabledActionTooltip
+            disabled={!canUseGoogleSignup}
+            title={formatDisabledReasons(googleDisabledReasons)}
           >
-            Continuer avec Google
-          </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              startIcon={<GoogleIcon />}
+              onClick={handleGoogleLogin}
+              disabled={!canUseGoogleSignup}
+              sx={{ mb: 1, py: 1.5 }}
+            >
+              Continuer avec Google
+            </Button>
+          </DisabledActionTooltip>
+          {formData.betaInviteCode.trim() ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mb: 2 }}>
+              Le code beta {formData.betaInviteCode.trim().toUpperCase()} sera appliqué après connexion Google.
+            </Typography>
+          ) : (
+            <Box sx={{ mb: 2 }} />
+          )}
 
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">

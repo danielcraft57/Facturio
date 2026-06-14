@@ -17,6 +17,7 @@ import { OnboardingLayout } from '../../onboarding/OnboardingLayout'
 import { OnboardingDevWelcomeStep } from '../../onboarding/steps/OnboardingDevWelcomeStep'
 import { OnboardingDevProfileStep } from '../../onboarding/steps/OnboardingDevProfileStep'
 import { OnboardingCatalogPreviewStep } from '../../onboarding/steps/OnboardingCatalogPreviewStep'
+import { usePageTitle } from '../../../hooks/usePageTitle'
 import {
   filterSuggestedTechIds,
   normalizeOnboardingProfileId,
@@ -27,7 +28,7 @@ import {
   type OnboardingPreviewProduct,
 } from '../../../services/onboardingService'
 import { catalogService, type CatalogPack, type TechStackChoices } from '../../../services/catalogService'
-import { usePageTitle } from '../../../hooks/usePageTitle'
+import { dispatchOnboardingInstalledEvent } from '../../../utils/lifecycleNotifications'
 
 const INSTALL_STEPS = [
   'Analyse de votre stack…',
@@ -224,6 +225,7 @@ export function OnboardingInstallPage() {
       window.clearInterval(stepTimer)
       await new Promise((r) => setTimeout(r, 600))
       setInstalling(false)
+      dispatchOnboardingInstalledEvent(count)
       const destination =
         !replayMode && user?.emailVerified !== true
           ? '/inscription/confirmation'

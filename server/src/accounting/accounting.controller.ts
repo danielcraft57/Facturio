@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { AccountingService } from './accounting.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AccountingPlanGuard } from '../billing/guards/accounting-plan.guard';
 
+@UseGuards(AccountingPlanGuard)
 @Controller('accounting')
 export class AccountingController {
 	constructor(private readonly accounting: AccountingService) {}

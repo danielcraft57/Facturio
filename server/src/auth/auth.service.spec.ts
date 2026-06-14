@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../common/email.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { BetaTesterService } from '../billing/beta-tester.service';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
@@ -20,10 +21,17 @@ describe('AuthService', () => {
 			findUnique: jest.fn(),
 			create: jest.fn(),
 			update: jest.fn(),
+			delete: jest.fn(),
 		},
 		organization: {
 			create: jest.fn(),
+			delete: jest.fn(),
 		},
+	};
+
+	const mockBetaTesterService = {
+		validateCode: jest.fn().mockResolvedValue({ valid: true, message: 'ok', remainingSlots: 10 }),
+		redeemCode: jest.fn(),
 	};
 
 	const mockJwtService = {
@@ -68,6 +76,10 @@ describe('AuthService', () => {
 				{
 					provide: UnverifiedAccountService,
 					useValue: mockUnverifiedAccountService,
+				},
+				{
+					provide: BetaTesterService,
+					useValue: mockBetaTesterService,
 				},
 			],
 		}).compile();

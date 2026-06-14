@@ -17,6 +17,11 @@ export interface SessionCreateResult {
 	needDeviceVerification: boolean;
 }
 
+export interface SessionCreateOptions {
+	/** Connexion OAuth Google : pas de blocage « nouvel appareil » (email déjà validé par Google). */
+	trustDevice?: boolean;
+}
+
 @Injectable()
 export class AuthSessionService {
 	private readonly logger = new Logger(AuthSessionService.name);
@@ -37,7 +42,11 @@ export class AuthSessionService {
 		return fp.length >= 8 ? fp : 'unknown-device';
 	}
 
-	async createLoginSession(userId: number, ctx: LoginDeviceContext): Promise<SessionCreateResult> {
+	async createLoginSession(
+		userId: number,
+		ctx: LoginDeviceContext,
+		options: SessionCreateOptions = {},
+	): Promise<SessionCreateResult> {
 		const deviceFingerprint = this.normalizeFingerprint(ctx.deviceFingerprint);
 		const ipHash = this.hashIp(ctx.ip);
 		const userAgent = ctx.userAgent?.slice(0, 512) ?? null;
@@ -66,14 +75,16 @@ export class AuthSessionService {
 		const hasOtherDevices = await this.prisma.userSession.findFirst({
 			where: {
 				userId,
-				deviceFingerprint: { not: deviceFingerprint },
+				deviceFingerprint: { notIn: [deviceFingerprint, 'unknown-device'] },
 				trusted: true,
 				revokedAt: null,
 				verifiedAt: { not: null },
 			},
 		});
 
-		const isRisky = !!concurrentOther || (!knownTrusted && !!hasOtherDevices);
+		const isRisky = options.trustDevice
+			? false
+			: !!concurrentOther || (!knownTrusted && !!hasOtherDevices);
 
 		const verificationToken = isRisky ? crypto.randomBytes(32).toString('hex') : null;
 		const verificationExpires = isRisky ? new Date(Date.now() + VERIFICATION_TTL_MS) : null;
@@ -109,6 +120,44 @@ export class AuthSessionService {
 		}
 
 		return { sessionId: session.id, needDeviceVerification: isRisky };
+	}
+
+	/**
+	 * Remplace l'empreinte « unknown-device » (OAuth sans fingerprint) par celle du navigateur.
+	 *
+	 * @param sessionId - Session JWT courante
+	 * @param userId - Utilisateur
+	 * @param ctx - Contexte appareil (fingerprint client)
+	 */
+	async syncSessionFingerprint(
+		sessionId: number,
+		userId: number,
+		ctx: LoginDeviceContext,
+	): Promise<void> {
+		const fingerprint = this.normalizeFingerprint(ctx.deviceFingerprint);
+		if (fingerprint === 'unknown-device') return;
+
+		const session = await this.prisma.userSession.findFirst({
+			where: { id: sessionId, userId, revokedAt: null },
+		});
+		if (!session) return;
+		if (session.deviceFingerprint === fingerprint) return;
+
+		const shouldUpgrade =
+			session.deviceFingerprint === 'unknown-device' || session.trusted === false;
+		if (!shouldUpgrade) return;
+
+		await this.prisma.userSession.update({
+			where: { id: sessionId },
+			data: {
+				deviceFingerprint: fingerprint,
+				trusted: true,
+				verifiedAt: new Date(),
+				verificationToken: null,
+				verificationExpires: null,
+				lastActivityAt: new Date(),
+			},
+		});
 	}
 
 	async assertSessionActive(sessionId: number, userId: number): Promise<void> {

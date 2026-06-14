@@ -51,7 +51,6 @@ describe('Avoirs e2e', () => {
 		await prisma.quote.deleteMany({});
 		await prisma.subscription.deleteMany({});
 		await prisma.pack.deleteMany({});
-		await prisma.prospect.deleteMany({});
 		await prisma.taxSimulation.deleteMany({});
 		await prisma.taxCredit.deleteMany({});
 		await prisma.amortization.deleteMany({});

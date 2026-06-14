@@ -7,12 +7,14 @@ import { CtaSection } from '../components/CtaSection'
 import { ScrollReveal } from '../components/ScrollReveal'
 import { MarketingImage } from '../components/MarketingImage'
 import { EfactureRoadmapAlert } from '../components/EfactureRoadmapAlert'
+import { BetaTesterPromo } from '../components/BetaTesterPromo'
 import {
   CTA,
   FEATURES,
   FEATURES_COMMERCIAL,
   FEATURES_COMPTA,
   FEATURES_ROADMAP,
+  FREE_PLAN_SUMMARY,
 } from '../constants/siteContent'
 
 export function FeaturesPage() {
@@ -22,11 +24,13 @@ export function FeaturesPage() {
         compact
         badge="Disponible · En cours · À venir"
         title="Tout le cycle commercial, sans la compta lourde"
-        subtitle="Devis, factures, Stripe, TVA, prospection et pré-compta — plus la couche conformité 2026. Pas de sync bancaire : on reste léger."
+        subtitle="Devis, factures, Stripe, TVA et pré-compta — plus la couche conformité 2026. Pas de sync bancaire : on reste léger."
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.efacture2026}
         visual={<MarketingImage src="/images/facturio-features.png" alt="Fonctionnalités Facturio" float={false} />}
       />
+
+      <BetaTesterPromo compact />
 
       <FeatureGrid
         title="Cœur métier"
@@ -36,7 +40,7 @@ export function FeaturesPage() {
 
       <FeatureGrid
         title="Commercial & récurrence"
-        subtitle="Inclus dès le plan Pro — pour développer votre pipeline et vos abonnements maintenance."
+        subtitle="Inclus dès le plan Pro — abonnements maintenance, packs et liens publics."
         features={FEATURES_COMMERCIAL}
       />
 
@@ -73,12 +77,12 @@ export function FeaturesPage() {
       </Box>
 
       <CtaSection
-        title="Testez gratuitement — 25 factures/mois"
-        subtitle="Passez Pro pour l’illimité et ProspectLab. Réservez Pro + e-facture pour verrouiller la conformité PA."
+        title={`Testez gratuitement — ${FREE_PLAN_SUMMARY}`}
+        subtitle="Passez Pro pour l’illimité et la compta. Réservez Pro + e-facture pour l’export Factur-X et la priorité connecteur PA (à venir)."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
-        secondaryLabel={CTA.pricing.label}
-        secondaryTo={CTA.pricing.to}
+        secondaryLabel={CTA.betaSignup.label}
+        secondaryTo={CTA.betaSignup.to}
       />
     </Box>
   )

@@ -6,18 +6,15 @@ export function sanitizeOrganizationProfile<T extends Record<string, unknown>>(o
 		invoiceStripeSecretKey,
 		invoiceStripeWebhookSecret,
 		invoiceStripePaymentMethods,
-		prospectLabApiKey,
 		...safe
 	} = org as T & {
 		invoiceStripeSecretKey?: string | null;
 		invoiceStripeWebhookSecret?: string | null;
 		invoiceStripePaymentMethods?: string | null;
-		prospectLabApiKey?: string | null;
 	};
 
 	return {
 		...safe,
-		prospectLabApiKeySet: !!prospectLabApiKey,
 		invoiceStripeSecretKeySet: !!invoiceStripeSecretKey,
 		invoiceStripeWebhookSecretSet: !!invoiceStripeWebhookSecret,
 		invoiceStripePaymentMethods: parseInvoiceStripePaymentMethodsStored(invoiceStripePaymentMethods),

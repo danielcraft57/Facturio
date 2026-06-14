@@ -4,6 +4,7 @@ import { ReceivablesService } from './receivables.service';
 describe('ReceivablesService', () => {
 	const prisma = {
 		invoice: { findMany: jest.fn() },
+		invoiceInstallment: { findMany: jest.fn().mockResolvedValue([]) },
 		emailEvent: { findMany: jest.fn().mockResolvedValue([]) },
 	} as any;
 
@@ -48,6 +49,53 @@ describe('ReceivablesService', () => {
 		expect(res.summary.invoiceCount).toBe(1);
 		expect(res.summary.clientCount).toBe(1);
 		expect(res.clients[0].totalBalance).toBe(120);
+		expect(res.summary.installmentCount).toBe(0);
+		expect(res.installmentReceivables).toEqual([]);
+	});
+
+	it('expose les créances par échéance de plan actif', async () => {
+		prisma.invoice.findMany.mockResolvedValue([
+			{
+				id: 'inv-plan',
+				number: 'FAC-PLAN',
+				clientId: 'c1',
+				date: new Date('2026-01-01'),
+				dueDate: new Date('2026-06-01'),
+				total: 300,
+				balance: 300,
+				status: 'SENT',
+				tags: null,
+				sourceQuoteId: null,
+				client: { id: 'c1', name: 'Client', email: 'c@test.com' },
+			},
+		]);
+		prisma.invoiceInstallment.findMany.mockResolvedValue([
+			{
+				id: 10,
+				sequence: 1,
+				dueDate: new Date('2026-02-01'),
+				amount: 100,
+				status: 'PENDING',
+				invoice: {
+					id: 'inv-plan',
+					number: 'FAC-PLAN',
+					clientId: 'c1',
+					balance: 300,
+					client: { name: 'Client' },
+				},
+			},
+		]);
+
+		const res = await service.getReceivables(1);
+		expect(res.summary.installmentCount).toBe(1);
+		expect(res.summary.installmentOutstanding).toBe(100);
+		expect(res.installmentReceivables[0]).toMatchObject({
+			id: 10,
+			sequence: 1,
+			invoiceNumber: 'FAC-PLAN',
+			amount: 100,
+			autoTracked: true,
+		});
 	});
 
 	it('inclut le solde après acompte en brouillon', async () => {

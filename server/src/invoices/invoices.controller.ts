@@ -1,4 +1,19 @@
-import { Body, Controller, Delete, Get, Header, Logger, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Header,
+	Logger,
+	Param,
+	ParseIntPipe,
+	Patch,
+	Post,
+	Put,
+	Query,
+	Res,
+} from '@nestjs/common';
 import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
 import { InvoicesService } from './invoices.service';
 import { InvoiceSendService } from './invoice-send.service';
@@ -16,6 +31,13 @@ import { StripeService } from '../stripe/stripe.service';
 import { assertValidPublicToken } from './public-token.util';
 import { RefundsService } from '../refunds/refunds.service';
 import { CreateRefundDto, CancelDepositDto } from '../refunds/dto/create-refund.dto';
+import { InvoiceInstallmentsService } from './invoice-installments.service';
+import {
+	PreviewEqualInstallmentsDto,
+	SetInvoiceInstallmentsDto,
+} from './dto/set-invoice-installments.dto';
+import { InvoiceInstallmentReminderService } from './invoice-installment-reminder.service';
+import { InvoiceInstallmentReleaseService } from './invoice-installment-release.service';
 
 @Controller(['invoices', 'factures'])
 export class InvoicesController {
@@ -26,6 +48,9 @@ export class InvoicesController {
 		private readonly organizations: OrganizationsService,
 		private readonly email: EmailService,
 		private readonly refunds: RefundsService,
+		private readonly installments: InvoiceInstallmentsService,
+		private readonly installmentReminders: InvoiceInstallmentReminderService,
+		private readonly installmentReleases: InvoiceInstallmentReleaseService,
 	) {}
 
 	@Post()
@@ -96,6 +121,84 @@ export class InvoicesController {
 		return res.send(buf);
 	}
 
+	@Get(':id/installments')
+	listInstallments(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
+		return this.installments.listForInvoiceWithFinance(id, user.organizationId);
+	}
+
+	@Put(':id/installments')
+	setInstallments(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Body() body: SetInvoiceInstallmentsDto,
+		@CurrentUser() user: any,
+	) {
+		return this.installments.setSchedule(id, body.installments, user.organizationId);
+	}
+
+	@Delete(':id/installments')
+	clearInstallments(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
+		return this.installments.clearSchedule(id, user.organizationId);
+	}
+
+	@Post(':id/installments/:installmentId/release')
+	async releaseInstallment(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Param('installmentId', ParseIntPipe) installmentId: number,
+		@CurrentUser() user: any,
+	) {
+		const rows = await this.installments.listForInvoice(id, user.organizationId);
+		if (!rows.some((r) => r.id === installmentId)) {
+			throw new BadRequestException('Échéance introuvable sur cette facture');
+		}
+		const sent = await this.installmentReleases.releaseInstallment(installmentId, {
+			force: true,
+			organizationId: user.organizationId,
+		});
+		if (!sent) {
+			throw new BadRequestException(
+				'Impossible d’envoyer cette mensualité (acompte non payé, échéance déjà active, etc.)',
+			);
+		}
+		return { success: true, installmentId };
+	}
+
+	@Post(':id/installments/:installmentId/remind')
+	async remindInstallment(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Param('installmentId', ParseIntPipe) installmentId: number,
+		@CurrentUser() user: any,
+	) {
+		const rows = await this.installments.listForInvoice(id, user.organizationId);
+		if (!rows.some((r) => r.id === installmentId)) {
+			throw new BadRequestException('Échéance introuvable sur cette facture');
+		}
+		const sent = await this.installmentReminders.sendReminderForInstallment(installmentId, {
+			kind: 'manual',
+			force: true,
+			organizationId: user.organizationId,
+		});
+		if (!sent) {
+			throw new BadRequestException('Impossible d’envoyer la relance (facture non envoyée, client sans email, etc.)');
+		}
+		return { success: true, installmentId };
+	}
+
+	@Post(':id/installments/preview-equal')
+	previewEqualInstallments(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Body() body: PreviewEqualInstallmentsDto,
+		@CurrentUser() user: any,
+	) {
+		void id;
+		void user;
+		return this.installments.previewEqualSchedule(
+			body.total,
+			body.count,
+			body.firstDueDate,
+			body.intervalMonths ?? 1,
+		);
+	}
+
 	@Get(':id/payments')
 	payments(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
 		return this.invoices.listPayments(id, user.organizationId);
@@ -153,7 +256,10 @@ export class InvoicesController {
 
 	@Post(':id/remind')
 	async sendReminder(@Param('id', ParseEntityIdPipe) id: string, @CurrentUser() user: any) {
-		const { invoice, daysOverdue, publicUrl } = await this.invoices.prepareReminder(id, user.organizationId);
+		const { invoice, daysOverdue, publicUrl, reminderAmount } = await this.invoices.prepareReminder(
+			id,
+			user.organizationId,
+		);
 		const organization = await this.organizations.getProfile(user.organizationId).catch(() => undefined);
 		const pdf = await this.pdfService.generateInvoicePdf(invoice, organization);
 		const client = invoice.client as { email?: string; name?: string; companyName?: string };
@@ -167,14 +273,14 @@ export class InvoicesController {
 			invoiceNumber: invoice.number,
 			invoiceDate: invoice.date,
 			clientName: client.name || client.companyName || '',
-			amount: Number(invoice.total),
+			amount: reminderAmount,
 			daysOverdue,
 			paymentUrl,
 			trackOpenUrl,
 			pdfBuffer: pdf,
 			organization,
 		});
-		return { success: true, invoiceId: id, daysOverdue: daysOverdue ?? null };
+		return { success: true, invoiceId: id, daysOverdue: daysOverdue ?? null, amount: reminderAmount };
 	}
 }
 

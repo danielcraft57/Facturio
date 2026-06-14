@@ -1,7 +1,4 @@
-import { useEffect, useState } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
-import { billingService, type BillingUsage } from '../../services/billing'
-import { unwrapApiPayload } from '../../services/clients'
 import { OrganizationProfileProvider, useOrganizationProfile } from './OrganizationProfileContext'
 import { AnimatedSettingsOutlet } from './components/AnimatedSettingsOutlet'
 import {
@@ -16,7 +13,8 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import { settingsNavItems, isSettingsPathActive } from './settingsNav'
+import { settingsNavItems, filterSettingsNavItems, isSettingsPathActive, settingsNavFilterFromUsage } from './settingsNav'
+import { useBillingUsage } from '../../hooks/useBillingUsage'
 import { SettingsAutoSaveStatus } from './components/SettingsAutoSaveStatus'
 
 function SettingsLayoutContent() {
@@ -24,28 +22,9 @@ function SettingsLayoutContent() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { autoSaveStatus, error, validationMessage } = useOrganizationProfile()
-  const [usage, setUsage] = useState<BillingUsage | null>(null)
+  const { usage } = useBillingUsage()
 
-  useEffect(() => {
-    let cancelled = false
-    billingService
-      .getUsage()
-      .then((res) => {
-        if (!cancelled) {
-          setUsage(unwrapApiPayload<BillingUsage>(res))
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setUsage(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const visibleNavItems = settingsNavItems.filter(
-    (item) => !item.requiresPro || usage?.limits.publicApi === true,
-  )
+  const visibleNavItems = filterSettingsNavItems(settingsNavItems, settingsNavFilterFromUsage(usage))
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto' }}>

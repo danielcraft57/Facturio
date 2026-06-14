@@ -14,7 +14,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import CreditScoreIcon from '@mui/icons-material/CreditScore'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import { CREANCES_PATH, DETTES_INBOX } from './encoursPaths'
-import { settingsNavItems } from '../../account/settingsNav'
+import { filterSettingsNavItems, settingsNavItems, type SettingsNavFilter } from '../../account/settingsNav'
 
 export type NavItemSection = 'activity' | 'encours' | 'compte' | 'facturation' | 'donnees' | 'api'
 
@@ -157,32 +157,45 @@ export const navGroups: NavGroup[] = [
   },
 ]
 
-export const navSettingsGroup: NavGroup = {
-  id: 'parametres',
-  layout: 'compact',
-  label: 'Paramètres',
-  overview: 'Compte, entreprise, facturation électronique et préférences.',
-  overviewCta: { label: 'Vue d’ensemble', to: '/parametres' },
-  featured: {
-    title: 'Profil entreprise',
-    description: 'SIRET, adresse et coordonnées de facturation.',
-    to: '/parametres/entreprise',
-    cta: 'Configurer',
-    secondaryCta: { label: 'Abonnement', to: '/parametres/abonnement' },
-    icon: <BusinessIcon />,
-    accent: 'amber',
-  },
-  items: settingsNavItems
-    .filter((item) => item.to !== '/parametres')
-    .map((item) => ({
-      to: item.to,
-      label: item.label,
-      description: item.description,
-      icon: item.icon,
-      section: item.section,
-      badge: item.requiresPro ? 'Pro' : undefined,
-    })),
+/**
+ * Mega-menu Paramètres filtré selon le plan (API Pro, quotas Free).
+ *
+ * @param filter - Filtres plan (API publique, plan Free)
+ */
+export function createNavSettingsGroup(filter: SettingsNavFilter = {}): NavGroup {
+  return {
+    id: 'parametres',
+    layout: 'compact',
+    label: 'Paramètres',
+    overview: 'Compte, entreprise, facturation électronique et préférences.',
+    overviewCta: { label: 'Vue d’ensemble', to: '/parametres' },
+    featured: {
+      title: 'Profil entreprise',
+      description: 'SIRET, adresse et coordonnées de facturation.',
+      to: '/parametres/entreprise',
+      cta: 'Configurer',
+      secondaryCta: { label: 'Abonnement', to: '/parametres/abonnement' },
+      icon: <BusinessIcon />,
+      accent: 'amber',
+    },
+    items: filterSettingsNavItems(settingsNavItems, filter)
+      .filter((item) => item.to !== '/parametres')
+      .map((item) => ({
+        to: item.to,
+        label: item.label,
+        description: item.description,
+        icon: item.icon,
+        section: item.section,
+        badge: item.requiresPro ? 'Pro' : undefined,
+      })),
+  }
 }
+
+/** Groupe paramètres sans filtre plan (tests / fallback). */
+export const navSettingsGroup: NavGroup = createNavSettingsGroup({
+  publicApiEnabled: true,
+  isFreePlan: true,
+})
 
 export const navSettings: NavItem = {
   to: '/parametres',

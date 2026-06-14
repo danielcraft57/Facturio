@@ -43,6 +43,8 @@ export async function createTestUser(
 		lastName?: string;
 		organizationName?: string;
 		technologyIds?: string[];
+		/** Plan SaaS pour les e2e module finance / compta (défaut : FREE). */
+		saasPlan?: 'FREE' | 'PRO' | 'PRO_EFACTURE' | 'AGENCY';
 	}
 ): Promise<TestUser> {
 	const email = overrides?.email || `test-${Date.now()}@example.com`;
@@ -91,7 +93,10 @@ export async function createTestUser(
 	if (user?.organizationId) {
 		await prisma.organization.update({
 			where: { id: user.organizationId },
-			data: { onboardingCompletedAt: new Date() },
+			data: {
+				onboardingCompletedAt: new Date(),
+				...(overrides?.saasPlan ? { saasPlan: overrides.saasPlan } : {}),
+			},
 		});
 	}
 

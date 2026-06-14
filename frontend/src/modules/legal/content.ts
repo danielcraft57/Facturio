@@ -102,7 +102,7 @@ export const PRIVACY_SECTIONS: readonly LegalSection[] = [
       'Exécution du contrat (fourniture du service de facturation).',
       'Obligations légales (conservation comptable des pièces que vous émettez).',
       'Intérêt légitime (sécurité, prévention de la fraude, amélioration produit).',
-      'Consentement (prospection externe ProspectLab, si vous l’activez).',
+      'Consentement (cookies non essentiels, le cas échéant).',
     ],
   },
   {
@@ -111,7 +111,6 @@ export const PRIVACY_SECTIONS: readonly LegalSection[] = [
       'Hébergement / infrastructure (serveur applicatif et base de données, Union européenne visée).',
       'Stripe (deux usages distincts) : (1) abonnement Facturio Pro — compte plateforme ; (2) paiement de vos factures — votre compte Stripe enregistré dans Paramètres. Des DPA Stripe sont à conclure par chaque prestataire pour le flux (2).',
       'Envoi d’emails (SMTP) pour vérification de compte, factures et devis.',
-      'ProspectLab (optionnel, plan Pro) : import de données entreprises pour la prospection B2B.',
       'Futur : Plateforme Agréée partenaire pour la facturation électronique 2026 (module en développement).',
     ],
   },
@@ -127,7 +126,7 @@ export const PRIVACY_SECTIONS: readonly LegalSection[] = [
     title: 'Sécurité',
     paragraphs: [
       'Authentification par cookie HTTP-only et JWT ; mots de passe hachés (bcrypt).',
-      'Clés secrètes Stripe et tokens ProspectLab chiffrés en base (AES-256-GCM) si SECRETS_ENCRYPTION_KEY est configuré côté serveur.',
+      'Clés secrètes Stripe chiffrées en base (AES-256-GCM) si SECRETS_ENCRYPTION_KEY est configuré côté serveur.',
       'En-têtes de sécurité HTTP, limitation du débit sur l’authentification et les liens publics.',
       'Isolation des données par organisation (multi-tenant).',
     ],
@@ -193,7 +192,7 @@ export const TERMS_SECTIONS: readonly LegalSection[] = [
   {
     title: '7. Offres et limites',
     paragraphs: [
-      'Le plan Free est limité (factures / mois, pas de prospection). Les paliers payants et le module e-facture peuvent évoluer ; les changements substantiels seront signalés.',
+      'Le plan Free est limité (factures / mois, pas de compta FEC). Les paliers payants et le module e-facture peuvent évoluer ; les changements substantiels seront signalés.',
       'Le module e-facture (PA, Factur-X) est en développement : son activation effective sera communiquée distinctement.',
     ],
   },
@@ -238,7 +237,7 @@ export const SALES_TERMS_SECTIONS: readonly LegalSection[] = [
   {
     title: '2. Objet',
     paragraphs: [
-      'Les CGV régissent la souscription aux offres Free, Pro, Pro + e-facture et Agence, ainsi que les options associées (module e-facture, prospection, etc.). Toute souscription ou paiement d’abonnement vaut acceptation des présentes CGV et des CGU.',
+      'Les CGV régissent la souscription aux offres Free, Pro, Pro + e-facture et Agence, ainsi que les options associées (module e-facture, etc.). Toute souscription ou paiement d’abonnement vaut acceptation des présentes CGV et des CGU.',
     ],
   },
   {

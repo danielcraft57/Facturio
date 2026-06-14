@@ -35,9 +35,11 @@ import { useAuthStore } from '../../../stores/authStore'
 import { AppTopNav } from './AppTopNav'
 import { AppMobileNav } from './AppMobileNav'
 import { NotificationCenter } from './NotificationCenter'
-import { BillingUsageBanner } from './BillingUsageBanner'
+import { BillingQuotaStrip } from './BillingQuotaStrip'
+import { LifecycleNotifier } from './LifecycleNotifier'
 import { userMenuLinks } from '../config/userMenuConfig'
 import { PageTransition } from '../../../components/PageTransition'
+import { WelcomeDialogHost } from '../../../components/marketing/WelcomeDialogHost'
 
 type AppLayoutProps = PropsWithChildren<{
   mode: 'light' | 'dark'
@@ -122,6 +124,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+      <WelcomeDialogHost />
       <AppBar
         position="fixed"
         elevation={0}
@@ -299,7 +302,8 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
 
       <Box component="main" sx={{ flexGrow: 1, width: '100%', p: { xs: 1, sm: 2, md: 3 } }}>
         <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }} />
-        <BillingUsageBanner />
+        <BillingQuotaStrip />
+        <LifecycleNotifier />
         <PageTransition>{children}</PageTransition>
       </Box>
     </Box>

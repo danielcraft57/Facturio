@@ -1,9 +1,12 @@
+import { randomBytes } from 'crypto';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { RealtimeEventsService } from '../realtime/realtime-events.service';
-import { parseTagsJson } from '../common/document-folder.util';
+import { parseTagsJson, serializeTagsJson } from '../common/document-folder.util';
 import { parseQuoteIdFromSplitTags } from './invoice-deposit.util';
 
-/** Après paiement de l'acompte, notifie la facture de solde liée (rafraîchissement listes / créances). */
+/**
+ * Après paiement de l'acompte, prépare la facture ECH liée (lien public, levée du blocage).
+ */
 export async function notifyLinkedRemainderAfterDepositPaid(
 	prisma: PrismaService,
 	realtime: RealtimeEventsService,
@@ -23,15 +26,35 @@ export async function notifyLinkedRemainderAfterDepositPaid(
 	const quoteId = parseQuoteIdFromSplitTags(tags) ?? depositInvoice.sourceQuoteId;
 	if (!quoteId) return;
 
-	const remainderTag = `SOLDE_APRES_ACOMPTE_OF:${quoteId}`;
-	const remainder = await prisma.invoice.findFirst({
-		where: { organizationId: orgId, tags: { contains: remainderTag } },
-		select: { id: true, number: true, status: true },
-	});
-	if (!remainder || remainder.id === depositInvoice.id) return;
+	const linkedTags = [
+		`SOLDE_APRES_ACOMPTE_OF:${quoteId}`,
+		`ECHEANCIER_OF:${quoteId}`,
+	];
+	for (const tag of linkedTags) {
+		const linked = await prisma.invoice.findFirst({
+			where: { organizationId: orgId, tags: { contains: tag } },
+			select: { id: true, number: true, status: true, tags: true, publicToken: true },
+		});
+		if (!linked || linked.id === depositInvoice.id) continue;
 
-	realtime.emit(orgId, 'invoices', 'updated', remainder.id, {
-		number: remainder.number,
-		status: remainder.status,
-	});
+		const linkedTagList = parseTagsJson(linked.tags);
+		const isEcheancier = linkedTagList.includes('ECHEANCIER');
+		const nextTags = linkedTagList.filter((t) => t !== 'PENDING_EMIT');
+		const token = linked.publicToken ?? randomBytes(32).toString('hex');
+
+		if (isEcheancier && (nextTags.length !== linkedTagList.length || !linked.publicToken)) {
+			await prisma.invoice.update({
+				where: { id: linked.id },
+				data: {
+					publicToken: token,
+					tags: serializeTagsJson(nextTags),
+				},
+			});
+		}
+
+		realtime.emit(orgId, 'invoices', 'updated', linked.id, {
+			number: linked.number,
+			status: linked.status,
+		});
+	}
 }

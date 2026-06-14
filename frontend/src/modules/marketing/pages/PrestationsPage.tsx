@@ -19,6 +19,7 @@ import { MarketingHero } from '../components/MarketingHero'
 import { CtaSection } from '../components/CtaSection'
 import { ScrollReveal } from '../components/ScrollReveal'
 import { MarketingImage } from '../components/MarketingImage'
+import { BetaTesterPromo } from '../components/BetaTesterPromo'
 import { CATALOG_PACKS, CTA, VERTICAL_SEGMENTS, WORKFLOWS } from '../constants/siteContent'
 
 export function PrestationsPage() {
@@ -144,11 +145,11 @@ export function PrestationsPage() {
         <ScrollReveal>
           <Box sx={{ p: 4, borderRadius: 3, bgcolor: 'action.hover' }}>
             <Typography variant="h6" fontWeight={600} gutterBottom>
-              Catalogue DanielCraft intégré
+              Catalogue de démonstration intégré
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Le seed de démonstration reprend les offres du site danielcraft.fr. Chaque organisation personnalise
-              sa bibliothèque tout en gardant une structure compatible facturation électronique (libellés, unités, TVA).
+              Un seed de prestations dev est fourni à l’inscription. Chaque organisation personnalise sa bibliothèque
+              tout en gardant une structure compatible facturation électronique (libellés, unités, TVA).
             </Typography>
             <Button component={RouterLink} to={CTA.features.to} endIcon={<ArrowForwardIcon />}>
               {CTA.features.label}
@@ -162,8 +163,8 @@ export function PrestationsPage() {
         subtitle="Créez un compte gratuit, importez un pack catalogue et envoyez votre premier devis aujourd’hui."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
-        secondaryLabel={CTA.reserveEfacture.label}
-        secondaryTo={CTA.reserveEfacture.to}
+        secondaryLabel={CTA.betaSignup.label}
+        secondaryTo={CTA.betaSignup.to}
       />
     </Box>
   )

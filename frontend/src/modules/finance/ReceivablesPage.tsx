@@ -27,6 +27,7 @@ import {
 } from '@mui/material'
 import { Email, OpenInNew, Refresh } from '@mui/icons-material'
 import { PageHeader } from '../../components/finance/PageHeader'
+import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 import {
   financeCardSx,
   financeKpiGradients,
@@ -198,10 +199,17 @@ export function ReceivablesPage() {
     return data.invoices.filter((i) => i.agingBucket !== 'not_due').length
   }, [data])
 
+  const installmentOverdueCount = useMemo(() => {
+    if (!data) return 0
+    return (data.installmentReceivables ?? []).filter((r) => r.overdue).length
+  }, [data])
+
   const byKind = data?.summary.byKind ?? { standard: 0, deposit: 0, remainder: 0 }
+  const installmentReceivables = data?.installmentReceivables ?? []
   const initialLoading = loading && data === null
 
   return (
+    <BillingFeatureGate feature="financeModule" featureLabel="Le suivi des créances clients">
     <Box sx={{ p: financePagePadding }}>
       <WorkspacePreparationDialog open={initialLoading} resource="creances" />
       <PageHeader
@@ -301,9 +309,17 @@ export function ReceivablesPage() {
         </Grid>
         <Grid size={financeKpiGridSize}>
           <KpiCard
-            label="En retard"
-            value={String(overdueCount)}
+            label="Échéances planifiées"
+            value={formatCurrency(data?.summary.installmentOutstanding ?? 0)}
             gradient={financeKpiGradients.revenue}
+            subtitle={`${data?.summary.installmentCount ?? 0} échéance(s) · ${installmentOverdueCount} en retard`}
+          />
+        </Grid>
+        <Grid size={financeKpiGridSize}>
+          <KpiCard
+            label="Factures en retard"
+            value={String(overdueCount)}
+            gradient={financeKpiGradients.unpaid}
             subtitle={`${data?.summary.invoiceCount ?? 0} facture(s) ouverte(s)`}
           />
         </Grid>
@@ -333,6 +349,7 @@ export function ReceivablesPage() {
         <Tabs value={tab} onChange={(_, v: number) => setTab(v)} sx={{ px: 2, pt: 1 }}>
           <Tab label="Par client" />
           <Tab label="Par facture" />
+          <Tab label={`Échéances (${installmentReceivables.length})`} />
         </Tabs>
         {loading ? (
           initialLoading ? (
@@ -413,7 +430,7 @@ export function ReceivablesPage() {
               </TableBody>
             </Table>
           </TableContainer>
-        ) : (
+        ) : tab === 1 ? (
           <TableContainer>
             <Table size="small" sx={financeTableSx}>
               <TableHead sx={financeTableHeadSx}>
@@ -519,8 +536,82 @@ export function ReceivablesPage() {
               </TableBody>
             </Table>
           </TableContainer>
+        ) : (
+          <TableContainer>
+            <Table size="small" sx={financeTableSx}>
+              <TableHead sx={financeTableHeadSx}>
+                <TableRow>
+                  <TableCell>Facture</TableCell>
+                  <TableCell>Échéance</TableCell>
+                  <TableCell>Client</TableCell>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Ancienneté</TableCell>
+                  <TableCell align="right">Montant</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {installmentReceivables.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                      Aucune échéance de plan en cours
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  installmentReceivables.map((row) => (
+                    <TableRow key={row.id} hover>
+                      <TableCell>
+                        <Link
+                          component={RouterLink}
+                          to={`/factures/voir/${row.invoiceId}`}
+                          underline="hover"
+                          fontWeight={600}
+                        >
+                          {row.invoiceNumber}
+                        </Link>
+                        <Typography variant="caption" display="block" color="text.secondary">
+                          #{row.sequence} · créance auto
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip size="small" label={`Éch. ${row.sequence}`} variant="outlined" />
+                      </TableCell>
+                      <TableCell>{row.clientName}</TableCell>
+                      <TableCell>{formatDate(row.dueDate)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          label={
+                            row.daysPastDue > 0
+                              ? `${row.daysPastDue} j de retard`
+                              : AGING_BUCKET_LABELS[row.agingBucket]
+                          }
+                          color={agingChipColor(row.agingBucket)}
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>
+                        {formatCurrency(row.amount)}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          component={RouterLink}
+                          to={`/factures/voir/${row.invoiceId}`}
+                          endIcon={<OpenInNew fontSize="inherit" />}
+                        >
+                          Facture
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Card>
     </Box>
+    </BillingFeatureGate>
   )
 }

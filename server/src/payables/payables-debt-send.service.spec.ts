@@ -7,6 +7,7 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 import { DocumentEmailCopiesService } from '../common/document-email-copies.service';
 import { PayablesService } from './payables.service';
+import { BillingService } from '../billing/billing.service';
 
 describe('PayablesDebtSendService', () => {
 	let service: PayablesDebtSendService;
@@ -23,6 +24,9 @@ describe('PayablesDebtSendService', () => {
 	};
 	const mockPayables = {
 		postPurchaseOnRecognition: jest.fn().mockResolvedValue(undefined),
+	};
+	const mockBilling = {
+		assertCanSendDocumentEmail: jest.fn().mockResolvedValue(undefined),
 	};
 
 	const debtBase = {
@@ -61,6 +65,7 @@ describe('PayablesDebtSendService', () => {
 				{ provide: RealtimeEventsService, useValue: mockRealtime },
 				{ provide: DocumentEmailCopiesService, useValue: mockCopies },
 				{ provide: PayablesService, useValue: mockPayables },
+				{ provide: BillingService, useValue: mockBilling },
 			],
 		}).compile();
 

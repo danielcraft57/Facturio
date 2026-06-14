@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { FinanceModulePlanGuard } from '../billing/guards/finance-module-plan.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ReceivablesQueryDto } from './dto/receivables-query.dto';
 import { ReceivablesRemindDto } from './dto/receivables-remind.dto';
 import { ReceivablesReminderService } from './receivables-reminder.service';
 import { ReceivablesService } from './receivables.service';
 
+@UseGuards(FinanceModulePlanGuard)
 @Controller('receivables')
 export class ReceivablesController {
 	constructor(

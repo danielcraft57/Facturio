@@ -32,6 +32,7 @@ import { StatsBar } from '../components/StatsBar'
 import { ScrollReveal } from '../components/ScrollReveal'
 import { MarketingImage } from '../components/MarketingImage'
 import { EfactureRoadmapAlert } from '../components/EfactureRoadmapAlert'
+import { BetaTesterPromo } from '../components/BetaTesterPromo'
 import {
   SITE_TAGLINE,
   SITE_DESCRIPTION,
@@ -40,12 +41,16 @@ import {
   VERTICAL_SEGMENTS,
   FEATURES,
   VALUE_PROPOSITIONS,
+  MARKETING_CTA,
   CTA,
 } from '../constants/siteContent'
+import { GA_EVENTS } from '../../../config/analyticsEvents'
+import { useGoogleAnalyticsScrollDepth } from '../../../hooks/useGoogleAnalyticsScrollDepth'
 
 export function LandingPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  useGoogleAnalyticsScrollDepth([50])
   const accessMessage = (location.state as { message?: string } | null)?.message
   const checkAuth = useAuthStore((s) => s.checkAuth)
   const [resolvingSession, setResolvingSession] = useState(() => authService.hasSessionToken())
@@ -95,8 +100,9 @@ export function LandingPage() {
         badge="Réforme sept. 2026 · Devis · Factures · Pré-compta"
         title={SITE_TAGLINE}
         subtitle={SITE_DESCRIPTION}
-        primaryCta={CTA.signupFree}
+        primaryCta={{ ...CTA.signupFree, gaEvent: GA_EVENTS.CTA_SIGNUP_HERO }}
         secondaryCta={CTA.efacture2026}
+        analyticsSection="landing_hero"
         visual={
           <Box sx={{ display: { xs: 'none', md: 'block' } }}>
             <OverflowScreenshotFrame
@@ -112,6 +118,8 @@ export function LandingPage() {
       />
 
       <StatsBar />
+
+      <BetaTesterPromo />
 
       <MarketingScreensShowcase />
 
@@ -207,8 +215,8 @@ export function LandingPage() {
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3, lineHeight: 1.75 }}>
                   Même si vous n’émettez qu’en 2027, vous devez <strong>recevoir</strong> des factures
-                  électroniques B2B via une Plateforme Agréée. Facturio vérifie vos données, génère du
-                  Factur-X et réserve le connecteur PA sur le palier dédié.
+                  électroniques B2B via une Plateforme Agréée. Facturio vérifie vos données, exporte du
+                  Factur-X (XML) et réserve le connecteur PA — encore en développement — sur le palier dédié.
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                   <Button
@@ -368,12 +376,15 @@ export function LandingPage() {
 
       <PricingSection />
       <CtaSection
-        title="Votre premier devis en 10 minutes"
-        subtitle="Compte gratuit, catalogue seed inclus. Passez Pro quand vous dépassez 25 factures/mois ou activez la prospection."
+        title={MARKETING_CTA.landingTitle}
+        subtitle={MARKETING_CTA.landingSubtitle}
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
-        secondaryLabel={CTA.pricing.label}
-        secondaryTo={CTA.pricing.to}
+        primaryGaEvent={GA_EVENTS.CTA_SIGNUP}
+        secondaryLabel={CTA.betaSignup.label}
+        secondaryTo={CTA.betaSignup.to}
+        secondaryGaEvent={GA_EVENTS.CTA_BETA}
+        analyticsSection="landing_footer"
       />
     </Box>
   )

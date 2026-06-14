@@ -26,7 +26,7 @@ export function PrivacyPage() {
             Sécurité des secrets
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Les clés Stripe prestataire et les tokens ProspectLab sont chiffrés en base de données lorsque le
+            Les clés Stripe prestataire sont chiffrées en base de données lorsque le
             serveur est configuré avec SECRETS_ENCRYPTION_KEY. Les paiements de vos clients ne transitent pas par le
             compte Stripe Facturio (abonnement).
           </Typography>
