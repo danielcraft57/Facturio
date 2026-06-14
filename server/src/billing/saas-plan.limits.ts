@@ -28,6 +28,19 @@ export type SaasPlanLimits = {
 	pdfWatermark: boolean;
 };
 
+/**
+ * Lit un entier positif depuis l'environnement (fallback si absent ou invalide).
+ *
+ * @param name - Nom de la variable d'environnement
+ * @param fallback - Valeur par défaut
+ */
+function parsePositiveIntEnv(name: string, fallback: number): number {
+	const raw = process.env[name]?.trim();
+	if (!raw) return fallback;
+	const n = Number.parseInt(raw, 10);
+	return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 	FREE: {
 		plan: 'FREE',
@@ -86,3 +99,33 @@ export const SAAS_PLAN_LIMITS: Record<SaasBillingPlan, SaasPlanLimits> = {
 		pdfWatermark: false,
 	},
 };
+
+/**
+ * Limites effectives d'un plan SaaS (variables d'environnement pour le plan Free).
+ *
+ * @param plan - Plan SaaS
+ * @returns Limites applicables (quotas Free surchargeables via SAAS_FREE_MAX_*)
+ *
+ * @example
+ * // server/.env : SAAS_FREE_MAX_INVOICES_PER_MONTH=5
+ * getSaasPlanLimits('FREE').maxInvoicesPerMonth // 5
+ */
+export function getSaasPlanLimits(plan: SaasBillingPlan): SaasPlanLimits {
+	const base = SAAS_PLAN_LIMITS[plan];
+	if (plan !== 'FREE') return base;
+	return {
+		...base,
+		maxInvoicesPerMonth: parsePositiveIntEnv(
+			'SAAS_FREE_MAX_INVOICES_PER_MONTH',
+			base.maxInvoicesPerMonth!,
+		),
+		maxQuotesPerMonth: parsePositiveIntEnv(
+			'SAAS_FREE_MAX_QUOTES_PER_MONTH',
+			base.maxQuotesPerMonth!,
+		),
+		maxEmailsPerMonth: parsePositiveIntEnv(
+			'SAAS_FREE_MAX_EMAILS_PER_MONTH',
+			base.maxEmailsPerMonth!,
+		),
+	};
+}

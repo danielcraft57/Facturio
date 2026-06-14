@@ -21,11 +21,13 @@ import { useState } from 'react'
 import {
   navDashboard,
   navGroups,
-  navSettingsGroup,
+  createNavSettingsGroup,
   isGroupActive,
   isNavActive,
   type NavGroup,
 } from '../config/navConfig'
+import { useBillingUsage } from '../../../hooks/useBillingUsage'
+import { settingsNavFilterFromUsage } from '../../account/settingsNav'
 
 type AppMobileNavProps = {
   onNavigate?: () => void
@@ -137,6 +139,8 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
   const theme = useTheme()
   const location = useLocation()
   const dashActive = isNavActive(location.pathname, navDashboard.to)
+  const { usage } = useBillingUsage()
+  const settingsGroup = createNavSettingsGroup(settingsNavFilterFromUsage(usage))
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -195,7 +199,7 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
           <NavGroupSection key={group.id} group={group} onNavigate={onNavigate} />
         ))}
 
-        <NavGroupSection group={navSettingsGroup} onNavigate={onNavigate} />
+        <NavGroupSection group={settingsGroup} onNavigate={onNavigate} />
       </List>
     </Box>
   )

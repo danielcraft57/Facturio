@@ -163,6 +163,8 @@ model Organization {
   saasSubscriptionStatus   String?
   /// Date d'activation du programme beta testeur (3 mois gratuits, accès complet).
   betaTesterAt             DateTime?
+  /// Email de bienvenue beta envoyé (évite les doublons sur relance batch).
+  betaWelcomeEmailSentAt   DateTime?
   betaInviteRedemption     BetaInviteRedemption?
   stripeCustomerId         String?
   stripeSubscriptionId     String?

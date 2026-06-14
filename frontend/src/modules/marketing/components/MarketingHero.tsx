@@ -3,6 +3,8 @@ import { Box, Container, Typography, Button, Chip, Stack } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { keyframes } from '@mui/system'
 import { FloatingOrbs } from './FloatingOrbs'
+import type { MarketingCta } from '../constants/siteContent'
+import { GA_EVENTS, trackMarketingCtaClick } from '../../../config/analyticsEvents'
 
 const fadeInUp = keyframes`
   from { opacity: 0; transform: translateY(20px); }
@@ -13,8 +15,10 @@ type MarketingHeroProps = {
   title: ReactNode
   subtitle: string
   badge?: string
-  primaryCta?: { label: string; to: string }
-  secondaryCta?: { label: string; to: string } | null
+  primaryCta?: MarketingCta
+  secondaryCta?: MarketingCta | null
+  /** Zone GA4 (hero, landing_hero, etc.) */
+  analyticsSection?: string
   compact?: boolean
   visual?: ReactNode
 }
@@ -27,8 +31,20 @@ export function MarketingHero({
   secondaryCta = { label: 'Voir les tarifs', to: '/tarifs' },
   compact = false,
   visual,
+  analyticsSection = 'hero',
 }: MarketingHeroProps) {
   const showSecondary = secondaryCta != null
+
+  const handleCtaClick = (cta: MarketingCta, role: 'primary' | 'secondary'): void => {
+    const event =
+      cta.gaEvent ?? (role === 'primary' ? GA_EVENTS.CTA_SIGNUP_HERO : GA_EVENTS.CTA_SIGNUP)
+    trackMarketingCtaClick({
+      event,
+      label: cta.label,
+      destination: cta.to,
+      section: analyticsSection,
+    })
+  }
 
   return (
     <Box
@@ -105,6 +121,7 @@ export function MarketingHero({
                 to={primaryCta.to}
                 variant="contained"
                 size="large"
+                onClick={() => handleCtaClick(primaryCta, 'primary')}
                 sx={{
                   bgcolor: 'white',
                   color: '#0f766e',
@@ -121,6 +138,7 @@ export function MarketingHero({
                   to={secondaryCta.to}
                   variant="outlined"
                   size="large"
+                  onClick={() => handleCtaClick(secondaryCta, 'secondary')}
                   sx={{
                     borderColor: 'rgba(255,255,255,0.75)',
                     color: 'white',

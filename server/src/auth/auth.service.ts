@@ -10,6 +10,7 @@ import { SignupDto } from './dto/signup.dto';
 import { AuthSessionService, type LoginDeviceContext } from './auth-session.service';
 import { UnverifiedAccountService } from '../common/unverified-account.service';
 import { BetaTesterService } from '../billing/beta-tester.service';
+import type { GoogleOAuthSignupState } from './google-oauth-state.util';
 
 /**
  * Service d'authentification
@@ -128,6 +129,13 @@ export class AuthService {
 			to: user.email,
 			firstName: user.firstName,
 			verifyUrl,
+			betaTester: betaRedemption
+				? {
+						planLabel: betaRedemption.planLabel,
+						durationDays: betaRedemption.durationDays,
+						expiresAt: betaRedemption.expiresAt,
+					}
+				: null,
 		});
 
 		this.logger.log(`Signup success for ${data.email}, verification email sent (userId=${user.id})`);
@@ -208,10 +216,11 @@ export class AuthService {
 		});
 	}
 
-	async finishLogin(user: any, ctx: LoginDeviceContext) {
+	async finishLogin(user: any, ctx: LoginDeviceContext, options: { trustDevice?: boolean } = {}) {
 		const { sessionId, needDeviceVerification } = await this.authSessionService.createLoginSession(
 			user.id,
 			ctx,
+			options,
 		);
 		if (needDeviceVerification) {
 			return {
@@ -250,6 +259,7 @@ export class AuthService {
 			}
 			sessionId = created.sessionId;
 		} else {
+			await this.authSessionService.syncSessionFingerprint(sessionId, user.id, ctx);
 			await this.authSessionService.assertSessionActive(sessionId, user.id);
 		}
 		return this.generateTokens(user, sessionId);
@@ -308,7 +318,11 @@ export class AuthService {
 	 * });
 	 * ```
 	 */
-	async validateGoogleUser(googleUser: any, deviceContext: LoginDeviceContext = {}) {
+	async validateGoogleUser(
+		googleUser: any,
+		deviceContext: LoginDeviceContext = {},
+		signupContext: GoogleOAuthSignupState = {},
+	) {
 		// Chercher utilisateur existant par googleId
 		let user = await this.prisma.user.findUnique({
 			where: { googleId: googleUser.googleId },
@@ -321,7 +335,7 @@ export class AuthService {
 				where: { id: user.id },
 				data: { lastLoginAt: new Date() },
 			});
-			return this.finishLogin(user, deviceContext);
+			return this.finishLogin(user, deviceContext, { trustDevice: true });
 		}
 
 		// Chercher par email si pas de googleId
@@ -348,18 +362,33 @@ export class AuthService {
 				},
 				include: { organization: true },
 			});
-			return this.finishLogin(user, deviceContext);
+			return this.finishLogin(user, deviceContext, { trustDevice: true });
 		}
 
 		// Créer nouvel utilisateur avec organisation par défaut
+		const betaCode = signupContext.betaInviteCode?.trim();
+		if (betaCode) {
+			const validation = await this.betaTesterService.validateCode(betaCode);
+			if (!validation.valid) {
+				throw new BadRequestException(validation.message);
+			}
+		}
+
+		const orgLabel =
+			[googleUser.firstName, googleUser.lastName].filter(Boolean).join(' ').trim() ||
+			googleUser.email.split('@')[0];
 		const organization = await this.prisma.organization.create({
 			data: {
-				name: googleUser.email.split('@')[0] + ' Organization',
+				name: `${orgLabel} Organization`,
+				email: googleUser.email,
 				companyType: 'B2B',
 			},
 		});
 
-		user = await this.prisma.user.create({
+		const consentAt =
+			signupContext.acceptTerms && signupContext.acceptPrivacy ? new Date() : null;
+
+		const newUser = await this.prisma.user.create({
 			data: {
 				email: googleUser.email,
 				googleId: googleUser.googleId,
@@ -373,11 +402,53 @@ export class AuthService {
 				emailVerified: true,
 				emailVerifiedAt: new Date(),
 				role: 'ADMIN',
+				termsAcceptedAt: consentAt,
+				privacyConsentAt: consentAt,
 			},
 			include: { organization: true },
 		});
 
-		return this.finishLogin(user, deviceContext);
+		let betaRedemption: Awaited<ReturnType<BetaTesterService['redeemCode']>> | null = null;
+		if (betaCode) {
+			try {
+				betaRedemption = await this.betaTesterService.redeemCode(betaCode, organization.id);
+			} catch (error) {
+				await this.prisma.user.delete({ where: { id: newUser.id } });
+				await this.prisma.organization.delete({ where: { id: organization.id } });
+				throw error;
+			}
+		}
+
+		const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+		const appBase = baseUrl.replace(/\/$/, '');
+		void this.emailService
+			.sendGoogleSignupWelcome({
+				to: newUser.email,
+				firstName: newUser.firstName,
+				installUrl: `${appBase}/installation`,
+				dashboardUrl: `${appBase}/dashboard`,
+				betaTester: betaRedemption
+					? {
+							planLabel: betaRedemption.planLabel,
+							durationDays: betaRedemption.durationDays,
+							expiresAt: betaRedemption.expiresAt,
+							inviteCode: betaCode ?? null,
+						}
+					: null,
+			})
+			.catch((err) => {
+				this.logger.warn(
+					`Email confirmation Google non envoyé (${newUser.email})`,
+					err instanceof Error ? err.message : err,
+				);
+			});
+
+		const loginResult = await this.finishLogin(newUser, deviceContext, { trustDevice: true });
+		return {
+			...loginResult,
+			isNewGoogleSignup: true,
+			betaTester: betaRedemption,
+		};
 	}
 
 	/**

@@ -38,7 +38,7 @@ export const MARKETING_CTA = {
 } as const
 
 export const EFACTURE_ROADMAP_DISCLAIMER =
-  'Le connecteur Plateforme Agréée et l’e-reporting sont en cours de développement. Aujourd’hui : devis, factures PDF, score de conformité, export Factur-X (XML), paiements Stripe. Le palier Pro + e-facture réserve l’accès dès la mise en production PA.'
+  'Le connecteur Plateforme Agréée et l’e-reporting sont en cours de développement — aucune transmission PA n’est proposée tant que le module n’est pas activé. Aujourd’hui : devis, factures PDF, score de conformité, export Factur-X (XML), paiements Stripe. Le palier Pro + e-facture réserve l’accès dès la mise en production PA.'
 
 export const REFORM_DATES = {
   reception: '1er septembre 2026',
@@ -347,7 +347,7 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     name: 'Pro + e-facture',
     price: '24',
     period: '€ / mois',
-    description: 'Anticipez sept. 2026 : réception + émission PA dès disponibilité.',
+    description: 'Anticipez sept. 2026 : conformité, Factur-X et réservation du connecteur PA à venir.',
     features: [
       'Tout le plan Pro',
       'Rapport conformité avancé',
@@ -424,12 +424,27 @@ export const PRICING_FAQ = [
 
 /** Libellés CTA réutilisables */
 export const CTA = {
-  signupFree: { label: 'Commencer gratuitement', to: '/signup' },
-  betaSignup: { label: 'S’inscrire avec un code beta', to: '/signup' },
-  signupPro: { label: 'Passer Pro', to: '/parametres/abonnement' },
-  efacture2026: { label: 'Préparer la réforme 2026', to: '/facturation-electronique' },
-  pricing: { label: 'Comparer les offres', to: '/tarifs' },
-  prestations: { label: 'Voir les parcours métier', to: '/prestations' },
-  features: { label: 'Toutes les fonctionnalités', to: '/fonctionnalites' },
-  reserveEfacture: { label: 'Réserver Pro + e-facture', to: '/parametres/abonnement' },
+  signupFree: { label: 'Commencer gratuitement', to: '/signup', gaEvent: 'cta_signup' },
+  betaSignup: { label: "S'inscrire avec un code beta", to: '/signup', gaEvent: 'cta_beta' },
+  signupPro: { label: 'Passer Pro', to: '/parametres/abonnement', gaEvent: 'cta_pricing' },
+  efacture2026: {
+    label: 'Préparer la réforme 2026',
+    to: '/facturation-electronique',
+    gaEvent: 'cta_efacture',
+  },
+  pricing: { label: 'Comparer les offres', to: '/tarifs', gaEvent: 'cta_pricing' },
+  prestations: { label: 'Voir les parcours métier', to: '/prestations', gaEvent: 'cta_prestations' },
+  features: { label: 'Toutes les fonctionnalités', to: '/fonctionnalites', gaEvent: 'cta_signup' },
+  reserveEfacture: {
+    label: 'Réserver Pro + e-facture',
+    to: '/parametres/abonnement',
+    gaEvent: 'cta_efacture',
+  },
 } as const
+
+/** CTA marketing avec événement GA4 optionnel. */
+export type MarketingCta = {
+  label: string
+  to: string
+  gaEvent?: string
+}

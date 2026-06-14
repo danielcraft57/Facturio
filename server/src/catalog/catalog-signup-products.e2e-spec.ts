@@ -5,6 +5,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { activatePendingUser, authenticatedRequest } from '../common/test-helpers/auth.helper';
+import { purgeInvoicesForE2e } from '../common/test-helpers/invoice-purge.helper';
 import {
 	buildRandomProductPayload,
 	seedCatalogProductsForE2e,
@@ -41,14 +42,26 @@ describe('Onboarding installation + produits (e2e)', () => {
 		await prisma.clientCatalogItem.deleteMany({});
 		await prisma.organizationCatalogItem.deleteMany({});
 		await prisma.refund.deleteMany({});
-		await prisma.payment.deleteMany({});
-		await prisma.invoiceLine.deleteMany({});
-		await prisma.invoice.deleteMany({});
+		await purgeInvoicesForE2e(prisma);
 		await prisma.quoteLine.deleteMany({});
 		await prisma.quote.deleteMany({});
 		await prisma.subscription.deleteMany({});
 		await prisma.plan.deleteMany({});
+		await prisma.payableDebtPayment.deleteMany({});
+		await prisma.payableDebt.deleteMany({});
+		await prisma.payableCreditor.deleteMany({});
+		await prisma.apiAccessToken.deleteMany({});
+		await prisma.organizationDocument.deleteMany({});
+		await prisma.deliverableCatalogItem.deleteMany({});
+		await prisma.stripePlatformEvent.deleteMany({});
+		await prisma.amortization.deleteMany({});
+		await prisma.taxDeduction.deleteMany({});
+		await prisma.taxCredit.deleteMany({});
+		await prisma.taxSimulation.deleteMany({});
+		await prisma.client.deleteMany({});
 		await prisma.product.deleteMany({ where: { organizationId: { not: null } } });
+		await prisma.userSession.deleteMany({});
+		await prisma.betaInviteRedemption.deleteMany({});
 		await prisma.user.deleteMany({});
 		await prisma.organization.deleteMany({});
 

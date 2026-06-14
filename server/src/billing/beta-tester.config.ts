@@ -14,6 +14,10 @@ export interface BetaTesterConfig {
 	codeMinLength: number;
 	/** Longueur maximale des codes (< 7 caractères). */
 	codeMaxLength: number;
+	/** URL du questionnaire beta (Google Form ou page externe). */
+	surveyUrl: string | null;
+	/** Adresse reply-to pour les réponses testeurs (ex. Gmail Valentine). */
+	replyEmail: string | null;
 }
 
 const DEFAULT_MAX_SLOTS = 20;
@@ -34,6 +38,10 @@ export function readBetaTesterConfig(): BetaTesterConfig {
 	const codeMinLength = Number(process.env.BETA_TESTER_CODE_MIN_LENGTH ?? DEFAULT_CODE_MIN_LENGTH);
 	const codeMaxLength = Number(process.env.BETA_TESTER_CODE_MAX_LENGTH ?? DEFAULT_CODE_MAX_LENGTH);
 	const programEndsAt = parseOptionalDate(process.env.BETA_TESTER_PROGRAM_ENDS_AT);
+	const surveyUrl = parseOptionalUrl(process.env.BETA_TESTER_SURVEY_URL);
+	const replyEmail = parseOptionalEmail(
+		process.env.BETA_TESTER_REPLY_EMAIL ?? process.env.COMPANY_EMAIL,
+	);
 
 	return {
 		maxSlots: Number.isFinite(maxSlots) && maxSlots > 0 ? Math.floor(maxSlots) : DEFAULT_MAX_SLOTS,
@@ -51,6 +59,8 @@ export function readBetaTesterConfig(): BetaTesterConfig {
 			Number.isFinite(codeMaxLength) && codeMaxLength > 0
 				? Math.floor(codeMaxLength)
 				: DEFAULT_CODE_MAX_LENGTH,
+		surveyUrl,
+		replyEmail,
 	};
 }
 
@@ -62,6 +72,32 @@ function parseOptionalDate(raw: string | undefined): Date | null {
 	if (!raw?.trim()) return null;
 	const d = new Date(raw.includes('T') ? raw.trim() : `${raw.trim()}T23:59:59.999Z`);
 	return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * @param raw - URL absolue (https://…)
+ * @returns URL trimée ou null si absente / invalide
+ */
+function parseOptionalUrl(raw: string | undefined): string | null {
+	const value = raw?.trim();
+	if (!value) return null;
+	try {
+		const url = new URL(value);
+		if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+		return url.toString();
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * @param raw - Adresse email
+ * @returns Email trimé ou null si absent / invalide
+ */
+function parseOptionalEmail(raw: string | undefined): string | null {
+	const value = raw?.trim();
+	if (!value || !value.includes('@')) return null;
+	return value;
 }
 
 /**

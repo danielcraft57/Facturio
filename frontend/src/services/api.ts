@@ -145,6 +145,15 @@ class ApiClient {
           }
         }
 
+        if (response?.status === 403) {
+          const quotaMessage = response?.data?.message
+          if (typeof quotaMessage === 'string' && /quota/i.test(quotaMessage)) {
+            void import('../utils/quotaNotifications').then(({ dispatchQuotaExceededEvent }) => {
+              dispatchQuotaExceededEvent(quotaMessage)
+            })
+          }
+        }
+
         // Créer une erreur API standardisée
         const apiError = new ApiError(
           response?.status || 0,

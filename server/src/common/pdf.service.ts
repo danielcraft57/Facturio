@@ -15,7 +15,7 @@ import {
 	buildProductQuoteLineDisplay,
 	productHasEnrichableContent,
 } from '../products/product-quote-description.util';
-import { SAAS_PLAN_LIMITS } from '../billing/saas-plan.limits';
+import { getSaasPlanLimits } from '../billing/saas-plan.limits';
 import { resolveEffectiveSaasPlan } from '../billing/saas-plan.util';
 
 const FREE_PLAN_PDF_WATERMARK = 'Essai gratuit Facturio — facturio.danielcraft.fr';
@@ -55,7 +55,7 @@ export class PdfService {
 			saasPlan: saasPlan as never,
 			saasPlanExpiresAt: saasPlanExpiresAt ? new Date(saasPlanExpiresAt) : null,
 		});
-		return SAAS_PLAN_LIMITS[plan].pdfWatermark ? FREE_PLAN_PDF_WATERMARK : null;
+		return getSaasPlanLimits(plan).pdfWatermark ? FREE_PLAN_PDF_WATERMARK : null;
 	}
 
 	private async resolveEngagementBreakdown(invoice: {

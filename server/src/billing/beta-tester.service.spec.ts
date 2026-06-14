@@ -13,6 +13,9 @@ describe('BetaTesterService', () => {
 			create: jest.fn(),
 			count: jest.fn(),
 		},
+		user: {
+			findFirst: jest.fn(),
+		},
 		organization: {
 			findUnique: jest.fn(),
 			count: jest.fn(),
@@ -22,6 +25,9 @@ describe('BetaTesterService', () => {
 	};
 
 	let service: BetaTesterService;
+	const email = {
+		sendBetaTesterWelcome: jest.fn().mockResolvedValue(undefined),
+	};
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -30,7 +36,8 @@ describe('BetaTesterService', () => {
 		process.env.BETA_TESTER_PLAN = 'AGENCY';
 		process.env.BETA_TESTER_CODE_MIN_LENGTH = '3';
 		process.env.BETA_TESTER_CODE_MAX_LENGTH = '6';
-		service = new BetaTesterService(prisma as never);
+		process.env.FRONTEND_URL = 'http://localhost:5173';
+		service = new BetaTesterService(prisma as never, email as never);
 	});
 
 	it('valide un code actif réutilisable', async () => {
@@ -74,12 +81,22 @@ describe('BetaTesterService', () => {
 	});
 
 	it('active le plan Agence pour une org Free', async () => {
-		prisma.organization.findUnique.mockResolvedValue({
-			id: 10,
-			saasPlan: SaasBillingPlan.FREE,
-			betaTesterAt: null,
-			stripeSubscriptionId: null,
-		});
+		const expiresAt = new Date();
+		expiresAt.setDate(expiresAt.getDate() + 90);
+		prisma.organization.findUnique
+			.mockResolvedValueOnce({
+				id: 10,
+				saasPlan: SaasBillingPlan.FREE,
+				betaTesterAt: null,
+				stripeSubscriptionId: null,
+			})
+			.mockResolvedValueOnce({
+				betaTesterAt: new Date(),
+				betaWelcomeEmailSentAt: null,
+				saasPlanExpiresAt: expiresAt,
+				saasPlan: SaasBillingPlan.AGENCY,
+			})
+			.mockResolvedValueOnce({ email: null });
 		prisma.organization.count.mockResolvedValue(2);
 		prisma.betaInviteCode.findUnique.mockResolvedValue({
 			id: 5,
@@ -92,10 +109,18 @@ describe('BetaTesterService', () => {
 		prisma.betaInviteRedemption.create.mockResolvedValue({});
 		prisma.betaInviteCode.update.mockResolvedValue({});
 		prisma.organization.update.mockResolvedValue({});
+		prisma.user.findFirst.mockResolvedValue({
+			email: 'beta@example.com',
+			firstName: 'Alex',
+		});
 
 		const result = await service.redeemCode('DEV26', 10);
 		expect(result.plan).toBe(SaasBillingPlan.AGENCY);
 		expect(prisma.$transaction).toHaveBeenCalled();
+		await new Promise((r) => setImmediate(r));
+		expect(email.sendBetaTesterWelcome).toHaveBeenCalledWith(
+			expect.objectContaining({ to: 'beta@example.com', firstName: 'Alex', inviteCode: 'DEV26' }),
+		);
 	});
 
 	it('bloque si le plafond global est atteint', async () => {

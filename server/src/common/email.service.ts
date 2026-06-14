@@ -1138,13 +1138,92 @@ export class EmailService {
 		to: string;
 		firstName?: string | null;
 		verifyUrl: string;
+		betaTester?: {
+			planLabel: string;
+			durationDays: number;
+			expiresAt: string;
+		} | null;
 	}): Promise<void> {
-		const subject = 'Confirmez votre adresse email - Facturio';
-		const html = this.getVerifyEmailTemplate({
+		const subject = 'Bienvenue sur Facturio — confirmez votre email';
+		const html = this.getSignupConfirmationTemplate({
 			firstName: options.firstName,
+			method: 'email',
 			verifyUrl: options.verifyUrl,
+			betaTester: options.betaTester,
 		});
-		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ''},\n\nCliquez sur le lien suivant pour confirmer votre adresse email et activer votre compte Facturio :\n${options.verifyUrl}\n\nCe lien est valide 24 heures.\n\nCet email est envoyé depuis une adresse no-reply, merci de ne pas y répondre.\n\nL'équipe Facturio`;
+		const text = this.getSignupConfirmationText({
+			firstName: options.firstName,
+			method: 'email',
+			verifyUrl: options.verifyUrl,
+			betaTester: options.betaTester,
+		});
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			subject,
+			html,
+			text,
+		});
+	}
+
+	/**
+	 * Confirmation d'inscription via Google (email déjà vérifié côté Google).
+	 */
+	async sendGoogleSignupWelcome(options: {
+		to: string;
+		firstName?: string | null;
+		installUrl: string;
+		dashboardUrl: string;
+		betaTester?: {
+			planLabel: string;
+			durationDays: number;
+			expiresAt: string;
+			inviteCode?: string | null;
+		} | null;
+	}): Promise<void> {
+		const subject = options.betaTester
+			? 'Bienvenue sur Facturio — compte créé et beta activée'
+			: 'Bienvenue sur Facturio — votre compte est prêt';
+		const html = this.getSignupConfirmationTemplate({
+			firstName: options.firstName,
+			method: 'google',
+			installUrl: options.installUrl,
+			dashboardUrl: options.dashboardUrl,
+			betaTester: options.betaTester,
+		});
+		const text = this.getSignupConfirmationText({
+			firstName: options.firstName,
+			method: 'google',
+			installUrl: options.installUrl,
+			dashboardUrl: options.dashboardUrl,
+			betaTester: options.betaTester,
+		});
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			subject,
+			html,
+			text,
+		});
+	}
+
+	/**
+	 * Récapitulatif marketing après l'assistant d'installation (catalogue).
+	 */
+	async sendOnboardingRecap(options: {
+		to: string;
+		firstName?: string | null;
+		productCount: number;
+		productNames: string[];
+		techLabels: string[];
+		devProfileLabel?: string | null;
+		productsUrl: string;
+		createInvoiceUrl: string;
+		dashboardUrl: string;
+	}): Promise<void> {
+		const subject = `Votre catalogue Facturio est prêt (${options.productCount} prestation${options.productCount > 1 ? 's' : ''})`;
+		const html = this.getOnboardingRecapTemplate(options);
+		const text = this.getOnboardingRecapText(options);
 		await this.send({
 			from: this.verifyFrom,
 			to: options.to,
@@ -1195,24 +1274,246 @@ export class EmailService {
 	}
 
 	/**
-	 * Template HTML pour vérification d'email (inscription).
+	 * Template HTML inscription (email classique ou Google).
 	 */
-	private getVerifyEmailTemplate(data: { firstName?: string | null; verifyUrl: string }): string {
+	private getSignupConfirmationTemplate(data: {
+		firstName?: string | null;
+		method: 'email' | 'google';
+		verifyUrl?: string;
+		installUrl?: string;
+		dashboardUrl?: string;
+		betaTester?: {
+			planLabel: string;
+			durationDays: number;
+			expiresAt: string;
+			inviteCode?: string | null;
+		} | null;
+	}): string {
 		const greeting = data.firstName ? `Bonjour ${data.firstName},` : 'Bonjour,';
+		const expiresFr = data.betaTester
+			? new Date(data.betaTester.expiresAt).toLocaleDateString('fr-FR')
+			: null;
+
+		const betaBlock = data.betaTester
+			? emailBanner(
+					`<strong>Programme beta activé</strong> — ${data.betaTester.planLabel} pendant ${data.betaTester.durationDays} jours, jusqu'au <strong>${expiresFr}</strong>.` +
+						(data.betaTester.inviteCode?.trim()
+							? `<br>Code : <strong>${data.betaTester.inviteCode.trim()}</strong>`
+							: ''),
+					'success',
+				)
+			: '';
+
+		const emailStep =
+			data.method === 'email' && data.verifyUrl
+				? emailParagraph(
+						'<strong>Dernière étape :</strong> confirmez votre adresse email pour débloquer le tableau de bord.',
+					) +
+					emailButton(data.verifyUrl, 'Confirmer mon email', 'primary') +
+					emailParagraph('Ce lien est valide <strong>24 heures</strong>.')
+				: emailParagraph(
+						'Votre adresse email est déjà validée via Google — vous pouvez utiliser Facturio tout de suite.',
+					);
+
+		const nextSteps =
+			emailParagraph(
+				'<strong>Ensuite, en 3 minutes :</strong><br>' +
+					'1. Installez votre catalogue de prestations (assistant développeur).<br>' +
+					'2. Complétez votre profil émetteur (SIRET, coordonnées).<br>' +
+					'3. Créez un devis test, puis votre première facture.',
+			) +
+			emailButtonRow([
+				{
+					href: data.installUrl ?? data.dashboardUrl ?? 'https://facturio.danielcraft.fr/installation',
+					label: 'Lancer l\'assistant',
+					variant: 'success',
+				},
+				{
+					href: data.dashboardUrl ?? 'https://facturio.danielcraft.fr/dashboard',
+					label: 'Tableau de bord',
+					variant: 'secondary',
+				},
+			]);
+
+		const betaEfactureNote = data.betaTester
+			? emailParagraph(
+					'<em>En beta : score conformité et export Factur-X (XML) disponibles — connecteur Plateforme Agréée pas encore activé dans l\'app.</em>',
+				)
+			: '';
+
 		const content =
 			emailParagraph(greeting) +
 			emailParagraph(
-				'Merci d\'avoir créé un compte sur Facturio. Pour activer votre compte et accéder à toutes les fonctionnalités, veuillez confirmer votre adresse email en cliquant sur le bouton ci-dessous.',
+				'Bienvenue sur <strong>Facturio</strong> — devis, factures et pré-compta pensés pour les freelances dev et les micro-agences web.',
 			) +
-			emailButton(data.verifyUrl, 'Confirmer mon adresse email', 'primary') +
+			betaBlock +
+			betaEfactureNote +
+			emailStep +
+			nextSteps +
 			emailParagraph(
-				'Ce lien est valide <strong>24 heures</strong>. Si vous n\'avez pas créé de compte Facturio, vous pouvez ignorer cet email.',
+				'Besoin d\'aide ? Répondez à cet email ou consultez la doc depuis l\'app. On est une petite équipe, on lit vraiment les retours.',
 			) +
-			emailParagraph('À bientôt,<br><strong>L\'équipe Facturio</strong>');
+			emailParagraph('À très vite,<br><strong>L\'équipe Facturio</strong>');
+
 		return this.getBaseLayout({
-			title: 'Confirmez votre adresse email',
-			headline: 'Confirmez votre adresse email',
+			title: 'Bienvenue sur Facturio',
+			headline: data.method === 'google' ? 'Compte créé avec Google' : 'Confirmez votre inscription',
 			content,
+		});
+	}
+
+	private getSignupConfirmationText(data: {
+		firstName?: string | null;
+		method: 'email' | 'google';
+		verifyUrl?: string;
+		installUrl?: string;
+		dashboardUrl?: string;
+		betaTester?: {
+			planLabel: string;
+			durationDays: number;
+			expiresAt: string;
+			inviteCode?: string | null;
+		} | null;
+	}): string {
+		const greeting = data.firstName ? `Bonjour ${data.firstName},` : 'Bonjour,';
+		const lines = [
+			greeting,
+			'',
+			'Bienvenue sur Facturio — devis, factures et pré-compta pour freelances dev.',
+		];
+		if (data.betaTester) {
+			const expiresFr = new Date(data.betaTester.expiresAt).toLocaleDateString('fr-FR');
+			lines.push(
+				'',
+				`Beta activée : ${data.betaTester.planLabel} — ${data.betaTester.durationDays} jours jusqu'au ${expiresFr}.`,
+				'Score conformité et export Factur-X (XML) disponibles — connecteur PA pas encore activé.',
+			);
+			if (data.betaTester.inviteCode?.trim()) {
+				lines.push(`Code : ${data.betaTester.inviteCode.trim()}`);
+			}
+		}
+		if (data.method === 'email' && data.verifyUrl) {
+			lines.push('', `Confirmez votre email : ${data.verifyUrl}`, '(valide 24 h)');
+		} else {
+			lines.push('', 'Email validé via Google.');
+		}
+		if (data.installUrl) lines.push(`Assistant installation : ${data.installUrl}`);
+		if (data.dashboardUrl) lines.push(`Tableau de bord : ${data.dashboardUrl}`);
+		lines.push('', 'L\'équipe Facturio');
+		return lines.join('\n');
+	}
+
+	private getOnboardingRecapTemplate(data: {
+		firstName?: string | null;
+		productCount: number;
+		productNames: string[];
+		techLabels: string[];
+		devProfileLabel?: string | null;
+		productsUrl: string;
+		createInvoiceUrl: string;
+		dashboardUrl: string;
+	}): string {
+		const greeting = data.firstName ? `Bonjour ${data.firstName},` : 'Bonjour,';
+		const profileLine = data.devProfileLabel
+			? emailParagraph(`Profil : <strong>${data.devProfileLabel}</strong>`)
+			: '';
+		const techLine =
+			data.techLabels.length > 0
+				? emailParagraph(
+						`Stack sélectionnée : <strong>${data.techLabels.slice(0, 8).join(', ')}</strong>${data.techLabels.length > 8 ? '…' : ''}`,
+					)
+				: '';
+
+		const listItems = data.productNames
+			.slice(0, 10)
+			.map((name) => `<li style="margin:0 0 6px">${name}</li>`)
+			.join('');
+		const more =
+			data.productNames.length > 10
+				? emailParagraph(
+						`<em>… et ${data.productNames.length - 10} autre(s) prestation(s) dans votre catalogue.</em>`,
+					)
+				: '';
+
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				`C'est fait : votre <strong>catalogue Facturio</strong> est installé avec <strong>${data.productCount} prestation${data.productCount > 1 ? 's' : ''}</strong> prêtes à facturer.`,
+			) +
+			emailBanner('Tarifs modifiables à tout moment — ce sont des bases, pas des engagements.', 'info') +
+			profileLine +
+			techLine +
+			(data.productNames.length > 0
+				? emailParagraph('<strong>Aperçu de votre catalogue :</strong>') +
+					`<ul style="padding-left:20px;margin:8px 0 16px">${listItems}</ul>` +
+					more
+				: '') +
+			emailParagraph(
+				'<strong>Prochaines étapes :</strong><br>' +
+					'• Ajustez les prix dans Produits si besoin<br>' +
+					'• Créez un devis pour un client test<br>' +
+					'• Transformez-le en facture et exportez le PDF',
+			) +
+			emailButtonRow([
+				{ href: data.createInvoiceUrl, label: 'Créer une facture', variant: 'success' },
+				{ href: data.productsUrl, label: 'Voir mon catalogue', variant: 'primary' },
+				{ href: data.dashboardUrl, label: 'Tableau de bord', variant: 'secondary' },
+			]) +
+			emailParagraph(
+				'Vous facturez au forfait ? Testez l\'acompte 10 % et le paiement en plusieurs fois sur une facture.',
+			) +
+			emailParagraph('Bonne facturation,<br><strong>L\'équipe Facturio</strong>');
+
+		return this.getBaseLayout({
+			title: 'Catalogue installé',
+			headline: 'Votre espace est prêt',
+			content,
+		});
+	}
+
+	private getOnboardingRecapText(data: {
+		firstName?: string | null;
+		productCount: number;
+		productNames: string[];
+		techLabels: string[];
+		devProfileLabel?: string | null;
+		productsUrl: string;
+		createInvoiceUrl: string;
+		dashboardUrl: string;
+	}): string {
+		const greeting = data.firstName ? `Bonjour ${data.firstName},` : 'Bonjour,';
+		const lines = [
+			greeting,
+			'',
+			`Votre catalogue Facturio est prêt : ${data.productCount} prestation(s).`,
+		];
+		if (data.devProfileLabel) lines.push(`Profil : ${data.devProfileLabel}`);
+		if (data.techLabels.length) lines.push(`Stack : ${data.techLabels.join(', ')}`);
+		if (data.productNames.length) {
+			lines.push('', 'Prestations :');
+			for (const name of data.productNames.slice(0, 12)) {
+				lines.push(`- ${name}`);
+			}
+		}
+		lines.push(
+			'',
+			`Catalogue : ${data.productsUrl}`,
+			`Nouvelle facture : ${data.createInvoiceUrl}`,
+			`Dashboard : ${data.dashboardUrl}`,
+			'',
+			'L\'équipe Facturio',
+		);
+		return lines.join('\n');
+	}
+
+	/**
+	 * @deprecated Utiliser getSignupConfirmationTemplate — conservé pour preview-emails.
+	 */
+	private getVerifyEmailTemplate(data: { firstName?: string | null; verifyUrl: string }): string {
+		return this.getSignupConfirmationTemplate({
+			firstName: data.firstName,
+			method: 'email',
+			verifyUrl: data.verifyUrl,
 		});
 	}
 
@@ -1368,6 +1669,265 @@ export class EmailService {
 			subject: 'Votre abonnement Facturio a pris fin',
 			html,
 			text: `Abonnement ${options.planLabel} terminé. Compte repassé sur le plan gratuit.`,
+		});
+	}
+
+	/**
+	 * Email de bienvenue après activation du programme beta testeurs.
+	 * Personnalise prénom, plan, date de fin et lien questionnaire.
+	 */
+	async sendBetaTrialReminder(options: {
+		to: string;
+		firstName?: string | null;
+		phase: '60d' | '30d' | '7d';
+		planLabel: string;
+		expiresAt: Date | string;
+		daysRemaining: number;
+		billingUrl: string;
+		dashboardUrl: string;
+	}): Promise<void> {
+		const expiresFr = new Date(options.expiresAt).toLocaleDateString('fr-FR');
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+
+		const phaseCopy =
+			options.phase === '60d'
+				? {
+						headline: 'Il vous reste environ 2 mois d\'essai beta',
+						intro:
+							'Votre accès complet au plan Agence continue — testez compta, API, score conformité et export Factur-X (XML). Le connecteur Plateforme Agréée n\'est pas encore activé dans l\'app.',
+					}
+				: options.phase === '30d'
+					? {
+							headline: 'Plus qu\'un mois d\'essai beta',
+							intro:
+								'Votre période beta se rapproche de la fin. Notez ce qui vous manquerait en repassant au plan Free, et dites-nous ce qu\'on peut améliorer.',
+						}
+					: {
+							headline: 'Fin de beta dans 7 jours',
+							intro:
+								'Dans une semaine, votre compte repassera sur le plan Free (quotas mensuels). Passez Pro si vous voulez conserver l\'accès complet sans coupure.',
+						};
+
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(phaseCopy.intro) +
+			emailBanner(
+				`<strong>${options.planLabel}</strong> — encore <strong>${options.daysRemaining} jour(s)</strong>, jusqu'au <strong>${expiresFr}</strong>.`,
+				options.phase === '7d' ? 'warning' : 'info',
+			) +
+			emailParagraph(
+				'<strong>Idées de tests avant la fin :</strong><br>' +
+					'• Export FEC et balance<br>' +
+					'• Créances / dettes fournisseurs<br>' +
+					'• Score conformité + export Factur-X (XML) sur une facture B2B',
+			) +
+			emailParagraph(
+				'<em>Rappel : aucune transmission Plateforme Agréée dans l\'app — connecteur PA et e-reporting en développement.</em>',
+			) +
+			emailButtonRow([
+				{ href: options.dashboardUrl, label: 'Ouvrir Facturio', variant: 'primary' },
+				{ href: options.billingUrl, label: 'Voir les offres Pro', variant: 'secondary' },
+			]) +
+			emailParagraph('Merci de tester avec nous,<br><strong>Valentine Coubertain</strong><br>Facturio');
+
+		const subject =
+			options.phase === '60d'
+				? 'Beta Facturio — il vous reste environ 2 mois'
+				: options.phase === '30d'
+					? 'Beta Facturio — plus qu\'un mois d\'essai'
+					: 'Beta Facturio — fin dans 7 jours';
+
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			subject,
+			html: this.getBaseLayout({
+				title: phaseCopy.headline,
+				headline: phaseCopy.headline,
+				content,
+			}),
+			text: `${greeting}\n\n${phaseCopy.intro}\n\n${options.planLabel} — ${options.daysRemaining} jours restants (jusqu'au ${expiresFr}).\n\n${options.billingUrl}\n`,
+		});
+	}
+
+	/**
+	 * Email fin de période beta (retour plan Free).
+	 */
+	async sendBetaTrialExpired(options: {
+		to: string;
+		firstName?: string | null;
+		billingUrl: string;
+		quotasUrl: string;
+	}): Promise<void> {
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				'Votre <strong>période beta de 3 mois</strong> est terminée. Merci d\'avoir testé Facturio en conditions réelles — vos retours comptent vraiment.',
+			) +
+			emailBanner(
+				'Retour au <strong>plan Free</strong> : quotas mensuels (factures, devis, emails), pas de compta FEC ni API publique.',
+				'warning',
+			) +
+			emailParagraph(
+				'Pour continuer sans limites : compta, finance, API et PDF sans filigrane — passez au <strong>plan Pro</strong> quand vous le souhaitez.',
+			) +
+			emailButtonRow([
+				{ href: options.billingUrl, label: 'Passer Pro', variant: 'success' },
+				{ href: options.quotasUrl, label: 'Voir les quotas Free', variant: 'secondary' },
+			]) +
+			emailParagraph('À bientôt,<br><strong>L\'équipe Facturio</strong>');
+
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			subject: 'Votre essai beta Facturio est terminé',
+			html: this.getBaseLayout({
+				title: 'Fin de période beta',
+				headline: 'Merci pour votre participation beta',
+				content,
+			}),
+			text: `${greeting}\n\nVotre essai beta est terminé. Plan Free actif.\n\nPro : ${options.billingUrl}\nQuotas : ${options.quotasUrl}\n`,
+		});
+	}
+
+	/**
+	 * Email quota mensuel Free atteint (100 %).
+	 */
+	async sendFreeQuotaReached(options: {
+		to: string;
+		firstName?: string | null;
+		kind: 'invoices' | 'quotes' | 'emails';
+		used: number;
+		max: number;
+		quotasUrl: string;
+		billingUrl: string;
+	}): Promise<void> {
+		const labels = {
+			invoices: 'factures',
+			quotes: 'devis',
+			emails: 'emails document',
+		} as const;
+		const label = labels[options.kind];
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				`Vous avez atteint le quota mensuel de <strong>${label}</strong> sur le plan Free (${options.used}/${options.max} ce mois-ci).`,
+			) +
+			emailParagraph(
+				'Le compteur est remis à zéro le <strong>1er du mois prochain</strong>. En attendant, la création ou l\'envoi correspondant est bloqué.',
+			) +
+			emailButtonRow([
+				{ href: options.billingUrl, label: 'Passer Pro (illimité)', variant: 'primary' },
+				{ href: options.quotasUrl, label: 'Détail des quotas', variant: 'secondary' },
+			]) +
+			emailParagraph('L\'équipe Facturio');
+
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			subject: `Quota Free atteint — ${label}`,
+			html: this.getBaseLayout({
+				title: 'Quota mensuel atteint',
+				headline: `Quota ${label} atteint`,
+				content,
+			}),
+			text: `${greeting}\n\nQuota ${label} : ${options.used}/${options.max}.\n\nPro : ${options.billingUrl}\n`,
+		});
+	}
+
+	/**
+	 * Email de bienvenue après activation du programme beta testeurs.
+	 * Personnalise prénom, plan, date de fin et lien questionnaire.
+	 */
+	async sendBetaTesterWelcome(options: {
+		to: string;
+		firstName?: string | null;
+		planLabel: string;
+		durationDays: number;
+		expiresAt: Date | string;
+		inviteCode?: string | null;
+		surveyUrl?: string | null;
+		appUrl: string;
+		settingsUrl: string;
+		replyTo?: string | null;
+	}): Promise<void> {
+		const expiresFr = new Date(options.expiresAt).toLocaleDateString('fr-FR');
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+		const codeLine = options.inviteCode?.trim()
+			? emailParagraph(
+					`Code campagne activé : <strong>${options.inviteCode.trim()}</strong>.`,
+				)
+			: '';
+
+		const surveyBtn = options.surveyUrl
+			? emailButton(options.surveyUrl, 'Répondre au questionnaire (5–8 min)', 'primary')
+			: '';
+
+		const surveyText = options.surveyUrl
+			? `\n\nQuestionnaire beta : ${options.surveyUrl}\n`
+			: '';
+
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				`Merci d'avoir activé le programme <strong>beta testeurs</strong> sur Facturio.`,
+			) +
+			codeLine +
+			emailBanner(
+				`<strong>${options.planLabel}</strong> — accès complet pendant ${options.durationDays} jours, jusqu'au <strong>${expiresFr}</strong>.`,
+				'success',
+			) +
+			emailParagraph(
+				'Vous pouvez tester en conditions réelles : devis, factures, PDF, paiements Stripe, acomptes, échéancier, exports compta (FEC), score de conformité, export Factur-X (XML).',
+			) +
+			emailParagraph(
+				'<strong>Pas encore activé dans l\'app</strong> : connecteur Plateforme Agréée (aucun envoi PA), e-reporting automatisé, sync bancaire. Votre retour aide à prioriser la suite.',
+			) +
+			emailParagraph(
+				'<strong>Pour démarrer :</strong><br>' +
+					'1. Complétez votre profil émetteur (SIRET, coordonnées).<br>' +
+					'2. Créez un devis test, puis une facture.<br>' +
+					'3. Si vous facturez au forfait : testez l\'acompte 10 % et le paiement en plusieurs fois.',
+			) +
+			emailButtonRow([
+				{ href: options.appUrl, label: 'Ouvrir Facturio', variant: 'success' },
+				{ href: options.settingsUrl, label: 'Mon profil émetteur', variant: 'secondary' },
+			]) +
+			(options.surveyUrl
+				? emailParagraph(
+						'Un retour structuré nous aide beaucoup — vous pouvez aussi répondre directement à cet email.',
+					) + surveyBtn
+				: emailParagraph(
+						'Votre retour nous aide — répondez directement à cet email (bug, idée, écran confus).',
+					)) +
+			emailParagraph('Merci encore,<br><strong>Valentine Coubertain</strong><br>Facturio');
+
+		const html = this.getBaseLayout({
+			title: 'Bienvenue dans la beta Facturio',
+			headline: 'Bienvenue dans la beta',
+			content,
+		});
+
+		const text =
+			`${greeting}\n\n` +
+			`Merci d'avoir activé le programme beta testeurs sur Facturio.\n\n` +
+			`${options.planLabel} — accès complet ${options.durationDays} jours, jusqu'au ${expiresFr}.\n` +
+			(options.inviteCode?.trim() ? `Code : ${options.inviteCode.trim()}\n` : '') +
+			'\nDisponible : score conformité, export Factur-X (XML). Pas encore activé : connecteur PA, e-reporting, sync bancaire.\n' +
+			`\nOuvrir Facturio : ${options.appUrl}\n` +
+			`Profil émetteur : ${options.settingsUrl}` +
+			surveyText +
+			`\nMerci,\nValentine Coubertain\nFacturio`;
+
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			replyTo: options.replyTo ?? undefined,
+			subject: 'Bienvenue dans la beta Facturio (3 mois offerts)',
+			html,
+			text,
 		});
 	}
 

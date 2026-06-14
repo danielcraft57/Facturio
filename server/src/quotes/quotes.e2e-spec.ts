@@ -34,7 +34,7 @@ describe('Quotes e2e', () => {
 		prisma = app.get(PrismaService);
 
 		// Créer un utilisateur de test
-		testUser = await createTestUser(app, prisma);
+		testUser = await createTestUser(app, prisma, { saasPlan: 'PRO' });
 		await prisma.organization.update({
 			where: { id: testUser.organizationId },
 			data: {
@@ -51,6 +51,8 @@ describe('Quotes e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Quote');
 		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
+		await prisma.$executeRawUnsafe('DELETE FROM Refund');
+		await prisma.$executeRawUnsafe('DELETE FROM InvoiceInstallment');
 		await prisma.$executeRawUnsafe('DELETE FROM Payment');
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirApplication');
 		await prisma.$executeRawUnsafe('DELETE FROM AvoirLine');

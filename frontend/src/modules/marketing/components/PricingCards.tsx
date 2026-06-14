@@ -2,6 +2,7 @@ import { Box, Button, Card, CardContent, Chip, Container, Typography, alpha } fr
 import CheckIcon from '@mui/icons-material/Check'
 import { Link as RouterLink } from 'react-router-dom'
 import { CATALOG_PACKS, PRICING_ADDONS_INTRO, PRICING_PLANS, PRICING_SECTION } from '../constants/siteContent'
+import { GA_EVENTS, trackMarketingCtaClick } from '../../../config/analyticsEvents'
 import { EfactureRoadmapAlert } from './EfactureRoadmapAlert'
 import { ScrollReveal } from './ScrollReveal'
 
@@ -92,6 +93,14 @@ export function PricingCards() {
               color={plan.id === 'pro-efacture' ? 'warning' : 'primary'}
               fullWidth
               size="large"
+              onClick={() =>
+                trackMarketingCtaClick({
+                  event: GA_EVENTS.CTA_PRICING,
+                  label: plan.cta,
+                  destination: planCtaTo(plan.id),
+                  section: `pricing_${plan.id}`,
+                })
+              }
             >
               {plan.cta}
             </Button>
@@ -138,7 +147,20 @@ export function PricingAddonsSection() {
                 <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1, mb: 2 }}>
                   {pack.description}
                 </Typography>
-                <Button component={RouterLink} to="/signup" variant="outlined" fullWidth>
+                <Button
+                  component={RouterLink}
+                  to="/signup"
+                  variant="outlined"
+                  fullWidth
+                  onClick={() =>
+                    trackMarketingCtaClick({
+                      event: GA_EVENTS.CTA_SIGNUP,
+                      label: pack.cta,
+                      destination: '/signup',
+                      section: `pricing_pack_${pack.id}`,
+                    })
+                  }
+                >
                   {pack.cta}
                 </Button>
               </CardContent>

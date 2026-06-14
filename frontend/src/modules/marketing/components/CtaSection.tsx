@@ -1,14 +1,19 @@
 import { Box, Button, Container, Paper, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { MARKETING_CTA } from '../constants/siteContent'
+import { GA_EVENTS, trackMarketingCtaClick } from '../../../config/analyticsEvents'
 
 type CtaSectionProps = {
   title?: string
   subtitle?: string
   primaryLabel?: string
   primaryTo?: string
+  primaryGaEvent?: string
   secondaryLabel?: string
   secondaryTo?: string
+  secondaryGaEvent?: string
+  /** Zone GA4 (cta_band, landing_footer, etc.) */
+  analyticsSection?: string
 }
 
 export function CtaSection({
@@ -16,8 +21,11 @@ export function CtaSection({
   subtitle = MARKETING_CTA.defaultSubtitle,
   primaryLabel = 'Créer mon compte gratuit',
   primaryTo = '/signup',
+  primaryGaEvent = GA_EVENTS.CTA_SIGNUP,
   secondaryLabel,
   secondaryTo,
+  secondaryGaEvent,
+  analyticsSection = 'cta_band',
 }: CtaSectionProps) {
   return (
     <Box sx={{ py: { xs: 8, md: 10 } }}>
@@ -45,6 +53,14 @@ export function CtaSection({
               to={primaryTo}
               variant="contained"
               size="large"
+              onClick={() =>
+                trackMarketingCtaClick({
+                  event: primaryGaEvent,
+                  label: primaryLabel,
+                  destination: primaryTo,
+                  section: analyticsSection,
+                })
+              }
               sx={{
                 bgcolor: 'white',
                 color: 'primary.main',
@@ -61,6 +77,14 @@ export function CtaSection({
                 to={secondaryTo}
                 variant="outlined"
                 size="large"
+                onClick={() =>
+                  trackMarketingCtaClick({
+                    event: secondaryGaEvent ?? GA_EVENTS.CTA_SIGNUP,
+                    label: secondaryLabel,
+                    destination: secondaryTo,
+                    section: analyticsSection,
+                  })
+                }
                 sx={{
                   borderColor: 'rgba(255,255,255,0.8)',
                   color: 'white',

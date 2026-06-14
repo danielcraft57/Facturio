@@ -30,3 +30,22 @@ export function trackGoogleAnalyticsPageView(pagePath: string): void {
   if (!isGoogleAnalyticsEnabled() || !window.gtag) return
   window.gtag('config', GA_MEASUREMENT_ID, { page_path: pagePath })
 }
+
+/**
+ * Envoie un événement personnalisé à GA4 (clics CTA, signup, scroll, etc.).
+ *
+ * @param eventName - Nom stable de l'événement (snake_case)
+ * @param params - Paramètres optionnels (link_text, section, plan…)
+ */
+export function trackGoogleAnalyticsEvent(
+  eventName: string,
+  params?: Record<string, string | number | boolean | undefined>,
+): void {
+  if (!isGoogleAnalyticsEnabled() || !window.gtag) return
+  const cleaned = params
+    ? Object.fromEntries(
+        Object.entries(params).filter(([, value]) => value !== undefined && value !== ''),
+      )
+    : undefined
+  window.gtag('event', eventName, cleaned)
+}

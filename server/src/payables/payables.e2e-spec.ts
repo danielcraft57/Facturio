@@ -26,7 +26,7 @@ describe('Payables e2e', () => {
 		);
 		await app.init();
 		prisma = app.get(PrismaService);
-		testUser = await createTestUser(app, prisma);
+		testUser = await createTestUser(app, prisma, { saasPlan: 'PRO' });
 	});
 
 	afterAll(async () => {

@@ -44,6 +44,7 @@
     "beta:codes": "node scripts/generate-beta-invite-codes.js",
     "beta:codes:list": "node scripts/generate-beta-invite-codes.js list",
     "beta:codes:stats": "node scripts/generate-beta-invite-codes.js stats",
+    "beta:welcome-emails": "ts-node --transpile-only scripts/send-beta-welcome-emails.ts",
     "invoices:usage": "node scripts/purge-organization-invoices.js usage",
     "invoices:list": "node scripts/purge-organization-invoices.js list",
     "invoices:purge": "node scripts/purge-organization-invoices.js purge",

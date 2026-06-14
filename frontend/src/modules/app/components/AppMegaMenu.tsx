@@ -625,8 +625,17 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                           <MenuSectionLabel sx={{ pt: 0, gridColumn: 'span 2' }}>Facturation</MenuSectionLabel>
                           {renderMenuItems(compte, location.pathname, close, open, 0, true)}
                           {renderMenuItems(facturation, location.pathname, close, open, compte.length, true)}
-                          <MenuSectionLabel sx={{ pt: 1, gridColumn: 'span 2' }}>Données</MenuSectionLabel>
-                          <MenuSectionLabel sx={{ pt: 1, gridColumn: 'span 2' }}>API Pro</MenuSectionLabel>
+                          <MenuSectionLabel
+                            sx={{
+                              pt: 1,
+                              gridColumn: api.length > 0 ? 'span 2' : '1 / -1',
+                            }}
+                          >
+                            Données
+                          </MenuSectionLabel>
+                          {api.length > 0 && (
+                            <MenuSectionLabel sx={{ pt: 1, gridColumn: 'span 2' }}>API Pro</MenuSectionLabel>
+                          )}
                           {renderMenuItems(
                             donnees,
                             location.pathname,
@@ -635,14 +644,15 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                             compte.length + facturation.length,
                             true,
                           )}
-                          {renderMenuItems(
-                            api,
-                            location.pathname,
-                            close,
-                            open,
-                            compte.length + facturation.length + donnees.length,
-                            true,
-                          )}
+                          {api.length > 0 &&
+                            renderMenuItems(
+                              api,
+                              location.pathname,
+                              close,
+                              open,
+                              compte.length + facturation.length + donnees.length,
+                              true,
+                            )}
                         </>
                       ) : (
                         <>

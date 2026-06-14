@@ -218,9 +218,6 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
   const betaActive = usage.betaTester?.active === true
   const betaExpired = usage.betaTester != null && !betaActive
   const isPrepaidYearly = !isFree && sub && !sub.hasRecurringSubscription && !!periodLabel
-  const max = usage.limits.maxInvoicesPerMonth
-  const quotaPct =
-    max != null && max > 0 ? Math.min(100, (usage.usage.invoicesThisMonth / max) * 100) : 0
 
   return (
     <Card variant="outlined">
@@ -360,20 +357,14 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
           </Typography>
         )}
 
-        {max != null && (
+        {isFree && (
           <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ mb: 0.5 }}>
-              Factures ce mois-ci : {usage.usage.invoicesThisMonth} / {max}
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Suivez vos quotas mensuels (factures, devis, emails) sur la page dédiée.
             </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-              Compteur remis à zéro le 1er de chaque mois (mois calendaire).
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={quotaPct}
-              color={usage.atLimit ? 'warning' : 'primary'}
-              sx={{ height: 6, borderRadius: 3 }}
-            />
+            <Button variant="outlined" component={RouterLink} to="/parametres/quotas" size="small">
+              Voir quotas & usage
+            </Button>
           </Box>
         )}
 

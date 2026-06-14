@@ -23,6 +23,11 @@ describe('BillingService', () => {
 
 	const betaTester = {
 		getBetaTesterStatus: jest.fn().mockResolvedValue(null),
+		getOrganizationContact: jest.fn().mockResolvedValue(null),
+	};
+
+	const email = {
+		sendFreeQuotaReached: jest.fn().mockResolvedValue(undefined),
 	};
 
 	let service: BillingService;
@@ -30,7 +35,7 @@ describe('BillingService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		betaTester.getBetaTesterStatus.mockResolvedValue(null);
-		service = new BillingService(prisma as never, betaTester as never);
+		service = new BillingService(prisma as never, betaTester as never, email as never);
 	});
 
 	it('expose la période de reset mensuel dans getUsage', async () => {

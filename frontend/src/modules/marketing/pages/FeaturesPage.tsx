@@ -78,7 +78,7 @@ export function FeaturesPage() {
 
       <CtaSection
         title={`Testez gratuitement — ${FREE_PLAN_SUMMARY}`}
-        subtitle="Passez Pro pour l’illimité et la compta. Réservez Pro + e-facture pour verrouiller la conformité PA."
+        subtitle="Passez Pro pour l’illimité et la compta. Réservez Pro + e-facture pour l’export Factur-X et la priorité connecteur PA (à venir)."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
         secondaryLabel={CTA.betaSignup.label}

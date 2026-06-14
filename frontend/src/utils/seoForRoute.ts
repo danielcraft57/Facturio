@@ -65,7 +65,7 @@ const MARKETING: Record<string, RouteSeo> = {
   '/facturation-electronique': {
     title: 'Facturation électronique',
     description:
-      'Préparez la réforme 2026 : conformité, Factur-X et feuille de route Plateforme Agréée intégrée à votre flux de facturation.',
+      'Préparez la réforme 2026 : score conformité, export Factur-X (XML) — connecteur Plateforme Agréée en feuille de route.',
     ogImage: '/images/facturio-efacture.png',
   },
   '/tarifs': {
@@ -148,6 +148,7 @@ const APP_ROUTES: Record<string, RouteSeo> = {
   '/parametres': { title: 'Paramètres', description: 'Paramètres de votre compte et organisation.' },
   '/parametres/entreprise': { title: 'Entreprise', description: 'Identité légale et coordonnées de facturation.' },
   '/parametres/abonnement': { title: 'Abonnement', description: 'Formule et facturation de votre compte.' },
+  '/parametres/quotas': { title: 'Quotas & usage', description: 'Limites mensuelles du plan Free.' },
   '/parametres/facturation-electronique': {
     title: 'Facturation électronique',
     description: 'Options e-facture et conformité.',

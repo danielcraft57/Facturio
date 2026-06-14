@@ -101,6 +101,23 @@ https://facturio.danielcraft.fr/signup?beta=DEV26
 
 Variante acceptée : `?code=DEV26`.
 
+**Inscription Google** : même page `/signup?beta=DEV26` — cochez les CGU, puis « Continuer avec Google ». Le code est transmis pendant la redirection OAuth et activé à la création du compte (comme l'inscription email).
+
+À l'activation beta :
+- **Popin app** : message de remerciement dédié (remplace la popin « obtenir un code beta »).
+- **Emails** : confirmation d'inscription (Google ou email + lien de validation) puis email **bienvenue beta** (détail plan, questionnaire si `BETA_TESTER_SURVEY_URL`).
+- Après l'assistant **Installation**, un email récap liste le catalogue installé.
+
+**Notifications in-app** (`LifecycleNotifier`) : quota atteint / bientôt atteint, jalons beta (2 mois, 1 mois, 7 jours, fin), toast catalogue installé.
+
+**Emails cron beta** (9h serveur) : rappels J-60, J-30, J-7 et fin de période. Désactiver : `BETA_LIFECYCLE_EMAILS_ENABLED=0`.
+
+**Email quota Free** : une fois par type/mois au premier blocage. Désactiver : `FREE_QUOTA_EMAILS_ENABLED=0`.
+
+Prévisualiser les templates : `cd server && npm run preview:emails`.
+
+Si le code est refusé (complet, expiré…), retour sur `/signup` avec le message d'erreur et le code toujours prérempli.
+
 ### Option 2 : inscription manuelle
 
 1. Créer un compte sur `/signup`.
@@ -167,6 +184,15 @@ Places limitées. Devis, factures, compta — pour freelances dev.
 ```
 
 Adaptez le code et le lien selon la campagne. Ne promettez pas de fonctionnalités non livrées (PA connectée, sync bancaire, etc.).
+
+## Retours testeurs (email + questionnaire)
+
+- **Email automatique** : envoyé par SMTP Facturio à l'activation d'un code beta (`EmailService.sendBetaTesterWelcome`), avec prénom admin, plan, date de fin, code campagne.
+- **Testeurs déjà inscrits** : `cd server` puis `npm run beta:welcome-emails` (options `--dry-run`, `--force`).
+- **Questionnaire** : créer le Google Form (structure dans [`BETA_TESTEURS_EMAIL_QUESTIONNAIRE.md`](./BETA_TESTEURS_EMAIL_QUESTIONNAIRE.md)), coller l'URL dans `BETA_TESTER_SURVEY_URL`.
+- **Réponses** : `BETA_TESTER_REPLY_EMAIL` (Gmail Valentine) ou `COMPANY_EMAIL`.
+
+Com' sous **Valentine Coubertain**. Ne pas promettre PA connectée, sync bancaire, etc.
 
 ## Dépannage
 

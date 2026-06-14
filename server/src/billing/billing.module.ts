@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { BetaTesterService } from './beta-tester.service';
+import { BetaTesterLifecycleService } from './beta-tester-lifecycle.service';
 import { BillingController } from './billing.controller';
 import { PlatformStripeService } from './platform-stripe.service';
 import { AccountingPlanGuard } from './guards/accounting-plan.guard';
@@ -15,6 +16,7 @@ import { CommonModule } from '../common/common.module';
 	providers: [
 		BillingService,
 		BetaTesterService,
+		BetaTesterLifecycleService,
 		PlatformStripeService,
 		AccountingPlanGuard,
 		FinanceModulePlanGuard,

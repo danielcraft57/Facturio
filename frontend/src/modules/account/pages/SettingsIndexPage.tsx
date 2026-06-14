@@ -1,10 +1,14 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Card, CardActionArea, CardContent, Grid, Typography, alpha } from '@mui/material'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import { settingsNavItems } from '../settingsNav'
+import { filterSettingsNavItems, settingsNavItems, settingsNavFilterFromUsage } from '../settingsNav'
+import { useBillingUsage } from '../../../hooks/useBillingUsage'
 
 export function SettingsIndexPage() {
-  const cards = settingsNavItems.filter((i) => i.to !== '/parametres')
+  const { usage } = useBillingUsage()
+  const cards = filterSettingsNavItems(settingsNavItems, settingsNavFilterFromUsage(usage)).filter(
+    (i) => i.to !== '/parametres',
+  )
 
   return (
     <Grid container spacing={2}>

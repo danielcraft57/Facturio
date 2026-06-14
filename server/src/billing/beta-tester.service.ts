@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { SaasBillingPlan } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../common/email.service';
 import { assertBetaCodeFormat, normalizeBetaCode } from './beta-tester-code.util';
 import { readBetaTesterConfig } from './beta-tester.config';
 
@@ -51,7 +52,10 @@ export interface BetaProgramPublicStats {
 export class BetaTesterService {
 	private readonly logger = new Logger(BetaTesterService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly email: EmailService,
+	) {}
 
 	/**
 	 * Normalise un code saisi.
@@ -313,12 +317,121 @@ export class BetaTesterService {
 			`Beta activé org ${organizationId} avec code ${normalized}, fin ${expiresAt.toISOString()}`,
 		);
 
-		return {
+		const redemption: BetaInviteRedemption = {
 			plan: config.grantedPlan,
 			planLabel: this.planLabel(config.grantedPlan),
 			expiresAt: expiresAt.toISOString(),
 			durationDays: config.durationDays,
 		};
+
+		void this.sendWelcomeEmail(organizationId, normalized, redemption).catch((err) => {
+			this.logger.warn(
+				`Email bienvenue beta non envoyé (org ${organizationId})`,
+				err instanceof Error ? err.message : err,
+			);
+		});
+
+		return redemption;
+	}
+
+	/**
+	 * Envoie l'email de bienvenue beta si pas encore envoyé (idempotent).
+	 *
+	 * @param organizationId - Organisation beta
+	 * @param inviteCode - Code campagne activé (optionnel)
+	 * @param redemption - Détails plan / expiration (sinon relus en base)
+	 * @param force - Renvoyer même si déjà marqué comme envoyé
+	 */
+	async sendWelcomeEmail(
+		organizationId: number,
+		inviteCode?: string | null,
+		redemption?: BetaInviteRedemption,
+		force = false,
+	): Promise<{ sent: boolean; reason?: string }> {
+		const org = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: {
+				betaTesterAt: true,
+				betaWelcomeEmailSentAt: true,
+				saasPlanExpiresAt: true,
+				saasPlan: true,
+			},
+		});
+		if (!org?.betaTesterAt) {
+			return { sent: false, reason: 'not_beta_tester' };
+		}
+		if (org.betaWelcomeEmailSentAt && !force) {
+			return { sent: false, reason: 'already_sent' };
+		}
+
+		const recipient = await this.resolveOrganizationContact(organizationId);
+		if (!recipient) {
+			return { sent: false, reason: 'no_email' };
+		}
+
+		const config = readBetaTesterConfig();
+		const planLabel =
+			redemption?.planLabel ??
+			this.planLabel(org.saasPlan !== SaasBillingPlan.FREE ? org.saasPlan : config.grantedPlan);
+		const expiresAt =
+			redemption?.expiresAt ??
+			org.saasPlanExpiresAt?.toISOString() ??
+			new Date().toISOString();
+		const durationDays = redemption?.durationDays ?? config.durationDays;
+
+		const appBase =
+			process.env.FRONTEND_URL?.trim() ||
+			process.env.PUBLIC_APP_URL?.trim() ||
+			'https://facturio.danielcraft.fr';
+
+		await this.email.sendBetaTesterWelcome({
+			to: recipient.email,
+			firstName: recipient.firstName,
+			planLabel,
+			durationDays,
+			expiresAt,
+			inviteCode,
+			surveyUrl: config.surveyUrl,
+			appUrl: appBase.replace(/\/$/, ''),
+			settingsUrl: `${appBase.replace(/\/$/, '')}/parametres/entreprise`,
+			replyTo: config.replyEmail,
+		});
+
+		await this.prisma.organization.update({
+			where: { id: organizationId },
+			data: { betaWelcomeEmailSentAt: new Date() },
+		});
+
+		this.logger.log(`Email bienvenue beta envoyé à ${recipient.email} (org ${organizationId})`);
+		return { sent: true };
+	}
+
+	/**
+	 * Résout l'email destinataire (org puis admin, y compris compte PENDING).
+	 */
+	async getOrganizationContact(
+		organizationId: number,
+	): Promise<{ email: string; firstName?: string | null } | null> {
+		return this.resolveOrganizationContact(organizationId);
+	}
+
+	private async resolveOrganizationContact(
+		organizationId: number,
+	): Promise<{ email: string; firstName?: string | null } | null> {
+		const org = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: { email: true },
+		});
+		if (org?.email?.trim()) {
+			return { email: org.email.trim(), firstName: null };
+		}
+		const admin = await this.prisma.user.findFirst({
+			where: { organizationId, role: 'ADMIN' },
+			orderBy: { id: 'asc' },
+			select: { email: true, firstName: true },
+		});
+		if (!admin?.email?.trim()) return null;
+		return { email: admin.email.trim(), firstName: admin.firstName };
 	}
 
 	/**

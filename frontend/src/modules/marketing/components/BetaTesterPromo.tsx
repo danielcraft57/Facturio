@@ -15,6 +15,7 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import CheckIcon from '@mui/icons-material/Check'
 import { Link as RouterLink } from 'react-router-dom'
 import { BETA_PROGRAM, CTA } from '../constants/siteContent'
+import { GA_EVENTS, trackMarketingCtaClick } from '../../../config/analyticsEvents'
 import { ScrollReveal } from './ScrollReveal'
 import { billingService, type BetaProgramStats } from '../../../services/billing'
 import { unwrapApiPayload } from '../../../services/clients'
@@ -121,6 +122,14 @@ export function BetaTesterPromo({ compact = false }: BetaTesterPromoProps) {
                               component={RouterLink}
                               to={`/signup?beta=${encodeURIComponent(c.code)}`}
                               clickable
+                              onClick={() =>
+                                trackMarketingCtaClick({
+                                  event: GA_EVENTS.CTA_BETA_CODE,
+                                  label: c.code,
+                                  destination: `/signup?beta=${c.code}`,
+                                  section: 'beta_banner',
+                                })
+                              }
                             />
                           ))}
                         </Stack>
@@ -154,10 +163,31 @@ export function BetaTesterPromo({ compact = false }: BetaTesterPromoProps) {
                     size="large"
                     fullWidth
                     disabled={stats != null && stats.programOpen === false}
+                    onClick={() =>
+                      trackMarketingCtaClick({
+                        event: CTA.betaSignup.gaEvent ?? GA_EVENTS.CTA_BETA,
+                        label: CTA.betaSignup.label,
+                        destination: CTA.betaSignup.to,
+                        section: 'beta_banner',
+                      })
+                    }
                   >
                     {CTA.betaSignup.label}
                   </Button>
-                  <Button component={RouterLink} to={CTA.signupFree.to} variant="outlined" fullWidth>
+                  <Button
+                    component={RouterLink}
+                    to={CTA.signupFree.to}
+                    variant="outlined"
+                    fullWidth
+                    onClick={() =>
+                      trackMarketingCtaClick({
+                        event: CTA.signupFree.gaEvent ?? GA_EVENTS.CTA_SIGNUP,
+                        label: CTA.signupFree.label,
+                        destination: CTA.signupFree.to,
+                        section: 'beta_banner',
+                      })
+                    }
+                  >
                     {CTA.signupFree.label}
                   </Button>
                 </Stack>

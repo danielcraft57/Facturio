@@ -15,16 +15,16 @@ const APPROACH = [
     body: 'Catalogue, devis, missions et factures : aucun changement d’habitudes pour le métier.',
   },
   {
-    title: 'Factur-X généré automatiquement',
-    body: 'Format structuré EN 16931, prêt pour la transmission réglementaire (feuille de route produit).',
+    title: 'Export Factur-X (XML)',
+    body: 'Format structuré EN 16931 disponible dès le palier Pro + e-facture — base documentaire avant toute transmission PA.',
   },
   {
     title: 'Plateforme Agréée partenaire',
-    body: 'Pas d’immatriculation lourde côté Facturio : connexion à une PA pour le réseau officiel et la DGFiP.',
+    body: 'Connecteur en cours de développement : pas d’envoi PA dans l’app aujourd’hui. Le palier Pro + e-facture réserve l’accès à l’activation.',
   },
   {
     title: 'E-reporting',
-    body: 'Paiements Stripe, B2C et flux hors facture électronique : agrégation prévue pour les obligations complémentaires.',
+    body: 'Flux complémentaires (B2C, international, encaissements) : module annoncé sur la feuille de route, non livré.',
   },
 ] as const
 

@@ -1,7 +1,9 @@
 import { Box, Button, alpha, useTheme } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
-import { navDashboard, navGroups, navSettingsGroup, isNavActive } from '../config/navConfig'
+import { navDashboard, navGroups, createNavSettingsGroup, isNavActive } from '../config/navConfig'
+import { useBillingUsage } from '../../../hooks/useBillingUsage'
+import { settingsNavFilterFromUsage } from '../../account/settingsNav'
 import { AppMegaMenu } from './AppMegaMenu'
 import { topNavItemSx } from './topNavItemStyles'
 
@@ -25,6 +27,8 @@ export function AppTopNav() {
   const location = useLocation()
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
+  const { usage } = useBillingUsage()
+  const settingsGroup = createNavSettingsGroup(settingsNavFilterFromUsage(usage))
 
   return (
     <Box
@@ -44,7 +48,7 @@ export function AppTopNav() {
       {navGroups.map((group) => (
         <AppMegaMenu key={group.id} group={group} />
       ))}
-      <AppMegaMenu group={navSettingsGroup} />
+      <AppMegaMenu group={settingsGroup} />
 
       <Button
         component={RouterLink}

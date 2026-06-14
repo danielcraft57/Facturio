@@ -111,6 +111,9 @@ const SettingsCompanyPage = lazy(() =>
 const SettingsBillingPage = lazy(() =>
   import('../account/pages/SettingsBillingPage').then(m => ({ default: m.SettingsBillingPage })),
 )
+const SettingsQuotasPage = lazy(() =>
+  import('../account/pages/SettingsQuotasPage').then(m => ({ default: m.SettingsQuotasPage })),
+)
 const SettingsEInvoicingPage = lazy(() =>
   import('../account/pages/SettingsEInvoicingPage').then(m => ({ default: m.SettingsEInvoicingPage })),
 )
@@ -556,6 +559,7 @@ export function App() {
                 <Route index element={<SettingsIndexPage />} />
                 <Route path="entreprise" element={<SettingsCompanyPage />} />
                 <Route path="abonnement" element={<SettingsBillingPage />} />
+                <Route path="quotas" element={<SettingsQuotasPage />} />
                 <Route path="facturation-electronique" element={<SettingsEInvoicingPage />} />
                 <Route path="paiements" element={<SettingsPaymentsPage />} />
                 <Route path="confidentialite" element={<SettingsPrivacyPage />} />

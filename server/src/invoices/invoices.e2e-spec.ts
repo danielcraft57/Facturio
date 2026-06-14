@@ -6,6 +6,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { createTestUser, authenticatedRequest, TestUser } from '../../src/common/test-helpers/auth.helper';
+import { purgeInvoicesForE2e } from '../../src/common/test-helpers/invoice-purge.helper';
 
 function uniqueEmail(base: string): string {
 	const [local, domain] = base.split('@');
@@ -39,10 +40,7 @@ describe('Invoices e2e', () => {
 		await prisma.$executeRawUnsafe('DELETE FROM EmailEvent');
 		await prisma.$executeRawUnsafe('DELETE FROM QuoteLine');
 		await prisma.$executeRawUnsafe('DELETE FROM Quote');
-		await prisma.$executeRawUnsafe('DELETE FROM InvoiceLine');
-		await prisma.$executeRawUnsafe('DELETE FROM Refund');
-		await prisma.$executeRawUnsafe('DELETE FROM Payment');
-		await prisma.$executeRawUnsafe('DELETE FROM Invoice');
+		await purgeInvoicesForE2e(prisma);
 	});
 
 	afterAll(async () => {

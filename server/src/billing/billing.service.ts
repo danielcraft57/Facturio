@@ -1,15 +1,21 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SaasBillingPlan } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { SAAS_PLAN_LIMITS, type SaasPlanFeature } from './saas-plan.limits';
+import { EmailService } from '../common/email.service';
+import { getSaasPlanLimits, type SaasPlanFeature } from './saas-plan.limits';
 import { resolveEffectiveSaasPlan } from './saas-plan.util';
 import { BetaTesterService } from './beta-tester.service';
 
+type QuotaEmailKind = 'invoices' | 'quotes' | 'emails';
+
 @Injectable()
 export class BillingService {
+	private readonly logger = new Logger(BillingService.name);
+
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly betaTester: BetaTesterService,
+		private readonly email: EmailService,
 	) {}
 
 	/** Mois calendaire en cours (fuseau serveur) — le quota Free se réinitialise le 1er à 00:00. */
@@ -82,7 +88,7 @@ export class BillingService {
 
 		const plan = resolveEffectiveSaasPlan(org);
 
-		const limits = SAAS_PLAN_LIMITS[plan];
+		const limits = getSaasPlanLimits(plan);
 		const period = this.monthBounds();
 		const invoicesThisMonth = await this.countInvoicesThisMonth(organizationId);
 		const quotesThisMonth = await this.countQuotesThisMonth(organizationId);
@@ -151,6 +157,15 @@ export class BillingService {
 	async assertCanCreateInvoice(organizationId: number): Promise<void> {
 		const usage = await this.getUsage(organizationId);
 		if (usage.atLimit) {
+			void this.notifyFreeQuotaReached(organizationId, 'invoices', {
+				used: usage.usage.invoicesThisMonth,
+				max: usage.limits.maxInvoicesPerMonth ?? 0,
+			}).catch((err) => {
+				this.logger.warn(
+					`Email quota factures org ${organizationId}`,
+					err instanceof Error ? err.message : err,
+				);
+			});
 			throw new ForbiddenException(
 				`Quota mensuel atteint (${usage.limits.maxInvoicesPerMonth} factures ce mois-ci sur le plan ${usage.planLabel}). Le compteur est réinitialisé le 1er du mois suivant. Passez au plan Pro pour continuer.`,
 			);
@@ -161,6 +176,15 @@ export class BillingService {
 	async assertCanCreateQuote(organizationId: number): Promise<void> {
 		const usage = await this.getUsage(organizationId);
 		if (usage.atQuoteLimit) {
+			void this.notifyFreeQuotaReached(organizationId, 'quotes', {
+				used: usage.usage.quotesThisMonth,
+				max: usage.limits.maxQuotesPerMonth ?? 0,
+			}).catch((err) => {
+				this.logger.warn(
+					`Email quota devis org ${organizationId}`,
+					err instanceof Error ? err.message : err,
+				);
+			});
 			throw new ForbiddenException(
 				`Quota mensuel atteint (${usage.limits.maxQuotesPerMonth} devis ce mois-ci sur le plan ${usage.planLabel}). Le compteur est réinitialisé le 1er du mois suivant. Passez au plan Pro pour continuer.`,
 			);
@@ -171,6 +195,15 @@ export class BillingService {
 	async assertCanSendDocumentEmail(organizationId: number): Promise<void> {
 		const usage = await this.getUsage(organizationId);
 		if (usage.atEmailLimit) {
+			void this.notifyFreeQuotaReached(organizationId, 'emails', {
+				used: usage.usage.emailsSentThisMonth,
+				max: usage.limits.maxEmailsPerMonth ?? 0,
+			}).catch((err) => {
+				this.logger.warn(
+					`Email quota emails org ${organizationId}`,
+					err instanceof Error ? err.message : err,
+				);
+			});
 			throw new ForbiddenException(
 				`Quota mensuel d'emails atteint (${usage.limits.maxEmailsPerMonth} envois ce mois-ci sur le plan ${usage.planLabel}). Le compteur est réinitialisé le 1er du mois suivant. Passez au plan Pro pour continuer.`,
 			);
@@ -235,13 +268,60 @@ export class BillingService {
 	}
 
 	hasFeature(plan: SaasBillingPlan, feature: SaasPlanFeature | 'eInvoicing'): boolean {
-		return SAAS_PLAN_LIMITS[plan][feature];
+		return getSaasPlanLimits(plan)[feature];
+	}
+
+	/**
+	 * Envoie un email quota Free (une fois par type et par mois calendaire).
+	 */
+	private async notifyFreeQuotaReached(
+		organizationId: number,
+		kind: QuotaEmailKind,
+		counts: { used: number; max: number },
+	): Promise<void> {
+		if (process.env.FREE_QUOTA_EMAILS_ENABLED === '0') return;
+
+		const monthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+		const org = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: { freeQuotaEmailsSentMonth: true },
+		});
+		if (!org) return;
+
+		const sent = (org.freeQuotaEmailsSentMonth as Record<string, string> | null) ?? {};
+		if (sent[kind] === monthKey) return;
+
+		const contact = await this.betaTester.getOrganizationContact(organizationId);
+		if (!contact) return;
+
+		const appBase = (
+			process.env.FRONTEND_URL?.trim() ||
+			process.env.PUBLIC_APP_URL?.trim() ||
+			'https://facturio.danielcraft.fr'
+		).replace(/\/$/, '');
+
+		await this.email.sendFreeQuotaReached({
+			to: contact.email,
+			firstName: contact.firstName,
+			kind,
+			used: counts.used,
+			max: counts.max,
+			quotasUrl: `${appBase}/parametres/quotas`,
+			billingUrl: `${appBase}/parametres/abonnement`,
+		});
+
+		await this.prisma.organization.update({
+			where: { id: organizationId },
+			data: {
+				freeQuotaEmailsSentMonth: { ...sent, [kind]: monthKey },
+			},
+		});
 	}
 
 	/** Indique si les PDF facture/devis doivent afficher le filigrane Facturio. */
 	async shouldWatermarkPdfs(organizationId: number | null | undefined): Promise<boolean> {
 		if (organizationId == null) return false;
 		const plan = await this.getOrganizationPlan(organizationId);
-		return SAAS_PLAN_LIMITS[plan].pdfWatermark;
+		return getSaasPlanLimits(plan).pdfWatermark;
 	}
 }

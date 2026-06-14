@@ -165,6 +165,8 @@ export function resolveInvoiceRailVisual(
     | 'emailClicked'
     | 'emailClickAction'
     | 'emailEngagement'
+    | 'total'
+    | 'balance'
   >,
 ): DocumentFolderRailVisual {
   const display = resolveInvoiceDisplayStatus(invoice)

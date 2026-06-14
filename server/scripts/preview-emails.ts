@@ -56,6 +56,8 @@ function main(): void {
 		getInvoicePaidClientTemplate: (d: object) => string;
 		getInvoicePaidProviderTemplate: (d: object) => string;
 		getVerifyEmailTemplate: (d: object) => string;
+		getSignupConfirmationTemplate: (d: object) => string;
+		getOnboardingRecapTemplate: (d: object) => string;
 		getPasswordResetTemplate: (d: object) => string;
 		getBaseLayout: (d: object) => string;
 		formatCurrency: (n: number) => string;
@@ -139,10 +141,53 @@ function main(): void {
 		},
 		{
 			id: 'verify-email',
-			label: 'Vérification email',
-			html: api.getVerifyEmailTemplate({
+			label: 'Inscription (email + confirmation)',
+			html: api.getSignupConfirmationTemplate({
 				firstName: 'Loïc',
-				verifyUrl: 'http://localhost:5173/verify-email?token=demo',
+				method: 'email',
+				verifyUrl: 'http://localhost:5173/verifier-email/demo-token',
+				betaTester: {
+					planLabel: 'Agence (beta)',
+					durationDays: 90,
+					expiresAt: '2026-09-15T00:00:00.000Z',
+				},
+			}),
+		},
+		{
+			id: 'signup-google',
+			label: 'Inscription Google',
+			html: api.getSignupConfirmationTemplate({
+				firstName: 'Matthieu',
+				method: 'google',
+				installUrl: 'http://localhost:5173/installation',
+				dashboardUrl: 'http://localhost:5173/dashboard',
+				betaTester: {
+					planLabel: 'Agence (beta)',
+					durationDays: 90,
+					expiresAt: '2026-09-15T00:00:00.000Z',
+					inviteCode: 'DEV26',
+				},
+			}),
+		},
+		{
+			id: 'onboarding-recap',
+			label: 'Récap installation catalogue',
+			html: api.getOnboardingRecapTemplate({
+				firstName: 'Matthieu',
+				productCount: 6,
+				productNames: [
+					'Site vitrine WordPress',
+					'Maintenance mensuelle',
+					'Intégration API REST',
+					'Audit performance',
+					'Formation client',
+					'Forfait support 5 h',
+				],
+				techLabels: ['React', 'TypeScript', 'Node.js', 'PostgreSQL'],
+				devProfileLabel: 'Développeur freelance',
+				productsUrl: 'http://localhost:5173/produits',
+				createInvoiceUrl: 'http://localhost:5173/factures/inbox?create=1',
+				dashboardUrl: 'http://localhost:5173/dashboard',
 			}),
 		},
 		{
