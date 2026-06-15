@@ -125,6 +125,46 @@ La migration CUID supprime clients / factures / devis liés avant conversion des
 
 Si l’erreur mentionne `incompatible types: integer and text` sur `Invoice_clientId_fkey`, faire un `git pull` (correctif : FK supprimées avant `ALTER TYPE`), puis `resolve --rolled-back` et relancer `facturio-update`.
 
+### Enum `ADD VALUE` + `UPDATE` (55P04 / P3018)
+
+PostgreSQL refuse d’utiliser une valeur enum **nouvellement ajoutée** dans la **même transaction** que `ALTER TYPE … ADD VALUE` (`unsafe use of new value "SCHEDULED"`).
+
+Les migrations concernées sont scindées (ex. `20260612200000` = ADD VALUE seul, `20260612200001` = backfill UPDATE).
+
+**Déblocage manuel** si une ancienne migration combinée a échoué en prod :
+
+```bash
+cd /opt/facturio/server
+
+npx prisma migrate resolve --rolled-back 20260612200000_installment_scheduled_status \
+  --schema=prisma/postgresql/schema.prisma
+
+sudo -u postgres psql -d facturio -c \
+  "ALTER TYPE \"InvoiceInstallmentStatus\" ADD VALUE IF NOT EXISTS 'SCHEDULED' BEFORE 'PENDING';"
+
+sudo -u postgres psql -d facturio -c "
+UPDATE \"InvoiceInstallment\" AS inst
+SET status = 'SCHEDULED'
+WHERE inst.status = 'PENDING'
+  AND inst.sequence > (
+    SELECT COALESCE(MIN(ii.sequence), 1)
+    FROM \"InvoiceInstallment\" ii
+    WHERE ii.\"invoiceId\" = inst.\"invoiceId\"
+      AND ii.status = 'PENDING'
+  );"
+
+npx prisma migrate resolve --applied 20260612200000_installment_scheduled_status \
+  --schema=prisma/postgresql/schema.prisma
+npx prisma migrate resolve --applied 20260612200001_installment_scheduled_backfill \
+  --schema=prisma/postgresql/schema.prisma
+
+npm run migrate:prod
+sudo -u postgres psql -d facturio -f /opt/facturio/scripts/deploy/postgresql/grant-facturio-role.sql
+sudo systemctl restart facturio
+```
+
+Après `git pull` contenant le correctif, préférer `resolve --rolled-back` puis `npm run migrate:prod` (sans SQL manuel si la base n’a pas encore `SCHEDULED`).
+
 ## Vérifications
 
 ```bash
