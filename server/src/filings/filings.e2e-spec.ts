@@ -26,7 +26,7 @@ describe('Filings e2e', () => {
 		);
 		await app.init();
 		prisma = app.get(PrismaService);
-		testUser = await createTestUser(app, prisma);
+		testUser = await createTestUser(app, prisma, { saasPlan: 'PRO' });
 		// Nettoyage des entités liées aux déclarations et factures.
 		// On garde les clients et les taux de TVA partagés pour éviter les erreurs de FK
 		// avec les autres suites de tests.
@@ -60,7 +60,7 @@ describe('Filings e2e', () => {
 		await prisma.organization.deleteMany({});
 
 		// Recréer l'utilisateur de test avec organisation
-		testUser = await createTestUser(app, prisma);
+		testUser = await createTestUser(app, prisma, { saasPlan: 'PRO' });
 	});
 
 	afterAll(async () => {

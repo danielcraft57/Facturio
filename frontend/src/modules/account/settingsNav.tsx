@@ -23,11 +23,62 @@ export type SettingsNavItem = {
   requiresPro?: boolean
   /** Visible uniquement sur le plan Free */
   requiresFree?: boolean
+  /** Visible mais réservé Pro sur le plan courant */
+  planLocked?: boolean
 }
 
 export type SettingsNavFilter = {
   publicApiEnabled?: boolean
   isFreePlan?: boolean
+}
+
+/** Ordre d'affichage des sections dans la sidebar et l'index paramètres. */
+export const SETTINGS_SECTION_ORDER: SettingsNavSection[] = [
+  'compte',
+  'facturation',
+  'donnees',
+  'api',
+]
+
+/** Libellés des sections paramètres. */
+export const SETTINGS_SECTION_LABELS: Record<SettingsNavSection, string> = {
+  compte: 'Compte',
+  facturation: 'Facturation',
+  donnees: 'Données',
+  api: 'API Pro',
+}
+
+export type SettingsNavGroup = {
+  section: SettingsNavSection | 'overview'
+  label: string
+  items: SettingsNavItem[]
+}
+
+/**
+ * Regroupe les entrées paramètres pour la sidebar et la page d'accueil.
+ *
+ * @param items - Entrées déjà filtrées par plan
+ */
+export function groupSettingsNavItems(items: SettingsNavItem[]): SettingsNavGroup[] {
+  const overview = items.filter((item) => item.to === '/parametres')
+  const groups: SettingsNavGroup[] = []
+
+  if (overview.length > 0) {
+    groups.push({ section: 'overview', label: "Vue d'ensemble", items: overview })
+  }
+
+  for (const section of SETTINGS_SECTION_ORDER) {
+    const sectionItems = items.filter((item) => item.section === section)
+    if (sectionItems.length > 0) {
+      groups.push({
+        section,
+        label: SETTINGS_SECTION_LABELS[section],
+        items: sectionItems,
+      })
+    }
+  }
+
+  return groups
 }
 
 export const settingsNavItems: SettingsNavItem[] = [
@@ -123,7 +174,7 @@ export function settingsNavFilterFromUsage(usage: BillingUsage | null | undefine
 }
 
 /**
- * Filtre les entrées réservées Pro ou Free selon le plan effectif.
+ * Filtre les entrées Free-only ; les entrées Pro restent visibles avec planLocked.
  *
  * @param items - Entrées menu paramètres
  * @param filter - Options de filtrage (API publique, plan Free)
@@ -132,9 +183,13 @@ export function filterSettingsNavItems(
   items: SettingsNavItem[],
   filter: SettingsNavFilter = {},
 ): SettingsNavItem[] {
-  return items.filter((item) => {
-    if (item.requiresPro && filter.publicApiEnabled !== true) return false
-    if (item.requiresFree && filter.isFreePlan !== true) return false
-    return true
-  })
+  return items
+    .filter((item) => {
+      if (item.requiresFree && filter.isFreePlan !== true) return false
+      return true
+    })
+    .map((item) => ({
+      ...item,
+      planLocked: item.requiresPro === true && filter.publicApiEnabled !== true,
+    }))
 }

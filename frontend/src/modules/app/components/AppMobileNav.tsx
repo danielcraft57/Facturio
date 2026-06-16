@@ -22,8 +22,10 @@ import {
   navDashboard,
   navGroups,
   createNavSettingsGroup,
+  filterNavGroups,
   isGroupActive,
   isNavActive,
+  navPlanFilterFromUsage,
   type NavGroup,
 } from '../config/navConfig'
 import { useBillingUsage } from '../../../hooks/useBillingUsage'
@@ -140,6 +142,8 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
   const location = useLocation()
   const dashActive = isNavActive(location.pathname, navDashboard.to)
   const { usage } = useBillingUsage()
+  const planFilter = navPlanFilterFromUsage(usage)
+  const visibleNavGroups = filterNavGroups(navGroups, planFilter)
   const settingsGroup = createNavSettingsGroup(settingsNavFilterFromUsage(usage))
 
   return (
@@ -195,7 +199,7 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
           </ListItemButton>
         </ListItem>
 
-        {navGroups.map((group) => (
+        {visibleNavGroups.map((group) => (
           <NavGroupSection key={group.id} group={group} onNavigate={onNavigate} />
         ))}
 

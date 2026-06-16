@@ -1,7 +1,7 @@
 import { Box, Button, alpha, useTheme } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
-import { navDashboard, navGroups, createNavSettingsGroup, isNavActive } from '../config/navConfig'
+import { navDashboard, navGroups, createNavSettingsGroup, filterNavGroups, isNavActive, navPlanFilterFromUsage } from '../config/navConfig'
 import { useBillingUsage } from '../../../hooks/useBillingUsage'
 import { settingsNavFilterFromUsage } from '../../account/settingsNav'
 import { AppMegaMenu } from './AppMegaMenu'
@@ -28,6 +28,8 @@ export function AppTopNav() {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
   const { usage } = useBillingUsage()
+  const planFilter = navPlanFilterFromUsage(usage)
+  const visibleNavGroups = filterNavGroups(navGroups, planFilter)
   const settingsGroup = createNavSettingsGroup(settingsNavFilterFromUsage(usage))
 
   return (
@@ -45,7 +47,7 @@ export function AppTopNav() {
         label={navDashboard.label}
         active={isNavActive(location.pathname, navDashboard.to)}
       />
-      {navGroups.map((group) => (
+      {visibleNavGroups.map((group) => (
         <AppMegaMenu key={group.id} group={group} />
       ))}
       <AppMegaMenu group={settingsGroup} />

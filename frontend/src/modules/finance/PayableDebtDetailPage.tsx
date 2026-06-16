@@ -40,8 +40,17 @@ import {
   canCancelPayableDebt,
   canRecordPayablePayment,
 } from './payableDebtPaymentValidation'
+import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 
 export function PayableDebtDetailPage() {
+  return (
+    <BillingFeatureGate feature="financeModule" featureLabel="Le détail d'une dette fournisseur">
+      <PayableDebtDetailPageContent />
+    </BillingFeatureGate>
+  )
+}
+
+function PayableDebtDetailPageContent() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const toast = useToast()

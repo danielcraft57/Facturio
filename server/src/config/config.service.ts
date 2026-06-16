@@ -39,7 +39,7 @@ export class ConfigService {
 	}
 
 	get databaseUrl(): string {
-		const raw = process.env.DATABASE_URL || 'file:./prisma/prisma/dev.db';
+		const raw = process.env.DATABASE_URL || 'file:./dev.db';
 		return normalizeDatabaseUrl(raw, this.isProduction);
 	}
 

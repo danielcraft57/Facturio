@@ -155,6 +155,15 @@ function repairSqliteSchemaDrift(schema) {
     'documentTagLibrary',
     'ALTER TABLE "User" ADD COLUMN "documentTagLibrary" TEXT;',
   )
+  for (const [column, sql] of [
+    ['betaReminder60SentAt', 'ALTER TABLE "Organization" ADD COLUMN "betaReminder60SentAt" DATETIME;'],
+    ['betaReminder30SentAt', 'ALTER TABLE "Organization" ADD COLUMN "betaReminder30SentAt" DATETIME;'],
+    ['betaReminder7SentAt', 'ALTER TABLE "Organization" ADD COLUMN "betaReminder7SentAt" DATETIME;'],
+    ['betaExpiredNoticeSentAt', 'ALTER TABLE "Organization" ADD COLUMN "betaExpiredNoticeSentAt" DATETIME;'],
+    ['freeQuotaEmailsSentMonth', 'ALTER TABLE "Organization" ADD COLUMN "freeQuotaEmailsSentMonth" TEXT;'],
+  ]) {
+    ensureSqliteColumn(dbPath, 'Organization', column, sql)
+  }
 }
 
 function tryGenerate(schema) {

@@ -15,8 +15,12 @@ import CreditScoreIcon from '@mui/icons-material/CreditScore'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import { CREANCES_PATH, DETTES_INBOX } from './encoursPaths'
 import { filterSettingsNavItems, settingsNavItems, type SettingsNavFilter } from '../../account/settingsNav'
+import type { BillingUsage } from '../../../services/billing'
 
 export type NavItemSection = 'activity' | 'encours' | 'compte' | 'facturation' | 'donnees' | 'api'
+
+/** Fonctionnalité plan requise pour afficher une entrée de menu. */
+export type NavPlanGatedFeature = 'accounting' | 'financeModule'
 
 export type NavItem = {
   to: string
@@ -26,6 +30,15 @@ export type NavItem = {
   badge?: string
   /** Regroupement dans le mega-menu Commercial. */
   section?: NavItemSection
+  /** Réservé aux plans incluant cette fonctionnalité (Pro+). */
+  requiresFeature?: NavPlanGatedFeature
+  /** Entrée visible mais non incluse dans le plan courant (badge Pro, accès limité sur la page). */
+  planLocked?: boolean
+}
+
+export type NavPlanFilter = {
+  accountingEnabled?: boolean
+  financeModuleEnabled?: boolean
 }
 
 export type NavFeatured = {
@@ -105,6 +118,7 @@ export const navGroups: NavGroup[] = [
         description: 'Factures impayées par vos clients',
         icon: <CreditScoreIcon fontSize="small" />,
         section: 'encours',
+        requiresFeature: 'financeModule',
       },
       {
         to: DETTES_INBOX,
@@ -112,6 +126,7 @@ export const navGroups: NavGroup[] = [
         description: 'Montants dus à vos créanciers',
         icon: <AccountBalanceWalletIcon fontSize="small" />,
         section: 'encours',
+        requiresFeature: 'financeModule',
       },
     ],
   },
@@ -134,28 +149,77 @@ export const navGroups: NavGroup[] = [
         label: 'Taxes',
         description: 'TVA et obligations fiscales',
         icon: <LocalAtmIcon fontSize="small" />,
+        requiresFeature: 'accounting',
       },
       {
         to: '/abonnements',
         label: 'Abonnements',
         description: 'Revenus récurrents',
         icon: <AutorenewIcon fontSize="small" />,
+        requiresFeature: 'accounting',
       },
       {
         to: '/declarations',
         label: 'Déclarations',
         description: 'Déclarations légales',
         icon: <GavelIcon fontSize="small" />,
+        requiresFeature: 'accounting',
       },
       {
         to: '/comptabilite',
         label: 'Comptabilité',
         description: 'Grand livre et rapports',
         icon: <AccountBalanceIcon fontSize="small" />,
+        requiresFeature: 'accounting',
       },
     ],
   },
 ]
+
+/**
+ * Construit le filtre navigation principale à partir de l'usage billing.
+ *
+ * @param usage - Usage billing courant (null si non chargé : on masque les entrées Pro par prudence)
+ */
+export function navPlanFilterFromUsage(usage: BillingUsage | null | undefined): NavPlanFilter {
+  return {
+    accountingEnabled: usage?.limits.accounting === true,
+    financeModuleEnabled: usage?.limits.financeModule === true,
+  }
+}
+
+/**
+ * Indique si une entrée de menu est visible pour le plan courant.
+ *
+ * @param item - Entrée de navigation
+ * @param filter - Filtres plan (compta, module finance)
+ */
+export function isNavItemVisibleForPlan(item: NavItem, filter: NavPlanFilter = {}): boolean {
+  if (!item.requiresFeature) return true
+  if (item.requiresFeature === 'accounting') return filter.accountingEnabled === true
+  if (item.requiresFeature === 'financeModule') return filter.financeModuleEnabled === true
+  return true
+}
+
+/**
+ * Applique badges Pro et état verrouillé selon le plan (les entrées restent visibles).
+ *
+ * @param groups - Groupes de navigation
+ * @param filter - Filtres plan
+ */
+export function filterNavGroups(groups: NavGroup[], filter: NavPlanFilter = {}): NavGroup[] {
+  return groups.map((group) => ({
+    ...group,
+    items: group.items.map((item) => {
+      const locked = item.requiresFeature != null && !isNavItemVisibleForPlan(item, filter)
+      return {
+        ...item,
+        badge: item.requiresFeature ? 'Pro' : item.badge,
+        planLocked: locked,
+      }
+    }),
+  }))
+}
 
 /**
  * Mega-menu Paramètres filtré selon le plan (API Pro, quotas Free).
@@ -174,7 +238,7 @@ export function createNavSettingsGroup(filter: SettingsNavFilter = {}): NavGroup
       description: 'SIRET, adresse et coordonnées de facturation.',
       to: '/parametres/entreprise',
       cta: 'Configurer',
-      secondaryCta: { label: 'Abonnement', to: '/parametres/abonnement' },
+      secondaryCta: { label: 'Tous les réglages', to: '/parametres' },
       icon: <BusinessIcon />,
       accent: 'amber',
     },
@@ -186,7 +250,8 @@ export function createNavSettingsGroup(filter: SettingsNavFilter = {}): NavGroup
         description: item.description,
         icon: item.icon,
         section: item.section,
-        badge: item.requiresPro ? 'Pro' : undefined,
+        badge: item.planLocked || item.requiresPro ? 'Pro' : undefined,
+        planLocked: item.planLocked,
       })),
   }
 }

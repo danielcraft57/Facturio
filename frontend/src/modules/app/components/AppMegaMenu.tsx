@@ -21,6 +21,8 @@ import type { NavFeatured, NavGroup, NavItem } from '../config/navConfig'
 import { isGroupActive, isNavActive } from '../config/navConfig'
 import { topNavItemSx } from './topNavItemStyles'
 import { prefetchFinanceRouteFromPath } from '../../../utils/prefetchFinanceRoutes'
+import { ProPlanBadge } from '../../../components/billing/ProPlanBadge'
+import { SettingsMegaMenuColumns } from './SettingsMegaMenuColumns'
 
 /** Au-dessus de l’AppBar (drawer+2) et des panneaux latéraux. */
 const MEGA_MENU_Z_INDEX = 1500
@@ -110,6 +112,7 @@ function MegaMenuItem({
         color: 'text.primary',
         border: '1px solid',
         borderColor: selected ? alpha(theme.palette.primary.main, 0.45) : 'transparent',
+        opacity: item.planLocked ? 0.72 : 1,
         transition:
           'background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
         bgcolor: selected ? alpha(theme.palette.primary.main, isDark ? 0.18 : 0.07) : 'transparent',
@@ -141,10 +144,12 @@ function MegaMenuItem({
           transition: 'transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease',
           bgcolor: selected
             ? alpha(theme.palette.primary.main, isDark ? 0.25 : 0.1)
-            : isDark
-              ? alpha('#fff', 0.06)
-              : alpha('#0f172a', 0.05),
-          color: selected ? 'primary.main' : 'text.secondary',
+            : item.planLocked
+              ? alpha('#b45309', isDark ? 0.18 : 0.1)
+              : isDark
+                ? alpha('#fff', 0.06)
+                : alpha('#0f172a', 0.05),
+          color: selected ? 'primary.main' : item.planLocked ? '#b45309' : 'text.secondary',
         }}
       >
         {item.icon}
@@ -158,7 +163,9 @@ function MegaMenuItem({
           >
             {item.label}
           </Typography>
-          {item.badge && (
+          {item.badge === 'Pro' ? (
+            <ProPlanBadge />
+          ) : item.badge ? (
             <Chip
               label={item.badge}
               size="small"
@@ -170,7 +177,7 @@ function MegaMenuItem({
                 color: '#b45309',
               }}
             />
-          )}
+          ) : null}
         </Box>
         {item.description && !compact && (
           <Typography
@@ -511,7 +518,11 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                   elevation={0}
                   sx={{
                     width: isCompact
-                      ? { md: 'min(880px, calc(100vw - 32px))', lg: 920, xl: 940 }
+                      ? {
+                          md: group.id === 'parametres' ? 'min(1000px, calc(100vw - 32px))' : 'min(880px, calc(100vw - 32px))',
+                          lg: group.id === 'parametres' ? 1000 : 920,
+                          xl: group.id === 'parametres' ? 1020 : 940,
+                        }
                       : { md: 'min(720px, calc(100vw - 32px))', lg: 800, xl: 860 },
                     maxWidth: 'calc(100vw - 24px)',
                     borderRadius: 2.5,
@@ -602,7 +613,7 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                     <Box
                       sx={{
                         p: isCompact ? 1.25 : 1.75,
-                        display: 'grid',
+                        display: group.id === 'parametres' ? 'block' : 'grid',
                         gridTemplateColumns: isCompact
                           ? 'repeat(4, minmax(0, 1fr))'
                           : 'repeat(2, minmax(0, 1fr))',
@@ -620,40 +631,23 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                           {renderMenuItems(encours, location.pathname, close, open, activity.length)}
                         </>
                       ) : group.id === 'parametres' ? (
-                        <>
-                          <MenuSectionLabel sx={{ pt: 0, gridColumn: 'span 2' }}>Compte</MenuSectionLabel>
-                          <MenuSectionLabel sx={{ pt: 0, gridColumn: 'span 2' }}>Facturation</MenuSectionLabel>
-                          {renderMenuItems(compte, location.pathname, close, open, 0, true)}
-                          {renderMenuItems(facturation, location.pathname, close, open, compte.length, true)}
-                          <MenuSectionLabel
-                            sx={{
-                              pt: 1,
-                              gridColumn: api.length > 0 ? 'span 2' : '1 / -1',
-                            }}
-                          >
-                            Données
-                          </MenuSectionLabel>
-                          {api.length > 0 && (
-                            <MenuSectionLabel sx={{ pt: 1, gridColumn: 'span 2' }}>API Pro</MenuSectionLabel>
+                        <SettingsMegaMenuColumns
+                          compte={compte}
+                          facturation={facturation}
+                          donnees={donnees}
+                          api={api}
+                          renderItem={(item, index) => (
+                            <MegaMenuItem
+                              key={item.to}
+                              item={item}
+                              selected={isNavActive(location.pathname, item.to)}
+                              onNavigate={close}
+                              staggerIndex={index}
+                              menuOpen={open}
+                              compact
+                            />
                           )}
-                          {renderMenuItems(
-                            donnees,
-                            location.pathname,
-                            close,
-                            open,
-                            compte.length + facturation.length,
-                            true,
-                          )}
-                          {api.length > 0 &&
-                            renderMenuItems(
-                              api,
-                              location.pathname,
-                              close,
-                              open,
-                              compte.length + facturation.length + donnees.length,
-                              true,
-                            )}
-                        </>
+                        />
                       ) : (
                         <>
                           {other.map((item, index) => {

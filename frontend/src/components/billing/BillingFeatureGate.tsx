@@ -1,8 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Alert, Box, Button, CircularProgress } from '@mui/material'
-import { Link as RouterLink } from 'react-router-dom'
-import { billingService, type BillingUsage } from '../../services/billing'
-import { unwrapApiPayload } from '../../services/clients'
+import { type ReactNode } from 'react'
+import { Alert, Box, CircularProgress } from '@mui/material'
+import { PlanUpgradePanel } from './PlanUpgradePanel'
+import { useBillingGate } from './useBillingGate'
 
 export type BillingGatedFeature = 'publicApi' | 'accounting' | 'financeModule'
 
@@ -10,6 +9,7 @@ type BillingFeatureGateProps = {
   children: ReactNode
   feature: BillingGatedFeature
   featureLabel?: string
+  highlights?: string[]
 }
 
 /**
@@ -19,50 +19,29 @@ export function BillingFeatureGate({
   children,
   feature,
   featureLabel = 'cette fonctionnalité',
+  highlights,
 }: BillingFeatureGateProps) {
-  const [usage, setUsage] = useState<BillingUsage | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await billingService.getUsage()
-        if (!cancelled) setUsage(unwrapApiPayload<BillingUsage>(res))
-      } catch {
-        if (!cancelled) setError('Impossible de charger votre abonnement.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const { usage, loading, error } = useBillingGate()
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
         <CircularProgress size={32} />
       </Box>
     )
   }
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    )
   }
 
   if (!usage?.limits[feature]) {
     return (
-      <Alert severity="info" sx={{ mb: 2 }}>
-        {featureLabel} est réservée au plan <strong>Pro</strong> (ou supérieur).
-        <Box sx={{ mt: 2 }}>
-          <Button component={RouterLink} to="/parametres/abonnement" variant="contained" size="small">
-            Voir les offres Pro
-          </Button>
-        </Box>
-      </Alert>
+      <PlanUpgradePanel featureLabel={featureLabel} feature={feature} highlights={highlights} />
     )
   }
 

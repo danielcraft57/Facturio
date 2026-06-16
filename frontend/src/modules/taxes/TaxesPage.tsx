@@ -10,6 +10,7 @@ import { financeCardSx, financeKpiGradients, financePagePadding, financePrimaryB
 import { accountingService, type FinanceSummary } from '../../services/accounting'
 import { unwrapApiPayload } from '../../services/clients'
 import { formatCurrency } from '../../utils/formatters'
+import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 
 const shortcuts = [
   {
@@ -43,6 +44,7 @@ export function TaxesPage() {
   }, [])
 
   return (
+    <BillingFeatureGate feature="accounting" featureLabel="Le centre fiscal et la TVA">
     <Box sx={{ p: financePagePadding }}>
       <PageHeader
         title="Taxes"
@@ -160,5 +162,6 @@ export function TaxesPage() {
         ))}
       </Stack>
     </Box>
+    </BillingFeatureGate>
   )
 }

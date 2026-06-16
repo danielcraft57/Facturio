@@ -1,8 +1,10 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { FilingsService } from './filings.service';
 import { AuthorityType, FilingStatus, FilingType } from '@prisma/client';
 import { Request } from 'express';
+import { AccountingPlanGuard } from '../billing/guards/accounting-plan.guard';
 
+@UseGuards(AccountingPlanGuard)
 @Controller('filings')
 export class FilingsController {
 	constructor(private readonly filings: FilingsService) {}

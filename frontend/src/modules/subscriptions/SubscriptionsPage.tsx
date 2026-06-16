@@ -39,6 +39,7 @@ import {
 } from '@mui/icons-material'
 import { subscriptionsService, type Plan, type Subscription } from '../../services/subscriptions'
 import { formatCurrency, formatDate } from '../../utils/formatters'
+import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -211,6 +212,7 @@ export function SubscriptionsPage() {
   const safeSubscriptions = Array.isArray(subscriptions) ? subscriptions : []
 
   return (
+    <BillingFeatureGate feature="accounting" featureLabel="Le suivi des abonnements clients récurrents">
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
         <Typography variant="h4" sx={{ flexGrow: 1 }}>
@@ -580,5 +582,6 @@ export function SubscriptionsPage() {
         </DialogActions>
       </Dialog>
     </Box>
+    </BillingFeatureGate>
   )
 }

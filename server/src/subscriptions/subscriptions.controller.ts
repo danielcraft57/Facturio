@@ -1,7 +1,9 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { CreatePlanDto, CreateSubscriptionDto, SubscriptionsService, UpdatePlanDto, UpdateSubscriptionDto } from './subscriptions.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AccountingPlanGuard } from '../billing/guards/accounting-plan.guard';
 
+@UseGuards(AccountingPlanGuard)
 @Controller('subscriptions')
 export class SubscriptionsController {
 	constructor(private readonly subs: SubscriptionsService) {}

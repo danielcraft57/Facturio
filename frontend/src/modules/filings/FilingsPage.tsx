@@ -43,6 +43,7 @@ import {
   financeTableHeadSx,
   financeTableSx,
 } from '../../components/finance/financeStyles'
+import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 
 export function FilingsPage() {
   const [filings, setFilings] = useState<Filing[]>([])
@@ -127,6 +128,7 @@ export function FilingsPage() {
   }
 
   return (
+    <BillingFeatureGate feature="accounting" featureLabel="Les déclarations fiscales">
     <Box sx={{ p: financePagePadding }}>
       <PageHeader
         title="Déclarations"
@@ -284,5 +286,6 @@ export function FilingsPage() {
         </DialogActions>
       </Dialog>
     </Box>
+    </BillingFeatureGate>
   )
 }

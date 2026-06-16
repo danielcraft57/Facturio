@@ -14,6 +14,7 @@ import { formatCurrency } from '../../utils/formatters'
 import { useToast } from '../../components/useToast'
 import { WorkspacePreparationDialog } from '../../components/loading/WorkspacePreparationDialog'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
+import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 
 function debtToArchiveRow(d: PayableDebtRow): ArchiveRow {
   return {
@@ -81,6 +82,7 @@ export function PayablesArchivePage() {
   const initialLoading = loading && groups.length === 0 && !error
 
   return (
+    <BillingFeatureGate feature="financeModule" featureLabel="Les archives de dettes fournisseurs">
     <Box sx={{ p: financePagePadding }}>
       <WorkspacePreparationDialog open={initialLoading} resource="archives-dettes" />
       <PageHeader
@@ -117,5 +119,6 @@ export function PayablesArchivePage() {
         />
       )}
     </Box>
+    </BillingFeatureGate>
   )
 }
