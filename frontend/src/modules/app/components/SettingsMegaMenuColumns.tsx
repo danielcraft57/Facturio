@@ -64,12 +64,13 @@ export function SettingsMegaMenuColumns({
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
 
-  const columns: SettingsColumnDef[] = [
+  const allColumns: SettingsColumnDef[] = [
     { id: 'compte', label: SETTINGS_SECTION_LABELS.compte, items: compte },
     { id: 'facturation', label: SETTINGS_SECTION_LABELS.facturation, items: facturation },
     { id: 'donnees', label: SETTINGS_SECTION_LABELS.donnees, items: donnees },
     { id: 'api', label: SETTINGS_SECTION_LABELS.api, items: api, proSection: true },
-  ].filter((col) => col.items.length > 0)
+  ]
+  const columns = allColumns.filter((col) => col.items.length > 0)
 
   const columnCount = columns.length
 
