@@ -23,7 +23,7 @@ if [ -z "$APP_USER" ]; then
 fi
 
 if [ ! -d "$LOCAL_DIR/server" ] || [ ! -d "$LOCAL_DIR/frontend" ]; then
-    echo "ERREUR: Ce script doit être exécuté depuis le répertoire Facturio"
+    echo "ERREUR: Ce script doit être exécuté depuis le répertoire PrestaFacture"
     exit 1
 fi
 

@@ -9,7 +9,7 @@ const LINKS = [
   { to: '/privacy', label: 'Confidentialité' },
 ] as const
 
-/** Liens légaux Facturio (pages marketing). */
+/** Liens légaux PrestaFacture (pages marketing). */
 export function LegalLinksRow() {
   return (
     <Box
@@ -25,7 +25,7 @@ export function LegalLinksRow() {
           Informations légales
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Facturio est édité par {DANIELCRAFT_PUBLISHER.legalName} — SIRET {DANIELCRAFT_PUBLISHER.siret}
+          PrestaFacture est édité par {DANIELCRAFT_PUBLISHER.legalName} — SIRET {DANIELCRAFT_PUBLISHER.siret}
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', mb: 2 }}>
           {LINKS.map((link) => (

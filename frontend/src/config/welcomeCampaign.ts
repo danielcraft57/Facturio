@@ -16,7 +16,7 @@ export function isWelcomeCampaignActive(now: Date = new Date()): boolean {
 /**
  * Clé de persistance « déjà vu » pour un utilisateur.
  *
- * @param userId - Identifiant utilisateur Facturio
+ * @param userId - Identifiant utilisateur PrestaFacture
  */
 export function welcomeCampaignStorageKey(userId: string | number): string {
   return `${WELCOME_CAMPAIGN_STORAGE_PREFIX}_${userId}`

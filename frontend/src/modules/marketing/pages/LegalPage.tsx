@@ -3,7 +3,7 @@ import { MarketingHero } from '../components/MarketingHero'
 import { LegalSections } from '../../legal/LegalSections'
 import { LegalPublisherCard } from '../../legal/LegalPublisherCard'
 import { LEGAL_MENTIONS_SECTIONS } from '../../legal/content'
-import { DANIELCRAFT_PUBLISHER, FACTURIO_SERVICE } from '../../legal/danielcraftPublisher'
+import { DANIELCRAFT_PUBLISHER, PRESTAFACTURE_SERVICE } from '../../legal/danielcraftPublisher'
 
 export function LegalPage() {
   return (
@@ -11,7 +11,7 @@ export function LegalPage() {
       <MarketingHero
         compact
         title="Mentions légales"
-        subtitle={`Service ${FACTURIO_SERVICE.name} — édité par ${DANIELCRAFT_PUBLISHER.tradeName}.`}
+        subtitle={`Service ${PRESTAFACTURE_SERVICE.name} — édité par ${DANIELCRAFT_PUBLISHER.tradeName}.`}
         secondaryCta={null}
       />
       <Container maxWidth="md" sx={{ py: 6 }}>
@@ -25,7 +25,7 @@ export function LegalPage() {
         </Alert>
         <LegalPublisherCard />
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 3 }}>
-          Dernière mise à jour Facturio : {DANIELCRAFT_PUBLISHER.facturioLegalUpdated}
+          Dernière mise à jour PrestaFacture : {DANIELCRAFT_PUBLISHER.prestafactureLegalUpdated}
         </Typography>
         <LegalSections sections={LEGAL_MENTIONS_SECTIONS} />
       </Container>

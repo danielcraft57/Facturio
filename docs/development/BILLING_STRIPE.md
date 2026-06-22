@@ -1,4 +1,4 @@
-# Abonnements Facturio (Stripe plateforme)
+# Abonnements PrestaFacture (Stripe plateforme)
 
 ## Flux
 
@@ -16,7 +16,7 @@
 
 ### Résiliation « en fin de période » (Stripe)
 
-Quand l’utilisateur annule dans le portail, Stripe garde l’abonnement **actif** jusqu’à la fin de la période déjà payée (`cancel_at_period_end: true`). Facturio enregistre le statut `cancel_at_period_end` : l’UI affiche **Résiliation programmée** et la date de fin d’accès ; **aucun email « abonnement terminé »** tant que le mois payé n’est pas écoulé. À la fin de période, webhook `customer.subscription.deleted` → repasse en plan Free.
+Quand l’utilisateur annule dans le portail, Stripe garde l’abonnement **actif** jusqu’à la fin de la période déjà payée (`cancel_at_period_end: true`). PrestaFacture enregistre le statut `cancel_at_period_end` : l’UI affiche **Résiliation programmée** et la date de fin d’accès ; **aucun email « abonnement terminé »** tant que le mois payé n’est pas écoulé. À la fin de période, webhook `customer.subscription.deleted` → repasse en plan Free.
 
 ## Moyens de paiement Checkout
 
@@ -28,7 +28,7 @@ Quand l’utilisateur annule dans le portail, Stripe garde l’abonnement **acti
 
 - Avant la session, le serveur met à jour le **Customer Stripe** (`cus_…`) : email, nom, téléphone, adresse org si renseignée — **données enregistrées chez Stripe** (préremplissage email sur Checkout).
 - Après paiement, le **moyen de paiement** (carte ou PayPal) est attaché au client pour les prélèvements d’abonnement.
-- La page est **hébergée par Stripe** (pas de HTML custom) ; personnalisation via `branding_settings`, Dashboard et fiche org Facturio.
+- La page est **hébergée par Stripe** (pas de HTML custom) ; personnalisation via `branding_settings`, Dashboard et fiche org PrestaFacture.
 - `billing_address_collection: required` + `customer_update` pour compléter / corriger sur Checkout.
 - **Style** : `branding_settings` (`display_name`, `border_style`, `font_family`, logo optionnel) et `custom_text.submit` ; variables `STRIPE_CHECKOUT_*` (voir `server/env.example`). Logo : uploader un fichier via l’[API Files Stripe](https://docs.stripe.com/api/files) puis renseigner `STRIPE_CHECKOUT_LOGO_FILE_ID=file_…`.
 - Référence Stripe : [Customize Checkout](https://docs.stripe.com/payments/checkout/customize).

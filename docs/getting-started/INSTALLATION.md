@@ -1,6 +1,6 @@
-# Guide d'installation - Facturio
+# Guide d'installation - PrestaFacture
 
-Guide complet pour installer et démarrer Facturio en local.
+Guide complet pour installer et démarrer PrestaFacture en local.
 
 ## Prérequis
 
@@ -22,7 +22,7 @@ git --version
 
 ```bash
 git clone https://github.com/loupix/Facturio.git
-cd Facturio
+cd PrestaFacture
 ```
 
 ### 2. Installer les dépendances backend

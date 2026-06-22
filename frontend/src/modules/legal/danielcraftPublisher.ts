@@ -1,6 +1,6 @@
 /**
  * Identité légale de l’éditeur — alignée sur https://danielcraft.fr (mentions légales, CGU, CGV).
- * Facturio est un service édité par DanielCraft.
+ * PrestaFacture est un service édité par DanielCraft.
  */
 export const DANIELCRAFT_PUBLISHER = {
   tradeName: 'DanielCraft',
@@ -17,11 +17,11 @@ export const DANIELCRAFT_PUBLISHER = {
   website: 'https://danielcraft.fr',
   websiteLabel: 'danielcraft.fr',
   legalPagesUpdated: 'janvier 2025',
-  facturioLegalUpdated: 'mai 2026',
+  prestafactureLegalUpdated: 'mai 2026',
 } as const
 
-export const FACTURIO_SERVICE = {
-  name: 'Facturio',
+export const PRESTAFACTURE_SERVICE = {
+  name: 'PrestaFacture',
   description:
     'Logiciel de facturation en ligne (devis, factures, catalogue, conformité réforme 2026) destiné aux prestataires de services numériques.',
 } as const

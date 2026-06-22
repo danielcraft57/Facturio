@@ -215,7 +215,7 @@ model UserSession {
   @@index([lastActivityAt])
 }
 
-/// Journal idempotent des webhooks Stripe plateforme (abonnement Facturio)
+/// Journal idempotent des webhooks Stripe plateforme (abonnement PrestaFacture)
 model StripePlatformEvent {
   id             Int           @id @default(autoincrement())
   eventId        String        @unique

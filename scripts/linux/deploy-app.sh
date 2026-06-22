@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script pour déployer Facturio sur un serveur applicatif
+# Script pour déployer PrestaFacture sur un serveur applicatif
 # Usage : DEPLOY_APP_SERVER=votre-server.lan DEPLOY_SSH_USER=votre_user ./scripts/linux/deploy-app.sh
 # Ou : ./scripts/linux/deploy-app.sh votre-server.lan votre_user
 
@@ -24,11 +24,11 @@ if [ -z "$APP_USER" ]; then
 fi
 
 if [ ! -d "$LOCAL_DIR/server" ] || [ ! -d "$LOCAL_DIR/frontend" ]; then
-    echo "ERREUR: Ce script doit être exécuté depuis le répertoire Facturio"
+    echo "ERREUR: Ce script doit être exécuté depuis le répertoire PrestaFacture"
     exit 1
 fi
 
-echo "=== Déploiement de Facturio ==="
+echo "=== Déploiement de PrestaFacture ==="
 echo "Serveur: $APP_SERVER"
 echo "Utilisateur: $APP_USER"
 echo "Répertoire distant: $APP_DIR"

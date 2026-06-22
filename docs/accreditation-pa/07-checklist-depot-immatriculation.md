@@ -19,7 +19,7 @@ Guide : [PDF impots.gouv.fr](https://www.impots.gouv.fr/sites/default/files/medi
 
 ## Juridique & RGPD
 
-- [ ] Politique de confidentialité à jour (Facturio + danielcraft.fr)
+- [ ] Politique de confidentialité à jour (PrestaFacture + danielcraft.fr)
 - [ ] Mentions légales et CGU/CGV
 - [ ] Registre des activités de traitement
 - [ ] Analyse d’impact (AIPD) si traitements à risque
@@ -36,7 +36,7 @@ Guide : [PDF impots.gouv.fr](https://www.impots.gouv.fr/sites/default/files/medi
 
 ## Hébergement
 
-- [ ] Nom et adresse de l’hébergeur Facturio production
+- [ ] Nom et adresse de l’hébergeur PrestaFacture production
 - [ ] Localisation des datacenters (**UE**)
 - [ ] Engagement non-transfert hors UE (ou clauses types)
 - [ ] **SecNumCloud** si hébergement cloud tiers requis
@@ -59,7 +59,7 @@ Guide : [PDF impots.gouv.fr](https://www.impots.gouv.fr/sites/default/files/medi
 
 - [x] Synthèse exécutive
 - [x] Identité DanielCraft
-- [x] Architecture & technique Facturio
+- [x] Architecture & technique PrestaFacture
 - [x] Sécurité / RGPD
 - [x] Plan ISO 27001
 - [ ] Kbis, ISO, contrats hébergeur — **à ajouter dans `annexes/pieces-jointes/`** (non versionnées si sensibles)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Raccourcis exploitation Facturio (plans SaaS, purge factures).
+# Raccourcis exploitation PrestaFacture (plans SaaS, purge factures).
 # Usage : ./scripts/deploy/ops-facturio.sh <commande> <email|org:id> [options…]
 #
 # Exemples (sur node10, après chmod +x) :

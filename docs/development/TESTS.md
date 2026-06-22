@@ -1,6 +1,6 @@
-# Guide des tests - Facturio
+# Guide des tests - PrestaFacture
 
-Documentation sur les tests dans le projet Facturio.
+Documentation sur les tests dans le projet PrestaFacture.
 
 ## Vue d'ensemble
 

@@ -1,4 +1,4 @@
-# AGENTS.md — Facturio
+# AGENTS.md — PrestaFacture
 
 Guide pour les agents Cursor travaillant sur ce dépôt.
 
@@ -6,8 +6,8 @@ Guide pour les agents Cursor travaillant sur ce dépôt.
 
 | Hôte | Rôle |
 |------|------|
-| **node12.lan** | Nginx reverse proxy HTTPS (`facturio.danielcraft.fr`, `devis.`, `facture.`) |
-| **node10.lan** | Application Facturio (`/opt/facturio`) : NestJS `:3000`, Nginx local `:5173` (frontend `dist`) |
+| **node12.lan** | Nginx reverse proxy HTTPS (`prestafacture.com`, `devis.`, `facture.`) |
+| **node10.lan** | Application PrestaFacture (`/opt/facturio`) : NestJS `:3000`, Nginx local `:5173` (frontend `dist`) |
 
 Hostname applicatif : **node10.lan** (pas `raspberry-10` dans les configs).
 

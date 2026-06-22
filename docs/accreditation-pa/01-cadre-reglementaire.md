@@ -11,7 +11,7 @@
 
 - **Plateforme Agréée (PA)** — ex-PDP : opérateur habilité pour transmission B2B et flux vers l’administration (e-reporting).
 - **Portail Public de Facturation (PPF)** : portail public ; les PA s’y connectent.
-- **Solution compatible** : logiciel métier (Facturio) qui prépare les factures et délègue la transmission à une PA.
+- **Solution compatible** : logiciel métier (PrestaFacture) qui prépare les factures et délègue la transmission à une PA.
 
 ## Formats acceptés
 
@@ -25,8 +25,8 @@
 - [Demande d’immatriculation PA](https://demarche.numerique.gouv.fr/commencer/immatpdp)
 - [Guide immatriculation PA (PDF)](https://www.impots.gouv.fr/sites/default/files/media/1_metier/2_professionnel/EV/2_gestion/290_facturation_electronique/guide_utilisateur_fe_ds_immatriculation_pdp.pdf)
 
-## Position Facturio
+## Position PrestaFacture
 
-Facturio vise en priorité le statut de **solution compatible** connectée à une PA, tout en constituant ce dossier pour une **éventuelle immatriculation PA** à moyen terme.
+PrestaFacture vise en priorité le statut de **solution compatible** connectée à une PA, tout en constituant ce dossier pour une **éventuelle immatriculation PA** à moyen terme.
 
 Voir [FACTURATION_ELECTRONIQUE_2026.md](../planning/FACTURATION_ELECTRONIQUE_2026.md) pour la roadmap produit détaillée.

@@ -11,7 +11,7 @@ export function TermsPage() {
       <MarketingHero
         compact
         title="Conditions générales d'utilisation"
-        subtitle="Règles d'usage du service Facturio."
+        subtitle="Règles d'usage du service PrestaFacture."
         secondaryCta={null}
       />
       <Container maxWidth="md" sx={{ py: 6 }}>

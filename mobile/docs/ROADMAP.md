@@ -1,6 +1,6 @@
-# Roadmap — Facturio Mobile
+# Roadmap — PrestaFacture Mobile
 
-Application React Native (Expo) pour **tablette et mobile**, alignée sur la charte visuelle Facturio (maquettes dashboard + factures).
+Application React Native (Expo) pour **tablette et mobile**, alignée sur la charte visuelle PrestaFacture (maquettes dashboard + factures).
 
 ## Phase 0 — Fondations (en cours)
 

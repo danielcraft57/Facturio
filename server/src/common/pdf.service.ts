@@ -18,7 +18,7 @@ import {
 import { getSaasPlanLimits } from '../billing/saas-plan.limits';
 import { resolveEffectiveSaasPlan } from '../billing/saas-plan.util';
 
-const FREE_PLAN_PDF_WATERMARK = 'Essai gratuit Facturio — facturio.danielcraft.fr';
+const FREE_PLAN_PDF_WATERMARK = 'Essai gratuit PrestaFacture — prestafacture.com';
 
 /**
  * Génération PDF factures et devis — template corporate (bleu marine / rouge).
@@ -278,7 +278,7 @@ export class PdfService {
 					margins: { top: 50, bottom: 50, left: 50, right: 50 },
 					info: {
 						Title: `Contrat d'engagement ${quote.number}`,
-						Author: 'Facturio',
+						Author: 'PrestaFacture',
 						Subject: `Contrat d'engagement — devis ${quote.number}`,
 					},
 				});
@@ -301,7 +301,7 @@ export class PdfService {
 		});
 	}
 
-	/** Facture d'abonnement Facturio (émetteur = variables .env plateforme). */
+	/** Facture d'abonnement PrestaFacture (émetteur = variables .env plateforme). */
 	generateSubscriptionInvoicePdf(payload: {
 		number: string;
 		date: Date | string;
@@ -407,7 +407,7 @@ export class PdfService {
 					margins: { top: 0, bottom: 50, left: 0, right: 0 },
 					info: {
 						Title: params.pdfTitle,
-						Author: 'Facturio',
+						Author: 'PrestaFacture',
 						Subject: params.pdfTitle
 					}
 				});

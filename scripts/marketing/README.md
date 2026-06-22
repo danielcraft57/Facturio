@@ -1,4 +1,4 @@
-# Scripts marketing — Facturio
+# Scripts marketing — PrestaFacture
 
 ## TTS publicité (`generate_facturio_marketing_tts.py`)
 

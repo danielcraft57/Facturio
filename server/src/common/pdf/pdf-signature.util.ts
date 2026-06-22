@@ -54,11 +54,11 @@ export function resolveSubscriptionSignature(): string | null {
 	return raw || null;
 }
 
-/** Organisation « émetteur » pour les factures d'abonnement Facturio (variables .env). */
+/** Organisation « émetteur » pour les factures d'abonnement PrestaFacture (variables .env). */
 export function buildPlatformIssuerOrganization(): Record<string, unknown> {
 	return {
-		name: process.env.COMPANY_NAME ?? 'Facturio',
-		legalName: process.env.COMPANY_NAME ?? 'Facturio',
+		name: process.env.COMPANY_NAME ?? 'PrestaFacture',
+		legalName: process.env.COMPANY_NAME ?? 'PrestaFacture',
 		address: process.env.COMPANY_ADDRESS ?? '',
 		email: process.env.COMPANY_EMAIL ?? '',
 		phone: process.env.COMPANY_PHONE ?? '',

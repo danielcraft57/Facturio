@@ -1,7 +1,7 @@
 {
   "meta": {
-    "project": "facturio",
-    "title": "Publicité réseaux — Facturio 2026",
+    "project": "prestafacture",
+    "title": "Publicité réseaux — PrestaFacture 2026",
     "default_voice": "fr-FR-DeniseNeural",
     "pause_between_segments_ms": 450,
     "productionRoot": "docs/marketing/pub-2026"
@@ -14,14 +14,14 @@
         {
           "id": "01-hook",
           "captureSlug": "dashboard",
-          "visual": "Logo Facturio + accroche",
+          "visual": "Logo PrestaFacture + accroche",
           "text": "Vous codez. Vous facturez encore à la main ?"
         },
         {
           "id": "02-positionnement",
           "captureSlug": "factures-inbox",
           "visual": "Liste factures",
-          "text": "Facturio, la facturation pensée pour les devs et intégrateurs."
+          "text": "PrestaFacture, la facturation pensée pour les devs et intégrateurs."
         },
         {
           "id": "03-cycle",
@@ -45,7 +45,7 @@
           "id": "06-efacture",
           "captureSlug": "parametres-efacture",
           "visual": "Paramètres e-facture",
-          "text": "Et la réforme e-facture 2026 ? Réception obligatoire dès septembre. Facturio vous prépare."
+          "text": "Et la réforme e-facture 2026 ? Réception obligatoire dès septembre. PrestaFacture vous prépare."
         },
         {
           "id": "07-conformite",
@@ -57,7 +57,7 @@
           "id": "08-cta",
           "captureSlug": "menu-commercial",
           "visual": "Navigation produit",
-          "text": "Compte gratuit sur facturio point danielcraft point fr. Votre premier devis en dix minutes."
+          "text": "Compte gratuit sur prestafacture point com. Votre premier devis en dix minutes."
         }
       ]
     },

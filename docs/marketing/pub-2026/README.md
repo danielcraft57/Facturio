@@ -24,7 +24,7 @@ MARKETING_SCREENSHOT_PROFILE=desktop
 WEBSITE_SCREENSHOT_SCROLL_ENABLED=true
 ```
 
-## Commandes (racine Facturio)
+## Commandes (racine PrestaFacture)
 
 ```bash
 npm run seed:playwright --prefix server

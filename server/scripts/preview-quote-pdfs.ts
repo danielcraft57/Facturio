@@ -186,7 +186,7 @@ async function main(): Promise<void> {
 code{background:#f1f5f9;padding:2px 6px;border-radius:4px}</style></head>
 <body>
 <h1>Exemples devis PDF (local)</h1>
-<p>Palette Facturio (#0f172a), stack expliquée en langage simple, signature masquée si absente.</p>
+<p>Palette PrestaFacture (#0f172a), stack expliquée en langage simple, signature masquée si absente.</p>
 <ul>${links}</ul>
 </body></html>`;
 

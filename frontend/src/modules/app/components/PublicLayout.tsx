@@ -138,7 +138,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 mr: { md: 1 },
               }}
             >
-              Facturio
+              PrestaFacture
             </Typography>
 
             {/* Tablette + desktop : nav horizontale (md+) */}

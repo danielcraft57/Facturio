@@ -28,7 +28,7 @@ function mapStripeLines(invoice: Record<string, unknown>): SubscriptionInvoicePd
 		const total = Number(invoice.amount_paid ?? invoice.total ?? 0) / 100;
 		return [
 			{
-				description: 'Abonnement Facturio',
+				description: 'Abonnement PrestaFacture',
 				quantity: 1,
 				unitPrice: total,
 				total,
@@ -40,7 +40,7 @@ function mapStripeLines(invoice: Record<string, unknown>): SubscriptionInvoicePd
 		const amountCents = Number(line.amount ?? 0);
 		const unit = amountCents / 100 / qty;
 		return {
-			description: String(line.description ?? 'Abonnement Facturio'),
+			description: String(line.description ?? 'Abonnement PrestaFacture'),
 			quantity: qty,
 			unitPrice: unit,
 			total: amountCents / 100,

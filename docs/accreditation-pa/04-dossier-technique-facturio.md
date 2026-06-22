@@ -1,4 +1,4 @@
-# Dossier technique — module e-invoicing Facturio
+# Dossier technique — module e-invoicing PrestaFacture
 
 ## Stack
 

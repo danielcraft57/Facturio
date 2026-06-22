@@ -35,7 +35,7 @@ export interface StripePaymentIntentPayload {
 
 /**
  * Paiements Stripe des **factures clients** — utilise les clés Stripe **de l'organisation** (BDD).
- * Ne jamais utiliser les clés plateforme .env ici (réservées à l'abonnement Facturio).
+ * Ne jamais utiliser les clés plateforme .env ici (réservées à l'abonnement PrestaFacture).
  */
 @Injectable()
 export class StripeService {

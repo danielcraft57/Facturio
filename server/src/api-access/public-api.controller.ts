@@ -32,7 +32,7 @@ import { ParseIntPipe } from '@nestjs/common';
 import { SendPublicInvoiceDto } from './dto/send-public-invoice.dto';
 
 /**
- * API REST publique Facturio (Bearer token).
+ * API REST publique PrestaFacture (Bearer token).
  * Chemins en français pour éviter le conflit avec public/invoices/:token (pages client).
  */
 @Controller('public')
@@ -50,7 +50,7 @@ export class PublicApiController {
 	@Get()
 	info() {
 		return {
-			name: 'Facturio API publique',
+			name: 'PrestaFacture API publique',
 			version: '1',
 			resources: ['clients', 'produits', 'factures', 'devis'],
 			authentication: 'Authorization: Bearer <token>',

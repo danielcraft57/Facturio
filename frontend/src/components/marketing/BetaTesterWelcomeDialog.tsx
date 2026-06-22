@@ -134,7 +134,7 @@ export function BetaTesterWelcomeDialog() {
               Merci {firstName}, vous êtes des nôtres !
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-              Votre code beta a bien été pris en compte. Vous testez Facturio avec un accès complet
+              Votre code beta a bien été pris en compte. Vous testez PrestaFacture avec un accès complet
               {expiresLabel ? ` jusqu'au ${expiresLabel}` : ''}
               {daysLeft != null && daysLeft > 0 ? ` (${daysLeft} jour${daysLeft > 1 ? 's' : ''} restant${daysLeft > 1 ? 's' : ''})` : ''}.
             </Typography>

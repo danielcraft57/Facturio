@@ -162,7 +162,7 @@ const GLOSSARY: GlossaryRow[] = [
     key: 'VENTE_ENCAISSEMENT',
     label: 'Vente & encaissement',
     description:
-      'Facturio enregistre la vente à l’émission (VE : D 411 / C 706 + 44571) et l’encaissement à la date de paiement (BQ : D 512 / C 411).',
+      'PrestaFacture enregistre la vente à l’émission (VE : D 411 / C 706 + 44571) et l’encaissement à la date de paiement (BQ : D 512 / C 411).',
     examples: ['Vente : D 411 / C 706 + 44571', 'Paiement : D 512 / C 411'],
   },
   {
@@ -224,7 +224,7 @@ function AccountingGuide({
               Guide compta (interactif)
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 760 }}>
-              Comprendre rapidement les journaux, les sigles et les comptes affichés dans Facturio. Tape un mot-clé
+              Comprendre rapidement les journaux, les sigles et les comptes affichés dans PrestaFacture. Tape un mot-clé
               (ex: <b>411</b>, <b>TVA</b>, <b>VE</b>, <b>débit</b>) et le guide filtre automatiquement.
             </Typography>
             <TextField
@@ -344,7 +344,7 @@ function AccountingGuide({
           )}
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
             Astuce : si un compte apparaît en mouvement mais pas ici, il suffit de le créer (ou de déclencher une opération)
-            et Facturio l’ajoute au plan comptable.
+            et PrestaFacture l’ajoute au plan comptable.
           </Typography>
         </AccordionDetails>
       </Accordion>

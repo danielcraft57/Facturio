@@ -1,4 +1,4 @@
-# Roadmap Frontend Facturio
+# Roadmap Frontend PrestaFacture
 
 ## 🎯 Objectif
 Développer une interface moderne et intuitive pour la gestion complète de facturation, devis, clients et comptabilité.

@@ -85,7 +85,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
         </Avatar>
         <Box>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-            Facturio
+            PrestaFacture
           </Typography>
           <Typography variant="caption" sx={{ opacity: 0.75 }}>
             Facturation & finance
@@ -174,7 +174,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
               variant="h6"
               sx={{ fontWeight: 800, fontSize: { xs: '1.05rem', sm: '1.15rem' }, letterSpacing: '-0.03em' }}
             >
-              Facturio
+              PrestaFacture
             </Typography>
           </Box>
 

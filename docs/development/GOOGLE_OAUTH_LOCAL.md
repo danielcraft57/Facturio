@@ -2,7 +2,7 @@
 
 ## Symptôme
 
-Connexion Google OK chez Google, puis retour sur Facturio → **session invalide** / redirection vers `/login`.
+Connexion Google OK chez Google, puis retour sur PrestaFacture → **session invalide** / redirection vers `/login`.
 
 ## Cause fréquente
 
@@ -59,7 +59,7 @@ En `NODE_ENV=dev`, après OAuth le serveur redirige aussi avec `#access_token=�
 
 ## Production
 
-`GOOGLE_CALLBACK_URL=https://facturio.danielcraft.fr/api/auth/google/callback`  
+`GOOGLE_CALLBACK_URL=https://prestafacture.com/api/auth/google/callback`  
 (pas de token dans le hash — cookie HTTPS uniquement).
 
 ## Codes beta testeurs

@@ -41,7 +41,7 @@ const WIZARD_STEPS = ['Bienvenue', 'Profil', 'Stack', 'Validation', 'Installatio
 
 const STEP_TITLES: Record<number, { title: string; subtitle?: string }> = {
   0: {
-    title: 'Bienvenue sur Facturio',
+    title: 'Bienvenue sur PrestaFacture',
     subtitle: 'Facturation pensée pour les prestations web : dev, design, commercial, communication.',
   },
   1: {

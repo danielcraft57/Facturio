@@ -365,7 +365,7 @@ async function cmdPurge(target, flags) {
   console.log(`  Avoirs liés            : ${stats.avoirs}`);
   console.log(`  Quota mois : ${before} → ${after} (reset ${resetsAt.toISOString().slice(0, 10)})`);
   console.log(
-    '\nLes paiements Stripe test ne sont pas annulés côté Stripe — seules les données Facturio sont effacées.',
+    '\nLes paiements Stripe test ne sont pas annulés côté Stripe — seules les données PrestaFacture sont effacées.',
   );
 }
 

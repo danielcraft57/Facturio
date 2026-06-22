@@ -34,11 +34,11 @@ console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
 api
 	.send({
 		to,
-		subject: '[Test] Devis Facturio — images inline',
+		subject: '[Test] Devis PrestaFacture — images inline',
 		html,
-		text: 'Test email branded Facturio (devis).',
+		text: 'Test email branded PrestaFacture (devis).',
 		from: process.env.MAIL_FROM_QUOTE
-			? `${process.env.MAIL_FROM_QUOTE_NAME || 'Facturio Devis'} <${process.env.MAIL_FROM_QUOTE}>`
+			? `${process.env.MAIL_FROM_QUOTE_NAME || 'PrestaFacture Devis'} <${process.env.MAIL_FROM_QUOTE}>`
 			: undefined,
 	})
 	.then(() => {

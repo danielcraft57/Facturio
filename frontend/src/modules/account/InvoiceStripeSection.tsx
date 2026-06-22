@@ -254,7 +254,7 @@ export function InvoiceStripeSection({ profile, onUpdated }: Props) {
               </IconButton>
             }
           >
-            <strong>Même URL webhook</strong> que pour l’abonnement Facturio — à créer dans le Dashboard
+            <strong>Même URL webhook</strong> que pour l’abonnement PrestaFacture — à créer dans le Dashboard
             Stripe de <em>votre</em> compte prestataire :<br />
             <Typography component="code" variant="body2" sx={{ wordBreak: 'break-all', display: 'block', mt: 1 }}>
               {webhookUrl}

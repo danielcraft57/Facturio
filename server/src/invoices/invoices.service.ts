@@ -84,7 +84,7 @@ export interface CreateInvoiceInput {
 	sourceQuoteId?: string;
 	/** Mention légale affichée (acompte, TVA, etc.) — remplace la mention TVA auto si fournie */
 	legalMention?: string | null;
-	/** Déjà réglée hors Facturio (autre site, virement, etc.) */
+	/** Déjà réglée hors PrestaFacture (autre site, virement, etc.) */
 	paidExternally?: boolean;
 	externalPaymentDate?: string | Date;
 	externalPaymentMethod?: string;

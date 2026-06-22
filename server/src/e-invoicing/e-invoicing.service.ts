@@ -94,7 +94,7 @@ export class EInvoicingService {
 			hash,
 			filename: `factur-x-${invoice.number.replace(/\//g, '-')}.xml`,
 			disclaimer:
-				'Fichier XML simplifié EN 16931 (Facturio). L’envoi via Plateforme Agréée sera disponible dans une prochaine version.',
+				'Fichier XML simplifié EN 16931 (PrestaFacture). L’envoi via Plateforme Agréée sera disponible dans une prochaine version.',
 		};
 	}
 

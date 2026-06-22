@@ -2,8 +2,8 @@
 
 | Machine | Rôle |
 |---------|------|
-| **node12.lan** | Nginx public HTTPS (`facturio.danielcraft.fr`) |
-| **node10.lan** | App Facturio : backend `:3000`, frontend Nginx `:5173` (dist) |
+| **node12.lan** | Nginx public HTTPS (`prestafacture.com`) |
+| **node10.lan** | App PrestaFacture : backend `:3000`, frontend Nginx `:5173` (dist) |
 
 ## Déployer la config sur node12
 

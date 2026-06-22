@@ -1,4 +1,4 @@
-## Roadmap Facturio
+## Roadmap PrestaFacture
 
 Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 
@@ -91,7 +91,7 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 - Voir [POSITIONNEMENT_PRESTATIONS_SERVICES.md](./POSITIONNEMENT_PRESTATIONS_SERVICES.md)
 
 ### v1.3 - Facturation électronique B2B (réforme FR 2026–2027)
-- [ ] Cadrage stratégique (PA partenaire vs immatriculation PA Facturio)
+- [ ] Cadrage stratégique (PA partenaire vs immatriculation PA PrestaFacture)
 - [ ] Formats structurés (Factur-X prioritaire, UBL/CII)
 - [ ] Intégration API Plateforme Agréée partenaire (émission, statuts, annuaire)
 - [ ] Réception factures fournisseurs (entrant)
@@ -178,7 +178,7 @@ Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 
 ## 📊 Sources de Données & Intégrations OSINT (v1.8.0)
 
-### Données internes Facturio
+### Données internes PrestaFacture
 - [ ] **Historique financier** : factures, paiements, échéances, statuts
 - [ ] **Données d'interaction** : emails, vues de devis, utilisation plateforme
 - [ ] **Comportement client** : patterns d'achat, préférences, satisfaction

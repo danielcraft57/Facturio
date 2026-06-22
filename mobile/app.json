@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Facturio",
+    "name": "PrestaFacture",
     "slug": "facturio-mobile",
     "version": "0.1.0",
     "description": "Créez, envoyez et suivez vos factures depuis mobile et tablette.",
@@ -17,7 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "fr.danielcraft.facturio",
       "infoPlist": {
-        "CFBundleDisplayName": "Facturio"
+        "CFBundleDisplayName": "PrestaFacture"
       }
     },
     "android": {
@@ -32,8 +32,8 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "name": "Facturio",
-      "shortName": "Facturio",
+      "name": "PrestaFacture",
+      "shortName": "PrestaFacture",
       "description": "Facturation simple, rapide et professionnelle",
       "themeColor": "#002D3D",
       "backgroundColor": "#F1F5F9",

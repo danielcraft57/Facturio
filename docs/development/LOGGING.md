@@ -1,4 +1,4 @@
-# Journaux (logs) — Facturio
+# Journaux (logs) — PrestaFacture
 
 ## Backend (NestJS + Winston)
 

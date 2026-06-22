@@ -111,7 +111,7 @@ export function AuthBootPage() {
           <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.7 }}>
             Nous avons détecté une connexion depuis un nouvel appareil ou pendant une session active
             ailleurs. Un email vient de vous être envoyé — cliquez sur le lien pour accéder à
-            Facturio.
+            PrestaFacture.
           </Typography>
         </Box>
       </Box>

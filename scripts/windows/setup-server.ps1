@@ -10,7 +10,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== Installation et configuration du serveur Facturio ===" -ForegroundColor Cyan
+Write-Host "=== Installation et configuration du serveur PrestaFacture ===" -ForegroundColor Cyan
 Write-Host "Serveur: $Server"
 Write-Host ""
 

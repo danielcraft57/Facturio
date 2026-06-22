@@ -1,4 +1,4 @@
-Images marketing Facturio (public/images/)
+Images marketing PrestaFacture (public/images/)
 
 - facturio-hero.png — accueil / hero classique
 - facturio-features.png — page fonctionnalités

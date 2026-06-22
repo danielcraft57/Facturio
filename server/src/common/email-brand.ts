@@ -1,5 +1,5 @@
 /**
- * Identité visuelle des emails Facturio — alignée sur facturio.danielcraft.fr
+ * Identité visuelle des emails PrestaFacture — alignée sur prestafacture.com
  * (hero teal, preset Finance bleu / vert secondaire).
  */
 export const EMAIL_BRAND = {
@@ -44,9 +44,27 @@ const HEADER_FILES: Record<EmailHeaderVariant, string> = {
 
 import { resolvePublicAppBaseUrl } from './public-app-url';
 
+/** Nom de marque plateforme (emails, en-têtes) — MAIL_FROM_NAME puis COMPANY_NAME. */
+export function getPlatformBrandName(): string {
+	return (
+		process.env.MAIL_FROM_NAME?.trim() ||
+		process.env.COMPANY_NAME?.trim() ||
+		'PrestaFacture'
+	);
+}
+
 /** URL publique des images email (frontend :5173 en dev, domaine en prod). */
 export function getPublicAppBaseUrl(): string {
 	return resolvePublicAppBaseUrl();
+}
+
+/** Libellé domaine public pour pieds de page email (sans schéma). */
+export function getPublicAppDomainLabel(): string {
+	try {
+		return new URL(getPublicAppBaseUrl()).host.replace(/^www\./, '');
+	} catch {
+		return 'prestafacture.com';
+	}
 }
 
 export function getEmailAssetsBaseUrl(): string {

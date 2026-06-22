@@ -29,7 +29,7 @@ export function HeroDashboardMock() {
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="subtitle2" fontWeight={700} color="primary.main">
-          Facturio
+          PrestaFacture
         </Typography>
         <Chip label="Pro" size="small" color="primary" variant="outlined" />
       </Box>

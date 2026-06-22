@@ -120,7 +120,7 @@ export function QuotaUsagePanel({ usage, showUpgradeCta = true }: QuotaUsagePane
 
         {usage.limits.pdfWatermark && (
           <Alert severity="info" sx={{ mb: showUpgradeCta ? 2 : 0 }}>
-            Les PDF factures et devis incluent un filigrane « Facturio » sur le plan Free.
+            Les PDF factures et devis incluent un filigrane « PrestaFacture » sur le plan Free.
           </Alert>
         )}
 

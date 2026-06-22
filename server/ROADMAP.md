@@ -1,4 +1,4 @@
-# Roadmap - Facturio Server
+# Roadmap - PrestaFacture Server
 
 Vue d'ensemble des étapes à venir. On part simple, on itère vite.
 

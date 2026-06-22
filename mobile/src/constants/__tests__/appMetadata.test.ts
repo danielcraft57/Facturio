@@ -21,7 +21,7 @@ describe('titleForPath', () => {
     expect(titleForPath('/(app)/devis/xyz')).toBe('Devis')
   })
 
-  it('retombe sur Facturio', () => {
+  it('retombe sur PrestaFacture', () => {
     expect(titleForPath('/unknown-route')).toBe(APP_NAME)
   })
 })

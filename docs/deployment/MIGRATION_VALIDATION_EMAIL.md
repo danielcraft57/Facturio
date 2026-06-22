@@ -69,7 +69,7 @@ SMTP_SECURE=false
 SMTP_USER=votre-utilisateur-smtp
 SMTP_PASS=votre-mot-de-passe-smtp
 MAIL_FROM=noreply@votre-domaine.fr
-MAIL_FROM_NAME=Facturio
+MAIL_FROM_NAME=PrestaFacture
 
 # URLs publiques (pour les liens dans les emails)
 FRONTEND_URL=https://facturio.votre-domaine.fr

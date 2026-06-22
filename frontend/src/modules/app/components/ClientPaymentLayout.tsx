@@ -30,7 +30,7 @@ export function ClientPaymentLayout({ children }: ClientPaymentLayoutProps) {
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-              Facturio
+              PrestaFacture
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary' }}>
               <LockOutlinedIcon fontSize="small" />

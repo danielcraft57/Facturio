@@ -1,8 +1,8 @@
-# Documentation Facturio
+# Documentation PrestaFacture
 
-Documentation complète du projet Facturio, organisée par catégories.
+Documentation complète du projet PrestaFacture, organisée par catégories.
 
-**Positionnement** : Facturio est orienté **prestations de services numériques** (développement web, logiciel sur mesure, automatisation, intégrations, maintenance, offres IA) — voir [Positionnement prestations](./planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md).
+**Positionnement** : PrestaFacture est orienté **prestations de services numériques** (développement web, logiciel sur mesure, automatisation, intégrations, maintenance, offres IA) — voir [Positionnement prestations](./planning/POSITIONNEMENT_PRESTATIONS_SERVICES.md).
 
 ## Structure de la documentation
 
@@ -21,7 +21,7 @@ docs/
 ## Démarrage rapide
 
 ### [Installation](./getting-started/INSTALLATION.md)
-Guide complet pour installer et démarrer Facturio en local, avec Docker, et dépannage.
+Guide complet pour installer et démarrer PrestaFacture en local, avec Docker, et dépannage.
 
 ### [Configuration des environnements](./getting-started/ENVIRONMENTS.md)
 Configuration des variables d'environnement pour développement et production.
@@ -40,10 +40,10 @@ Vue d'ensemble de l'architecture du projet, structure des modules, stack techniq
 Guide pour contribuer au projet : workflow, structure du code, tests, bonnes pratiques.
 
 ### [CI/CD](./development/CI_CD.md)
-Documentation sur l'intégration continue et le déploiement de Facturio.
+Documentation sur l'intégration continue et le déploiement de PrestaFacture.
 
 ### [Déploiement production](./deployment/DEPLOIEMENT_PRODUCTION.md)
-Guide complet pour déployer Facturio en production (serveur applicatif, Nginx, SSL, build local). Voir aussi `scripts/deploy/README.md` pour la liste des scripts (Windows et Linux).
+Guide complet pour déployer PrestaFacture en production (serveur applicatif, Nginx, SSL, build local). Voir aussi `scripts/deploy/README.md` pour la liste des scripts (Windows et Linux).
 
 ### [Optimisation](./development/OPTIMIZATION.md)
 Guide d'optimisation des performances et des ressources.
@@ -68,7 +68,7 @@ Vue d'ensemble des fonctionnalités à venir, phases de développement et priori
 Vision produit (dev web, logiciel, automatisation) et développement du vertical en conformité avec la réforme.
 
 ### [Monétisation (bootstrap)](./planning/MONETISATION.md)
-Méthode économique pour rentabiliser Facturio (freemium, dogfooding DanielCraft, PA partenaire, SEO).
+Méthode économique pour rentabiliser PrestaFacture (freemium, dogfooding DanielCraft, PA partenaire, SEO).
 
 ### [Stratégie acquisition & inscriptions 2026](./planning/STRATEGIE_ACQUISITION_INSCRIPTIONS_2026.md)
 Concurrence, réglementation, entonnoir d’inscription, priorisation produit et messages marketing (landing pages).

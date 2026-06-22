@@ -1,6 +1,6 @@
 import { Box, Container, Link, Stack, Typography, alpha } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
-import { DANIELCRAFT_PUBLISHER, FACTURIO_SERVICE } from '../../legal/danielcraftPublisher'
+import { DANIELCRAFT_PUBLISHER, PRESTAFACTURE_SERVICE } from '../../legal/danielcraftPublisher'
 
 const PRODUCT_LINKS = [
   { to: '/fonctionnalites', label: 'Fonctionnalités' },
@@ -55,7 +55,7 @@ export function PublicFooter() {
         >
           <Box sx={{ maxWidth: 360 }}>
             <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>
-              Facturio
+              PrestaFacture
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
               Devis, facturation et compta pour développeurs freelances et agences web.
@@ -82,7 +82,7 @@ export function PublicFooter() {
           }}
         >
           <Typography variant="caption" color="text.disabled">
-            © {new Date().getFullYear()} {FACTURIO_SERVICE.name} · {DANIELCRAFT_PUBLISHER.legalName} · SIRET{' '}
+            © {new Date().getFullYear()} {PRESTAFACTURE_SERVICE.name} · {DANIELCRAFT_PUBLISHER.legalName} · SIRET{' '}
             {DANIELCRAFT_PUBLISHER.siret}
           </Typography>
         </Box>

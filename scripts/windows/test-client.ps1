@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Teste l'API publique Facturio : clients (CRUD).
+  Teste l'API publique PrestaFacture : clients (CRUD).
 
 .DESCRIPTION
   GET /public → création → détail → liste → mise à jour.
@@ -154,7 +154,7 @@ if ($Cleanup -and $created) {
 }
 
 Write-Host ""
-Write-Host "Terminé. Vérifiez la liste Clients dans Facturio." -ForegroundColor Cyan
+Write-Host "Terminé. Vérifiez la liste Clients dans PrestaFacture." -ForegroundColor Cyan
 if ($created -and -not $Cleanup) {
 	Write-Host "  Astuce : .\scripts\windows\test-client.ps1 -ClientId $id -Cleanup pour supprimer le client de test." -ForegroundColor Gray
 }

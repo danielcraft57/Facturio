@@ -28,7 +28,7 @@ if ([string]::IsNullOrWhiteSpace($AppUser)) {
 }
 
 if (-not (Test-Path (Join-Path $frontendDir "package.json"))) {
-    Write-Host "ERREUR: Dossier frontend introuvable (Facturio/frontend)." -ForegroundColor Red
+    Write-Host "ERREUR: Dossier frontend introuvable (racine du projet/frontend)." -ForegroundColor Red
     exit 1
 }
 

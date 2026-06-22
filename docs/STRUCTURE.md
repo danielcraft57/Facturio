@@ -1,6 +1,6 @@
 # Structure de la documentation
 
-Organisation de la documentation Facturio par catégories.
+Organisation de la documentation PrestaFacture par catégories.
 
 ## 📁 Structure des dossiers
 
@@ -51,7 +51,7 @@ docs/
 ## 📚 Organisation par catégorie
 
 ### 🚀 Getting Started
-Documentation pour démarrer rapidement avec Facturio.
+Documentation pour démarrer rapidement avec PrestaFacture.
 - Installation et configuration
 - Variables d'environnement
 - Dépannage

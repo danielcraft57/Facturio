@@ -1,9 +1,9 @@
-/** Contenu légal Facturio — éditeur : données alignées sur danielcraft.fr */
+/** Contenu légal PrestaFacture — éditeur : données alignées sur danielcraft.fr */
 
-import { DANIELCRAFT_PUBLISHER, FACTURIO_SERVICE } from './danielcraftPublisher'
+import { DANIELCRAFT_PUBLISHER, PRESTAFACTURE_SERVICE } from './danielcraftPublisher'
 
 export const LEGAL_CONTROLLER = {
-  name: `${DANIELCRAFT_PUBLISHER.legalName} — ${DANIELCRAFT_PUBLISHER.tradeName} (éditeur de ${FACTURIO_SERVICE.name})`,
+  name: `${DANIELCRAFT_PUBLISHER.legalName} — ${DANIELCRAFT_PUBLISHER.tradeName} (éditeur de ${PRESTAFACTURE_SERVICE.name})`,
   contact: DANIELCRAFT_PUBLISHER.email,
   dpo: DANIELCRAFT_PUBLISHER.email,
   siret: DANIELCRAFT_PUBLISHER.siret,
@@ -20,7 +20,7 @@ export const LEGAL_MENTIONS_SECTIONS: readonly LegalSection[] = [
   {
     title: '1. Éditeur du service',
     paragraphs: [
-      `Le service en ligne ${FACTURIO_SERVICE.name} (${FACTURIO_SERVICE.description}) est édité par :`,
+      `Le service en ligne ${PRESTAFACTURE_SERVICE.name} (${PRESTAFACTURE_SERVICE.description}) est édité par :`,
     ],
     bullets: [
       `${DANIELCRAFT_PUBLISHER.legalName} — ${DANIELCRAFT_PUBLISHER.tradeName}`,
@@ -41,7 +41,7 @@ export const LEGAL_MENTIONS_SECTIONS: readonly LegalSection[] = [
   {
     title: '3. Hébergement',
     paragraphs: [
-      'L’application Facturio est hébergée sur une infrastructure cloud (Union européenne visée). Les coordonnées détaillées de l’hébergeur peuvent être communiquées sur demande à ' +
+      'L’application PrestaFacture est hébergée sur une infrastructure cloud (Union européenne visée). Les coordonnées détaillées de l’hébergeur peuvent être communiquées sur demande à ' +
         DANIELCRAFT_PUBLISHER.email +
         '.',
       'Le site vitrine ' +
@@ -52,14 +52,14 @@ export const LEGAL_MENTIONS_SECTIONS: readonly LegalSection[] = [
   {
     title: '4. Propriété intellectuelle',
     paragraphs: [
-      'Le logiciel Facturio, sa marque, son interface et sa documentation sont protégés par le droit d’auteur. Toute reproduction ou extraction non autorisée est interdite.',
+      'Le logiciel PrestaFacture, sa marque, son interface et sa documentation sont protégés par le droit d’auteur. Toute reproduction ou extraction non autorisée est interdite.',
       'Les contenus que vous saisissez (factures, devis, clients) restent votre propriété ; vous accordez à l’éditeur une licence technique limitée pour les héberger et les traiter aux fins du service.',
     ],
   },
   {
     title: '5. Données personnelles',
     paragraphs: [
-      'Le traitement des données liées à votre compte Facturio est décrit dans la politique de confidentialité (/privacy). Pour le site danielcraft.fr, voir ' +
+      'Le traitement des données liées à votre compte PrestaFacture est décrit dans la politique de confidentialité (/privacy). Pour le site danielcraft.fr, voir ' +
         DANIELCRAFT_PUBLISHER.website +
         '/politique-confidentialite.',
     ],
@@ -67,7 +67,7 @@ export const LEGAL_MENTIONS_SECTIONS: readonly LegalSection[] = [
   {
     title: '6. Cookies',
     paragraphs: [
-      'Facturio utilise un cookie de session strictement nécessaire à l’authentification et, avec votre accord, des préférences locales (voir bannière cookies). Aucun cookie publicitaire tiers sur l’application.',
+      'PrestaFacture utilise un cookie de session strictement nécessaire à l’authentification et, avec votre accord, des préférences locales (voir bannière cookies). Aucun cookie publicitaire tiers sur l’application.',
     ],
   },
   {
@@ -82,8 +82,8 @@ export const PRIVACY_SECTIONS: readonly LegalSection[] = [
   {
     title: 'Responsable du traitement',
     paragraphs: [
-      `Pour l’utilisation de la plateforme Facturio (compte, abonnement, support), le responsable du traitement est ${LEGAL_CONTROLLER.name}. Contact : ${LEGAL_CONTROLLER.contact}.`,
-      'Pour les données de vos propres clients (factures, devis, CRM), vous êtes responsable de traitement en tant que prestataire ; Facturio agit en qualité de sous-traitant pour l’hébergement et le traitement technique de ces données.',
+      `Pour l’utilisation de la plateforme PrestaFacture (compte, abonnement, support), le responsable du traitement est ${LEGAL_CONTROLLER.name}. Contact : ${LEGAL_CONTROLLER.contact}.`,
+      'Pour les données de vos propres clients (factures, devis, CRM), vous êtes responsable de traitement en tant que prestataire ; PrestaFacture agit en qualité de sous-traitant pour l’hébergement et le traitement technique de ces données.',
     ],
   },
   {
@@ -109,7 +109,7 @@ export const PRIVACY_SECTIONS: readonly LegalSection[] = [
     title: 'Sous-traitants',
     paragraphs: [
       'Hébergement / infrastructure (serveur applicatif et base de données, Union européenne visée).',
-      'Stripe (deux usages distincts) : (1) abonnement Facturio Pro — compte plateforme ; (2) paiement de vos factures — votre compte Stripe enregistré dans Paramètres. Des DPA Stripe sont à conclure par chaque prestataire pour le flux (2).',
+      'Stripe (deux usages distincts) : (1) abonnement PrestaFacture Pro — compte plateforme ; (2) paiement de vos factures — votre compte Stripe enregistré dans Paramètres. Des DPA Stripe sont à conclure par chaque prestataire pour le flux (2).',
       'Envoi d’emails (SMTP) pour vérification de compte, factures et devis.',
       'Futur : Plateforme Agréée partenaire pour la facturation électronique 2026 (module en développement).',
     ],
@@ -151,13 +151,13 @@ export const TERMS_SECTIONS: readonly LegalSection[] = [
   {
     title: '1. Éditeur',
     paragraphs: [
-      `Les présentes conditions générales d’utilisation (CGU) régissent l’accès au service ${FACTURIO_SERVICE.name}, édité par ${DANIELCRAFT_PUBLISHER.legalName} (${DANIELCRAFT_PUBLISHER.tradeName}), ${DANIELCRAFT_PUBLISHER.legalForm}, ${DANIELCRAFT_PUBLISHER.address}, SIRET ${DANIELCRAFT_PUBLISHER.siret}, ${DANIELCRAFT_PUBLISHER.vatMention}. Contact : ${DANIELCRAFT_PUBLISHER.email}.`,
+      `Les présentes conditions générales d’utilisation (CGU) régissent l’accès au service ${PRESTAFACTURE_SERVICE.name}, édité par ${DANIELCRAFT_PUBLISHER.legalName} (${DANIELCRAFT_PUBLISHER.tradeName}), ${DANIELCRAFT_PUBLISHER.legalForm}, ${DANIELCRAFT_PUBLISHER.address}, SIRET ${DANIELCRAFT_PUBLISHER.siret}, ${DANIELCRAFT_PUBLISHER.vatMention}. Contact : ${DANIELCRAFT_PUBLISHER.email}.`,
     ],
   },
   {
     title: '2. Objet',
     paragraphs: [
-      FACTURIO_SERVICE.description +
+      PRESTAFACTURE_SERVICE.description +
         ' L’utilisation de l’application implique l’acceptation des présentes CGU et de la politique de confidentialité.',
     ],
   },
@@ -179,7 +179,7 @@ export const TERMS_SECTIONS: readonly LegalSection[] = [
   {
     title: '5. Utilisation acceptable',
     paragraphs: [
-      'Vous vous engagez à utiliser Facturio conformément aux lois en vigueur, sans tentative d’intrusion, de spam ou de détournement du service. Toute utilisation abusive peut entraîner la suspension du compte.',
+      'Vous vous engagez à utiliser PrestaFacture conformément aux lois en vigueur, sans tentative d’intrusion, de spam ou de détournement du service. Toute utilisation abusive peut entraîner la suspension du compte.',
     ],
   },
   {
@@ -212,17 +212,17 @@ export const TERMS_SECTIONS: readonly LegalSection[] = [
     title: '10. Modifications et droit applicable',
     paragraphs: [
       'L’éditeur peut modifier les présentes CGU ; les utilisateurs sont invités à les consulter régulièrement. Le droit français est applicable.',
-      `Dernière mise à jour Facturio : ${DANIELCRAFT_PUBLISHER.facturioLegalUpdated}.`,
+      `Dernière mise à jour PrestaFacture : ${DANIELCRAFT_PUBLISHER.prestafactureLegalUpdated}.`,
     ],
   },
 ]
 
-/** CGV — abonnements et prestations SaaS Facturio (vendeur : DanielCraft). */
+/** CGV — abonnements et prestations SaaS PrestaFacture (vendeur : DanielCraft). */
 export const SALES_TERMS_SECTIONS: readonly LegalSection[] = [
   {
     title: '1. Identification du vendeur',
     paragraphs: [
-      `Les présentes conditions générales de vente (CGV) s’appliquent aux abonnements et services payants ${FACTURIO_SERVICE.name}.`,
+      `Les présentes conditions générales de vente (CGV) s’appliquent aux abonnements et services payants ${PRESTAFACTURE_SERVICE.name}.`,
     ],
     bullets: [
       `${DANIELCRAFT_PUBLISHER.legalName} — ${DANIELCRAFT_PUBLISHER.tradeName}`,
@@ -243,7 +243,7 @@ export const SALES_TERMS_SECTIONS: readonly LegalSection[] = [
   {
     title: '3. Offres et commande',
     paragraphs: [
-      'Les tarifs en vigueur sont affichés sur la page Tarifs. La commande est effective à la validation du paiement via Stripe (abonnement plateforme Facturio) ou à l’acceptation d’un devis spécifique communiqué par email.',
+      'Les tarifs en vigueur sont affichés sur la page Tarifs. La commande est effective à la validation du paiement via Stripe (abonnement plateforme PrestaFacture) ou à l’acceptation d’un devis spécifique communiqué par email.',
       'Le plan Free est soumis à des limites d’usage (nombre de factures par mois). Les paliers payants lèvent ces limites selon les fonctionnalités décrites sur le site.',
     ],
   },
@@ -288,7 +288,7 @@ export const SALES_TERMS_SECTIONS: readonly LegalSection[] = [
     title: '9. Litiges',
     paragraphs: [
       'En cas de litige, une solution amiable sera recherchée. À défaut, les tribunaux français seront compétents.',
-      `Dernière mise à jour : ${DANIELCRAFT_PUBLISHER.facturioLegalUpdated} (alignée sur les CGV ${DANIELCRAFT_PUBLISHER.websiteLabel}, ${DANIELCRAFT_PUBLISHER.legalPagesUpdated}).`,
+      `Dernière mise à jour : ${DANIELCRAFT_PUBLISHER.prestafactureLegalUpdated} (alignée sur les CGV ${DANIELCRAFT_PUBLISHER.websiteLabel}, ${DANIELCRAFT_PUBLISHER.legalPagesUpdated}).`,
     ],
   },
 ]

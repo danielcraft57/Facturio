@@ -297,7 +297,7 @@ export class BillingService {
 		const appBase = (
 			process.env.FRONTEND_URL?.trim() ||
 			process.env.PUBLIC_APP_URL?.trim() ||
-			'https://facturio.danielcraft.fr'
+			'https://prestafacture.com'
 		).replace(/\/$/, '');
 
 		await this.email.sendFreeQuotaReached({
@@ -318,7 +318,7 @@ export class BillingService {
 		});
 	}
 
-	/** Indique si les PDF facture/devis doivent afficher le filigrane Facturio. */
+	/** Indique si les PDF facture/devis doivent afficher le filigrane PrestaFacture. */
 	async shouldWatermarkPdfs(organizationId: number | null | undefined): Promise<boolean> {
 		if (organizationId == null) return false;
 		const plan = await this.getOrganizationPlan(organizationId);

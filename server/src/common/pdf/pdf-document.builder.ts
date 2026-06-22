@@ -1509,7 +1509,7 @@ export class PdfDocumentBuilder {
 
 		const pageLineY = Math.min(y + 6, bandTop + bandHeight - pad - 5);
 		doc.fontSize(5.5).fillColor(PDF_THEME.textMuted);
-		doc.text(`Page ${this.pageIndex} — Facturio`, marginX + pad, pageLineY, {
+		doc.text(`Page ${this.pageIndex} — PrestaFacture`, marginX + pad, pageLineY, {
 			width: textWidth,
 			align: 'center',
 			lineBreak: false,
@@ -1570,7 +1570,7 @@ export class PdfDocumentBuilder {
 		}
 
 		doc.fontSize(5.5).fillColor(PDF_THEME.textMuted);
-		doc.text(`Page ${this.pageIndex} — Facturio`, marginX + pad, y + 4, {
+		doc.text(`Page ${this.pageIndex} — PrestaFacture`, marginX + pad, y + 4, {
 			width: textWidth,
 			align: 'center',
 			lineBreak: false,

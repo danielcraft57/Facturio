@@ -1,10 +1,10 @@
-# Roadmap UX "Wow" — Frontend Web Facturio
+# Roadmap UX "Wow" — Frontend Web PrestaFacture
 
 Document de planification pour les améliorations visuelles **frontend web** à traiter après stabilisation mobile.
 
 ## Objectif
 
-Garder la sobriété pro Facturio, avec des interactions premium :
+Garder la sobriété pro PrestaFacture, avec des interactions premium :
 - plus de fluidité perçue,
 - hiérarchie visuelle claire,
 - feedback immédiat à chaque action importante.

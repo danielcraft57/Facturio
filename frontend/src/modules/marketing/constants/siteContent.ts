@@ -229,7 +229,7 @@ export const FEATURES = [
   },
   {
     title: 'Encaissement Stripe',
-    description: 'Liens de paiement sur vos factures avec votre compte Stripe prestataire (séparé de l’abo Facturio).',
+    description: 'Liens de paiement sur vos factures avec votre compte Stripe prestataire (séparé de l’abo PrestaFacture).',
   },
   {
     title: 'TVA FR & UE B2B',
@@ -312,12 +312,12 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     name: 'Free',
     price: '0',
     period: '€ / mois',
-    description: 'Découvrir Facturio et les tout petits volumes.',
+    description: 'Découvrir PrestaFacture et les tout petits volumes.',
     features: [
       'Jusqu’à 25 factures / mois',
       'Jusqu’à 10 devis / mois',
       '20 emails document / mois',
-      'PDF avec filigrane Facturio',
+      'PDF avec filigrane PrestaFacture',
       'Catalogue de base (seed)',
       'Score conformité (lecture)',
       'Sans compta FEC, créances, dettes ni API',
@@ -409,7 +409,7 @@ export const PRICING_FAQ = [
     a: 'La réforme impose le passage par une Plateforme Agréée. Ce palier finance le connecteur PA, l’e-reporting et vous place en priorité sur la feuille de route conformité — sans payer une compta complète type Indy.',
   },
   {
-    q: 'Facturio remplace mon expert-comptable ?',
+    q: 'PrestaFacture remplace mon expert-comptable ?',
     a: 'Non. Facturation verticale + pré-compta (FEC, balance). Votre expert garde la liasse ; vous gagnez du temps sur le cycle commercial.',
   },
   {

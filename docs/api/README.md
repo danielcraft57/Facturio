@@ -1,6 +1,6 @@
 # Documentation API
 
-Documentation complète de l'API REST de Facturio.
+Documentation complète de l'API REST de PrestaFacture.
 
 ## 📚 Contenu
 

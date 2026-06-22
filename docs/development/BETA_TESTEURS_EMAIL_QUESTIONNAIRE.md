@@ -1,6 +1,6 @@
 # Beta testeurs — email de remerciement et questionnaire
 
-Com' opérée sous **Valentine Coubertain**. L'email de bienvenue part via **SMTP Facturio** (pas Gmail manuel) : template `EmailService.sendBetaTesterWelcome`, déclenché à l'activation du code beta.
+Com' opérée sous **Valentine Coubertain**. L'email de bienvenue part via **SMTP PrestaFacture** (pas Gmail manuel) : template `EmailService.sendBetaTesterWelcome`, déclenché à l'activation du code beta.
 
 Variables serveur (`.env` / prod) :
 
@@ -8,7 +8,7 @@ Variables serveur (`.env` / prod) :
 |----------|------|
 | `BETA_TESTER_SURVEY_URL` | Lien **public** Google Form (voir ci-dessous) |
 | `BETA_TESTER_REPLY_EMAIL` | Reply-to (Gmail Valentine) — sinon `COMPANY_EMAIL` |
-| `FRONTEND_URL` | Liens « Ouvrir Facturio » / profil émetteur |
+| `FRONTEND_URL` | Liens « Ouvrir PrestaFacture » / profil émetteur |
 
 Envoi aux testeurs déjà inscrits : `cd server` → `npm run beta:welcome-emails` (`--dry-run`, `--force`).
 
@@ -33,21 +33,21 @@ Test : ouvrir l'URL en navigation privée — le formulaire doit s'afficher **sa
 Si tu as déjà collé des cookies dans un chat, va sur [myaccount.google.com/security](https://myaccount.google.com/security) → « Vos appareils » / « Déconnecter les sessions suspectes » par précaution.
 
 Liens utiles à intégrer dans les mails :
-- App : https://facturio.danielcraft.fr
-- Inscription avec code : https://facturio.danielcraft.fr/signup?beta=CODE
-- Tarifs : https://facturio.danielcraft.fr/tarifs
-- Prestations / cible : https://facturio.danielcraft.fr/prestations
+- App : https://prestafacture.com
+- Inscription avec code : https://prestafacture.com/signup?beta=CODE
+- Tarifs : https://prestafacture.com/tarifs
+- Prestations / cible : https://prestafacture.com/prestations
 
 Remplacez `CODE` par le code campagne réel (ex. `DEV26`).
 
 ---
 
-## 1. Email J+0 — automatique (SMTP Facturio)
+## 1. Email J+0 — automatique (SMTP PrestaFacture)
 
 Déclenché à l'activation du code beta (inscription ou Paramètres → Abonnement).  
 Personnalisation : prénom admin, code campagne, plan, date de fin, boutons app + questionnaire.
 
-**Objet :** Bienvenue dans la beta Facturio (3 mois offerts)
+**Objet :** Bienvenue dans la beta PrestaFacture (3 mois offerts)
 
 Le corps HTML est généré par le serveur (voir `server/src/common/email.service.ts` → `sendBetaTesterWelcome`).
 
@@ -70,7 +70,7 @@ Si besoin d'un mail manuel depuis Gmail (hors app) :
 ```
 Bonjour [Prénom],
 
-Merci d'avoir activé le programme beta testeurs sur Facturio.
+Merci d'avoir activé le programme beta testeurs sur PrestaFacture.
 
 Vous avez 3 mois d'accès complet (équivalent plan Agence) pour tester l'outil en conditions réelles : devis, factures, PDF, paiements Stripe, acomptes, échéancier, exports compta (FEC), score de conformité, export Factur-X (XML).
 
@@ -88,7 +88,7 @@ Vous pouvez aussi répondre directement à ce mail (bug, idée, écran confus).
 
 Merci encore,
 Valentine Coubertain
-Facturio — facturio.danielcraft.fr
+PrestaFacture — prestafacture.com
 ```
 
 **Variante si vous ne connaissez pas le prénom :** remplacer par « Bonjour, ».
@@ -97,12 +97,12 @@ Facturio — facturio.danielcraft.fr
 
 ## 2. Email J+7 — relance questionnaire (optionnel)
 
-**Objet :** 2 min pour améliorer Facturio ? (beta testeurs)
+**Objet :** 2 min pour améliorer PrestaFacture ? (beta testeurs)
 
 ```
 Bonjour [Prénom],
 
-Vous utilisez Facturio en beta depuis quelques jours. Un retour structuré nous aiderait beaucoup pour la suite du produit.
+Vous utilisez PrestaFacture en beta depuis quelques jours. Un retour structuré nous aiderait beaucoup pour la suite du produit.
 
 Questionnaire (5 à 8 min, anonyme si vous préférez) :
 → [LIEN GOOGLE FORM]
@@ -117,14 +117,14 @@ Valentine Coubertain
 
 ## 3. Email fin de beta (J-14 avant expiration) — à envoyer plus tard
 
-**Objet :** Votre accès beta Facturio se termine bientôt
+**Objet :** Votre accès beta PrestaFacture se termine bientôt
 
 ```
 Bonjour [Prénom],
 
 Votre accès beta (3 mois, plan Agence) se termine vers le [DATE FIN].
 
-Si Facturio vous a servi au quotidien, le plan Pro (12 €/mois) reprend les fonctions essentielles : https://facturio.danielcraft.fr/tarifs
+Si PrestaFacture vous a servi au quotidien, le plan Pro (12 €/mois) reprend les fonctions essentielles : https://prestafacture.com/tarifs
 
 Dernier retour bienvenu (questionnaire ou mail) — surtout si quelque chose vous a empêché de passer à la facturation réelle.
 
@@ -136,10 +136,10 @@ Valentine Coubertain
 
 ## 4. Questionnaire Google Form — structure recommandée
 
-**Titre du formulaire :** Facturio — retour beta testeurs (5–8 min)
+**Titre du formulaire :** PrestaFacture — retour beta testeurs (5–8 min)
 
 **Description :**
-« Merci de tester Facturio. Vos réponses orientent la roadmap (freelances dev / intégrateurs). Réponses anonymes possibles sauf si vous laissez votre email à la fin. »
+« Merci de tester PrestaFacture. Vos réponses orientent la roadmap (freelances dev / intégrateurs). Réponses anonymes possibles sauf si vous laissez votre email à la fin. »
 
 **Paramètres Form :**
 - Collecter les adresses e-mail : Non (sauf question finale optionnelle)
@@ -151,14 +151,14 @@ Valentine Coubertain
 | # | Type | Question | Options / contraintes |
 |---|------|----------|------------------------|
 | A1 | Choix unique | Vous êtes plutôt… | Freelance dev / intégrateur · Micro-agence web (2–5) · Autre freelance numérique · Autre (court texte) |
-| A2 | Choix unique | Depuis combien de temps utilisez-vous Facturio ? | Moins d'une semaine · 1–2 semaines · 3–4 semaines · Plus d'un mois |
+| A2 | Choix unique | Depuis combien de temps utilisez-vous PrestaFacture ? | Moins d'une semaine · 1–2 semaines · 3–4 semaines · Plus d'un mois |
 | A3 | Choix unique | Comment avez-vous connu la beta ? | Réseau social · Bouche-à-oreille · DanielCraft / site perso · Recherche Google · Autre |
 
 ### Section B — Usage réel
 
 | # | Type | Question | Options |
 |---|------|----------|---------|
-| B1 | Cases à cocher | Qu'avez-vous déjà fait sur Facturio ? | Compte créé seulement · Devis créé · Devis envoyé au client · Facture créée · Paiement Stripe testé · Acompte 10 % testé · Échéancier testé · Export FEC / compta · Rien de concret encore |
+| B1 | Cases à cocher | Qu'avez-vous déjà fait sur PrestaFacture ? | Compte créé seulement · Devis créé · Devis envoyé au client · Facture créée · Paiement Stripe testé · Acompte 10 % testé · Échéancier testé · Export FEC / compta · Rien de concret encore |
 | B2 | Échelle 1–5 | À quel point avez-vous réussi à émettre un premier document (devis ou facture) sans aide ? | 1 = bloqué · 5 = fluide |
 | B3 | Paragraphe (optionnel) | Qu'est-ce qui vous a bloqué en premier, si quelque chose vous a bloqué ? | Texte libre |
 
@@ -166,7 +166,7 @@ Valentine Coubertain
 
 | # | Type | Question | Options |
 |---|------|----------|---------|
-| C1 | Échelle 0–10 | Sur une échelle de 0 à 10, recommanderiez-vous Facturio à un collègue freelance ? (NPS) | 0–10 |
+| C1 | Échelle 0–10 | Sur une échelle de 0 à 10, recommanderiez-vous PrestaFacture à un collègue freelance ? (NPS) | 0–10 |
 | C2 | Échelle 1–5 | Clarté des PDF (devis, factures, acompte, échéancier) | 1–5 |
 | C3 | Échelle 1–5 | Parcours paiement client (lien public, Stripe, acompte / mensualités) | 1–5 ou « Non testé » |
 | C4 | Échelle 1–5 | Interface générale (navigation, listes, fiches) | 1–5 |
@@ -176,7 +176,7 @@ Valentine Coubertain
 | # | Type | Question | Options |
 |---|------|----------|---------|
 | D1 | Cases à cocher | Quelles fonctions vous manquent le plus aujourd'hui ? | PA / facturation électronique · E-reporting · Sync bancaire · Time tracking · Mobile · Multi-utilisateurs · Relances auto · Autre |
-| D2 | Paragraphe | Une fonctionnalité qui vous ferait utiliser Facturio chaque semaine ? | Texte libre |
+| D2 | Paragraphe | Une fonctionnalité qui vous ferait utiliser PrestaFacture chaque semaine ? | Texte libre |
 | D3 | Choix unique | À la fin des 3 mois beta, envisagez-vous de passer au plan Pro (12 €/mois) ? | Oui · Peut-être · Non · Trop tôt pour dire |
 
 ### Section E — Contact (optionnel)

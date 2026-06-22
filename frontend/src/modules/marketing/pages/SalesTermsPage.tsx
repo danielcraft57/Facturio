@@ -11,12 +11,12 @@ export function SalesTermsPage() {
       <MarketingHero
         compact
         title="Conditions générales de vente"
-        subtitle="Abonnements Facturio et options payantes."
+        subtitle="Abonnements PrestaFacture et options payantes."
         secondaryCta={null}
       />
       <Container maxWidth="md" sx={{ py: 6 }}>
         <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
-          CGV applicables aux offres SaaS Facturio. Pour les prestations de développement sur{' '}
+          CGV applicables aux offres SaaS PrestaFacture. Pour les prestations de développement sur{' '}
           <Link href={DANIELCRAFT_PUBLISHER.website} target="_blank" rel="noopener noreferrer">
             {DANIELCRAFT_PUBLISHER.websiteLabel}
           </Link>
@@ -26,7 +26,7 @@ export function SalesTermsPage() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            CGV Facturio
+            CGV PrestaFacture
           </Link>
           .
         </Alert>

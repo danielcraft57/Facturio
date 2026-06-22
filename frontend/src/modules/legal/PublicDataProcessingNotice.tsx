@@ -35,7 +35,7 @@ export function PublicDataProcessingNotice({
         </>
       )}{' '}
       <Link component={RouterLink} to="/privacy" underline="hover">
-        Confidentialité Facturio
+        Confidentialité PrestaFacture
       </Link>
     </Typography>
   )

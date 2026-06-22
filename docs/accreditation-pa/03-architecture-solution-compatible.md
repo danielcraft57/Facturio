@@ -1,10 +1,10 @@
-# Architecture — solution compatible Facturio
+# Architecture — solution compatible PrestaFacture
 
 ## Schéma cible
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  Facturio (SaaS)                                              │
+│  PrestaFacture (SaaS)                                              │
 │  · Organisation (SIRET, SIREN, TVA, adresse)                    │
 │  · Clients B2B (SIREN, TVA, adresse)                          │
 │  · Devis · Factures · Lignes · Paiements                      │
@@ -34,13 +34,13 @@
 
 | Composant | Rôle réglementaire |
 |-----------|-------------------|
-| Facturio | Préparation métier, UX, archivage PDF/XML, conformité données |
+| PrestaFacture | Préparation métier, UX, archivage PDF/XML, conformité données |
 | PA partenaire | Transmission réseau, statuts lifecycle, e-reporting |
 | Utilisateur | Responsable du contenu fiscal des factures |
 
 ## Flux émission (cible)
 
-1. Utilisateur finalise une facture B2B dans Facturio.
+1. Utilisateur finalise une facture B2B dans PrestaFacture.
 2. Rapport de conformité = 100 % (SIRET émetteur, SIREN client, lignes, facture envoyée).
 3. Génération Factur-X (PDF/A-3 + XML validé).
 4. Envoi PA → statuts `PENDING_PA` → `SENT` → `DELIVERED`.

@@ -451,7 +451,7 @@ export function ApiDocsPage() {
             Documentation API
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Référence REST pour intégrer Facturio (e-commerce, scripts, automatisation).
+            Référence REST pour intégrer PrestaFacture (e-commerce, scripts, automatisation).
           </Typography>
         </Box>
         <Button

@@ -382,7 +382,7 @@ export class BetaTesterService {
 		const appBase =
 			process.env.FRONTEND_URL?.trim() ||
 			process.env.PUBLIC_APP_URL?.trim() ||
-			'https://facturio.danielcraft.fr';
+			'https://prestafacture.com';
 
 		await this.email.sendBetaTesterWelcome({
 			to: recipient.email,

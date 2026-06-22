@@ -24,7 +24,7 @@
 - [CGV](https://danielcraft.fr/cgv)
 - [Politique de confidentialité](https://danielcraft.fr/politique-confidentialite)
 
-## Facturio (documentation interne)
+## PrestaFacture (documentation interne)
 
 - [FACTURATION_ELECTRONIQUE_2026.md](../../planning/FACTURATION_ELECTRONIQUE_2026.md)
 - [E_INVOICING.md](../../development/E_INVOICING.md)

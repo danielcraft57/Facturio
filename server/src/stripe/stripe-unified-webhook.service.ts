@@ -35,7 +35,7 @@ export class StripeUnifiedWebhookService {
 	}
 
 	/**
-	 * Webhook unique : abonnement Facturio (clés .env) + paiements factures clients (clés org).
+	 * Webhook unique : abonnement PrestaFacture (clés .env) + paiements factures clients (clés org).
 	 * Même URL à configurer dans le Dashboard Stripe (plateforme et/ou compte prestataire).
 	 */
 	async handle(

@@ -1,4 +1,4 @@
-# Assets email Facturio
+# Assets email PrestaFacture
 
 Images WebP servies par le frontend : `frontend/public/images/email/`.
 

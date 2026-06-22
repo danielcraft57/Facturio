@@ -10,18 +10,18 @@ Voir aussi : [POSITIONNEMENT_PRESTATIONS_SERVICES.md](./POSITIONNEMENT_PRESTATIO
 
 ## Positionnement
 
-Facturio = **outil vertical** pour prestataires du numérique (dev web, logiciel, automatisation, maintenance, IA).  
+PrestaFacture = **outil vertical** pour prestataires du numérique (dev web, logiciel, automatisation, maintenance, IA).  
 **Ne pas** concurrencer Pennylane / Indy sur compta complète + banque.
 
 ```
 Compta + banque     →  Indy, Pennylane, Qonto
 CRM PME générique   →  Sellsy, Axonaut, Evoliz
-Vertical dev/auto   →  ★ Facturio
+Vertical dev/auto   →  ★ PrestaFacture
 ```
 
 ## Concurrence (cartographie)
 
-| Acteur | Forces | Faiblesse vs Facturio |
+| Acteur | Forces | Faiblesse vs PrestaFacture |
 |--------|--------|------------------------|
 | **Indy** | Gratuit, PA intégrée, sync bancaire, URSSAF | Généraliste, peu orienté catalogue prestations tech |
 | **Abby** | Micro-entreprise, time tracking, signature devis | Pas ciblé agences / intégrations API |
@@ -43,7 +43,7 @@ Vertical dev/auto   →  ★ Facturio
 
 **Message clé** : la réception concerne **tout le monde** dès sept. 2026 — pas seulement l’émission 2027.
 
-## État Facturio vs promesse marché
+## État PrestaFacture vs promesse marché
 
 | Domaine | Statut |
 |---------|--------|

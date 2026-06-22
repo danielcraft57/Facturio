@@ -18,7 +18,7 @@
  * Pro + e-facture pour 12 mois :
  *   node scripts/set-organization-plan.js set user@example.com pro-efacture --months=12
  *
- * Repasser en Free (et détacher l'abonnement Stripe côté Facturio) :
+ * Repasser en Free (et détacher l'abonnement Stripe côté PrestaFacture) :
  *   node scripts/set-organization-plan.js set user@example.com free --clear-subscription
  *
  * Simulation sans écriture :

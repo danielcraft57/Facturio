@@ -1,4 +1,4 @@
-# Outils OSINT pour Facturio
+# Outils OSINT pour PrestaFacture
 
 Collection complète d'outils OSINT pour l'intelligence d'entreprise.
 

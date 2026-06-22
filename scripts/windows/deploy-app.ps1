@@ -1,4 +1,4 @@
-# Script pour déployer Facturio sur un serveur applicatif
+# Script pour déployer PrestaFacture sur un serveur applicatif
 # Configurer : $env:DEPLOY_SSH_USER = "votre_user" ou passer -AppUser
 
 param(
@@ -27,11 +27,11 @@ if ([string]::IsNullOrWhiteSpace($AppUser)) {
 
 # Vérifier que nous sommes dans le bon répertoire
 if (-not (Test-Path (Join-Path $localDir "server")) -or -not (Test-Path (Join-Path $localDir "frontend"))) {
-    Write-Host "ERREUR: Ce script doit être exécuté depuis le répertoire Facturio" -ForegroundColor Red
+    Write-Host "ERREUR: Ce script doit être exécuté depuis le répertoire PrestaFacture" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "=== Déploiement de Facturio ===" -ForegroundColor Cyan
+Write-Host "=== Déploiement de PrestaFacture ===" -ForegroundColor Cyan
 Write-Host "Serveur: $AppServer"
 Write-Host "Utilisateur: $AppUser"
 Write-Host "Répertoire distant: $AppDir"

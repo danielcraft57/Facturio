@@ -1,4 +1,4 @@
-# Modules natifs Expo — recommandations Facturio Mobile
+# Modules natifs Expo — recommandations PrestaFacture Mobile
 
 Packages à envisager par phase, avec lien vers le cas d’usage mobile / tablette.
 
@@ -23,7 +23,7 @@ npx expo install expo-document-picker expo-image-picker
 npx expo install @react-native-community/netinfo
 ```
 
-| Package | Intérêt Facturio |
+| Package | Intérêt PrestaFacture |
 |---------|------------------|
 | **expo-file-system** | Télécharger PDF facture/devis en cache |
 | **expo-sharing** | Partager PDF vers email / Drive |
@@ -83,7 +83,7 @@ npx expo install expo-local-authentication
 ### Option A — Assistant cloud (recommandé)
 
 ```
-[App mobile] --HTTPS JWT--> [Facturio API] --API--> [OpenAI / Anthropic / Mistral]
+[App mobile] --HTTPS JWT--> [PrestaFacture API] --API--> [OpenAI / Anthropic / Mistral]
 ```
 
 - Nouveau module Nest : `POST /assistant/chat` avec garde-fous (quota org, pas de données hors org).
@@ -126,7 +126,7 @@ Sans chatbot complet :
 
 | Besoin | Solution |
 |--------|----------|
-| « Rédige ma facture » | Cloud via API Facturio |
+| « Rédige ma facture » | Cloud via API PrestaFacture |
 | Confidentialité maximale | LAN Ollama ou modèle on-device (coût dev élevé) |
 | Saisie mains libres | `expo-av` + Whisper serveur |
 | Résumé dashboard | Prompt serveur sur `GET /dashboard/stats` (pas de modèle mobile) |

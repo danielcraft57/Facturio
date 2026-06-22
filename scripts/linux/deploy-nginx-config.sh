@@ -29,7 +29,7 @@ fi
 SERVER_NAMES="facturio.${DOMAIN} devis.${DOMAIN} facture.${DOMAIN}"
 SITE_CONFIG_NAME="facturio.${DOMAIN}"
 
-echo "=== Déploiement Nginx Facturio ==="
+echo "=== Déploiement Nginx PrestaFacture ==="
 echo "  App (Pi)    : $APP_SERVER"
 echo "  Nginx       : $NGINX_SERVER"
 echo "  Domaines    : $SERVER_NAMES"

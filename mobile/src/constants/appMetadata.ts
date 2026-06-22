@@ -1,6 +1,6 @@
 /** Métadonnées affichage (en-têtes, web, stores). */
-export const APP_NAME = 'Facturio'
-export const APP_SHORT_NAME = 'Facturio'
+export const APP_NAME = 'PrestaFacture'
+export const APP_SHORT_NAME = 'PrestaFacture'
 export const APP_TAGLINE = 'Facturation simple, rapide et professionnelle'
 export const APP_DESCRIPTION =
   'Créez, envoyez et suivez vos factures depuis votre mobile ou tablette.'

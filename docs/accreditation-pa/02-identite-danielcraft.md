@@ -1,4 +1,4 @@
-# Identité légale — DanielCraft (éditeur de Facturio)
+# Identité légale — DanielCraft (éditeur de PrestaFacture)
 
 Données alignées sur [danielcraft.fr/mentions-legales](https://danielcraft.fr/mentions-legales) et [danielcraft.fr/cgv](https://danielcraft.fr/cgv).
 
@@ -19,7 +19,7 @@ Données alignées sur [danielcraft.fr/mentions-legales](https://danielcraft.fr/
 ## Activité
 
 - Prestations de **développement web**, logiciel sur mesure, automatisation, SEO, maintenance.
-- Édition du logiciel **Facturio** (facturation SaaS pour prestataires du numérique).
+- Édition du logiciel **PrestaFacture** (facturation SaaS pour prestataires du numérique).
 
 ## Pièces à joindre au dossier PA (à préparer)
 
@@ -31,7 +31,7 @@ Données alignées sur [danielcraft.fr/mentions-legales](https://danielcraft.fr/
 
 ## Directeur de publication
 
-Loïc DANIEL (site danielcraft.fr et service Facturio).
+Loïc DANIEL (site danielcraft.fr et service PrestaFacture).
 
 ## Délégué à la protection des données (DPO)
 
@@ -42,11 +42,11 @@ En l’absence de DPO externe : **contact@danielcraft.fr** (responsable du trait
 | Service | Hébergement | Coordonnées |
 |---------|-------------|---------------|
 | Site danielcraft.fr | _À compléter_ (ex. o2switch, OVH…) | Facture hébergeur |
-| Application Facturio | _À compléter_ — cible **UE** | Contrat + localisation datacenter |
+| Application PrestaFacture | _À compléter_ — cible **UE** | Contrat + localisation datacenter |
 
-> **Action** : renseigner le nom, l’adresse et le pays de l’hébergeur Facturio production avant dépôt définitif.
+> **Action** : renseigner le nom, l’adresse et le pays de l’hébergeur PrestaFacture production avant dépôt définitif.
 
-## Documents commerciaux Facturio
+## Documents commerciaux PrestaFacture
 
 - Mentions légales : `/legal`
 - CGU : `/terms`

@@ -1,10 +1,10 @@
-# Scripts de déploiement Facturio
+# Scripts de déploiement PrestaFacture
 
 ## Architecture production (DanielCraft)
 
 | Hôte | Rôle |
 |------|------|
-| **node12.lan** | Nginx public — `https://facturio.danielcraft.fr` |
+| **node12.lan** | Nginx public — `https://prestafacture.com` |
 | **node10.lan** | App — `/opt/facturio`, API `:3000`, Nginx local `:5173` (`frontend/dist`) |
 
 ## Mise à jour automatique (node10)

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Teste l'API publique Facturio : devis, envoi email, acceptation ou refus.
+  Teste l'API publique PrestaFacture : devis, envoi email, acceptation ou refus.
 
 .DESCRIPTION
   1. Réutilise un client existant (-ClientId) ou le crée (clients.write).
@@ -130,7 +130,7 @@ function Resolve-ClientId {
 			$pick = $withEmail | Select-Object -First 1
 		}
 		if (-not $pick) {
-			Write-Host "Aucun client avec email dans l'organisation. Créez-en un dans Facturio ou ajoutez clients.write." -ForegroundColor Red
+			Write-Host "Aucun client avec email dans l'organisation. Créez-en un dans PrestaFacture ou ajoutez clients.write." -ForegroundColor Red
 			exit 1
 		}
 
@@ -223,5 +223,5 @@ if ($Action -eq "Full") {
 }
 
 Write-Host ""
-Write-Host "Terminé. Vérifiez Devis / Factures et le centre d'activité dans Facturio." -ForegroundColor Cyan
+Write-Host "Terminé. Vérifiez Devis / Factures et le centre d'activité dans PrestaFacture." -ForegroundColor Cyan
 Write-Host ""

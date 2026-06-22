@@ -96,7 +96,7 @@ Le bandeau `BetaTesterPromo` sur les pages marketing consomme cet endpoint pour 
 Envoyer un lien avec le code en paramètre (champ prérempli à l'inscription) :
 
 ```
-https://facturio.danielcraft.fr/signup?beta=DEV26
+https://prestafacture.com/signup?beta=DEV26
 ```
 
 Variante acceptée : `?code=DEV26`.
@@ -175,10 +175,10 @@ Contenu centralisé dans `frontend/src/modules/marketing/constants/siteContent.t
 ## Modèle de post réseaux sociaux
 
 ```
-🚀 Beta Facturio : 3 mois gratuits, accès complet (plan Agence).
+🚀 Beta PrestaFacture : 3 mois gratuits, accès complet (plan Agence).
 
 Code : DEV26
-→ facturio.danielcraft.fr/signup?beta=DEV26
+→ prestafacture.com/signup?beta=DEV26
 
 Places limitées. Devis, factures, compta — pour freelances dev.
 ```
@@ -187,7 +187,7 @@ Adaptez le code et le lien selon la campagne. Ne promettez pas de fonctionnalit�
 
 ## Retours testeurs (email + questionnaire)
 
-- **Email automatique** : envoyé par SMTP Facturio à l'activation d'un code beta (`EmailService.sendBetaTesterWelcome`), avec prénom admin, plan, date de fin, code campagne.
+- **Email automatique** : envoyé par SMTP PrestaFacture à l'activation d'un code beta (`EmailService.sendBetaTesterWelcome`), avec prénom admin, plan, date de fin, code campagne.
 - **Testeurs déjà inscrits** : `cd server` puis `npm run beta:welcome-emails` (options `--dry-run`, `--force`).
 - **Questionnaire** : créer le Google Form (structure dans [`BETA_TESTEURS_EMAIL_QUESTIONNAIRE.md`](./BETA_TESTEURS_EMAIL_QUESTIONNAIRE.md)), coller l'URL dans `BETA_TESTER_SURVEY_URL`.
 - **Réponses** : `BETA_TESTER_REPLY_EMAIL` (Gmail Valentine) ou `COMPANY_EMAIL`.

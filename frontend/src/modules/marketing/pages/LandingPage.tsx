@@ -107,7 +107,7 @@ export function LandingPage() {
           <Box sx={{ display: { xs: 'none', md: 'block' } }}>
             <OverflowScreenshotFrame
               src="/images/marketing/overflow/hero-dashboard.png"
-              alt="Aperçu Facturio: tableau de bord et indicateurs"
+              alt="Aperçu PrestaFacture: tableau de bord et indicateurs"
               frameHeight={300}
               durationSec={14}
               distanceRatio={0.65}
@@ -215,7 +215,7 @@ export function LandingPage() {
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3, lineHeight: 1.75 }}>
                   Même si vous n’émettez qu’en 2027, vous devez <strong>recevoir</strong> des factures
-                  électroniques B2B via une Plateforme Agréée. Facturio vérifie vos données, exporte du
+                  électroniques B2B via une Plateforme Agréée. PrestaFacture vérifie vos données, exporte du
                   Factur-X (XML) et réserve le connecteur PA — encore en développement — sur le palier dédié.
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
@@ -266,7 +266,7 @@ export function LandingPage() {
       <Container maxWidth="lg" sx={{ py: { xs: 6, md: 8 } }}>
         <ScrollReveal>
           <Typography variant="h2" align="center" sx={{ fontWeight: 700, mb: 4, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-            Préparez la réforme sans quitter Facturio
+            Préparez la réforme sans quitter PrestaFacture
           </Typography>
         </ScrollReveal>
         <Grid container spacing={3}>
@@ -298,7 +298,7 @@ export function LandingPage() {
                 Levier n°2 — Pensé pour votre métier
               </Typography>
               <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 640, mx: 'auto' }}>
-                Indy ou Pennylane couvrent la compta générale. Facturio couvre{' '}
+                Indy ou Pennylane couvrent la compta générale. PrestaFacture couvre{' '}
                 <strong>comment vous facturez</strong> : forfaits, régie, maintenance et packs IA.
               </Typography>
               <Button

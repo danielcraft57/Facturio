@@ -41,7 +41,7 @@ export class BillingController {
 		return this.betaTester.redeemCode(body.code, user.organizationId);
 	}
 
-	/** Checkout Stripe plateforme (.env) — abonnement Facturio Pro */
+	/** Checkout Stripe plateforme (.env) — abonnement PrestaFacture Pro */
 	@Post('checkout')
 	async createCheckout(
 		@CurrentUser() user: { organizationId: number; email: string },

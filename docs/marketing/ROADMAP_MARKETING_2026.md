@@ -59,7 +59,7 @@
 - [ ] Enregistrer voix TTS (ElevenLabs / Azure / Play.ht) depuis `PUBLICITE_TTS_SCRIPT.md`
 - [ ] Montage 30 s + 15 s (CapCut / DaVinci) — formats 9:16 et 1:1
 - [ ] Variantes A/B hooks : « septembre 2026 » vs « facturation dev »
-- [ ] UTM + lien `facturio.danielcraft.fr/signup?utm_campaign=...`
+- [ ] UTM + lien `prestafacture.com/signup?utm_campaign=...`
 - [ ] Publier LinkedIn + Meta ; mesurer CTR inscription (objectif doc stratégie)
 
 ---

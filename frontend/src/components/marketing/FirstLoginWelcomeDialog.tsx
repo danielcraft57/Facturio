@@ -32,7 +32,7 @@ const fadeInUp = keyframes`
 
 /**
  * Popin marketing de bienvenue à la première connexion (campagne beta, jusqu'à fin sept. 2026).
- * Style aligné sur le bandeau beta du site (couleurs primary / secondary Facturio).
+ * Style aligné sur le bandeau beta du site (couleurs primary / secondary PrestaFacture).
  */
 export function FirstLoginWelcomeDialog() {
   const theme = useTheme()
@@ -171,7 +171,7 @@ export function FirstLoginWelcomeDialog() {
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6 }}>
               Vous arrivez au bon moment : le programme beta est ouvert pour les freelances dev qui veulent
-              tester Facturio en conditions réelles.
+              tester PrestaFacture en conditions réelles.
             </Typography>
           </Stack>
 

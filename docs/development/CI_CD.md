@@ -1,4 +1,4 @@
-# CI/CD - Facturio
+# CI/CD - PrestaFacture
 
 Documentation sur l'intégration continue (GitHub Actions).
 

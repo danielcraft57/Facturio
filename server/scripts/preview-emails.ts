@@ -1,5 +1,5 @@
 /**
- * Génère des HTML de prévisualisation des emails Facturio (usage local).
+ * Génère des HTML de prévisualisation des emails PrestaFacture (usage local).
  *
  * Prérequis : frontend Vite sur http://localhost:5173 (images /images/email/*).
  *
@@ -32,7 +32,7 @@ function writePreviews(items: PreviewItem[]): void {
 		)
 		.join('\n');
 	const index = `<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"><title>Préviews emails Facturio</title>
+<html lang="fr"><head><meta charset="UTF-8"><title>Préviews emails PrestaFacture</title>
 <style>body{font-family:system-ui,sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem;line-height:1.5}
 code{background:#f1f5f9;padding:2px 6px;border-radius:4px}</style></head>
 <body>
@@ -220,7 +220,7 @@ function main(): void {
 				headline: 'Abonnement activé',
 				content:
 					emailParagraph('Bonjour Loïc,') +
-					emailParagraph('Votre abonnement <strong>Pro</strong> est maintenant actif sur Facturio.') +
+					emailParagraph('Votre abonnement <strong>Pro</strong> est maintenant actif sur PrestaFacture.') +
 					'<p style="margin:0 0 14px;"><a href="http://localhost:5173/parametres/abonnement" style="display:inline-block;padding:14px 28px;background:#0d9488;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">Voir mon abonnement</a></p>',
 			}),
 		},

@@ -1,6 +1,6 @@
-# Guide de développement - Facturio
+# Guide de développement - PrestaFacture
 
-Guide pour contribuer au développement de Facturio.
+Guide pour contribuer au développement de PrestaFacture.
 
 ## Démarrage rapide
 

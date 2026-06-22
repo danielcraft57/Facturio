@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Teste l'API publique Facturio : produits (CRUD).
+  Teste l'API publique PrestaFacture : produits (CRUD).
 
 .DESCRIPTION
   GET /public → création → détail → liste → mise à jour.
@@ -153,7 +153,7 @@ if ($Cleanup -and $created) {
 }
 
 Write-Host ""
-Write-Host "Terminé. Vérifiez le catalogue Produits dans Facturio." -ForegroundColor Cyan
+Write-Host "Terminé. Vérifiez le catalogue Produits dans PrestaFacture." -ForegroundColor Cyan
 if ($created -and -not $Cleanup) {
 	Write-Host "  Astuce : .\scripts\windows\test-produit.ps1 -ProductId $id -Cleanup pour supprimer le produit de test." -ForegroundColor Gray
 }

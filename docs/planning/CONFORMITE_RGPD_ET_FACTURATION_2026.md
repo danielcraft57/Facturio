@@ -1,6 +1,6 @@
 # Conformité RGPD et réforme facturation 2026
 
-Audit fonctionnel de Facturio (mai 2026) : devis, factures, clients, emails, paiements Stripe, prospection, et alignement avec la **réforme de facturation électronique B2B** (sept. 2026 / sept. 2027).
+Audit fonctionnel de PrestaFacture (mai 2026) : devis, factures, clients, emails, paiements Stripe, prospection, et alignement avec la **réforme de facturation électronique B2B** (sept. 2026 / sept. 2027).
 
 **Statut global** : partiellement conforme pour un usage interne / beta ; **écarts importants** avant commercialisation large ou traitement de données clients tiers à grande échelle.
 
@@ -27,14 +27,14 @@ Audit fonctionnel de Facturio (mai 2026) : devis, factures, clients, emails, pai
 
 | Acteur | Rôle typique | Données concernées |
 |--------|--------------|-------------------|
-| **DanielCraft / éditeur Facturio** | Responsable de traitement pour les comptes utilisateurs Facturio ; sous-traitant possible pour les données que les prestataires saisissent sur leurs clients | Compte, org, logs, abonnement SaaS |
-| **Prestataire utilisateur Facturio** | Responsable de traitement pour **ses** clients finaux (factures, devis, emails) | Clients, factures, devis, paiements |
+| **DanielCraft / éditeur PrestaFacture** | Responsable de traitement pour les comptes utilisateurs PrestaFacture ; sous-traitant possible pour les données que les prestataires saisissent sur leurs clients | Compte, org, logs, abonnement SaaS |
+| **Prestataire utilisateur PrestaFacture** | Responsable de traitement pour **ses** clients finaux (factures, devis, emails) | Clients, factures, devis, paiements |
 | **Stripe (prestataire)** | Sous-traitant du **prestataire** pour le paiement des factures | Données carte, IP, métadonnées facture |
-| **Stripe (plateforme)** | Sous-traitant de **Facturio** pour l’abonnement Pro | Email, customer id, abonnement |
+| **Stripe (plateforme)** | Sous-traitant de **PrestaFacture** pour l’abonnement Pro | Email, customer id, abonnement |
 
 **Principe retenu (mai 2026)** : deux circuits Stripe distincts :
 
-1. **`.env` (STRIPE_* )** → abonnement Facturio (Pro / Pro+e-facture) uniquement. Webhook : `POST /api/webhooks/stripe/platform`.
+1. **`.env` (STRIPE_* )** → abonnement PrestaFacture (Pro / Pro+e-facture) uniquement. Webhook : `POST /api/webhooks/stripe/platform`.
 2. **BDD `Organization.invoiceStripe*`** → paiement des factures par les clients du prestataire. Webhook : `POST /api/webhooks/stripe/invoices/:organizationId`.
 
 Cela limite le mélange des flux et clarifie qui est responsable vis-à-vis du payeur final.
@@ -60,7 +60,7 @@ Cela limite le mélange des flux et clarifie qui est responsable vis-à-vis du p
 |-------|------------|--------|
 | Base légale | À documenter | Le prestataire doit avoir une base légale (contrat, intérêt légitime) pour traiter ses clients |
 | Champs sensibles | OK si limité | Nom, email, adresse, SIRET — pas de catégories particulières prévues |
-| Prospection / ProspectLab | Attention | Import externe : le prestataire doit avoir un fondement (opt-in B2B, intérêt légitime encadré) ; Facturio ne vérifie pas la licéité de la source |
+| Prospection / ProspectLab | Attention | Import externe : le prestataire doit avoir un fondement (opt-in B2B, intérêt légitime encadré) ; PrestaFacture ne vérifie pas la licéité de la source |
 | Droit d’accès / rectification | Manuel | Possible via UI client ; pas de portail « demande RGPD » |
 
 **Actions** : mention dans l’UI prospection « vous êtes responsable de la licéité de vos listes » ; API export client CSV ; lien politique confidentialité du prestataire sur emails (champ org optionnel).
@@ -93,8 +93,8 @@ Cela limite le mélange des flux et clarifie qui est responsable vis-à-vis du p
 
 | Circuit | Données | RGPD |
 |---------|---------|------|
-| Abonnement Facturio | Email org, customer Stripe plateforme | DPA Stripe + privacy Facturio |
-| Paiement facture client | Métadonnées facture, montant ; carte chez Stripe | DPA entre **prestataire** et Stripe ; Facturio = outil |
+| Abonnement PrestaFacture | Email org, customer Stripe plateforme | DPA Stripe + privacy PrestaFacture |
+| Paiement facture client | Métadonnées facture, montant ; carte chez Stripe | DPA entre **prestataire** et Stripe ; PrestaFacture = outil |
 
 **Points conformes** :
 - Secrets prestataire masqués dans l’API profil (`invoiceStripeSecretKeySet`, preview pk_…).
@@ -109,8 +109,8 @@ Cela limite le mélange des flux et clarifie qui est responsable vis-à-vis du p
 
 | Point | Conforme ? | Détail |
 |-------|------------|--------|
-| Contenu facture/devis | Données personnelles du destinataire | Le prestataire est responsable ; Facturio envoie en son nom (MAIL_FROM_*) |
-| Liens tracking | Si activé | Mentionner dans privacy prestataire + Facturio |
+| Contenu facture/devis | Données personnelles du destinataire | Le prestataire est responsable ; PrestaFacture envoie en son nom (MAIL_FROM_*) |
+| Liens tracking | Si activé | Mentionner dans privacy prestataire + PrestaFacture |
 | Conservation logs SMTP | Hors app | Dépend de l’hébergeur mail |
 
 ### 2.7 Prospection (ProspectLab)
@@ -138,7 +138,7 @@ Cela limite le mélange des flux et clarifie qui est responsable vis-à-vis du p
 
 Référence complète : [FACTURATION_ELECTRONIQUE_2026.md](./FACTURATION_ELECTRONIQUE_2026.md).
 
-| Exigence | Facturio aujourd’hui | Cible |
+| Exigence | PrestaFacture aujourd’hui | Cible |
 |----------|----------------------|-------|
 | Réception factures électroniques (sept. 2026) | Non | Intégration PA partenaire |
 | Émission ETI/GE (sept. 2026) | Non | Factur-X + envoi PA |
@@ -200,7 +200,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...   # webhook /api/webhooks/stripe/platform
 
 - [ ] Aucune clé secrète prestataire dans les logs ou réponses API
 - [ ] Paiement facture n’utilise **pas** `STRIPE_SECRET_KEY` du `.env`
-- [ ] Abonnement Facturio n’utilise **pas** `invoiceStripeSecretKey` org
+- [ ] Abonnement PrestaFacture n’utilise **pas** `invoiceStripeSecretKey` org
 - [ ] Nouvelle donnée perso : filtrage par `organizationId`
 - [ ] Mention réforme 2026 si feature « e-facture » affichée au marketing
 

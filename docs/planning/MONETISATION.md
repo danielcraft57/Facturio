@@ -1,6 +1,6 @@
 # Monétisation — Méthode économique (bootstrap)
 
-Stratégie pour **rentabiliser Facturio** avec des coûts fixes bas, en s’appuyant sur le positionnement [prestations services numériques](./POSITIONNEMENT_PRESTATIONS_SERVICES.md) et l’écosystème DanielCraft.
+Stratégie pour **rentabiliser PrestaFacture** avec des coûts fixes bas, en s’appuyant sur le positionnement [prestations services numériques](./POSITIONNEMENT_PRESTATIONS_SERVICES.md) et l’écosystème DanielCraft.
 
 **Principe** : ne pas concurrencer Pennylane / Sage sur la compta complète ; vendre un **outil vertical léger** que le prestataire dev/auto utilise tous les jours, avec des revenus récurrents modestes mais cumulables.
 
@@ -27,7 +27,7 @@ Modèle **hybride** à faible coût d’exploitation :
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Gratuit (acquisition)     │  Payant (marge)               │
-│  · Dogfooding DanielCraft  │  · Abonnement SaaS Facturio    │
+│  · Dogfooding DanielCraft  │  · Abonnement SaaS PrestaFacture    │
 │  · Plan Free limité        │  · Module e-facture (2026)     │
 │  · Contenu site / SEO      │  · Packs catalogue premium     │
 │  · Self-host optionnel     │  · Commission PA (si partenaire)│
@@ -36,11 +36,11 @@ Modèle **hybride** à faible coût d’exploitation :
 
 ### 1. Dogfooding (coût marginal ≈ 0 €)
 
-**Utiliser Facturio pour toutes les factures DanielCraft** (devis, acomptes, maintenance, packs IA).
+**Utiliser PrestaFacture pour toutes les factures DanielCraft** (devis, acomptes, maintenance, packs IA).
 
 - Supprime un abonnement concurrent (often 15–40 €/mois + % paiement).
 - Améliore le produit par l’usage réel.
-- Le site [danielcraft.fr](https://danielcraft.fr) devient **vitrine** : « facturé avec Facturio » + lien démo.
+- Le site [danielcraft.fr](https://danielcraft.fr) devient **vitrine** : « facturé avec PrestaFacture » + lien démo.
 
 → Premier levier de rentabilité : **économie directe**, pas seulement revenus.
 
@@ -48,12 +48,12 @@ Modèle **hybride** à faible coût d’exploitation :
 
 | Usage | Où sont les clés | Webhook |
 |-------|------------------|---------|
-| **Abonnement Facturio** (Pro, Pro+e-facture) | `.env` `STRIPE_*` (compte DanielCraft) | `POST /api/webhooks/stripe/platform` |
+| **Abonnement PrestaFacture** (Pro, Pro+e-facture) | `.env` `STRIPE_*` (compte DanielCraft) | `POST /api/webhooks/stripe/platform` |
 | **Paiement des factures clients** | BDD `Organization.invoiceStripe*` (compte du prestataire) | `POST /api/webhooks/stripe/invoices/:organizationId` |
 
-Séparation **RGPD** : le payeur d’une facture est en relation avec le prestataire via **son** Stripe ; Facturio ne centralise pas les paiements clients sur le compte plateforme.
+Séparation **RGPD** : le payeur d’une facture est en relation avec le prestataire via **son** Stripe ; PrestaFacture ne centralise pas les paiements clients sur le compte plateforme.
 
-Checkout Pro : `POST /api/billing/checkout` + UI **Paramètres → Abonnement Facturio**.
+Checkout Pro : `POST /api/billing/checkout` + UI **Paramètres → Abonnement PrestaFacture**.
 
 | Palier | Prix indicatif | Inclus | Rôle |
 |--------|----------------|--------|------|
@@ -80,8 +80,8 @@ Coût de production : une fois le format seed défini (`danielcraft-prestations.
 
 Plutôt que s’immatriculer PA (~ISO 27001, audits) :
 
-- Négocier avec une **PA partenaire** : **commission** ou **marge revendeur** sur chaque client Facturio routé (souvent 10–30 % du abonnement PA, selon contrat).
-- Facturio facture le **logiciel métier** ; la PA facture le **canal réglementaire** (ou forfait bundle affiché au client).
+- Négocier avec une **PA partenaire** : **commission** ou **marge revendeur** sur chaque client PrestaFacture routé (souvent 10–30 % du abonnement PA, selon contrat).
+- PrestaFacture facture le **logiciel métier** ; la PA facture le **canal réglementaire** (ou forfait bundle affiché au client).
 
 → Revenus sans lourd investissement conformité.
 
@@ -90,9 +90,9 @@ Plutôt que s’immatriculer PA (~ISO 27001, audits) :
 | Étape | Action | Coût |
 |-------|--------|------|
 | Contenu | Articles « facturer une prestation dev », « réforme 2026 auto-entrepreneur » | Temps rédaction |
-| Site | CTA « Essayer Facturio » depuis pages prestations | Lien existant |
+| Site | CTA « Essayer PrestaFacture » depuis pages prestations | Lien existant |
 | Preuve | Études de cas : devis site vitrine → facture en 2 clics | Screenshots |
-| Email | Liste clients DanielCraft → bêta Facturio | Outil email déjà là |
+| Email | Liste clients DanielCraft → bêta PrestaFacture | Outil email déjà là |
 
 Pas de pub payante au départ.
 
@@ -148,7 +148,7 @@ La **réforme 2026** est un **levier commercial** naturel pour le vertical dev/a
 
 | Métrique | Usage |
 |----------|--------|
-| **MRR / ARR** | Santé abonnements Facturio |
+| **MRR / ARR** | Santé abonnements PrestaFacture |
 | **Coût infra / MRR** | Doit rester **< 30 %** |
 | **Conversion Free → Pro** | Cible 5–15 % à 12 mois |
 | **Churn mensuel** | Cible **< 5 %** sur niche |
@@ -162,7 +162,7 @@ Module abonnements existant : `server/src/subscriptions/` — brancher métrique
 
 ## Synthèse en une phrase
 
-**Rentabiliser Facturio de façon économique** = l’utiliser soi-même pour DanielCraft, vendre un **SaaS Pro à 9–29 €/mois** aux prestataires dev/auto via le site et le SEO, ajouter des **packs catalogue** à faible coût, et **monétiser la conformité 2026** via un palier e-facture + partenariat PA — sans devenir plateforme agréée ni lancer une force de vente.
+**Rentabiliser PrestaFacture de façon économique** = l’utiliser soi-même pour DanielCraft, vendre un **SaaS Pro à 9–29 €/mois** aux prestataires dev/auto via le site et le SEO, ajouter des **packs catalogue** à faible coût, et **monétiser la conformité 2026** via un palier e-facture + partenariat PA — sans devenir plateforme agréée ni lancer une force de vente.
 
 ---
 
@@ -189,17 +189,17 @@ Visuels : `frontend/public/images/` (`facturio-hero.png`, `facturio-prestations.
 
 **Oui, on limite l’accès** sur le plan Free — c’est le cœur du freemium. Voici comment le brancher **sans tout réécrire** :
 
-### Ce qui existe déjà dans Facturio
+### Ce qui existe déjà dans PrestaFacture
 
 | Outil | Rôle monétisation |
 |-------|-------------------|
 | **`Organization` + auth JWT** | Chaque compte = une org ; c’est le tenant à facturer |
-| **`Subscription` / `Plan`** (module `subscriptions/`) | Abonnements **de vos clients** (maintenance chez un client) — **≠** abonnement Facturio SaaS |
-| **Stripe** (`stripe/`) | Paiement des **factures que vous émettez** — réutilisable plus tard pour **Facturio Billing** (checkout Pro) |
+| **`Subscription` / `Plan`** (module `subscriptions/`) | Abonnements **de vos clients** (maintenance chez un client) — **≠** abonnement PrestaFacture SaaS |
+| **Stripe** (`stripe/`) | Paiement des **factures que vous émettez** — réutilisable plus tard pour **PrestaFacture Billing** (checkout Pro) |
 | **Factures / devis / produits** | Volume à compter pour le quota Free |
 | **Site public `/tarifs`** | Conversion → inscription |
 
-### Ce qui a été ajouté (SaaS Facturio)
+### Ce qui a été ajouté (SaaS PrestaFacture)
 
 | Élément | Fichier |
 |---------|---------|
@@ -232,9 +232,9 @@ Ou via Prisma Studio après migration `20260519120000_organization_saas_billing_
 ### Distinction importante
 
 - **`subscriptions` (existant)** = vous facturez **vos clients** (maintenance, SaaS livré).
-- **`saasPlan` (nouveau)** = **vous payez Facturio** pour utiliser l’application.
+- **`saasPlan` (nouveau)** = **vous payez PrestaFacture** pour utiliser l’application.
 
-Les deux coexistent : DanielCraft peut être en plan Pro Facturio tout en gérant des abonnements clients dans le même outil.
+Les deux coexistent : DanielCraft peut être en plan Pro PrestaFacture tout en gérant des abonnements clients dans le même outil.
 
 ## Tâches (à cocher)
 
@@ -244,7 +244,7 @@ Les deux coexistent : DanielCraft peut être en plan Pro Facturio tout en géran
 - [x] Chiffrement secrets Stripe org (`enc:v1:`) + garde prospection plan Free
 - [ ] DPA sous-traitants documentés (Stripe, SMTP, ProspectLab)
 - [ ] Lien CTA depuis danielcraft.fr vers `https://…/tarifs`
-- [ ] Mention « Propulsé par Facturio » sur PDF / page publique facture (option branding)
+- [ ] Mention « Propulsé par PrestaFacture » sur PDF / page publique facture (option branding)
 - [ ] Négocier accord commission ou bundle avec une PA short-listée
 - [ ] Rédiger 2 articles SEO (réforme 2026 + facturation prestation dev)
 - [ ] Définir limites techniques du plan Free (middleware quotas)

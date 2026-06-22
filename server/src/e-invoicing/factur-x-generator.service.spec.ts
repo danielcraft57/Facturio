@@ -49,7 +49,7 @@ describe('FacturXGeneratorService', () => {
 		service = new FacturXGeneratorService();
 	});
 
-	it('génère un XML Facturio avec métadonnées facture', () => {
+	it('génère un XML PrestaFacture avec métadonnées facture', () => {
 		const { xml, hash } = service.generate(sampleInvoice);
 
 		expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');

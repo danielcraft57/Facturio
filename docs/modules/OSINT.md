@@ -1,6 +1,6 @@
-# Intégration OSINT - Facturio
+# Intégration OSINT - PrestaFacture
 
-Documentation sur les fonctionnalités d'intelligence économique et OSINT dans Facturio.
+Documentation sur les fonctionnalités d'intelligence économique et OSINT dans PrestaFacture.
 
 ## Vue d'ensemble
 
@@ -170,7 +170,7 @@ CRUNCHBASE_API_KEY=...
 SHODAN_API_KEY=...
 
 # Scraping
-SCRAPER_USER_AGENT=Facturio/1.0
+SCRAPER_USER_AGENT=PrestaFacture/1.0
 SCRAPER_TIMEOUT=30000
 SCRAPER_RATE_LIMIT=10
 ```
@@ -179,7 +179,7 @@ SCRAPER_RATE_LIMIT=10
 
 ```typescript
 {
-  userAgent: 'Facturio/1.0',
+  userAgent: 'PrestaFacture/1.0',
   timeout: 30000,
   rateLimit: 10, // requêtes par seconde
   retryAttempts: 3

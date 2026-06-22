@@ -1,4 +1,4 @@
-# Avancement du projet Facturio
+# Avancement du projet PrestaFacture
 
 État actuel du projet, progression globale et fonctionnalités implémentées.
 

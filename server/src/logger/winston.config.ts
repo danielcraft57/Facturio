@@ -47,7 +47,7 @@ export const winstonConfig: WinstonModuleOptions = {
           level: defaultLevel,
           format: winston.format.combine(
             winston.format.colorize(),
-            nestWinstonModuleUtilities.format.nestLike('Facturio', {
+            nestWinstonModuleUtilities.format.nestLike('PrestaFacture', {
               colors: true,
               prettyPrint: true,
             }),

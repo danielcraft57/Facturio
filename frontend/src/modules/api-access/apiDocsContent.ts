@@ -1,4 +1,4 @@
-/** Documentation API publique Facturio (contenu structuré). */
+/** Documentation API publique PrestaFacture (contenu structuré). */
 
 import { resolveApiBaseUrl } from '../../utils/resolveApiBaseUrl'
 
@@ -198,7 +198,7 @@ Test : GET /api/public → résumé des ressources.`,
     id: 'paid-externe',
     title: 'Paiement externe + envoi email',
     scopes: ['factures.read', 'factures.write', 'factures.send'],
-    body: `Cas typique : commande réglée sur WooCommerce, Shopify, etc. Facturio enregistre la facture comme payée puis envoie le PDF par email.
+    body: `Cas typique : commande réglée sur WooCommerce, Shopify, etc. PrestaFacture enregistre la facture comme payée puis envoie le PDF par email.
 
 Étape A — créer la facture (paidExternally: true).
 Étape B — envoyer (remplacer :id par l’id renvoyé à l’étape A).

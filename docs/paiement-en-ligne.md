@@ -1,6 +1,6 @@
 # Paiement en ligne - pistes d'intégration
 
-Actuellement Facturio enregistre les paiements manuellement (montant, date, moyen). Pour accepter les paiements en ligne par carte ou autre, voici des solutions adaptées et comment les brancher sur l'existant.
+Actuellement PrestaFacture enregistre les paiements manuellement (montant, date, moyen). Pour accepter les paiements en ligne par carte ou autre, voici des solutions adaptées et comment les brancher sur l'existant.
 
 ## Solutions recommandées
 
@@ -30,7 +30,7 @@ Actuellement Facturio enregistre les paiements manuellement (montant, date, moye
 - **Intégration** : formulaire de paiement sécurisé ou API ; notification serveur pour valider le paiement puis `invoices.addPayment`.
 - **Doc** : https://docs.lyra.com/
 
-## Branchement dans Facturio
+## Branchement dans PrestaFacture
 
 - **Modèle existant** : la table `Payment` est déjà liée à `Invoice` ; `invoices.addPayment(invoiceId, amount, date, method, notes)` met à jour le solde et le statut (PAID si solde à 0).
 - **À ajouter** :

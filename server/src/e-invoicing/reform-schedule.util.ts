@@ -96,7 +96,7 @@ export function computeReformSchedule(companySizeInput?: string): ReformSchedule
 		todayIso < RECEPTION
 			? 'Choisissez une PA et complétez votre profil émetteur (SIRET, SIREN clients B2B) avant septembre 2026.'
 			: todayIso < emissionDate
-				? 'Vous devez déjà recevoir des e-factures. Préparez l’émission et le palier Pro + e-facture Facturio.'
+				? 'Vous devez déjà recevoir des e-factures. Préparez l’émission et le palier Pro + e-facture PrestaFacture.'
 				: 'Vérifiez que vos émissions B2B passent par une PA et que votre e-reporting est actif.';
 
 	return {

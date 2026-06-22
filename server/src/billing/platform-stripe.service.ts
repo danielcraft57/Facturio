@@ -20,8 +20,8 @@ const PLAN_AMOUNTS_EUR: Record<'PRO' | 'PRO_EFACTURE', number> = {
 };
 
 const PLAN_LABELS: Record<'PRO' | 'PRO_EFACTURE', string> = {
-	PRO: 'Facturio Pro',
-	PRO_EFACTURE: 'Facturio Pro + e-facture',
+	PRO: 'PrestaFacture Pro',
+	PRO_EFACTURE: 'PrestaFacture Pro + e-facture',
 };
 
 type PlatformStripeWebhookEvent = {
@@ -96,7 +96,7 @@ export class PlatformStripeService {
 		const key = this.config.stripeSecretKey?.trim();
 		if (!key) {
 			throw new ServiceUnavailableException(
-				'Paiement Facturio non configuré (STRIPE_SECRET_KEY plateforme dans .env)',
+				'Paiement PrestaFacture non configuré (STRIPE_SECRET_KEY plateforme dans .env)',
 			);
 		}
 		return createStripeClient(key);
@@ -210,7 +210,7 @@ export class PlatformStripeService {
 							recurring: { interval: 'month', interval_count: months },
 							product_data: {
 								name: PLAN_LABELS[plan],
-								description: `Abonnement Facturio (plateforme) — prélèvement ${periodLabel}.`,
+								description: `Abonnement PrestaFacture (plateforme) — prélèvement ${periodLabel}.`,
 							},
 						},
 						quantity: 1,
@@ -269,7 +269,7 @@ export class PlatformStripeService {
 			custom_text: {
 				submit: {
 					message:
-						'Paiement sécurisé par Stripe. Après validation, vous serez renvoyé vers Facturio.',
+						'Paiement sécurisé par Stripe. Après validation, vous serez renvoyé vers PrestaFacture.',
 				},
 			},
 			billing_address_collection: 'required',

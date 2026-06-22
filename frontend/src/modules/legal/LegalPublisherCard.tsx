@@ -1,12 +1,12 @@
 import { Box, Typography, Link, Stack } from '@mui/material'
-import { DANIELCRAFT_PUBLISHER, FACTURIO_SERVICE } from './danielcraftPublisher'
+import { DANIELCRAFT_PUBLISHER, PRESTAFACTURE_SERVICE } from './danielcraftPublisher'
 
 type Props = {
-  showFacturio?: boolean
+  showPrestaFacture?: boolean
 }
 
 /** Encart récapitulatif éditeur (données danielcraft.fr). */
-export function LegalPublisherCard({ showFacturio = true }: Props) {
+export function LegalPublisherCard({ showPrestaFacture = true }: Props) {
   const p = DANIELCRAFT_PUBLISHER
   return (
     <Box
@@ -19,9 +19,9 @@ export function LegalPublisherCard({ showFacturio = true }: Props) {
         bgcolor: 'action.hover',
       }}
     >
-      {showFacturio && (
+      {showPrestaFacture && (
         <Typography variant="subtitle2" fontWeight={700} color="primary.main" gutterBottom>
-          {FACTURIO_SERVICE.name}
+          {PRESTAFACTURE_SERVICE.name}
         </Typography>
       )}
       <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 1.5 }}>

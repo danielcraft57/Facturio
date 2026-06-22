@@ -1,4 +1,4 @@
-# Synthèse exécutive — Facturio & facturation électronique
+# Synthèse exécutive — PrestaFacture & facturation électronique
 
 **Document** : dossier de candidature / présentation partenaires  
 **Version** : 1.0 — mai 2026  
@@ -8,7 +8,7 @@
 
 ## 1. Objet
 
-**Facturio** est un logiciel SaaS de facturation destiné aux **prestataires de services numériques** (développement web, logiciel sur mesure, automatisation, maintenance, offres IA). L’objectif réglementaire est la conformité à la **réforme française de facturation électronique B2B** (échéances septembre 2026 et 2027) et, selon la stratégie retenue, l’**immatriculation en Plateforme Agréée (PA)** ou l’intégration à une **PA partenaire** en tant que solution compatible.
+**PrestaFacture** est un logiciel SaaS de facturation destiné aux **prestataires de services numériques** (développement web, logiciel sur mesure, automatisation, maintenance, offres IA). L’objectif réglementaire est la conformité à la **réforme française de facturation électronique B2B** (échéances septembre 2026 et 2027) et, selon la stratégie retenue, l’**immatriculation en Plateforme Agréée (PA)** ou l’intégration à une **PA partenaire** en tant que solution compatible.
 
 ## 2. Identité de l’éditeur
 
@@ -27,7 +27,7 @@
 
 ### Livré
 
-- Facturation classique : devis, factures, PDF, email, liens publics, paiements Stripe (double flux : abonnement Facturio / encaissement factures client).
+- Facturation classique : devis, factures, PDF, email, liens publics, paiements Stripe (double flux : abonnement PrestaFacture / encaissement factures client).
 - Module **`e-invoicing`** : score de conformité organisation / client / facture, export **XML simplifié EN 16931** (pré-Factur-X), statuts `eInvoiceStatus`, champ **SIREN client**, tests unitaires et e2e.
 - RGPD : export compte, suppression, chiffrement secrets (AES-256-GCM), pages légales (CGU, CGV, mentions, confidentialité).
 
@@ -40,7 +40,7 @@
 
 ## 4. Deux scénarios stratégiques
 
-| Critère | Solution compatible + PA partenaire | Immatriculation PA Facturio |
+| Critère | Solution compatible + PA partenaire | Immatriculation PA PrestaFacture |
 |---------|-------------------------------------|-----------------------------|
 | Délai | 6–12 mois (selon partenaire) | 12–24 mois |
 | Coût | Modéré (API + commission) | Élevé (ISO 27001, audits, infra) |

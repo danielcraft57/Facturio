@@ -8,13 +8,13 @@ Metz, le [DATE]
 
 **À l’attention du service des Plateformes Agréées — DGFiP**
 
-**Objet** : demande d’immatriculation en qualité de Plateforme Agréée — DanielCraft / Facturio
+**Objet** : demande d’immatriculation en qualité de Plateforme Agréée — DanielCraft / PrestaFacture
 
 Madame, Monsieur,
 
-Par la présente, je soussigné **Loïc DANIEL**, entrepreneur individuel exerçant sous l’enseigne **DanielCraft** (SIRET 823 417 050 000 23, 57000 Metz), sollicite l’immatriculation de la solution **Facturio** en tant que **Plateforme Agréée** au sens de la réforme de la facturation électronique entre entreprises.
+Par la présente, je soussigné **Loïc DANIEL**, entrepreneur individuel exerçant sous l’enseigne **DanielCraft** (SIRET 823 417 050 000 23, 57000 Metz), sollicite l’immatriculation de la solution **PrestaFacture** en tant que **Plateforme Agréée** au sens de la réforme de la facturation électronique entre entreprises.
 
-**Facturio** est un logiciel SaaS de facturation à destination des prestataires de services numériques. Le service couvre l’émission et la réception de factures structurées (format **Factur-X** / EN 16931), le contrôle de conformité des données émetteur et client (SIREN, SIRET, TVA), et la traçabilité des flux (empreintes, statuts de cycle de vie).
+**PrestaFacture** est un logiciel SaaS de facturation à destination des prestataires de services numériques. Le service couvre l’émission et la réception de factures structurées (format **Factur-X** / EN 16931), le contrôle de conformité des données émetteur et client (SIREN, SIRET, TVA), et la traçabilité des flux (empreintes, statuts de cycle de vie).
 
 Le dossier joint comprend notamment :
 

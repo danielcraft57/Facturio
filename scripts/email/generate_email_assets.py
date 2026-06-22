@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Génère les images WebP pour les emails Facturio (icône + bandeaux)."""
+"""Génère les images WebP pour les emails PrestaFacture (icône + bandeaux)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFilter
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "frontend" / "public" / "images" / "email"
 
-# Palette alignée facturio.danielcraft.fr (hero teal + finance)
+# Palette alignée prestafacture.com (hero teal + finance)
 TEAL_700 = (15, 118, 110)
 TEAL_600 = (13, 148, 136)
 TEAL_900 = (19, 78, 74)
@@ -144,7 +144,7 @@ def draw_header(variant: str) -> Image.Image:
     except OSError:
         font = ImageFont.load_default()
         font_sm = font
-    draw.text((96, 48), "Facturio", fill=(*WHITE, 255), font=font)
+    draw.text((96, 48), "PrestaFacture", fill=(*WHITE, 255), font=font)
     draw.text((96, 82), "Devis · Factures · Conformité 2026", fill=(255, 255, 255, 200), font=font_sm)
     return img_rgba.convert("RGB")
 

@@ -62,7 +62,7 @@ export class FacturXGeneratorService {
 		const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <FacturioCrossIndustryInvoice xmlns="urn:facturio:einvoice:1.0" profile="EN16931-simplified">
   <ExchangedDocumentContext>
-    <Guideline>Factur-X / EN 16931 (génération Facturio — brouillon technique)</Guideline>
+    <Guideline>Factur-X / EN 16931 (génération PrestaFacture — brouillon technique)</Guideline>
   </ExchangedDocumentContext>
   <ExchangedDocument>
     <ID>${this.escape(invoice.number)}</ID>

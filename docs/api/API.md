@@ -1,6 +1,6 @@
-# Documentation API - Facturio
+# Documentation API - PrestaFacture
 
-Documentation complète des endpoints de l'API Facturio.
+Documentation complète des endpoints de l'API PrestaFacture.
 
 ## Base URL
 

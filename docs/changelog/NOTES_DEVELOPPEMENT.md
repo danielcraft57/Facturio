@@ -121,7 +121,7 @@ SMTP_SECURE=false
 SMTP_USER=user@example.com
 SMTP_PASS=password
 MAIL_FROM=noreply@example.com
-MAIL_FROM_NAME=Facturio
+MAIL_FROM_NAME=PrestaFacture
 ```
 
 ## Notes techniques

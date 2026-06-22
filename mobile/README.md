@@ -1,6 +1,6 @@
-# Facturio Mobile
+# PrestaFacture Mobile
 
-Application **React Native (Expo)** pour tablette et smartphone — tableau de bord, factures, connexion à l’API Facturio existante.
+Application **React Native (Expo)** pour tablette et smartphone — tableau de bord, factures, connexion à l’API PrestaFacture existante.
 
 Inclut désormais :
 - synchro temps réel (SSE) sur devis/factures,
@@ -10,7 +10,7 @@ Inclut désormais :
 ## Prérequis
 
 - Node.js ≥ 18
-- Backend Facturio en local (`npm run start:dev --prefix server`) ou prod
+- Backend PrestaFacture en local (`npm run start:dev --prefix server`) ou prod
 - Expo Go sur appareil, ou émulateur Android / simulateur iOS
 
 ## Démarrage rapide
@@ -38,12 +38,12 @@ npm run web
 
 - Ouvrir l’URL affichée (souvent `http://localhost:8081`)
 - Redimensionner la fenêtre : **&lt; 768 px** ≈ mobile, **≥ 768 px** ≈ tablette (sidebar)
-- Titre d’onglet dynamique : `Tableau de bord · Facturio`, etc.
+- Titre d’onglet dynamique : `Tableau de bord · PrestaFacture`, etc.
 - `app/+html.tsx` : meta `theme-color`, description, favicon
 
 Limites du web : `expo-secure-store` utilise AsyncStorage (OK en dev) ; certaines APIs natives (push, biométrie) ne s’y exécutent pas.
 
-### Icônes et splash (marque Facturio)
+### Icônes et splash (marque PrestaFacture)
 
 Source vectorielle : `assets/source/icon.svg` (navy + teal + « F »).
 
@@ -55,7 +55,7 @@ node scripts/generate-brand-assets.mjs
 
 Régénère `icon.png`, `splash-icon.png`, `favicon.png`, `android-icon-foreground.png`.
 
-Métadonnées app : `app.json` (nom **Facturio**, splash `#002D3D`, adaptive icon Android).
+Métadonnées app : `app.json` (nom **PrestaFacture**, splash `#002D3D`, adaptive icon Android).
 
 ## Structure
 
@@ -109,4 +109,4 @@ Variable `EXPO_PUBLIC_API_URL` :
 | Émulateur Android | `http://10.0.2.2:3000/api` |
 | Simulateur iOS | `http://localhost:3000/api` |
 | Appareil physique | `http://<IP-LAN>:3000/api` |
-| Production | `https://facturio.danielcraft.fr/api` |
+| Production | `https://prestafacture.com/api` |

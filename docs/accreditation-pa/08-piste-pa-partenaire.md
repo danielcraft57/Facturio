@@ -9,14 +9,14 @@
 | Coût initial | API + commission | Certification + audits + infra |
 | Risque réglementaire | Partagé | Entièrement interne |
 
-**Recommandation** : commercialiser Facturio en **solution compatible** dès Q3 2026, tout en maintenant le dossier PA propre pour une décision ultérieure.
+**Recommandation** : commercialiser PrestaFacture en **solution compatible** dès Q3 2026, tout en maintenant le dossier PA propre pour une décision ultérieure.
 
 ## Critères de sélection PA
 
 1. **API REST** documentée (sandbox + production).
 2. Formats : **Factur-X** minimum, UBL/CII souhaitable.
 3. **Marque blanche** ou co-branding acceptable.
-4. Tarification compatible avec paliers Facturio (9–29 €/mois utilisateur).
+4. Tarification compatible avec paliers PrestaFacture (9–29 €/mois utilisateur).
 5. SLA et support technique réactif.
 6. DPA / sous-traitance RGPD claire.
 7. Webhooks réception + statuts lifecycle.
@@ -33,13 +33,13 @@ Source liste officielle : [impots.gouv.fr — PA immatriculées](https://www.imp
 
 ## Modèle économique
 
-- Facturio facture le **logiciel** (Pro + e-facture).
+- PrestaFacture facture le **logiciel** (Pro + e-facture).
 - La PA facture le **canal réglementaire** ou forfait bundle.
 - Négocier **commission** (10–30 % selon volume) ou **marge revendeur**.
 
 Voir [MONETISATION.md](../planning/MONETISATION.md).
 
-## Intégration technique (Facturio)
+## Intégration technique (PrestaFacture)
 
 1. Module `EInvoicingPaConnector` (interface + implémentation par partenaire).
 2. Paramètres organisation : clés API, environnement test/prod.

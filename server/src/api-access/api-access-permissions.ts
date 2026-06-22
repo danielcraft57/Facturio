@@ -1,4 +1,4 @@
-/** Scopes disponibles pour les jetons API publique Facturio. */
+/** Scopes disponibles pour les jetons API publique PrestaFacture. */
 export const API_ACCESS_SCOPES = [
 	'clients.read',
 	'clients.write',

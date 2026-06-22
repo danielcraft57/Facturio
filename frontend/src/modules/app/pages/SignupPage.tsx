@@ -469,7 +469,7 @@ export function SignupPage() {
                 <Link component={RouterLink} to="/cgv" target="_blank" rel="noopener noreferrer" underline="hover">
                   CGV
                 </Link>{' '}
-                s&apos;appliquent aux abonnements payants Facturio.
+                s&apos;appliquent aux abonnements payants PrestaFacture.
               </Typography>
             </Box>
             <DisabledActionTooltip

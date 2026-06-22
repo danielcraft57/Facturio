@@ -1,4 +1,4 @@
-/** Palette Facturio — alignée sur l’app (#0f172a / #1e3a5f / #1e40af) */
+/** Palette PrestaFacture — alignée sur l’app (#0f172a / #1e3a5f / #1e40af) */
 export const PDF_THEME = {
 	navy: '#0f172a',
 	navyMid: '#1e3a5f',

@@ -224,7 +224,7 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
       <CardContent>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 2 }}>
           <Typography variant="h6" fontWeight={600}>
-            Abonnement Facturio
+            Abonnement PrestaFacture
           </Typography>
           <Chip label={usage.planLabel} color={isFree ? 'default' : 'primary'} size="small" />
           {statusChip && (
@@ -241,7 +241,7 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
             {usage.betaTester?.expiresAt
               ? ` (jusqu'au ${formatPeriodEnd(usage.betaTester.expiresAt) ?? '—'}).`
               : '.'}
-            {' '}Merci de tester Facturio en conditions réelles : vos retours nous aident à améliorer le produit.
+            {' '}Merci de tester PrestaFacture en conditions réelles : vos retours nous aident à améliorer le produit.
           </Alert>
         )}
 
@@ -258,7 +258,7 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
         )}
 
         <Typography variant="body2" color="text.secondary" component="div" sx={{ mb: 2 }}>
-          Paiement de votre abonnement Facturio via Stripe (compte plateforme). Les encaissements de vos
+          Paiement de votre abonnement PrestaFacture via Stripe (compte plateforme). Les encaissements de vos
           factures clients restent sur votre propre Stripe (section Paiements). Vos informations
           d’organisation (nom, adresse si renseignée) sont synchronisées sur la fiche client Stripe pour
           préremplir le formulaire Checkout. Personnalisation de la page :{' '}
@@ -291,7 +291,7 @@ export function BillingPlanSection({ onBillingMessage, reloadKey = 0 }: BillingP
                 label="Code d'invitation"
                 value={betaCode}
                 onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
-                placeholder="FACTURIO-BETA-XXXXXX"
+                placeholder="DEV26"
                 sx={{ flex: '1 1 220px' }}
               />
               <Button

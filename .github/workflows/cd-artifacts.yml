@@ -114,7 +114,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_PUBLIC_APP_URL: ${{ secrets.FACTURIO_PUBLIC_APP_URL }}
+          VITE_PUBLIC_APP_URL: ${{ secrets.PRESTAFACTURE_PUBLIC_APP_URL || secrets.FACTURIO_PUBLIC_APP_URL }}
 
       - name: Upload frontend dist
         uses: actions/upload-artifact@v4

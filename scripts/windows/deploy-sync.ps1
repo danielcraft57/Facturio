@@ -25,7 +25,7 @@ if ([string]::IsNullOrWhiteSpace($AppUser)) {
 }
 
 if (-not (Test-Path (Join-Path $localDir "server")) -or -not (Test-Path (Join-Path $localDir "frontend"))) {
-    Write-Host "ERREUR: Ce script doit être exécuté depuis le répertoire Facturio" -ForegroundColor Red
+    Write-Host "ERREUR: Ce script doit être exécuté depuis le répertoire PrestaFacture" -ForegroundColor Red
     exit 1
 }
 

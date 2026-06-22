@@ -1,4 +1,5 @@
 import { formatPostalAddress } from './pdf/pdf-legal-mentions';
+import { getPlatformBrandName } from './email-brand';
 
 function trimValue(value: unknown): string {
 	if (value == null) return '';
@@ -31,7 +32,7 @@ function formatRcs(organization?: Record<string, unknown> | null): string {
 /** Nom affiché dans l’objet / signature (fiche entreprise, sans .env). */
 export function resolveEmailIssuerDisplayName(organization?: Record<string, unknown> | null): string {
 	if (!organization) {
-		return trimValue(process.env.COMPANY_NAME) || 'Facturio';
+		return trimValue(process.env.COMPANY_NAME) || getPlatformBrandName();
 	}
 	return (
 		trimValue(organization.legalName) ||
@@ -88,7 +89,7 @@ export function buildEmailLegalFooter(organization?: Record<string, unknown> | n
 	return parts.join(' — ');
 }
 
-/** Pied de page Facturio plateforme (abonnements SaaS) — variables d’environnement. */
+/** Pied de page PrestaFacture plateforme (abonnements SaaS) — variables d’environnement. */
 export function buildPlatformEmailLegalFooter(): string {
 	const parts: string[] = [];
 	const name = trimValue(process.env.COMPANY_NAME);
@@ -103,5 +104,5 @@ export function buildPlatformEmailLegalFooter(): string {
 	if (phone) parts.push(`Tél. : ${phone}`);
 	const email = trimValue(process.env.COMPANY_EMAIL) || trimValue(process.env.MAIL_FROM);
 	if (email) parts.push(`Email : ${email}`);
-	return parts.length > 0 ? parts.join(' — ') : 'Facturio';
+	return parts.length > 0 ? parts.join(' — ') : getPlatformBrandName();
 }

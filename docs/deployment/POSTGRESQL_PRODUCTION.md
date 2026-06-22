@@ -1,4 +1,4 @@
-# PostgreSQL — production Facturio
+# PostgreSQL — production PrestaFacture
 
 ## Création base et utilisateur
 

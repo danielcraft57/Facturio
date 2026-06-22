@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Génère la plaquette commerciale UX/UI Facturio (PDF A4)."""
+"""Génère la plaquette commerciale UX/UI PrestaFacture (PDF A4)."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ DESCRIPTION = (
     "Centralisez devis, facturation, TVA et suivi comptable — pensé pour les freelances "
     "développeurs et les agences web, sans tableur ni logiciel généraliste."
 )
-URL = "https://facturio.danielcraft.fr"
+URL = "https://prestafacture.com"
 CONTACT = "contact@danielcraft.fr"
 
 AUDIENCES = [
@@ -104,7 +104,7 @@ class BrochurePDF(FPDF):
         self.cell(
             0,
             6,
-            f"Facturio — DanielCraft — {URL} — {date.today().strftime('%d/%m/%Y')} — p. {self.page_no()}",
+            f"PrestaFacture — DanielCraft — {URL} — {date.today().strftime('%d/%m/%Y')} — p. {self.page_no()}",
             align="C",
         )
         self.set_text_color(0, 0, 0)
@@ -135,7 +135,7 @@ class BrochurePDF(FPDF):
         self.set_text_color(*WHITE)
         self.set_y(y0)
         self._font("B", 36)
-        self.cell(0, 14, "Facturio", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+        self.cell(0, 14, "PrestaFacture", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
         self._font("B", 14)
         self.multi_cell(0, 8, TAGLINE, align="C")
         self.ln(4)
@@ -276,7 +276,7 @@ def build() -> None:
             "7. Réforme facturation électronique 2026",
             "8. Offres & tarification",
             "9. Pourquoi DanielCraft",
-            "10. Démarrer avec Facturio",
+            "10. Démarrer avec PrestaFacture",
         ]
     )
 
@@ -284,15 +284,15 @@ def build() -> None:
     pdf.add_page()
     pdf.section_title("1. Vision produit", "Positionnement vertical tech")
     pdf.body(
-        "Facturio est le logiciel de facturation en ligne édité par DanielCraft, conçu pour "
+        "PrestaFacture est le logiciel de facturation en ligne édité par DanielCraft, conçu pour "
         "les prestataires de services numériques : développeurs freelances, indie hackers, "
         "petites agences web et studios tech."
     )
     pdf.body(
-        "Contrairement aux logiciels généralistes ou aux tableurs, Facturio parle votre langage "
+        "Contrairement aux logiciels généralistes ou aux tableurs, PrestaFacture parle votre langage "
         "métier : forfaits, régie au TJM, acomptes, maintenance, packs IA et abonnements récurrents."
     )
-    pdf.section_title("Ce que Facturio remplace", subtitle="")
+    pdf.section_title("Ce que PrestaFacture remplace", subtitle="")
     pdf.bullets(
         [
             "Feuilles Excel pour devis, TVA et suivi des paiements",
@@ -310,7 +310,7 @@ def build() -> None:
         ]
     )
     if img("facturio-hero.png").exists():
-        pdf.image_block(img("facturio-hero.png"), "Page d'accueil — hero marketing Facturio", max_h=70)
+        pdf.image_block(img("facturio-hero.png"), "Page d'accueil — hero marketing PrestaFacture", max_h=70)
 
     # 2 Cibles
     pdf.add_page()
@@ -333,7 +333,7 @@ def build() -> None:
     pdf.add_page()
     pdf.section_title("4. Interface & UX", "Tableau de bord et ergonomie")
     pdf.body(
-        "L'interface Facturio repose sur une charte claire : fond clair, navigation latérale, "
+        "L'interface PrestaFacture repose sur une charte claire : fond clair, navigation latérale, "
         "accent teal pour les actions principales, typographie Inter pour une lecture confortable."
     )
     pdf.bullets(
@@ -365,14 +365,14 @@ def build() -> None:
     pdf.section_title("7. Réforme 2026", "Facturation électronique B2B")
     pdf.body(
         "À partir de septembre 2026 (réception) puis 2027 (émission PME), la facturation "
-        "électronique structurée devient obligatoire en France. Facturio vous aide à anticiper."
+        "électronique structurée devient obligatoire en France. PrestaFacture vous aide à anticiper."
     )
     pdf.bullets(
         [
             "Score de conformité par facture (SIRET, SIREN, mentions)",
             "Export Factur-X (XML EN 16931)",
             "Connexion Plateforme Agréée partenaire — en développement",
-            "Vous restez dans Facturio : catalogue, devis et missions inchangés",
+            "Vous restez dans PrestaFacture : catalogue, devis et missions inchangés",
         ]
     )
     pdf.body(
@@ -392,7 +392,7 @@ def build() -> None:
     pdf.add_page()
     pdf.section_title("9. Pourquoi DanielCraft ?")
     pdf.body(
-        "DanielCraft est l'éditeur de Facturio. Nous utilisons notre propre outil pour "
+        "DanielCraft est l'éditeur de PrestaFacture. Nous utilisons notre propre outil pour "
         "facturer nos prestations de développement, d'intégration et de maintenance — "
         "preuve concrète de l'adéquation produit / métier."
     )
@@ -403,7 +403,7 @@ def build() -> None:
     pdf.add_page()
     pdf.section_title("10. Démarrer")
     pdf.body(
-        "1. Créez votre compte gratuit sur facturio.danielcraft.fr\n"
+        "1. Créez votre compte gratuit sur prestafacture.com\n"
         "2. Choisissez votre profil (freelance, indie, agence…)\n"
         "3. Sélectionnez votre stack technique pour personnaliser le catalogue\n"
         "4. Émettez votre premier devis en quelques minutes"

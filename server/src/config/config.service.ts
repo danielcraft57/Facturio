@@ -281,7 +281,7 @@ export class ConfigService {
 
 	/** Nom affiché sur Stripe Checkout (personnalisation). */
 	get stripeCheckoutDisplayName(): string {
-		return process.env.STRIPE_CHECKOUT_DISPLAY_NAME?.trim() || 'Facturio';
+		return process.env.STRIPE_CHECKOUT_DISPLAY_NAME?.trim() || 'PrestaFacture';
 	}
 
 	/** Coins Checkout Stripe : paramètre API `border_style` (`pill` | `rounded` | `rectangular`). */

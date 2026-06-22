@@ -98,7 +98,7 @@ export async function seedDefaultUser(prisma: PrismaClient): Promise<void> {
 
 	const org = await prisma.organization.create({
 		data: {
-			name: 'Facturio',
+			name: 'PrestaFacture',
 			saasPlan: 'PRO',
 			companyType: 'B2B',
 			address: process.env.COMPANY_ADDRESS || '57000 Metz, France',
@@ -113,7 +113,7 @@ export async function seedDefaultUser(prisma: PrismaClient): Promise<void> {
 			email: 'admin@facturio.local',
 			password: hashedPassword,
 			firstName: 'Admin',
-			lastName: 'Facturio',
+			lastName: 'PrestaFacture',
 			organizationId: org.id,
 			status: 'ACTIVE',
 			emailVerified: true,

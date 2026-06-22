@@ -1,4 +1,4 @@
-# Guide d'optimisation du projet Facturio
+# Guide d'optimisation du projet PrestaFacture
 
 Ce document liste les optimisations possibles pour améliorer les performances, la maintenabilité et l'expérience utilisateur.
 

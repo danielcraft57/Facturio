@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Teste l'API publique Facturio : facture payée externe + envoi email.
+  Teste l'API publique PrestaFacture : facture payée externe + envoi email.
 
 .DESCRIPTION
   Équivalent des curl documentés (paidExternally + POST .../send).
@@ -113,5 +113,5 @@ $sendRes = Invoke-FacturioJson -Method POST -Uri "$BaseUrl/public/factures/$($in
 Write-Host "  emailSent=$($sendRes.emailSent) alreadyPaid=$($sendRes.alreadyPaid) sentTo=$($sendRes.sentTo)" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "Terminé. Vérifiez la liste Factures dans Facturio (icône email verte si sentAt renseigné)." -ForegroundColor Cyan
+Write-Host "Terminé. Vérifiez la liste Factures dans PrestaFacture (icône email verte si sentAt renseigné)." -ForegroundColor Cyan
 Write-Host ""

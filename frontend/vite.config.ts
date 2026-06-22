@@ -20,10 +20,10 @@ export default defineConfig(({ mode }) => {
   server: {
       port: 5173,
       host: '0.0.0.0',
-      allowedHosts: ['node13.lan', 'localhost', '.lan', 'facturio.danielcraft.fr', 'devis.danielcraft.fr', 'facture.danielcraft.fr', '.danielcraft.fr'],
+      allowedHosts: ['node13.lan', 'localhost', '.lan', 'prestafacture.com', 'devis.danielcraft.fr', 'facture.danielcraft.fr', '.danielcraft.fr'],
       hmr: isDev && (env.VITE_HMR_HOST || env.VITE_HMR_CLIENT_PORT)
         ? {
-            host: env.VITE_HMR_HOST || 'facturio.danielcraft.fr',
+            host: env.VITE_HMR_HOST || 'prestafacture.com',
             clientPort: parseInt(env.VITE_HMR_CLIENT_PORT || '443', 10),
             protocol: (env.VITE_HMR_PROTOCOL as 'wss' | 'ws') || 'wss',
           }

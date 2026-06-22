@@ -1,4 +1,4 @@
-# Charte visuelle — Facturio Mobile
+# Charte visuelle — PrestaFacture Mobile
 
 Référence : maquettes dashboard (teal/navy) et liste factures (bleu navy).
 
@@ -78,5 +78,5 @@ Icône dans cercle pastel, label gris, montant bold, chip tendance (+/- %).
 
 ## Assets
 
-- Logo : texte « Facturio » + pastille teal « F » (composant `Logo` SVG/texte en v0.1)
+- Logo : texte « PrestaFacture » + pastille teal « F » (composant `Logo` SVG/texte en v0.1)
 - Icônes : `@expo/vector-icons` (Feather / Ionicons)

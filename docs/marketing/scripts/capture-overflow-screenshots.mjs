@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @deprecated Utiliser capture-marketing-screenshots.mjs (viewport + modales UX).
- * Capture full-page screenshots de Facturio pour cadres overflow marketing.
+ * Capture full-page screenshots de PrestaFacture pour cadres overflow marketing.
  *
  * Prérequis :
  *   cd frontend && npm i -D playwright && npx playwright install chromium

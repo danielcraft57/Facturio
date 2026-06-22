@@ -23,8 +23,8 @@ describe('getApiBaseUrl', () => {
   })
 
   it('utilise EXPO_PUBLIC_API_URL sans slash final', () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://facturio.danielcraft.fr/api/'
-    expect(getApiBaseUrl()).toBe('https://facturio.danielcraft.fr/api')
+    process.env.EXPO_PUBLIC_API_URL = 'https://prestafacture.com/api/'
+    expect(getApiBaseUrl()).toBe('https://prestafacture.com/api')
   })
 
   it('retombe sur localhost en dev', () => {

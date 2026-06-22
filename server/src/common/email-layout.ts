@@ -3,7 +3,9 @@ import {
 	EMAIL_GRADIENT_CSS,
 	getEmailHeaderUrl,
 	getEmailIconUrl,
+	getPlatformBrandName,
 	getPublicAppBaseUrl,
+	getPublicAppDomainLabel,
 	type EmailHeaderVariant,
 } from './email-brand';
 
@@ -79,6 +81,7 @@ export function renderFacturioEmailLayout(options: EmailLayoutOptions): string {
 	const headerUrl = getEmailHeaderUrl(options.headerVariant ?? 'default');
 	const iconUrl = getEmailIconUrl(48);
 	const iconUrl2x = getEmailIconUrl(96);
+	const brandName = escapeHtml(getPlatformBrandName());
 	const preheader = options.preheader
 		? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${options.preheader}</div>`
 		: '';
@@ -112,10 +115,10 @@ export function renderFacturioEmailLayout(options: EmailLayoutOptions): string {
 							<table role="presentation" cellpadding="0" cellspacing="0">
 								<tr>
 									<td style="vertical-align:middle;padding-right:14px;">
-										<img src="${iconUrl}" srcset="${iconUrl} 1x, ${iconUrl2x} 2x" width="48" height="48" alt="Facturio" style="display:block;width:48px;height:48px;border-radius:12px;" />
+										<img src="${iconUrl}" srcset="${iconUrl} 1x, ${iconUrl2x} 2x" width="48" height="48" alt="${brandName}" style="display:block;width:48px;height:48px;border-radius:12px;" />
 									</td>
 									<td style="vertical-align:middle;">
-										<p style="margin:0;font-size:13px;font-weight:600;color:${EMAIL_BRAND.teal600};letter-spacing:0.04em;text-transform:uppercase;">Facturio</p>
+										<p style="margin:0;font-size:13px;font-weight:600;color:${EMAIL_BRAND.teal600};letter-spacing:0.04em;text-transform:uppercase;">${brandName}</p>
 										<h1 style="margin:4px 0 0;font-size:22px;font-weight:700;color:${EMAIL_BRAND.text};letter-spacing:-0.02em;line-height:1.25;">${escapeHtml(headline)}</h1>
 									</td>
 								</tr>
@@ -130,12 +133,12 @@ export function renderFacturioEmailLayout(options: EmailLayoutOptions): string {
 					<tr>
 						<td style="padding:18px 28px 24px;border-top:1px solid ${EMAIL_BRAND.border};font-size:11px;color:${EMAIL_BRAND.textSoft};line-height:1.55;">
 							${options.footerHtml}
-							<p style="margin:12px 0 0;">Cet email a été envoyé automatiquement par <strong style="color:${EMAIL_BRAND.teal700};">Facturio</strong>.</p>
+							<p style="margin:12px 0 0;">Cet email a été envoyé automatiquement par <strong style="color:${EMAIL_BRAND.teal700};">${brandName}</strong>.</p>
 						</td>
 					</tr>
 				</table>
 				<p style="margin:20px 0 0;font-size:11px;color:${EMAIL_BRAND.textSoft};text-align:center;">
-					<a href="${getPublicAppBaseUrl()}" style="color:${EMAIL_BRAND.teal600};text-decoration:none;">facturio.danielcraft.fr</a>
+					<a href="${getPublicAppBaseUrl()}" style="color:${EMAIL_BRAND.teal600};text-decoration:none;">${escapeHtml(getPublicAppDomainLabel())}</a>
 				</p>
 			</td>
 		</tr>

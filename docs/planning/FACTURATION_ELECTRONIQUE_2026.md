@@ -1,6 +1,6 @@
 # Facturation électronique B2B (réforme 2026–2027)
 
-Document de référence pour la mise en conformité de Facturio avec la réforme française de facturation électronique entre entreprises et l’e-reporting.
+Document de référence pour la mise en conformité de PrestaFacture avec la réforme française de facturation électronique entre entreprises et l’e-reporting.
 
 **Statut** : **partiellement implémenté** (fondations + XML pré-Factur-X) — transmission PA non connectée.  
 **Dernière mise à jour** : mai 2026.
@@ -19,7 +19,7 @@ Document de référence pour la mise en conformité de Facturio avec la réforme
 
 Guide technique : [E_INVOICING.md](../development/E_INVOICING.md) · Dossier PA : [accreditation-pa/](../accreditation-pa/README.md)
 
-> **Positionnement produit** : Facturio cible la facturation des **prestations de services numériques** (dev web, logiciel, automatisation, maintenance, IA). Voir [POSITIONNEMENT_PRESTATIONS_SERVICES.md](./POSITIONNEMENT_PRESTATIONS_SERVICES.md) pour développer ce vertical **en parallèle** de la conformité réforme.
+> **Positionnement produit** : PrestaFacture cible la facturation des **prestations de services numériques** (dev web, logiciel, automatisation, maintenance, IA). Voir [POSITIONNEMENT_PRESTATIONS_SERVICES.md](./POSITIONNEMENT_PRESTATIONS_SERVICES.md) pour développer ce vertical **en parallèle** de la conformité réforme.
 
 ## Contexte réglementaire
 
@@ -37,24 +37,24 @@ Chaque flux B2B passe par une **Plateforme Agréée (PA)** — anciennement PDP 
 - [Demande d’immatriculation PA](https://demarche.numerique.gouv.fr/commencer/immatpdp)
 - [Guide utilisateur immatriculation PA (PDF)](https://www.impots.gouv.fr/sites/default/files/media/1_metier/2_professionnel/EV/2_gestion/290_facturation_electronique/guide_utilisateur_fe_ds_immatriculation_pdp.pdf)
 
-## Impact sur Facturio
+## Impact sur PrestaFacture
 
-Facturio couvre la facturation classique (devis, factures, PDF, email, liens publics, Stripe, TVA FR/UE) **et** une première couche e-facture : rapport de conformité, **SIREN client**, export **XML simplifié** (pré-Factur-X). **Il n’existe pas encore** de PDF/A-3 Factur-X complet, ni de connexion PA / PPF ni d’e-reporting.
+PrestaFacture couvre la facturation classique (devis, factures, PDF, email, liens publics, Stripe, TVA FR/UE) **et** une première couche e-facture : rapport de conformité, **SIREN client**, export **XML simplifié** (pré-Factur-X). **Il n’existe pas encore** de PDF/A-3 Factur-X complet, ni de connexion PA / PPF ni d’e-reporting.
 
 | Acteur | Concerné ? | Conséquence |
 |--------|------------|-------------|
-| **Clients Facturio** (entreprises FR assujetties TVA, facturation B2B) | Oui | Ils devront émettre/recevoir via le réseau officiel à partir des échéances ci-dessus. |
-| **Facturio en tant que logiciel** | Oui | Proposer un parcours conforme (formats + transmission) avant sept. 2026 pour les premiers utilisateurs visés (réception / ETI). |
-| **Facturio en tant que Plateforme Agréée** | Optionnel | Immatriculation DGFiP lourde (ISO 27001, SecNumCloud, tests d’interopérabilité, etc.) — voir [Devenir PA ou s’appuyer sur un partenaire](#décision-stratégique-pa-vs-solution-compatible). |
+| **Clients PrestaFacture** (entreprises FR assujetties TVA, facturation B2B) | Oui | Ils devront émettre/recevoir via le réseau officiel à partir des échéances ci-dessus. |
+| **PrestaFacture en tant que logiciel** | Oui | Proposer un parcours conforme (formats + transmission) avant sept. 2026 pour les premiers utilisateurs visés (réception / ETI). |
+| **PrestaFacture en tant que Plateforme Agréée** | Optionnel | Immatriculation DGFiP lourde (ISO 27001, SecNumCloud, tests d’interopérabilité, etc.) — voir [Devenir PA ou s’appuyer sur un partenaire](#décision-stratégique-pa-vs-solution-compatible). |
 
 ## Décision stratégique : PA vs solution compatible
 
 L’administration distingue :
 
 - **Plateforme Agréée (PA)** : seul opérateur habilité à transmettre les factures électroniques entre entreprises **et** les données de facturation / transaction / paiement à la DGFiP.
-- **Solution compatible** : logiciel métier (Facturio) connecté à une PA via API ; l’utilisateur continue à travailler dans Facturio, la PA assure le réseau et la conformité transmission.
+- **Solution compatible** : logiciel métier (PrestaFacture) connecté à une PA via API ; l’utilisateur continue à travailler dans PrestaFacture, la PA assure le réseau et la conformité transmission.
 
-**Recommandation par défaut pour Facturio** : viser le statut de **solution compatible** en s’intégrant à une **PA partenaire** (marque blanche ou co-branding), sauf décision produit explicite de devenir PA.
+**Recommandation par défaut pour PrestaFacture** : viser le statut de **solution compatible** en s’intégrant à une **PA partenaire** (marque blanche ou co-branding), sauf décision produit explicite de devenir PA.
 
 ### Devenir Plateforme Agréée (si choix explicite)
 
@@ -76,7 +76,7 @@ Budget et délai indicatifs pour un nouvel entrant : souvent **12–24 mois** et
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Facturio (métier)                                          │
+│  PrestaFacture (métier)                                          │
 │  Clients · Devis · Factures · TVA · Compta · PDF (archive)  │
 └──────────────────────────┬──────────────────────────────────┘
                            │
@@ -100,7 +100,7 @@ Budget et délai indicatifs pour un nouvel entrant : souvent **12–24 mois** et
 
 ### Phase 0 — Cadrage (Q2 2026)
 
-- [ ] Valider la stratégie : **PA partenaire** vs candidature **PA Facturio**
+- [ ] Valider la stratégie : **PA partenaire** vs candidature **PA PrestaFacture**
 - [ ] Short-list PA (critères : API, tarifs, marque blanche, SLA, formats supportés)
 - [ ] Cartographier les utilisateurs cibles (ETI dès sept. 2026, PME sept. 2027)
 - [ ] Recenser les champs obligatoires manquants (SIREN client, adresses, mentions légales, etc.)
@@ -172,7 +172,7 @@ Budget et délai indicatifs pour un nouvel entrant : souvent **12–24 mois** et
 
 - [ ] Identification des flux hors facture électronique obligatoire (B2C France, export, etc.)
 - [ ] Agrégation et transmission des données transaction / paiement selon calendrier PA
-- [ ] Lien avec les paiements enregistrés dans Facturio (`Payment`, Stripe)
+- [ ] Lien avec les paiements enregistrés dans PrestaFacture (`Payment`, Stripe)
 
 **Frontend**
 
@@ -215,16 +215,16 @@ E_INVOICING_SANDBOX=true
 | Jalon | Critère |
 |-------|---------|
 | **MVP sept. 2026** | Un utilisateur ETI peut émettre une facture B2B en Factur-X et la transmettre via la PA ; statut consultable ; PDF archivé. |
-| **Réception** | Une facture fournisseur reçue via PA est visible et importable dans Facturio. |
+| **Réception** | Une facture fournisseur reçue via PA est visible et importable dans PrestaFacture. |
 | **Sept. 2027** | Parcours PME activé par défaut ; e-reporting des flux concernés opérationnel. |
 
 ## Risques si non traité
 
 - Utilisateurs français B2B non conformes aux échéances légales
 - Perte de compétitivité face aux logiciels déjà connectés à une PA
-- Impossibilité de positionner Facturio comme solution de facturation « complète » pour le marché FR
+- Impossibilité de positionner PrestaFacture comme solution de facturation « complète » pour le marché FR
 
-## Vertical prestations services (spécificité Facturio)
+## Vertical prestations services (spécificité PrestaFacture)
 
 Les prestataires dev / automatisation ont des flux récurrents : **devis forfait**, **acomptes**, **maintenance mensuelle**, **régie**, **clients UE B2B**. La conformité e-facture s’appuie sur les mêmes formats que tout B2B, mais le **modèle de données métier** doit être prêt :
 

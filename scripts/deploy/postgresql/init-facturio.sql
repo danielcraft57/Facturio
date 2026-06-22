@@ -1,4 +1,4 @@
--- Initialisation base Facturio (à exécuter une fois en tant que postgres)
+-- Initialisation base PrestaFacture (à exécuter une fois en tant que postgres)
 -- sudo -u postgres psql -f init-facturio.sql
 
 \set ON_ERROR_STOP on

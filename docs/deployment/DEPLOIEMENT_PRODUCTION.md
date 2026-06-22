@@ -1,6 +1,6 @@
-# Déploiement en production - Facturio
+# Déploiement en production - PrestaFacture
 
-Ce document décrit le déploiement complet de Facturio en production sur un serveur applicatif avec reverse proxy HTTPS sur un serveur Nginx. Remplacer les placeholders (`votre-app.lan`, `votre-nginx.lan`, `votre_user`, `votre-domaine.fr`) par vos valeurs.
+Ce document décrit le déploiement complet de PrestaFacture en production sur un serveur applicatif avec reverse proxy HTTPS sur un serveur Nginx. Remplacer les placeholders (`votre-app.lan`, `votre-nginx.lan`, `votre_user`, `votre-domaine.fr`) par vos valeurs.
 
 ## Architecture de production
 
@@ -9,9 +9,9 @@ Internet (HTTPS)
     ↓
 votre-nginx.lan (Nginx + SSL Let's Encrypt)
     ↓ (proxy HTTP interne)
-votre-app.lan:3000 (Facturio Backend NestJS)
+votre-app.lan:3000 (PrestaFacture Backend NestJS)
     ↓
-votre-app.lan:5173 (Facturio Frontend React - build statique servi par Nginx)
+votre-app.lan:5173 (PrestaFacture Frontend React - build statique servi par Nginx)
     ↓
 SQLite ou PostgreSQL (base de données)
 ```
@@ -19,7 +19,7 @@ SQLite ou PostgreSQL (base de données)
 ### Composants
 
 - **Serveur Nginx** : Reverse proxy avec certificats SSL Let's Encrypt
-- **Serveur applicatif** : Facturio (NestJS backend + React frontend)
+- **Serveur applicatif** : PrestaFacture (NestJS backend + React frontend)
 - **Base de données** : PostgreSQL en production
 - **Services systemd** : Gestion automatique des services
 
@@ -108,7 +108,7 @@ git clone https://github.com/loupix/Facturio.git .
 
 # Option 2 : SCP depuis ta machine locale
 # Depuis ta machine locale (ou utiliser le script deploy-app.ps1 / deploy-app.sh) :
-# scp -r Facturio/* votre_user@votre-app.lan:/opt/facturio/
+# scp -r PrestaFacture/* votre_user@votre-app.lan:/opt/facturio/
 ```
 
 ### 2.4. Installation des dépendances
@@ -144,7 +144,7 @@ SMTP_SECURE=false
 SMTP_USER=votre-utilisateur
 SMTP_PASS=votre-mot-de-passe
 MAIL_FROM=noreply@votre-domaine.fr
-MAIL_FROM_NAME=Facturio
+MAIL_FROM_NAME=PrestaFacture
 FRONTEND_URL=https://facturio.votre-domaine.fr
 ```
 
@@ -212,13 +212,13 @@ sudo chown pi:pi /opt/facturio/logs
 
 ## Étape 3 : Configuration des services systemd
 
-### 3.1. Service Facturio Backend
+### 3.1. Service PrestaFacture Backend
 
 Créer `/etc/systemd/system/facturio.service` :
 
 ```ini
 [Unit]
-Description=Facturio Backend API
+Description=PrestaFacture Backend API
 After=network.target postgresql.service
 
 [Service]
@@ -273,7 +273,7 @@ server {
 
 Déployer depuis ta machine (optionnel) :
 ```powershell
-scp Facturio/scripts/deploy/facturio-frontend-nginx-app.conf votre_user@votre-app.lan:/tmp/
+scp PrestaFacture/scripts/deploy/facturio-frontend-nginx-app.conf votre_user@votre-app.lan:/tmp/
 ssh votre_user@votre-app.lan "sudo mv /tmp/facturio-frontend-nginx-app.conf /etc/nginx/sites-available/facturio-frontend && sudo nginx -t && sudo systemctl reload nginx"
 ```
 
@@ -324,7 +324,7 @@ sudo apt update
 sudo apt install -y nginx
 ```
 
-### 4.2. Configuration Nginx pour Facturio
+### 4.2. Configuration Nginx pour PrestaFacture
 
 Créer `/etc/nginx/sites-available/facturio.votre-domaine.fr` (ou utiliser le script `deploy-nginx-config.ps1` / `deploy-nginx-config.sh` avec DEPLOY_* configurés) :
 
@@ -457,7 +457,7 @@ curl -I https://facture.votre-domaine.fr
 ### 5.3. Vérification des logs
 
 ```bash
-# Logs Facturio Backend
+# Logs PrestaFacture Backend
 tail -f /opt/facturio/logs/facturio_backend.log
 tail -f /opt/facturio/logs/facturio_backend_error.log
 
@@ -656,7 +656,7 @@ Prisma ne fournit des binaires que pour **amd64** et **arm64**. Sur un Pi en **3
 **Solution recommandée** : Utiliser **Raspberry Pi OS 64-bit** (arm64). Les Pi 3, 4 et 5 supportent le 64-bit. Après installation de l’image 64-bit, `uname -m` affiche `aarch64` et Prisma télécharge les engines sans erreur.
 
 - Télécharger l’image : [Raspberry Pi OS (64-bit)](https://www.raspberrypi.com/software/operating-systems/).
-- Après migration, réinstaller Node.js (NodeSource ou nvm), PostgreSQL, puis redéployer Facturio.
+- Après migration, réinstaller Node.js (NodeSource ou nvm), PostgreSQL, puis redéployer PrestaFacture.
 
 ### Problème : Service ne démarre pas
 
@@ -721,8 +721,8 @@ sudo chmod -R 755 /opt/facturio/frontend/dist
   - `https://facture.votre-domaine.fr` (alias pour factures publiques)
 
 - **Services actifs** :
-  - Facturio Backend (NestJS) sur votre-app.lan:3000
-  - Facturio Frontend (React build) servi par Nginx sur votre-app.lan:5173
+  - PrestaFacture Backend (NestJS) sur votre-app.lan:3000
+  - PrestaFacture Frontend (React build) servi par Nginx sur votre-app.lan:5173
   - Nginx (reverse proxy) sur votre-nginx.lan
   - PostgreSQL sur votre-app.lan
 

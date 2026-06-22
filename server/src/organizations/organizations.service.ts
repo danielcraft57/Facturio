@@ -90,7 +90,7 @@ export class OrganizationsService {
 		return sanitizeOrganizationProfile(organization as Record<string, unknown>);
 	}
 
-	/** URL webhook unique (abonnement Facturio + paiements factures clients). */
+	/** URL webhook unique (abonnement PrestaFacture + paiements factures clients). */
 	getInvoiceStripeWebhookUrl(_organizationId: number): string {
 		const base =
 			process.env.API_PUBLIC_URL?.trim() ||

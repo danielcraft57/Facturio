@@ -17,9 +17,9 @@ describe('resolveApiBaseUrl', () => {
   })
 
   it('conserve une URL explicite valide', async () => {
-    vi.stubEnv('VITE_API_URL', 'https://facturio.danielcraft.fr/api')
+    vi.stubEnv('VITE_API_URL', 'https://prestafacture.com/api')
     const { resolveApiBaseUrl } = await import('./resolveApiBaseUrl')
-    expect(resolveApiBaseUrl()).toBe('https://facturio.danielcraft.fr/api')
+    expect(resolveApiBaseUrl()).toBe('https://prestafacture.com/api')
   })
 
   it('retourne /api en dev', async () => {

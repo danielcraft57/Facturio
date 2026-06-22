@@ -1,4 +1,4 @@
-# Script publicité réseaux — Facturio (TTS)
+# Script publicité réseaux — PrestaFacture (TTS)
 
 **Formats cibles** : Reels/TikTok/Shorts 9:16 (30 s) · LinkedIn 1:1 (30 s) · Teaser 15 s  
 **Ton voix TTS** : française, dynamique mais pro, débit ~150 mots/min, pauses sur les dates et chiffres  
@@ -10,26 +10,26 @@
 
 | Time | Visuel (storyboard) | Voix (TTS) |
 |------|---------------------|------------|
-| 0:00–0:02 | Logo Facturio + accroche texte | « Vous codez. Vous facturez encore à la main ? » |
-| 0:02–0:06 | Overflow liste factures (tags, statuts) | « Facturio, la facturation pensée pour les devs et intégrateurs. » |
+| 0:00–0:02 | Logo PrestaFacture + accroche texte | « Vous codez. Vous facturez encore à la main ? » |
+| 0:02–0:06 | Overflow liste factures (tags, statuts) | « PrestaFacture, la facturation pensée pour les devs et intégrateurs. » |
 | 0:06–0:10 | Modal nouveau devis + client | « Devis, clients SIREN, factures : tout au même endroit. » |
 | 0:10–0:14 | Devis accepté + acompte 10 % | « Acomptes, soldes, paiement Stripe : le cycle commercial est bouclé. » |
 | 0:14–0:18 | Dashboard KPI | « Tableau de bord, encaissements, conversion devis-factures. » |
-| 0:18–0:22 | Bandeau réforme 2026 / paramètres | « Et la réforme e-facture 2026 ? Réception obligatoire dès septembre. Facturio vous prépare. » |
+| 0:18–0:22 | Bandeau réforme 2026 / paramètres | « Et la réforme e-facture 2026 ? Réception obligatoire dès septembre. PrestaFacture vous prépare. » |
 | 0:22–0:26 | Menu Finance + score conformité | « Score de conformité, export Factur-X : anticipez sans changer de métier. » |
-| 0:26–0:30 | CTA écran inscription | « Compte gratuit sur facturio point danielcraft point fr. Votre premier devis en dix minutes. » |
+| 0:26–0:30 | CTA écran inscription | « Compte gratuit sur prestafacture point com. Votre premier devis en dix minutes. » |
 
 ### Texte voix continu (copier-coller TTS)
 
 ```
 Vous codez. Vous facturez encore à la main ?
-Facturio, la facturation pensée pour les devs et intégrateurs.
+PrestaFacture, la facturation pensée pour les devs et intégrateurs.
 Devis, clients SIREN, factures : tout au même endroit.
 Acomptes, soldes, paiement Stripe : le cycle commercial est bouclé.
 Tableau de bord, encaissements, conversion devis-factures.
-Et la réforme e-facture 2026 ? Réception obligatoire dès septembre. Facturio vous prépare.
+Et la réforme e-facture 2026 ? Réception obligatoire dès septembre. PrestaFacture vous prépare.
 Score de conformité, export Factur-X : anticipez sans changer de métier.
-Compte gratuit sur facturio point danielcraft point fr. Votre premier devis en dix minutes.
+Compte gratuit sur prestafacture point com. Votre premier devis en dix minutes.
 ```
 
 ---
@@ -58,7 +58,7 @@ Remplacer les 2 premières lignes par :
 
 ```
 Septembre 2026 : vous devrez recevoir des factures électroniques.
-Même en micro-entreprise. Facturio vous met en conformité sans usine à gaz comptable.
+Même en micro-entreprise. PrestaFacture vous met en conformité sans usine à gaz comptable.
 ```
 
 ---
@@ -67,7 +67,7 @@ Même en micro-entreprise. Facturio vous met en conformité sans usine à gaz co
 
 ```
 Indy, c’est la compta pour tout le monde.
-Facturio, c’est comment vous facturez vos missions React, API et maintenance IA.
+PrestaFacture, c’est comment vous facturez vos missions React, API et maintenance IA.
 ```
 
 ---
@@ -95,7 +95,7 @@ Facturio, c’est comment vous facturez vos missions React, API et maintenance I
   Vous codez. <break time="400ms"/>
   Vous facturez encore à la main ?
   <break time="600ms"/>
-  Facturio, la facturation pensée pour les <emphasis>devs</emphasis> et intégrateurs.
+  PrestaFacture, la facturation pensée pour les <emphasis>devs</emphasis> et intégrateurs.
 </speak>
 ```
 
@@ -104,7 +104,7 @@ Facturio, c’est comment vous facturez vos missions React, API et maintenance I
 ## Checklist montage
 
 - [ ] Flouter emails / noms clients sur captures réelles
-- [ ] Logo Facturio coin supérieur dès 0:01
+- [ ] Logo PrestaFacture coin supérieur dès 0:01
 - [ ] Son « whoosh » discret aux transitions de cadre overflow
 - [ ] Dernière frame 2 s : URL + QR signup
 - [ ] Export 1080×1920 (30 fps) + 1080×1080 déclinaison LinkedIn

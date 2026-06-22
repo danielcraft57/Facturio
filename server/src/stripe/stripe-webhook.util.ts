@@ -1,4 +1,4 @@
-/** Types d’événements Stripe plateforme (abonnement Facturio). */
+/** Types d’événements Stripe plateforme (abonnement PrestaFacture). */
 export const PLATFORM_STRIPE_EVENT_TYPES = new Set([
 	'checkout.session.completed',
 	'customer.subscription.updated',

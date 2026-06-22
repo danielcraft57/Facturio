@@ -6,7 +6,7 @@
 
 Obtenir une certification **ISO/IEC 27001** couvrant le périmètre :
 
-- Développement et exploitation de **Facturio** (SaaS).
+- Développement et exploitation de **PrestaFacture** (SaaS).
 - Traitement des données de facturation et des flux e-invoicing.
 
 ## Phases indicatives

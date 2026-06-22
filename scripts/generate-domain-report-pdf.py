@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Génère le rapport PDF de recherche de noms de domaine pour Facturio."""
+"""Génère le rapport PDF de recherche de noms de domaine pour PrestaFacture."""
 
 from __future__ import annotations
 
@@ -50,9 +50,9 @@ PREVIOUS_PICKS = [
     ("facturium.io", "Style premium proche factur.io"),
     ("facturcraft.io", "Dev + DanielCraft"),
     ("efactur.io", "E-facturation 2026"),
-    ("facturio.cloud", "Aligné marque Facturio"),
+    ("facturio.cloud", "Aligné marque PrestaFacture"),
     ("prestafacture.fr", "Prestataires FR"),
-    ("facturioapp.fr", "Application Facturio"),
+    ("facturioapp.fr", "Application PrestaFacture"),
 ]
 
 ASIA_AFRICA_SAMPLE = [
@@ -89,7 +89,7 @@ class ReportPDF(FPDF):
         self.cell(
             0,
             8,
-            f"DanielCraft — Facturio — Recherche domaines — {date.today().isoformat()} — p. {self.page_no()}",
+            f"DanielCraft — PrestaFacture — Recherche domaines — {date.today().isoformat()} — p. {self.page_no()}",
             align="C",
         )
         self.set_text_color(0, 0, 0)
@@ -103,7 +103,7 @@ class ReportPDF(FPDF):
         self._font("B", 28)
         self.cell(0, 14, "Recherche de noms de domaine", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
         self._font("B", 22)
-        self.cell(0, 12, "Projet Facturio", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+        self.cell(0, 12, "Projet PrestaFacture", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
         self.ln(8)
         self._font("", 12)
         self.cell(0, 8, "Rapport de disponibilité (whois)", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
@@ -203,7 +203,7 @@ def build_report() -> None:
         [
             "1. Contexte et objectif",
             "2. Méthodologie (whois, ping, limites)",
-            "3. Noms déjà pris (marque Facturio et proches)",
+            "3. Noms déjà pris (marque PrestaFacture et proches)",
             "4. Résultats par zone géographique",
             "5. Racines multi-pays recommandées",
             "6. Recommandations finales",
@@ -213,7 +213,7 @@ def build_report() -> None:
 
     pdf.h1("1. Contexte et objectif")
     pdf.body(
-        "Facturio est un logiciel de facturation en ligne édité par DanielCraft, orienté "
+        "PrestaFacture est un logiciel de facturation en ligne édité par DanielCraft, orienté "
         "prestations de services numériques (devis, factures PDF, e-facture 2026, clients, Stripe). "
         "Ce rapport recense des noms de domaine inventés autour des thèmes devis, facture, client, "
         "ainsi que informatique, web, smart et mobile, sur de nombreuses extensions nationales "
@@ -256,7 +256,7 @@ def build_report() -> None:
     )
 
     pdf.h1("3. Noms déjà pris (à éviter)")
-    pdf.body("Principaux domaines liés à Facturio ou concurrents déjà enregistrés :")
+    pdf.body("Principaux domaines liés à PrestaFacture ou concurrents déjà enregistrés :")
     pdf.domain_columns(TAKEN_BRAND, per_row=2)
 
     pdf.h1("4. Résultats par zone")
@@ -329,7 +329,7 @@ def build_report() -> None:
     pdf.table(["Racine", "Intérêt"], rows, [45, 145])
 
     pdf.h1("6. Recommandations finales")
-    pdf.h2("6.1 Coups de cœur (session précédente — marque Facturio)")
+    pdf.h2("6.1 Coups de cœur (session précédente — marque PrestaFacture)")
     pdf.table(["Domaine", "Commentaire"], PREVIOUS_PICKS, [55, 135])
 
     pdf.h2("6.2 Coups de cœur (batterie devis / smart / web)")

@@ -34,7 +34,7 @@ export class WebhooksController {
 	}
 
 	/**
-	 * Webhook Stripe unifié — abonnement Facturio (.env) + factures clients payées (clés org).
+	 * Webhook Stripe unifié — abonnement PrestaFacture (.env) + factures clients payées (clés org).
 	 * Même URL à enregistrer dans le Dashboard Stripe (compte plateforme et/ou prestataire).
 	 */
 	@Post('stripe')

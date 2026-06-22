@@ -23,7 +23,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 
 	// Facture 1: FR B2B (20%) - Payée
 	const inv1Lines = [
-		{ description: 'Facturio Pro - Abonnement mensuel', quantity: 1, unitPrice: 49, taxRate: 0.2 },
+		{ description: 'PrestaFacture Pro - Abonnement mensuel', quantity: 1, unitPrice: 49, taxRate: 0.2 },
 		{ description: 'Support premium', quantity: 2, unitPrice: 99, taxRate: 0.2 }
 	];
 	const t1 = computeTotals(inv1Lines);
@@ -247,7 +247,7 @@ export async function seedInvoices(prisma: PrismaClient, clients: any[], product
 
 	// Facture 7: Partiellement payée
 	const inv7Lines = [
-		{ description: 'Facturio Pro - Abonnement annuel', quantity: 1, unitPrice: 290, taxRate: 0.2 },
+		{ description: 'PrestaFacture Pro - Abonnement annuel', quantity: 1, unitPrice: 290, taxRate: 0.2 },
 		{ description: 'Support premium', quantity: 12, unitPrice: 99, taxRate: 0.2 }
 	];
 	const t7 = computeTotals(inv7Lines);

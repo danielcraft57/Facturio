@@ -27,7 +27,7 @@ export function FeaturesPage() {
         subtitle="Devis, factures, Stripe, TVA et pré-compta — plus la couche conformité 2026. Pas de sync bancaire : on reste léger."
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.efacture2026}
-        visual={<MarketingImage src="/images/facturio-features.png" alt="Fonctionnalités Facturio" float={false} />}
+        visual={<MarketingImage src="/images/facturio-features.png" alt="Fonctionnalités PrestaFacture" float={false} />}
       />
 
       <BetaTesterPromo compact />

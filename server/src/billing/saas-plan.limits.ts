@@ -24,7 +24,7 @@ export type SaasPlanLimits = {
 	accounting: boolean;
 	/** Créances clients et dettes fournisseurs. */
 	financeModule: boolean;
-	/** Filigrane « Facturio » sur les PDF facture/devis. */
+	/** Filigrane « PrestaFacture » sur les PDF facture/devis. */
 	pdfWatermark: boolean;
 };
 

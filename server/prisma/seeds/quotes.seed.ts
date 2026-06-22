@@ -13,7 +13,7 @@ function getYear(): number {
 	return new Date().getFullYear();
 }
 
-/** Descriptions des services telles que sur V6 (index.html) et produits Facturio. */
+/** Descriptions des services telles que sur V6 (index.html) et produits PrestaFacture. */
 const V6_SERVICES = {
 	siteVitrine: {
 		description:

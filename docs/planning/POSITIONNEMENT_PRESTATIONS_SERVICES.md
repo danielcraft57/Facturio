@@ -1,6 +1,6 @@
 # Positionnement — Prestations de services numériques
 
-Facturio n’est pas un logiciel de facturation générique : il est conçu pour les **prestataires de services numériques** — développement web, logiciels sur mesure, automatisation, intégrations API, maintenance, offres IA — avec un catalogue et des parcours adaptés à ce métier.
+PrestaFacture n’est pas un logiciel de facturation générique : il est conçu pour les **prestataires de services numériques** — développement web, logiciels sur mesure, automatisation, intégrations API, maintenance, offres IA — avec un catalogue et des parcours adaptés à ce métier.
 
 **Référence produit actuelle** : catalogue DanielCraft (seed + UI produits) — sites vitrine, apps métier, intégrations, maintenance, packs IA.  
 **Conformité réforme 2026** : [FACTURATION_ELECTRONIQUE_2026.md](./FACTURATION_ELECTRONIQUE_2026.md).  
@@ -72,7 +72,7 @@ Objectif : renforcer l’outil là où un généraliste (Sage, Pennylane seul, e
 
 - Aujourd’hui : catalogue DanielCraft comme **référence** et seed.
 - Demain : chaque organisation peut **cloner / personnaliser** le catalogue sans perdre la structure (sections, SKU, catégories).
-- Ne pas confondre : Facturio = produit ; DanielCraft = premier cas d’usage / démo.
+- Ne pas confondre : PrestaFacture = produit ; DanielCraft = premier cas d’usage / démo.
 
 ---
 
@@ -83,14 +83,14 @@ La spécialisation **ne dispense pas** de la facturation électronique : elle im
 ### Principe
 
 ```
-Catalogue métier (Facturio)  →  Facture structurée (Factur-X)  →  PA partenaire  →  Client B2B + DGFiP
+Catalogue métier (PrestaFacture)  →  Facture structurée (Factur-X)  →  PA partenaire  →  Client B2B + DGFiP
 ```
 
-Facturio reste la **couche métier** ; la PA assure le **réseau réglementaire**. Voir [FACTURATION_ELECTRONIQUE_2026.md](./FACTURATION_ELECTRONIQUE_2026.md).
+PrestaFacture reste la **couche métier** ; la PA assure le **réseau réglementaire**. Voir [FACTURATION_ELECTRONIQUE_2026.md](./FACTURATION_ELECTRONIQUE_2026.md).
 
 ### Cas d’usage services × conformité
 
-| Cas métier | Ce que Facturio doit porter | Conformité e-facture |
+| Cas métier | Ce que PrestaFacture doit porter | Conformité e-facture |
 |------------|----------------------------|----------------------|
 | Devis accepté → facture forfait | Lignes = prestations catalogue, TVA, totaux | Émission Factur-X à l’envoi ; statut PA |
 | Acompte + solde | 2 factures liées au même devis / mission | 2 flux B2B distincts, références croisées |
@@ -137,7 +137,7 @@ En plus des factures B2B :
 - **B2C** ou export hors périmètre facture électronique stricte → agrégation e-reporting
 - **Notes de frais refacturées** : traiter en ligne distincte ou facture séparée (à cadrer comptablement)
 
-Facturio enregistre déjà des `Payment` et Stripe : le branchement e-reporting réutilisera ces données (phase 5 de la doc réforme).
+PrestaFacture enregistre déjà des `Payment` et Stripe : le branchement e-reporting réutilisera ces données (phase 5 de la doc réforme).
 
 ---
 
@@ -145,7 +145,7 @@ Facturio enregistre déjà des `Payment` et Stripe : le branchement e-reporting 
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  Couche métier Facturio (spécialisation services numériques) │
+│  Couche métier PrestaFacture (spécialisation services numériques) │
 │  · Catalogue sections (IA, dev, maintenance…)                │
 │  · Devis / missions / acomptes / récurrence                  │
 │  · TVA prestations FR / UE                                   │

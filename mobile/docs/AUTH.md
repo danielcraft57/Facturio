@@ -115,5 +115,5 @@ Le backend doit être joignable sans cookie ; le JWT suffit.
 ## Sécurité
 
 - Ne jamais logger le token en clair
-- Préférer HTTPS en production (`https://facturio.danielcraft.fr/api`)
+- Préférer HTTPS en production (`https://prestafacture.com/api`)
 - Expiration JWT : 24 h (config `JwtModule` serveur) — prévoir refresh ou re-login

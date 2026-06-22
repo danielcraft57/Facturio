@@ -1,4 +1,4 @@
-## Facturio - Frontend
+## PrestaFacture - Frontend
 
 Application de gestion commerciale moderne avec interface React et Material UI.
 

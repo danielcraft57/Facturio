@@ -20,7 +20,7 @@ export function getApiPublicBase(): string {
 	return 'http://localhost:3000'
 }
 
-/** Webhook unique : abonnement Facturio + paiements factures clients. */
+/** Webhook unique : abonnement PrestaFacture + paiements factures clients. */
 export function buildInvoiceStripeWebhookUrl(_organizationId?: number): string {
 	return `${getApiPublicBase()}/api/webhooks/stripe`
 }

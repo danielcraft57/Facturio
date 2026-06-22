@@ -6,7 +6,7 @@
 - Export XML simplifié EN 16931 (pré-Factur-X)
 - Champ SIREN client (API, formulaires, tests)
 - UI : panneau conformité (compte, facture, dashboard)
-- Pages légales Facturio alignées sur danielcraft.fr (mentions, CGU, CGV, confidentialité)
+- Pages légales PrestaFacture alignées sur danielcraft.fr (mentions, CGU, CGV, confidentialité)
 
 ## Documentation
 

@@ -1,6 +1,6 @@
 # DTOs et Validation
 
-Documentation sur les DTOs (Data Transfer Objects) et la validation dans Facturio.
+Documentation sur les DTOs (Data Transfer Objects) et la validation dans PrestaFacture.
 
 ## Vue d'ensemble
 

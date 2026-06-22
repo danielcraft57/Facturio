@@ -45,7 +45,7 @@ export function OnboardingDevWelcomeStep({ onNext }: Props) {
         })}
       >
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-          Facturio est réservé aux développeurs
+          PrestaFacture est réservé aux développeurs
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Freelances, indie hackers, petites structures tech : on vous aide à facturer comme vous codez —

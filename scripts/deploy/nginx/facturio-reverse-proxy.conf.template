@@ -1,4 +1,4 @@
-# Reverse proxy Facturio — Nginx __NGINX_SERVER__ → app __APP_SERVER__
+# Reverse proxy PrestaFacture — Nginx __NGINX_SERVER__ → app __APP_SERVER__
 # - Frontend : Nginx sur le Pi (5173, dist) — facturio-frontend-nginx-app.conf
 # - API : NestJS 3000 (0.0.0.0 en prod)
 # Après déploiement HTTP : certbot --nginx sur node12 si HTTPS pas encore actif

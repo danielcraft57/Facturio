@@ -6,8 +6,8 @@ import { billingService } from '../../../services/billing'
 import { invalidateBillingUsageCache } from '../../../hooks/useBillingUsage'
 
 const PLAN_LABELS: Record<string, string> = {
-  PRO: 'Facturio Pro',
-  PRO_EFACTURE: 'Facturio Pro + e-facture',
+  PRO: 'PrestaFacture Pro',
+  PRO_EFACTURE: 'PrestaFacture Pro + e-facture',
 }
 
 export function SettingsBillingPage() {
@@ -68,7 +68,7 @@ export function SettingsBillingPage() {
         Abonnement
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Plan Facturio, quotas et paiement sécurisé par Stripe.
+        Plan PrestaFacture, quotas et paiement sécurisé par Stripe.
       </Typography>
 
       {alert && (

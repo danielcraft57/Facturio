@@ -1,11 +1,11 @@
-# Architecture Facturio
+# Architecture PrestaFacture
 
-Vue d'ensemble de l'architecture du projet Facturio.
+Vue d'ensemble de l'architecture du projet PrestaFacture.
 
 ## Structure du projet
 
 ```
-Facturio/
+PrestaFacture/
 ├── server/              # Backend NestJS
 │   ├── src/            # Code source TypeScript
 │   │   ├── clients/    # Module clients

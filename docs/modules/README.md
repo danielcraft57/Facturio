@@ -1,6 +1,6 @@
 # Modules spécialisés
 
-Documentation des modules spécialisés de Facturio.
+Documentation des modules spécialisés de PrestaFacture.
 
 ## 📚 Contenu
 

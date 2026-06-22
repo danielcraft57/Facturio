@@ -27,7 +27,7 @@
 - Blocage de la connexion si email non vérifié
 
 **Templates email** :
-- Template HTML professionnel pour vérification email (style Facturio)
+- Template HTML professionnel pour vérification email (style PrestaFacture)
 - Template HTML amélioré pour réinitialisation mot de passe
 - Layout HTML commun réutilisable avec mentions légales
 
@@ -141,7 +141,7 @@ SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASS=
 MAIL_FROM=no-reply@example.com
-MAIL_FROM_NAME=Facturio
+MAIL_FROM_NAME=PrestaFacture
 FRONTEND_URL=http://localhost:5173
 ```
 
@@ -165,7 +165,7 @@ Migration Prisma créée :
 ## 🎨 Templates email
 
 Templates HTML professionnels créés :
-- Vérification email : Design Facturio avec bouton CTA
+- Vérification email : Design PrestaFacture avec bouton CTA
 - Réinitialisation mot de passe : Design cohérent avec vérification
 - Layout commun : En-tête avec gradient, footer avec mentions légales
 

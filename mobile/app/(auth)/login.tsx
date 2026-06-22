@@ -56,7 +56,7 @@ export default function LoginScreen() {
   const form = (
     <View style={styles.form}>
       <Text style={styles.formTitle}>Connexion</Text>
-      <Text style={styles.formSubtitle}>Accédez à votre espace Facturio</Text>
+      <Text style={styles.formSubtitle}>Accédez à votre espace PrestaFacture</Text>
 
       {error && <Text style={styles.error}>{error}</Text>}
       {deviceMsg && <Text style={styles.info}>{deviceMsg}</Text>}

@@ -11,7 +11,7 @@ import { ReformScheduleSimulator } from '../components/ReformScheduleSimulator'
 
 const APPROACH = [
   {
-    title: 'Vous restez dans Facturio',
+    title: 'Vous restez dans PrestaFacture',
     body: 'Catalogue, devis, missions et factures : aucun changement d’habitudes pour le métier.',
   },
   {
@@ -35,7 +35,7 @@ export function ElectronicInvoicingPage() {
         compact
         badge={`Échéance ${REFORM_DATES.reception}`}
         title="Facturation électronique : anticipez sans stress"
-        subtitle="La réforme B2B française concerne vos factures clients entreprises. Facturio prépare la conformité tout en restant votre outil métier vertical."
+        subtitle="La réforme B2B française concerne vos factures clients entreprises. PrestaFacture prépare la conformité tout en restant votre outil métier vertical."
         primaryCta={CTA.reserveEfacture}
         secondaryCta={CTA.signupFree}
         visual={<MarketingImage src="/images/facturio-efacture.png" alt="Schéma facturation électronique 2026" float={false} />}
@@ -83,7 +83,7 @@ export function ElectronicInvoicingPage() {
       <Container maxWidth="lg" sx={{ py: 8 }}>
         <ScrollReveal>
           <Typography variant="h2" sx={{ fontWeight: 700, mb: 4, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-            L&apos;approche Facturio
+            L&apos;approche PrestaFacture
           </Typography>
         </ScrollReveal>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>

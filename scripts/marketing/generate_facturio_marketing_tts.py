@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Genere les pistes voix TTS pour la publicite Facturio (reels, LinkedIn, Shorts).
+Genere les pistes voix TTS pour la publicite PrestaFacture (reels, LinkedIn, Shorts).
 
 Pipeline edge-tts + pydub (meme approche que VocalGuard/scripts/generate_facturio_marketing_tts.py).
 
-Usage (depuis la racine Facturio) :
+Usage (depuis la racine PrestaFacture) :
   python scripts/marketing/generate_facturio_marketing_tts.py --list-voices
   python scripts/marketing/generate_facturio_marketing_tts.py --variant 30s-main --concat-full
   python scripts/marketing/generate_facturio_marketing_tts.py --variant all --concat-full --force
@@ -224,7 +224,7 @@ async def run(args: argparse.Namespace) -> int:
         raise SystemExit("Installez pydub (+ ffmpeg dans le PATH): pip install pydub")
 
     variants = _select_variants(payload, args.variant)
-    print(f"Script: {meta.get('title', 'Facturio marketing')}")
+    print(f"Script: {meta.get('title', 'PrestaFacture marketing')}")
     print(f"Voix: {voice} | Format: {args.format} | Sortie: {output_root}")
 
     total = 0
@@ -244,7 +244,7 @@ async def run(args: argparse.Namespace) -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="TTS publicite Facturio (edge-tts).")
+    parser = argparse.ArgumentParser(description="TTS publicite PrestaFacture (edge-tts).")
     parser.add_argument("--input", default=str(DEFAULT_JSON), help="JSON storyboard voix")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Dossier de sortie")
     parser.add_argument(

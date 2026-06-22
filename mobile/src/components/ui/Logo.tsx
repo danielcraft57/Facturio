@@ -7,7 +7,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
       <View style={styles.mark}>
         <Text style={styles.markText}>F</Text>
       </View>
-      {!compact && <Text style={styles.wordmark}>Facturio</Text>}
+      {!compact && <Text style={styles.wordmark}>PrestaFacture</Text>}
     </View>
   )
 }

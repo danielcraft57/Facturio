@@ -1,4 +1,4 @@
-# Audit API — usage mobile Facturio
+# Audit API — usage mobile PrestaFacture
 
 Inventaire des endpoints NestJS **déjà disponibles** (JWT Bearer) et recommandations pour le mobile.
 

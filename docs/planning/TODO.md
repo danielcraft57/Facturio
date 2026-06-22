@@ -1,6 +1,6 @@
 # TODO - Liste complète des tâches restantes
 
-Liste exhaustive de tout ce qu'il reste à faire dans le projet Facturio, organisée par priorité et domaine.
+Liste exhaustive de tout ce qu'il reste à faire dans le projet PrestaFacture, organisée par priorité et domaine.
 
 **Positionnement produit** : prestations de services numériques (dev web, logiciel, automatisation, maintenance, IA) — [POSITIONNEMENT_PRESTATIONS_SERVICES.md](./POSITIONNEMENT_PRESTATIONS_SERVICES.md).
 
@@ -8,14 +8,14 @@ Liste exhaustive de tout ce qu'il reste à faire dans le projet Facturio, organi
 
 > Plan : [MONETISATION.md](./MONETISATION.md)
 
-- [ ] Dogfooding : 100 % facturation DanielCraft via Facturio
+- [ ] Dogfooding : 100 % facturation DanielCraft via PrestaFacture
 - [ ] Paliers Stripe Billing : Free / Pro (9–15 €) / Pro+e-facture (19–29 €) / Agence (49–79 €)
 - [ ] Page tarifs + CTA depuis danielcraft.fr
 - [ ] Limites techniques plan Free (quota factures/mois)
 - [ ] Packs catalogue premium (import seed métier)
 - [ ] Accord commission ou bundle avec PA partenaire
 - [ ] Contenu SEO : réforme 2026 + facturation prestation dev
-- [ ] Branding optionnel PDF / page publique (« Propulsé par Facturio »)
+- [ ] Branding optionnel PDF / page publique (« Propulsé par PrestaFacture »)
 
 ---
 
@@ -53,7 +53,7 @@ Liste exhaustive de tout ce qu'il reste à faire dans le projet Facturio, organi
 > Jalon critique : **réception** pour toutes les entreprises au **1er sept. 2026** ; **émission** ETI/GE même date, PME au **1er sept. 2027**.
 
 ### Phase 0 — Cadrage (Q2 2026)
-- [ ] Décision stratégique : PA partenaire (solution compatible) vs immatriculation PA Facturio
+- [ ] Décision stratégique : PA partenaire (solution compatible) vs immatriculation PA PrestaFacture
 - [ ] Sélection et contrat avec une Plateforme Agréée partenaire
 - [x] Dossier candidature PA : [accreditation-pa/](../accreditation-pa/README.md)
 - [ ] Audit des champs manquants restants (mentions légales PDF, adresses normalisées)

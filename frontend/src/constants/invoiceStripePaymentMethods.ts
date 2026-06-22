@@ -123,7 +123,7 @@ export const INVOICE_STRIPE_PAYMENT_METHOD_OPTIONS: InvoiceStripePaymentMethodOp
   },
 ]
 
-/** Logos simple-icons (SVG) — usage interne Facturio, pas d’asset local requis. */
+/** Logos simple-icons (SVG) — usage interne PrestaFacture, pas d’asset local requis. */
 export function paymentMethodIconUrl(slug: string): string {
   return `https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/${slug}.svg`
 }

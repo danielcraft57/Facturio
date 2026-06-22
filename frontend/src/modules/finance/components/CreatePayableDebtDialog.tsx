@@ -314,7 +314,7 @@ export function CreatePayableDebtDialog({ open, saving, onClose, onSubmit }: Pro
 
             Le <strong>créancier</strong> est la personne à qui vous devez de l&apos;argent (prêteur,
 
-            fournisseur, famille…). Distinct des <strong>clients</strong> Facturio. Ensuite, partagez
+            fournisseur, famille…). Distinct des <strong>clients</strong> PrestaFacture. Ensuite, partagez
 
             la reconnaissance par email ou copiez le lien public.
 

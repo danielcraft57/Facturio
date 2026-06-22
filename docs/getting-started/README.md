@@ -1,6 +1,6 @@
 # Démarrage rapide
 
-Documentation pour démarrer rapidement avec Facturio.
+Documentation pour démarrer rapidement avec PrestaFacture.
 
 ## 📚 Contenu
 

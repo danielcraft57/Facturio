@@ -17,7 +17,7 @@ export function PrivacyPage() {
       <Container maxWidth="md" sx={{ py: 6 }}>
         <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
           Document d’information. Pour toute question : {LEGAL_CONTROLLER.contact}. Dernière mise à jour :{' '}
-          {DANIELCRAFT_PUBLISHER.facturioLegalUpdated}.
+          {DANIELCRAFT_PUBLISHER.prestafactureLegalUpdated}.
         </Alert>
         <LegalPublisherCard />
         <LegalSections sections={PRIVACY_SECTIONS} />
@@ -28,7 +28,7 @@ export function PrivacyPage() {
           <Typography variant="body2" color="text.secondary">
             Les clés Stripe prestataire sont chiffrées en base de données lorsque le
             serveur est configuré avec SECRETS_ENCRYPTION_KEY. Les paiements de vos clients ne transitent pas par le
-            compte Stripe Facturio (abonnement).
+            compte Stripe PrestaFacture (abonnement).
           </Typography>
         </Box>
       </Container>

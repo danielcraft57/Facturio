@@ -1,4 +1,4 @@
-## Facturio
+## PrestaFacture
 [![Server CI](https://github.com/loupix/Facturio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/loupix/Facturio/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/codecov/c/github/loupix/Facturio?token=&branch=main)](https://app.codecov.io/gh/loupix/Facturio) [![Node](https://img.shields.io/badge/node-20.x-339933?logo=nodedotjs&logoColor=white)](https://github.com/loupix/Facturio/actions/workflows/ci.yml)
 
 API de facturation orientée **prestations de services numériques** : développement web, logiciel sur mesure, automatisation, intégrations API, maintenance et offres IA. Clients, catalogue de prestations, devis, factures, paiements, TVA (FR/UE) et déclarations.
@@ -78,7 +78,7 @@ Une démo statique des thèmes est disponible dans `ui/`:
 
 ### Structure
 ```
-Facturio/
+PrestaFacture/
   server/
     src/...
     prisma/...

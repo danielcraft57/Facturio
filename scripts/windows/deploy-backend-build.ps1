@@ -28,7 +28,7 @@ if ([string]::IsNullOrWhiteSpace($AppUser)) {
 }
 
 if (-not (Test-Path (Join-Path $serverDir "package.json"))) {
-    Write-Host "ERREUR: Dossier server introuvable (Facturio/server)." -ForegroundColor Red
+    Write-Host "ERREUR: Dossier server introuvable (racine du projet/server)." -ForegroundColor Red
     exit 1
 }
 

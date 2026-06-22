@@ -19,7 +19,7 @@ export function PricingPage() {
         subtitle="Gratuit pour tester. Pro pour le quotidien. Pro + e-facture pour anticiper la réception obligatoire du 1er septembre 2026 — sans payer une compta complète."
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.reserveEfacture}
-        visual={<MarketingImage src="/images/facturio-pricing.png" alt="Paliers tarifaires Facturio" float={false} />}
+        visual={<MarketingImage src="/images/facturio-pricing.png" alt="Paliers tarifaires PrestaFacture" float={false} />}
       />
 
       <Container maxWidth="lg" sx={{ py: 3 }}>

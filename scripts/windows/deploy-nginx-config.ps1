@@ -27,7 +27,7 @@ if (-not (Test-Path $templatePath)) {
 $serverNames = "facturio.$Domain devis.$Domain facture.$Domain"
 $siteConfigName = "facturio.$Domain"
 
-Write-Host "=== Déploiement Nginx Facturio ===" -ForegroundColor Cyan
+Write-Host "=== Déploiement Nginx PrestaFacture ===" -ForegroundColor Cyan
 Write-Host "  App (Pi)    : $AppServer"
 Write-Host "  Nginx       : $NginxServer"
 Write-Host "  Domaines    : $serverNames"

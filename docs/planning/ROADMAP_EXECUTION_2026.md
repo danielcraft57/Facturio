@@ -1,4 +1,4 @@
-# Roadmap d'exécution 2026 — Facturio
+# Roadmap d'exécution 2026 — PrestaFacture
 
 Plan opérationnel (branche `feat/roadmap-execution-2026`) dérivé de [STRATEGIE_ACQUISITION_INSCRIPTIONS_2026.md](./STRATEGIE_ACQUISITION_INSCRIPTIONS_2026.md).
 

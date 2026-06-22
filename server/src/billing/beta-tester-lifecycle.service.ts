@@ -40,7 +40,7 @@ export class BetaTesterLifecycleService {
 		const appBase = (
 			process.env.FRONTEND_URL?.trim() ||
 			process.env.PUBLIC_APP_URL?.trim() ||
-			'https://facturio.danielcraft.fr'
+			'https://prestafacture.com'
 		).replace(/\/$/, '');
 
 		for (const org of orgs) {

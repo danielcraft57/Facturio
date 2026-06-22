@@ -11,6 +11,7 @@ import {
 	renderSimpleFacturioEmail,
 } from './email-layout';
 import { prepareBrandedEmailForDelivery } from './email-inline-assets';
+import { getPlatformBrandName } from './email-brand';
 import {
 	buildEmailLegalFooter,
 	buildPlatformEmailLegalFooter,
@@ -42,9 +43,12 @@ export class EmailService {
 	/** Adresse no-reply dédiée (pour confirmations, reset, etc.). */
 	private readonly noReplyEmail: string;
 
+	private readonly platformBrand: string;
+
 	constructor() {
+		this.platformBrand = getPlatformBrandName();
 		this.fromEmail = process.env.MAIL_FROM || 'no-reply@example.com';
-		this.fromName = process.env.MAIL_FROM_NAME || 'Facturio';
+		this.fromName = process.env.MAIL_FROM_NAME || this.platformBrand;
 		this.noReplyEmail = process.env.MAIL_FROM_NO_REPLY || this.fromEmail || 'no-reply@example.com';
 
 		if (process.env.NODE_ENV === 'test') {
@@ -70,18 +74,18 @@ export class EmailService {
 	/** Adresse d'envoi des factures (compte dédié). */
 	private get invoiceFrom(): string {
 		const addr = process.env.MAIL_FROM_INVOICE || 'facture@danielcraft.fr';
-		const name = process.env.MAIL_FROM_INVOICE_NAME || 'Facturio Factures';
+		const name = process.env.MAIL_FROM_INVOICE_NAME || `${this.platformBrand} Factures`;
 		return `${name} <${addr}>`;
 	}
 
 	/** Adresse d'envoi des devis (compte dédié). */
 	private get quoteFrom(): string {
 		const addr = process.env.MAIL_FROM_QUOTE || 'devis@danielcraft.fr';
-		const name = process.env.MAIL_FROM_QUOTE_NAME || 'Facturio Devis';
+		const name = process.env.MAIL_FROM_QUOTE_NAME || `${this.platformBrand} Devis`;
 		return `${name} <${addr}>`;
 	}
 
-	/** Factures d'abonnement Facturio (Stripe plateforme) — défaut : MAIL_FROM_INVOICE ou abonnement@. */
+	/** Factures d'abonnement PrestaFacture (Stripe plateforme) — défaut : MAIL_FROM_INVOICE ou abonnement@. */
 	private get subscriptionFrom(): string {
 		const addr =
 			process.env.MAIL_FROM_SUBSCRIPTION ||
@@ -90,14 +94,14 @@ export class EmailService {
 		const name =
 			process.env.MAIL_FROM_SUBSCRIPTION_NAME ||
 			process.env.MAIL_FROM_INVOICE_NAME ||
-			'Facturio Abonnements';
+			`${this.platformBrand} Abonnements`;
 		return `${name} <${addr}>`;
 	}
 
 	/** Adresse d'envoi des emails transactionnels "no-reply". */
 	private get verifyFrom(): string {
 		const addr = this.noReplyEmail || 'no-reply@example.com';
-		const name = this.fromName || 'Facturio';
+		const name = this.fromName || `${this.platformBrand}`;
 		return `${name} <${addr}>`;
 	}
 
@@ -983,8 +987,8 @@ export class EmailService {
 					`Encaissement : <strong>${this.formatCurrency(data.lastPaymentAmount)}</strong> (${data.paymentMethodLabel})`,
 				) +
 				emailParagraph(`Total facture : ${this.formatCurrency(data.total)}`) +
-				emailButton(data.appInvoiceUrl, 'Ouvrir la facture dans Facturio', 'secondary'),
-			footerHtml: `<p>${data.legalFooter}</p><p>Notification automatique Facturio.</p>`,
+				emailButton(data.appInvoiceUrl, `Ouvrir la facture dans ${this.platformBrand}`, 'secondary'),
+			footerHtml: `<p>${data.legalFooter}</p><p>Notification automatique ${this.platformBrand}.</p>`,
 		});
 	}
 
@@ -1095,7 +1099,7 @@ export class EmailService {
 
 	/**
 	 * Envoie l'email de vérification d'adresse (inscription).
-	 * Utilise le template Facturio avec lien de confirmation.
+	 * Utilise le template PrestaFacture avec lien de confirmation.
 	 */
 	/**
 	 * Connexion depuis un nouvel appareil ou en parallèle — confirmation par email.
@@ -1106,7 +1110,7 @@ export class EmailService {
 		verifyUrl: string;
 		userAgent?: string | null;
 	}): Promise<void> {
-		const subject = 'Confirmez cette connexion - Facturio';
+		const subject = `Confirmez cette connexion - ${this.platformBrand}`;
 		const deviceHint = options.userAgent
 			? emailParagraph(
 					`<span style="font-size:13px;color:#64748b;">Appareil détecté : ${options.userAgent.slice(0, 120)}</span>`,
@@ -1117,14 +1121,14 @@ export class EmailService {
 			headline: 'Confirmez cette connexion',
 			content: `
 				${emailParagraph(`Bonjour${options.firstName ? ` ${options.firstName}` : ''},`)}
-				${emailParagraph('Une connexion à votre compte Facturio a été détectée depuis un <strong>nouvel appareil</strong> ou pendant une session déjà active ailleurs.')}
+				${emailParagraph(`Une connexion à votre compte ${this.platformBrand} a été détectée depuis un <strong>nouvel appareil</strong> ou pendant une session déjà active ailleurs.`)}
 				${deviceHint}
 				${emailParagraph('Si c\'était vous, confirmez cette connexion :')}
 				${emailButton(options.verifyUrl, 'Confirmer cette connexion', 'primary')}
 				${emailParagraph('<span style="font-size:13px;color:#64748b;">Ce lien expire dans 1 heure. Sinon, ignorez cet email et changez votre mot de passe si vous suspectez une intrusion.</span>')}
 			`,
 		});
-		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ''},\n\nConfirmez cette connexion : ${options.verifyUrl}\n\nLien valide 1 heure.\n\nL'équipe Facturio`;
+		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ``},\n\nConfirmez cette connexion : ${options.verifyUrl}\n\nLien valide 1 heure.\n\nL'équipe ${this.platformBrand}`;
 		await this.send({
 			from: this.verifyFrom,
 			to: options.to,
@@ -1144,7 +1148,7 @@ export class EmailService {
 			expiresAt: string;
 		} | null;
 	}): Promise<void> {
-		const subject = 'Bienvenue sur Facturio — confirmez votre email';
+		const subject = `Bienvenue sur ${this.platformBrand} — confirmez votre email`;
 		const html = this.getSignupConfirmationTemplate({
 			firstName: options.firstName,
 			method: 'email',
@@ -1182,8 +1186,8 @@ export class EmailService {
 		} | null;
 	}): Promise<void> {
 		const subject = options.betaTester
-			? 'Bienvenue sur Facturio — compte créé et beta activée'
-			: 'Bienvenue sur Facturio — votre compte est prêt';
+			? `Bienvenue sur ${this.platformBrand} — compte créé et beta activée`
+			: `Bienvenue sur ${this.platformBrand} — votre compte est prêt`;
 		const html = this.getSignupConfirmationTemplate({
 			firstName: options.firstName,
 			method: 'google',
@@ -1221,7 +1225,7 @@ export class EmailService {
 		createInvoiceUrl: string;
 		dashboardUrl: string;
 	}): Promise<void> {
-		const subject = `Votre catalogue Facturio est prêt (${options.productCount} prestation${options.productCount > 1 ? 's' : ''})`;
+		const subject = `Votre catalogue ${this.platformBrand} est prêt (${options.productCount} prestation${options.productCount > 1 ? `s` : ''})`;
 		const html = this.getOnboardingRecapTemplate(options);
 		const text = this.getOnboardingRecapText(options);
 		await this.send({
@@ -1241,12 +1245,12 @@ export class EmailService {
 		firstName?: string | null;
 		resetUrl: string;
 	}): Promise<void> {
-		const subject = 'Réinitialisation de votre mot de passe - Facturio';
+		const subject = `Réinitialisation de votre mot de passe - ${this.platformBrand}`;
 		const html = this.getPasswordResetTemplate({
 			firstName: options.firstName,
 			resetUrl: options.resetUrl,
 		});
-		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ''},\n\nVous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le lien ci-dessous (valide 1 heure) :\n${options.resetUrl}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet email.\n\nL'équipe Facturio`;
+		const text = `Bonjour${options.firstName ? ` ${options.firstName}` : ``},\n\nVous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le lien ci-dessous (valide 1 heure) :\n${options.resetUrl}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet email.\n\nL'équipe ${this.platformBrand}`;
 		await this.send({
 			to: options.to,
 			subject,
@@ -1256,7 +1260,7 @@ export class EmailService {
 	}
 
 	/**
-	 * Layout HTML commun (Facturio) pour emails transactionnels.
+	 * Layout HTML commun (PrestaFacture) pour emails transactionnels.
 	 */
 	private getBaseLayout(data: {
 		title: string;
@@ -1312,7 +1316,7 @@ export class EmailService {
 					emailButton(data.verifyUrl, 'Confirmer mon email', 'primary') +
 					emailParagraph('Ce lien est valide <strong>24 heures</strong>.')
 				: emailParagraph(
-						'Votre adresse email est déjà validée via Google — vous pouvez utiliser Facturio tout de suite.',
+						`Votre adresse email est déjà validée via Google — vous pouvez utiliser ${this.platformBrand} tout de suite.`,
 					);
 
 		const nextSteps =
@@ -1324,12 +1328,12 @@ export class EmailService {
 			) +
 			emailButtonRow([
 				{
-					href: data.installUrl ?? data.dashboardUrl ?? 'https://facturio.danielcraft.fr/installation',
+					href: data.installUrl ?? data.dashboardUrl ?? 'https://prestafacture.com/installation',
 					label: 'Lancer l\'assistant',
 					variant: 'success',
 				},
 				{
-					href: data.dashboardUrl ?? 'https://facturio.danielcraft.fr/dashboard',
+					href: data.dashboardUrl ?? 'https://prestafacture.com/dashboard',
 					label: 'Tableau de bord',
 					variant: 'secondary',
 				},
@@ -1344,7 +1348,7 @@ export class EmailService {
 		const content =
 			emailParagraph(greeting) +
 			emailParagraph(
-				'Bienvenue sur <strong>Facturio</strong> — devis, factures et pré-compta pensés pour les freelances dev et les micro-agences web.',
+				`Bienvenue sur <strong>${this.platformBrand}</strong> — devis, factures et pré-compta pensés pour les freelances dev et les micro-agences web.`,
 			) +
 			betaBlock +
 			betaEfactureNote +
@@ -1353,10 +1357,10 @@ export class EmailService {
 			emailParagraph(
 				'Besoin d\'aide ? Répondez à cet email ou consultez la doc depuis l\'app. On est une petite équipe, on lit vraiment les retours.',
 			) +
-			emailParagraph('À très vite,<br><strong>L\'équipe Facturio</strong>');
+			emailParagraph(`À très vite,<br><strong>L'équipe ${this.platformBrand}</strong>`);
 
 		return this.getBaseLayout({
-			title: 'Bienvenue sur Facturio',
+			title: `Bienvenue sur ${this.platformBrand}`,
 			headline: data.method === 'google' ? 'Compte créé avec Google' : 'Confirmez votre inscription',
 			content,
 		});
@@ -1379,7 +1383,7 @@ export class EmailService {
 		const lines = [
 			greeting,
 			'',
-			'Bienvenue sur Facturio — devis, factures et pré-compta pour freelances dev.',
+			`Bienvenue sur ${this.platformBrand} — devis, factures et pré-compta pour freelances dev.`,
 		];
 		if (data.betaTester) {
 			const expiresFr = new Date(data.betaTester.expiresAt).toLocaleDateString('fr-FR');
@@ -1399,7 +1403,7 @@ export class EmailService {
 		}
 		if (data.installUrl) lines.push(`Assistant installation : ${data.installUrl}`);
 		if (data.dashboardUrl) lines.push(`Tableau de bord : ${data.dashboardUrl}`);
-		lines.push('', 'L\'équipe Facturio');
+		lines.push('', `L'équipe ${this.platformBrand}`);
 		return lines.join('\n');
 	}
 
@@ -1438,7 +1442,7 @@ export class EmailService {
 		const content =
 			emailParagraph(greeting) +
 			emailParagraph(
-				`C'est fait : votre <strong>catalogue Facturio</strong> est installé avec <strong>${data.productCount} prestation${data.productCount > 1 ? 's' : ''}</strong> prêtes à facturer.`,
+				`C'est fait : votre <strong>catalogue ${this.platformBrand}</strong> est installé avec <strong>${data.productCount} prestation${data.productCount > 1 ? 's' : ''}</strong> prêtes à facturer.`,
 			) +
 			emailBanner('Tarifs modifiables à tout moment — ce sont des bases, pas des engagements.', 'info') +
 			profileLine +
@@ -1462,7 +1466,7 @@ export class EmailService {
 			emailParagraph(
 				'Vous facturez au forfait ? Testez l\'acompte 10 % et le paiement en plusieurs fois sur une facture.',
 			) +
-			emailParagraph('Bonne facturation,<br><strong>L\'équipe Facturio</strong>');
+			emailParagraph(`Bonne facturation,<br><strong>L'équipe ${this.platformBrand}</strong>`);
 
 		return this.getBaseLayout({
 			title: 'Catalogue installé',
@@ -1485,7 +1489,7 @@ export class EmailService {
 		const lines = [
 			greeting,
 			'',
-			`Votre catalogue Facturio est prêt : ${data.productCount} prestation(s).`,
+			`Votre catalogue ${this.platformBrand} est prêt : ${data.productCount} prestation(s).`,
 		];
 		if (data.devProfileLabel) lines.push(`Profil : ${data.devProfileLabel}`);
 		if (data.techLabels.length) lines.push(`Stack : ${data.techLabels.join(', ')}`);
@@ -1501,7 +1505,7 @@ export class EmailService {
 			`Nouvelle facture : ${data.createInvoiceUrl}`,
 			`Dashboard : ${data.dashboardUrl}`,
 			'',
-			'L\'équipe Facturio',
+			`L'équipe ${this.platformBrand}`,
 		);
 		return lines.join('\n');
 	}
@@ -1525,13 +1529,13 @@ export class EmailService {
 		const content =
 			emailParagraph(greeting) +
 			emailParagraph(
-				'Vous avez demandé la réinitialisation de votre mot de passe Facturio. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.',
+				`Vous avez demandé la réinitialisation de votre mot de passe ${this.platformBrand}. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.`,
 			) +
 			emailButton(data.resetUrl, 'Réinitialiser mon mot de passe', 'primary') +
 			emailParagraph(
 				'Ce lien est valide <strong>1 heure</strong>. Si vous n\'êtes pas à l\'origine de cette demande, ignorez cet email en toute sécurité.',
 			) +
-			emailParagraph('Cordialement,<br><strong>L\'équipe Facturio</strong>');
+			emailParagraph(`Cordialement,<br><strong>L'équipe ${this.platformBrand}</strong>`);
 		return this.getBaseLayout({
 			title: 'Réinitialisation de votre mot de passe',
 			headline: 'Réinitialisation de votre mot de passe',
@@ -1539,7 +1543,7 @@ export class EmailService {
 		});
 	}
 
-	/** Abonnement Facturio activé (checkout réussi). */
+	/** Abonnement PrestaFacture activé (checkout réussi). */
 	async sendSubscriptionActivated(options: {
 		to: string;
 		firstName?: string | null;
@@ -1550,11 +1554,11 @@ export class EmailService {
 		const content =
 			emailParagraph(greeting) +
 			emailParagraph(
-				`Votre abonnement <strong>${options.planLabel}</strong> est maintenant actif sur Facturio.`,
+				`Votre abonnement <strong>${options.planLabel}</strong> est maintenant actif sur ${this.platformBrand}.`,
 			) +
 			emailParagraph('Vous pouvez gérer votre facturation et consulter vos quotas depuis les paramètres.') +
 			emailButton(options.settingsUrl, 'Voir mon abonnement', 'success') +
-			emailParagraph('Merci pour votre confiance,<br><strong>L\'équipe Facturio</strong>');
+			emailParagraph(`Merci pour votre confiance,<br><strong>L'équipe ${this.platformBrand}</strong>`);
 		const html = this.getBaseLayout({
 			title: 'Abonnement activé',
 			headline: 'Abonnement activé',
@@ -1563,13 +1567,13 @@ export class EmailService {
 		await this.send({
 			from: this.subscriptionFrom,
 			to: options.to,
-			subject: `Abonnement ${options.planLabel} activé — Facturio`,
+			subject: `Abonnement ${options.planLabel} activé — ${this.platformBrand}`,
 			html,
 			text: `Votre abonnement ${options.planLabel} est actif. Paramètres : ${options.settingsUrl}`,
 		});
 	}
 
-	/** Facture d'abonnement Facturio (même modèle visuel que les factures clients). */
+	/** Facture d'abonnement PrestaFacture (même modèle visuel que les factures clients). */
 	async sendSubscriptionInvoice(options: {
 		to: string;
 		firstName?: string | null;
@@ -1603,7 +1607,7 @@ export class EmailService {
 				`Bonjour ${options.clientName},\n\n` +
 				`Veuillez trouver ci-joint la facture ${options.invoiceNumber} ` +
 				`du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')} ` +
-				`pour votre abonnement Facturio (${this.formatCurrency(options.amountEur)}).${paymentLine}\n` +
+				`pour votre abonnement ${this.platformBrand} (${this.formatCurrency(options.amountEur)}).${paymentLine}\n` +
 				`Cordialement,\n${company}`,
 			attachments: [
 				{
@@ -1624,7 +1628,7 @@ export class EmailService {
 		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
 		const content =
 			emailParagraph(greeting) +
-			emailParagraph('Le renouvellement de votre abonnement Facturio n\'a pas pu être débité.') +
+			emailParagraph(`Le renouvellement de votre abonnement ${this.platformBrand} n'a pas pu être débité.`) +
 			emailParagraph('Mettez à jour votre moyen de paiement pour éviter une interruption de service.') +
 			emailButton(options.manageUrl, 'Mettre à jour le paiement', 'primary') +
 			emailParagraph('Si vous avez des questions, répondez à cet email ou contactez le support.');
@@ -1636,7 +1640,7 @@ export class EmailService {
 		await this.send({
 			from: this.subscriptionFrom,
 			to: options.to,
-			subject: 'Action requise — paiement abonnement Facturio',
+			subject: `Action requise — paiement abonnement ${this.platformBrand}`,
 			html,
 			text: `Échec de paiement. Gérez votre abonnement : ${options.manageUrl}`,
 		});
@@ -1657,7 +1661,7 @@ export class EmailService {
 			emailParagraph(
 				'Vos données restent accessibles ; les quotas du plan Free s\'appliquent à nouveau.',
 			) +
-			emailParagraph('Vous pouvez vous réabonner à tout moment depuis Facturio.');
+			emailParagraph(`Vous pouvez vous réabonner à tout moment depuis ${this.platformBrand}.`);
 		const html = this.getBaseLayout({
 			title: 'Abonnement terminé',
 			headline: 'Abonnement terminé',
@@ -1666,7 +1670,7 @@ export class EmailService {
 		await this.send({
 			from: this.subscriptionFrom,
 			to: options.to,
-			subject: 'Votre abonnement Facturio a pris fin',
+			subject: `Votre abonnement ${this.platformBrand} a pris fin`,
 			html,
 			text: `Abonnement ${options.planLabel} terminé. Compte repassé sur le plan gratuit.`,
 		});
@@ -1725,17 +1729,17 @@ export class EmailService {
 				'<em>Rappel : aucune transmission Plateforme Agréée dans l\'app — connecteur PA et e-reporting en développement.</em>',
 			) +
 			emailButtonRow([
-				{ href: options.dashboardUrl, label: 'Ouvrir Facturio', variant: 'primary' },
+				{ href: options.dashboardUrl, label: `Ouvrir ${this.platformBrand}`, variant: 'primary' },
 				{ href: options.billingUrl, label: 'Voir les offres Pro', variant: 'secondary' },
 			]) +
-			emailParagraph('Merci de tester avec nous,<br><strong>Valentine Coubertain</strong><br>Facturio');
+			emailParagraph(`Merci de tester avec nous,<br><strong>Valentine Coubertain</strong><br>${this.platformBrand}`);
 
 		const subject =
 			options.phase === '60d'
-				? 'Beta Facturio — il vous reste environ 2 mois'
+				? `Beta ${this.platformBrand} — il vous reste environ 2 mois`
 				: options.phase === '30d'
-					? 'Beta Facturio — plus qu\'un mois d\'essai'
-					: 'Beta Facturio — fin dans 7 jours';
+					? `Beta ${this.platformBrand} — plus qu'un mois d'essai`
+					: `Beta ${this.platformBrand} — fin dans 7 jours`;
 
 		await this.send({
 			from: this.verifyFrom,
@@ -1763,7 +1767,7 @@ export class EmailService {
 		const content =
 			emailParagraph(greeting) +
 			emailParagraph(
-				'Votre <strong>période beta de 3 mois</strong> est terminée. Merci d\'avoir testé Facturio en conditions réelles — vos retours comptent vraiment.',
+				`Votre <strong>période beta de 3 mois</strong> est terminée. Merci d'avoir testé ${this.platformBrand} en conditions réelles — vos retours comptent vraiment.`,
 			) +
 			emailBanner(
 				'Retour au <strong>plan Free</strong> : quotas mensuels (factures, devis, emails), pas de compta FEC ni API publique.',
@@ -1776,12 +1780,12 @@ export class EmailService {
 				{ href: options.billingUrl, label: 'Passer Pro', variant: 'success' },
 				{ href: options.quotasUrl, label: 'Voir les quotas Free', variant: 'secondary' },
 			]) +
-			emailParagraph('À bientôt,<br><strong>L\'équipe Facturio</strong>');
+			emailParagraph(`À bientôt,<br><strong>L'équipe ${this.platformBrand}</strong>`);
 
 		await this.send({
 			from: this.verifyFrom,
 			to: options.to,
-			subject: 'Votre essai beta Facturio est terminé',
+			subject: `Votre essai beta ${this.platformBrand} est terminé`,
 			html: this.getBaseLayout({
 				title: 'Fin de période beta',
 				headline: 'Merci pour votre participation beta',
@@ -1822,7 +1826,7 @@ export class EmailService {
 				{ href: options.billingUrl, label: 'Passer Pro (illimité)', variant: 'primary' },
 				{ href: options.quotasUrl, label: 'Détail des quotas', variant: 'secondary' },
 			]) +
-			emailParagraph('L\'équipe Facturio');
+			emailParagraph(`L'équipe ${this.platformBrand}`);
 
 		await this.send({
 			from: this.verifyFrom,
@@ -1872,7 +1876,7 @@ export class EmailService {
 		const content =
 			emailParagraph(greeting) +
 			emailParagraph(
-				`Merci d'avoir activé le programme <strong>beta testeurs</strong> sur Facturio.`,
+				`Merci d'avoir activé le programme <strong>beta testeurs</strong> sur ${this.platformBrand}.`,
 			) +
 			codeLine +
 			emailBanner(
@@ -1892,7 +1896,7 @@ export class EmailService {
 					'3. Si vous facturez au forfait : testez l\'acompte 10 % et le paiement en plusieurs fois.',
 			) +
 			emailButtonRow([
-				{ href: options.appUrl, label: 'Ouvrir Facturio', variant: 'success' },
+				{ href: options.appUrl, label: `Ouvrir ${this.platformBrand}`, variant: 'success' },
 				{ href: options.settingsUrl, label: 'Mon profil émetteur', variant: 'secondary' },
 			]) +
 			(options.surveyUrl
@@ -1902,21 +1906,21 @@ export class EmailService {
 				: emailParagraph(
 						'Votre retour nous aide — répondez directement à cet email (bug, idée, écran confus).',
 					)) +
-			emailParagraph('Merci encore,<br><strong>Valentine Coubertain</strong><br>Facturio');
+			emailParagraph(`Merci encore,<br><strong>Valentine Coubertain</strong><br>${this.platformBrand}`);
 
 		const html = this.getBaseLayout({
-			title: 'Bienvenue dans la beta Facturio',
+			title: `Bienvenue dans la beta ${this.platformBrand}`,
 			headline: 'Bienvenue dans la beta',
 			content,
 		});
 
 		const text =
 			`${greeting}\n\n` +
-			`Merci d'avoir activé le programme beta testeurs sur Facturio.\n\n` +
+			`Merci d'avoir activé le programme beta testeurs sur ${this.platformBrand}.\n\n` +
 			`${options.planLabel} — accès complet ${options.durationDays} jours, jusqu'au ${expiresFr}.\n` +
 			(options.inviteCode?.trim() ? `Code : ${options.inviteCode.trim()}\n` : '') +
 			'\nDisponible : score conformité, export Factur-X (XML). Pas encore activé : connecteur PA, e-reporting, sync bancaire.\n' +
-			`\nOuvrir Facturio : ${options.appUrl}\n` +
+			`\nOuvrir ${this.platformBrand} : ${options.appUrl}\n` +
 			`Profil émetteur : ${options.settingsUrl}` +
 			surveyText +
 			`\nMerci,\nValentine Coubertain\nFacturio`;
@@ -1925,7 +1929,7 @@ export class EmailService {
 			from: this.verifyFrom,
 			to: options.to,
 			replyTo: options.replyTo ?? undefined,
-			subject: 'Bienvenue dans la beta Facturio (3 mois offerts)',
+			subject: `Bienvenue dans la beta ${this.platformBrand} (3 mois offerts)`,
 			html,
 			text,
 		});

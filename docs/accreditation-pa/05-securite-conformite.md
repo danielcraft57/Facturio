@@ -5,7 +5,7 @@
 - **Minimisation** des données collectées.
 - **Isolation multi-tenant** par `organizationId`.
 - **Chiffrement** des secrets sensibles en base (clés Stripe prestataire, tokens ProspectLab).
-- **Hébergement UE** visé pour production Facturio.
+- **Hébergement UE** visé pour production PrestaFacture.
 
 ## Mesures techniques implémentées
 
@@ -22,8 +22,8 @@
 
 | Traitement | Responsable | Sous-traitant |
 |------------|-------------|--------------|
-| Compte Facturio | DanielCraft | — |
-| Données clients des utilisateurs | **L’utilisateur** (prestataire) | Facturio (hébergement technique) |
+| Compte PrestaFacture | DanielCraft | — |
+| Données clients des utilisateurs | **L’utilisateur** (prestataire) | PrestaFacture (hébergement technique) |
 | Paiement abonnement | DanielCraft | Stripe (plateforme) |
 | Paiement factures clients | Utilisateur | Stripe (compte prestataire) |
 

@@ -1,6 +1,6 @@
 # Guides de développement
 
-Documentation pour les développeurs contribuant à Facturio.
+Documentation pour les développeurs contribuant à PrestaFacture.
 
 ## 📚 Contenu
 

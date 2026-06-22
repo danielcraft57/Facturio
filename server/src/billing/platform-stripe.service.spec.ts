@@ -36,7 +36,7 @@ describe('PlatformStripeService', () => {
 		billingCheckoutSuccessUrl: 'http://localhost:5173/parametres/abonnement?billing=success',
 		billingCheckoutCancelUrl: 'http://localhost:5173/parametres/abonnement?billing=cancelled',
 		billingPortalReturnUrl: 'http://localhost:5173/parametres/abonnement',
-		stripeCheckoutDisplayName: 'Facturio',
+		stripeCheckoutDisplayName: 'PrestaFacture',
 		stripeCheckoutBorderRadius: 'rounded',
 		stripeCheckoutFontFamily: 'roboto',
 		stripeCheckoutLogoFileId: '',
@@ -237,7 +237,7 @@ describe('PlatformStripeService', () => {
 				tax: 200,
 				total: 1200,
 				created: Math.floor(Date.now() / 1000),
-				lines: { data: [{ description: 'Facturio Pro', quantity: 1, amount: 1200 }] },
+				lines: { data: [{ description: 'PrestaFacture Pro', quantity: 1, amount: 1200 }] },
 			});
 			prisma.organization.findFirst.mockResolvedValue({
 				id: 1,

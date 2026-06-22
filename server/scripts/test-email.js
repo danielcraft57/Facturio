@@ -31,16 +31,16 @@ const transporter = nodemailer.createTransport({
 });
 
 const mailOptions = {
-  from: `${process.env.MAIL_FROM_NAME || 'Facturio'} <${process.env.MAIL_FROM || 'no-reply@example.com'}>`,
+  from: `${process.env.MAIL_FROM_NAME || 'PrestaFacture'} <${process.env.MAIL_FROM || 'no-reply@example.com'}>`,
   to: testEmail,
-  subject: 'Test email Facturio',
+  subject: 'Test email PrestaFacture',
   html: `
     <!DOCTYPE html>
     <html lang="fr">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Test email Facturio</title>
+      <title>Test email PrestaFacture</title>
       <style>
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background: #ffffff; }
         .container { max-width: 600px; margin: 0 auto; padding: 24px; }
@@ -54,22 +54,22 @@ const mailOptions = {
     <body>
       <div class="container">
         <div class="header">
-          <h2>Test email Facturio</h2>
+          <h2>Test email PrestaFacture</h2>
         </div>
         <div class="content">
           <p>Bonjour,</p>
-          <p>Ceci est un email de test depuis Facturio.</p>
+          <p>Ceci est un email de test depuis PrestaFacture.</p>
           <p>Si vous recevez cet email, la configuration SMTP fonctionne correctement !</p>
         </div>
         <div class="footer">
           <p>${process.env.COMPANY_NAME || 'Votre Entreprise'} - ${process.env.COMPANY_ADDRESS || ''}</p>
-          <p>Cet email a été envoyé automatiquement par Facturio.</p>
+          <p>Cet email a été envoyé automatiquement par PrestaFacture.</p>
         </div>
       </div>
     </body>
     </html>
   `,
-  text: 'Bonjour,\n\nCeci est un email de test depuis Facturio.\n\nSi vous recevez cet email, la configuration SMTP fonctionne correctement !'
+  text: 'Bonjour,\n\nCeci est un email de test depuis PrestaFacture.\n\nSi vous recevez cet email, la configuration SMTP fonctionne correctement !'
 };
 
 console.log(`Envoi de l'email de test à ${testEmail}...`);

@@ -1,4 +1,4 @@
-# Module Scraper - Facturio
+# Module Scraper - PrestaFacture
 
 Documentation sur le module de scraping web pour l'enrichissement de données.
 
@@ -314,7 +314,7 @@ Content-Type: application/json
 ```env
 # Scraper
 SCRAPER_ENABLED=true
-SCRAPER_USER_AGENT=Facturio/1.0
+SCRAPER_USER_AGENT=PrestaFacture/1.0
 SCRAPER_TIMEOUT=30000
 SCRAPER_RATE_LIMIT=10
 SCRAPER_CACHE_TTL=3600

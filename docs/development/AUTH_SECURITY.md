@@ -1,4 +1,4 @@
-# Authentification et sécurité — Facturio
+# Authentification et sécurité — PrestaFacture
 
 ## Page d’attente post-connexion
 

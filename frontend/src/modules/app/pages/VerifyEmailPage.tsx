@@ -55,7 +55,7 @@ export function VerifyEmailPage() {
   const goToDashboard = () => {
     navigate('/dashboard', {
       replace: true,
-      state: { message: 'Email confirmé. Bienvenue sur Facturio !' },
+      state: { message: 'Email confirmé. Bienvenue sur PrestaFacture !' },
     })
   }
 
