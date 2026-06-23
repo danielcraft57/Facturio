@@ -29,7 +29,7 @@ import { EFACTURE_NOT_LIVE_SHORT } from '../../modules/e-invoicing/eInvoicingCop
 
 const BETA_PERKS = [
   'Plan Agence complet : compta FEC, créances, dettes, API',
-  'Devis, factures, PDF, Stripe, score conformité et export Factur-X (XML)',
+  'Devis, factures, PDF, Stripe et indicateur de conformité réforme 2026',
   'Pas de filigrane, pas de quotas Free pendant votre période beta',
   `Vos retours orientent la feuille de route — ${EFACTURE_NOT_LIVE_SHORT}`,
 ] as const

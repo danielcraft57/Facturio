@@ -1,5 +1,8 @@
 # Dossier technique — module e-invoicing PrestaFacture
 
+**URL production** : https://prestafacture.com  
+**Éditeur** : Loïc DANIEL — DanielCraft (SIRET 823 417 050 000 23)
+
 ## Stack
 
 | Couche | Technologie |

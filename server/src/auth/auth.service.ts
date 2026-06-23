@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../common/email.service';
+import { resolvePublicAppBaseUrl } from '../common/public-app-url';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { LoginDto } from './dto/login.dto';
@@ -123,7 +124,7 @@ export class AuthService {
 			}
 		}
 
-		const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+		const baseUrl = resolvePublicAppBaseUrl();
 		const verifyUrl = `${baseUrl}/verifier-email/${verificationToken}`;
 		await this.emailService.sendVerifyEmail({
 			to: user.email,
@@ -419,7 +420,7 @@ export class AuthService {
 			}
 		}
 
-		const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+		const baseUrl = resolvePublicAppBaseUrl();
 		const appBase = baseUrl.replace(/\/$/, '');
 		void this.emailService
 			.sendGoogleSignupWelcome({
@@ -477,7 +478,7 @@ export class AuthService {
 			where: { id: user.id },
 			data: { passwordResetToken: token, passwordResetExpires: expires },
 		});
-		const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+		const baseUrl = resolvePublicAppBaseUrl();
 		const resetUrl = `${baseUrl}/reinitialiser-mot-de-passe/${token}`;
 		await this.emailService.sendPasswordReset({
 			to: user.email,
@@ -582,7 +583,7 @@ export class AuthService {
 			where: { id: user.id },
 			data: { emailVerificationToken: token, emailVerificationExpires: expires },
 		});
-		const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+		const baseUrl = resolvePublicAppBaseUrl();
 		const verifyUrl = `${baseUrl}/verifier-email/${token}`;
 		await this.emailService.sendVerifyEmail({
 			to: user.email,

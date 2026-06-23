@@ -20,8 +20,8 @@ describe('email-inline-assets', () => {
 		const html = `<img src="${getEmailHeaderUrl('quote')}" /><img src="${getEmailIconUrl(48)}" />`;
 		const { html: out, attachments } = prepareBrandedEmailForDelivery(html);
 		expect(attachments.length).toBeGreaterThan(0);
-		expect(out).toContain('cid:facturio-header-quote@facturio');
-		expect(out).toMatch(/cid:facturio-icon-48@facturio|data:image\/webp/);
+		expect(out).toContain('cid:prestafacture-header-quote@prestafacture.com');
+		expect(out).toMatch(/cid:prestafacture-icon-48@prestafacture\.com|data:image\/webp/);
 		expect(attachments.some((a) => a.filename === 'header-quote.webp')).toBe(true);
 	});
 });

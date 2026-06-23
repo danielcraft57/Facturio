@@ -16,6 +16,8 @@ export const DANIELCRAFT_PUBLISHER = {
   vatMention: 'Non assujetti à la TVA, art. 293 B du CGI',
   website: 'https://danielcraft.fr',
   websiteLabel: 'danielcraft.fr',
+  productUrl: 'https://prestafacture.com',
+  productUrlLabel: 'prestafacture.com',
   legalPagesUpdated: 'janvier 2025',
   prestafactureLegalUpdated: 'mai 2026',
 } as const

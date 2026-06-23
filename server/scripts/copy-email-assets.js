@@ -6,7 +6,7 @@ const roots = [
 	path.join(__dirname, '..', 'frontend', 'public', 'images', 'email'),
 ];
 
-const src = roots.find((d) => fs.existsSync(path.join(d, 'facturio-icon-48.webp')));
+const src = roots.find((d) => fs.existsSync(path.join(d, 'prestafacture-icon-48.webp')));
 const dest = path.join(__dirname, '..', 'dist', 'common', 'email-assets');
 
 if (!src) {

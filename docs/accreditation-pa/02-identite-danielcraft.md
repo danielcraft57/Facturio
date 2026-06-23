@@ -14,6 +14,8 @@ Données alignées sur [danielcraft.fr/mentions-legales](https://danielcraft.fr/
 | Téléphone | 03 87 78 09 16 |
 | SIRET | 823 417 050 000 23 |
 | SIREN | 823 417 050 |
+| **URL service (PA)** | **https://prestafacture.com** |
+| Site éditeur | https://danielcraft.fr |
 | TVA intracommunautaire | Non assujetti à la TVA, art. 293 B du CGI |
 
 ## Activité
@@ -42,7 +44,7 @@ En l’absence de DPO externe : **contact@danielcraft.fr** (responsable du trait
 | Service | Hébergement | Coordonnées |
 |---------|-------------|---------------|
 | Site danielcraft.fr | _À compléter_ (ex. o2switch, OVH…) | Facture hébergeur |
-| Application PrestaFacture | _À compléter_ — cible **UE** | Contrat + localisation datacenter |
+| **PrestaFacture** (https://prestafacture.com) | **France** — node10.lan (app) + node12.lan (HTTPS) | DanielCraft — infra propre UE |
 
 > **Action** : renseigner le nom, l’adresse et le pays de l’hébergeur PrestaFacture production avant dépôt définitif.
 

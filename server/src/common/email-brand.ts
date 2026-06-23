@@ -44,13 +44,13 @@ const HEADER_FILES: Record<EmailHeaderVariant, string> = {
 
 import { resolvePublicAppBaseUrl } from './public-app-url';
 
-/** Nom de marque plateforme (emails, en-têtes) — MAIL_FROM_NAME puis COMPANY_NAME. */
+/** Nom de marque plateforme (emails, en-têtes) — pas MAIL_FROM_NAME (souvent un domaine SMTP). */
 export function getPlatformBrandName(): string {
-	return (
-		process.env.MAIL_FROM_NAME?.trim() ||
-		process.env.COMPANY_NAME?.trim() ||
-		'PrestaFacture'
-	);
+	const explicit = process.env.PLATFORM_BRAND_NAME?.trim();
+	if (explicit) return explicit;
+	const fromName = process.env.MAIL_FROM_NAME?.trim();
+	if (fromName && !fromName.includes('.')) return fromName;
+	return process.env.COMPANY_NAME?.trim() || 'PrestaFacture';
 }
 
 /** URL publique des images email (frontend :5173 en dev, domaine en prod). */
@@ -76,7 +76,7 @@ export function getEmailAssetUrl(file: string): string {
 }
 
 export function getEmailIconUrl(size: 48 | 96 = 48): string {
-	return getEmailAssetUrl(size === 96 ? 'facturio-icon-96.webp' : 'facturio-icon-48.webp');
+	return getEmailAssetUrl(size === 96 ? 'prestafacture-icon-96.webp' : 'prestafacture-icon-48.webp');
 }
 
 export function getEmailHeaderUrl(variant: EmailHeaderVariant = 'default'): string {

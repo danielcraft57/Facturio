@@ -3,10 +3,10 @@ import { AnimatedCounter } from './AnimatedCounter'
 import { ScrollReveal } from './ScrollReveal'
 
 const STATS = [
-  { value: 10, suffix: ' min', label: 'pour votre premier devis' },
-  { value: 2026, suffix: '', label: 'réception e-facture obligatoire' },
-  { value: 0, suffix: ' €', label: 'pour démarrer (plan Free)' },
-  { value: 100, suffix: '%', label: 'vertical prestations numériques' },
+  { value: 10, suffix: ' min', label: 'pour envoyer un premier devis' },
+  { value: 2026, suffix: '', label: 'facture électronique obligatoire' },
+  { value: 0, suffix: ' €', label: 'pour commencer (offre gratuite)' },
+  { value: 100, suffix: '%', label: 'pensé pour les pros du digital' },
 ] as const
 
 export function StatsBar() {

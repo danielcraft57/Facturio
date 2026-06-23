@@ -31,7 +31,7 @@ M'assurer qu'**aucun transfert** des données hébergées par la plateforme n'es
 | Composant | Localisation | Hébergeur / opérateur |
 |-----------|--------------|----------------------|
 | Application PrestaFacture (API) | **France** — node10.lan | DanielCraft (infra propre) |
-| Reverse proxy HTTPS | **France** — node12.lan | DanielCraft (infra propre) |
+| Reverse proxy HTTPS (prestafacture.com) | **France** — node12.lan | DanielCraft (infra propre) |
 | Base PostgreSQL production | **France** — node10.lan | DanielCraft (infra propre) |
 | Sauvegardes BDD | **France** — _chemin à préciser_ | DanielCraft |
 

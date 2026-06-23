@@ -111,7 +111,7 @@ export function betaLifecycleNoticeCopy(phase: BetaLifecyclePhase): {
       return {
         title: 'Beta — il reste environ 2 mois',
         message:
-          'Votre accès complet beta se termine bientôt. Testez compta, API, score conformité et export Factur-X (XML). Connecteur PA : pas encore activé — vos retours comptent.',
+          'Votre accès complet beta se termine bientôt. Testez compta, exports et indicateur de conformité réforme 2026. Plateforme agréée : pas encore activée — vos retours comptent.',
         severity: 'info',
       }
     case '30d':

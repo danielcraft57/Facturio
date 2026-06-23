@@ -15,7 +15,7 @@ export function SettingsEInvoicingPage() {
         Facturation électronique 2026
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Préparez la réforme B2B : SIRET, SIREN clients, export Factur-X et suivi de conformité.
+        Préparez la réforme B2B : SIRET, SIREN clients et suivi de conformité sur vos factures.
       </Typography>
 
       <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>

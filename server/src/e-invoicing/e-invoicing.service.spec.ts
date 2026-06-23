@@ -139,7 +139,7 @@ describe('EInvoicingService', () => {
 
 		it('propage le refus de plan Free', async () => {
 			billing.assertCanUseEInvoicing.mockRejectedValue(
-				new ForbiddenException('La facturation électronique (Factur-X) est réservée au plan Pro + e-facture.'),
+				new ForbiddenException('La facturation électronique est réservée au plan Pro + e-facture.'),
 			);
 
 			await expect(service.generateFacturX('10', 1)).rejects.toBeInstanceOf(ForbiddenException);

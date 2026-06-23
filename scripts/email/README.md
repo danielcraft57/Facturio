@@ -14,7 +14,7 @@ Prérequis : Pillow (`pip install pillow`).
 
 | Fichier | Usage |
 |---------|--------|
-| `facturio-icon-48.webp` / `96.webp` | Logo dans l’en-tête des emails |
+| `prestafacture-icon-48.webp` / `96.webp` | Logo dans l'en-tête des emails |
 | `header-default.webp` | Factures, auth, abonnement |
 | `header-quote.webp` | Devis |
 | `header-success.webp` | Paiement reçu, facture payée |

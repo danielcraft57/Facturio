@@ -35,7 +35,7 @@ export function HeroDashboardMock() {
       </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5, mb: 2 }}>
         {[
-          { label: 'MRR', value: '4 280 €' },
+          { label: 'CA du mois', value: '4 280 €' },
           { label: 'Factures', value: '12' },
           { label: 'Devis en attente', value: '3' },
           { label: 'Encaissements', value: '89 %' },
@@ -61,7 +61,7 @@ export function HeroDashboardMock() {
       <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
         Dernières factures
       </Typography>
-      {['Maintenance IA — 290 €', 'Intégration API — 1 840 €', 'Site vitrine — 490 €'].map((line, i) => (
+      {['Maintenance site — 290 €', 'Campagne réseaux — 1 840 €', 'Identité visuelle — 490 €'].map((line, i) => (
         <Box
           key={line}
           sx={{

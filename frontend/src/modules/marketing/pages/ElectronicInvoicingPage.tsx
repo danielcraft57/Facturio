@@ -12,19 +12,19 @@ import { ReformScheduleSimulator } from '../components/ReformScheduleSimulator'
 const APPROACH = [
   {
     title: 'Vous restez dans PrestaFacture',
-    body: 'Catalogue, devis, missions et factures : aucun changement d’habitudes pour le métier.',
+    body: 'Catalogue, devis, missions et factures : pas besoin de changer d\'outil pour votre quotidien.',
   },
   {
-    title: 'Export Factur-X (XML)',
-    body: 'Format structuré EN 16931 disponible dès le palier Pro + e-facture — base documentaire avant toute transmission PA.',
+    title: 'Contrôles de conformité',
+    body: 'SIRET, SIREN client, mentions légales… un indicateur vous dit ce qui manque avant l\'envoi officiel.',
   },
   {
-    title: 'Plateforme Agréée partenaire',
-    body: 'Connecteur en cours de développement : pas d’envoi PA dans l’app aujourd’hui. Le palier Pro + e-facture réserve l’accès à l’activation.',
+    title: 'Connexion à la plateforme officielle',
+    body: 'En cours de développement : pas d\'envoi automatique dans l\'app pour l\'instant. L\'offre Pro + e-facture vous réserve la place.',
   },
   {
-    title: 'E-reporting',
-    body: 'Flux complémentaires (B2C, international, encaissements) : module annoncé sur la feuille de route, non livré.',
+    title: 'Déclarations complémentaires',
+    body: 'Les flux prévus par la loi (ventes B2C, international, encaissements) sont sur la feuille de route — pas encore livrés.',
   },
 ] as const
 
@@ -35,7 +35,7 @@ export function ElectronicInvoicingPage() {
         compact
         badge={`Échéance ${REFORM_DATES.reception}`}
         title="Facturation électronique : anticipez sans stress"
-        subtitle="La réforme B2B française concerne vos factures clients entreprises. PrestaFacture prépare la conformité tout en restant votre outil métier vertical."
+        subtitle="La réforme concerne vos factures clients entreprises. PrestaFacture vous aide à vous y préparer, sans quitter votre outil habituel."
         primaryCta={CTA.reserveEfacture}
         secondaryCta={CTA.signupFree}
         visual={<MarketingImage src="/images/facturio-efacture.png" alt="Schéma facturation électronique 2026" float={false} />}
@@ -47,9 +47,10 @@ export function ElectronicInvoicingPage() {
         <ScrollReveal>
           <EfactureRoadmapAlert sx={{ mb: 2 }} />
           <Alert severity="info" sx={{ borderRadius: 2 }}>
-            Obligation de <strong>réception</strong> pour toutes les entreprises TVA au {REFORM_DATES.reception}.
-            Obligation d&apos;<strong>émission</strong> pour les ETI et grandes entreprises à la même date, puis PME et
-            micro au {REFORM_DATES.emissionPme}.{' '}
+            À partir du {REFORM_DATES.reception}, toutes les entreprises assujetties à la TVA devront{' '}
+            <strong>recevoir</strong> des factures électroniques. L&apos;<strong>émission</strong> concerne
+            d&apos;abord les grosses structures à la même date, puis les PME et micro au{' '}
+            {REFORM_DATES.emissionPme}.{' '}
             <Link href="https://www.impots.gouv.fr/facturation-electronique-et-plateformes-agreees" target="_blank" rel="noopener">
               Source impots.gouv.fr
             </Link>
@@ -104,7 +105,7 @@ export function ElectronicInvoicingPage() {
 
       <CtaSection
         title="Soyez prêt avant septembre 2026"
-        subtitle="Le plan Pro + e-facture regroupera la connexion PA dès que le module sera livré."
+        subtitle="L'offre Pro + e-facture regroupera la connexion officielle dès que le module sera prêt."
         primaryLabel="Comparer les offres"
         primaryTo="/tarifs"
       />

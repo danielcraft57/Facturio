@@ -97,7 +97,7 @@ export function LandingPage() {
       )}
 
       <MarketingHero
-        badge="Réforme sept. 2026 · Devis · Factures · Pré-compta"
+        badge="Réforme 2026 · Devis · Factures · Suivi client"
         title={SITE_TAGLINE}
         subtitle={SITE_DESCRIPTION}
         primaryCta={{ ...CTA.signupFree, gaEvent: GA_EVENTS.CTA_SIGNUP_HERO }}
@@ -139,7 +139,7 @@ export function LandingPage() {
               align="center"
               sx={{ mb: 3, maxWidth: 560, mx: 'auto' }}
             >
-              Parcours réel enregistré sur l’app — création, lignes, envoi email.
+              Parcours réel dans l'app : création, lignes de prestation, envoi au client.
             </Typography>
             <Tabs
               value={workflowTab}
@@ -155,13 +155,13 @@ export function LandingPage() {
             {workflowTab === 'quote' ? (
               <MarketingWorkflowDemo
                 title="Créer et envoyer un devis"
-                subtitle="Client, prestations du catalogue, totaux TTC, puis envoi au client."
+                subtitle="Choisissez le client, ajoutez vos prestations du catalogue, vérifiez le total, envoyez."
                 steps={QUOTE_WORKFLOW_STEPS}
               />
             ) : (
               <MarketingWorkflowDemo
                 title="Émettre et envoyer une facture"
-                subtitle="Même interface que vos devis — échéance, PDF et relance intégrés."
+                subtitle="Même écran que pour les devis : date d'échéance, PDF et relance si besoin."
                 steps={INVOICE_WORKFLOW_STEPS}
               />
             )}
@@ -208,15 +208,16 @@ export function LandingPage() {
                   fontWeight={700}
                   sx={{ letterSpacing: 1.2 }}
                 >
-                  Levier n°1 — Conformité 2026
+                  Point clé — La réforme de 2026
                 </Typography>
                 <Typography variant="h3" fontWeight={800} sx={{ mt: 1, mb: 2, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
                   Réception obligatoire dès le {REFORM_DATES.reception}
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 3, lineHeight: 1.75 }}>
-                  Même si vous n’émettez qu’en 2027, vous devez <strong>recevoir</strong> des factures
-                  électroniques B2B via une Plateforme Agréée. PrestaFacture vérifie vos données, exporte du
-                  Factur-X (XML) et réserve le connecteur PA — encore en développement — sur le palier dédié.
+                  Même si vous n'avez à émettre vos factures qu'en 2027, vous devrez déjà{' '}
+                  <strong>recevoir</strong> des factures électroniques de vos fournisseurs dès septembre 2026.
+                  PrestaFacture vous aide à vérifier vos infos légales et à vous préparer
+                  à la facturation électronique — la connexion à la plateforme agréée arrive progressivement.
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                   <Button
@@ -240,7 +241,7 @@ export function LandingPage() {
                 <Card variant="outlined" sx={{ mt: 2, borderRadius: 3 }}>
                   <CardContent>
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                      Score de préparation (exemple)
+                      Exemple d'indicateur de conformité
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                       <LinearProgress
@@ -253,7 +254,7 @@ export function LandingPage() {
                       </Typography>
                     </Box>
                     <Typography variant="caption" color="text.secondary">
-                      SIRET · SIREN client · lignes · mentions — visible sur chaque facture dans l’app.
+                      SIRET, client, mentions légales… visible sur chaque facture dans l'app.
                     </Typography>
                   </CardContent>
                 </Card>
@@ -266,7 +267,7 @@ export function LandingPage() {
       <Container maxWidth="lg" sx={{ py: { xs: 6, md: 8 } }}>
         <ScrollReveal>
           <Typography variant="h2" align="center" sx={{ fontWeight: 700, mb: 4, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-            Préparez la réforme sans quitter PrestaFacture
+            Préparez 2026 sans changer d'outil
           </Typography>
         </ScrollReveal>
         <Grid container spacing={3}>
@@ -295,11 +296,11 @@ export function LandingPage() {
           <ScrollReveal>
             <Box sx={{ textAlign: 'center', mb: 6 }}>
               <Typography variant="h2" sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, mb: 1.5 }}>
-                Levier n°2 — Pensé pour votre métier
+                Point clé — Fait pour votre façon de travailler
               </Typography>
               <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 640, mx: 'auto' }}>
-                Indy ou Pennylane couvrent la compta générale. PrestaFacture couvre{' '}
-                <strong>comment vous facturez</strong> : forfaits, régie, maintenance et packs IA.
+                Indy ou Pennylane, c'est la compta complète. PrestaFacture, c'est{' '}
+                <strong>comment vous vendez et facturez</strong> : forfaits, missions au mois, maintenance et packs.
               </Typography>
               <Button
                 component={RouterLink}
@@ -342,8 +343,8 @@ export function LandingPage() {
       </Box>
 
       <FeatureGrid
-        title="Du devis à l'encaissement"
-        subtitle="Cycle commercial complet avec conformité 2026 intégrée — pas une usine à gaz comptable."
+        title="Du devis au paiement"
+        subtitle="Du devis au paiement, sans usine à gaz — et les bases pour 2026."
         features={FEATURES}
       />
 
@@ -351,10 +352,10 @@ export function LandingPage() {
         <Container maxWidth="lg">
           <ScrollReveal>
             <Typography variant="h2" align="center" sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, mb: 1 }}>
-              Calendrier réforme 2026–2027
+              Calendrier 2026–2027
             </Typography>
             <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 3, maxWidth: 520, mx: 'auto' }}>
-              Micro-entreprise : émission en 2027 — mais réception dès 2026. Anticipez maintenant.
+              Micro ou petite structure : l'émission arrive en 2027, mais la réception, c'est dès 2026. Autant s'y mettre maintenant.
             </Typography>
           </ScrollReveal>
           <ReformTimeline />
@@ -365,7 +366,7 @@ export function LandingPage() {
               variant="contained"
               endIcon={<ArrowForwardIcon />}
             >
-              Feuille de route détaillée
+              En savoir plus sur la réforme
             </Button>
             <Button component={RouterLink} to={CTA.signupFree.to} variant="outlined">
               {CTA.signupFree.label}

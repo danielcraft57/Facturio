@@ -15,8 +15,8 @@ export function PricingPage() {
       <MarketingHero
         compact
         badge="Free · Pro · Pro + e-facture · Agence"
-        title="Tarifs transparents, pensés pour l'inscription"
-        subtitle="Gratuit pour tester. Pro pour le quotidien. Pro + e-facture pour anticiper la réception obligatoire du 1er septembre 2026 — sans payer une compta complète."
+        title="Des tarifs simples"
+        subtitle="Gratuit pour tester. Pro pour le quotidien. Pro + e-facture pour être prêt avant septembre 2026 — sans payer une grosse compta."
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.reserveEfacture}
         visual={<MarketingImage src="/images/facturio-pricing.png" alt="Paliers tarifaires PrestaFacture" float={false} />}
@@ -27,15 +27,15 @@ export function PricingPage() {
           <Grid size={{ xs: 12, md: 6 }}>
             <ScrollReveal>
               <Alert severity="success" sx={{ borderRadius: 2, height: '100%' }}>
-                <strong>Plan Free</strong> — {FREE_PLAN_SUMMARY}. Pro : volumes et modules métier illimités.
+                <strong>Plan Free</strong> — {FREE_PLAN_SUMMARY}. Pro : pas de limite sur les devis et factures.
               </Alert>
             </ScrollReveal>
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <ScrollReveal delayMs={60}>
               <Alert severity="warning" sx={{ borderRadius: 2, height: '100%' }}>
-                <strong>Rappel réforme</strong> — Réception e-factures pour toutes les structures TVA dès le{' '}
-                {REFORM_DATES.reception}. Émission micro/PME : {REFORM_DATES.emissionPme}.
+                <strong>Rappel 2026</strong> — Réception des factures électroniques pour toutes les structures TVA dès le{' '}
+                {REFORM_DATES.reception}. Émission pour les micro et PME : {REFORM_DATES.emissionPme}.
               </Alert>
             </ScrollReveal>
           </Grid>
@@ -61,8 +61,7 @@ export function PricingPage() {
                 Pas sûr de votre échéance ?
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 480, mx: 'auto' }}>
-                Consultez la feuille de route facturation électronique : calendrier, score de conformité et palier
-                Pro + e-facture.
+                Consultez la page dédiée : calendrier, indicateur de conformité et offre Pro + e-facture.
               </Typography>
               <Button
                 component={RouterLink}

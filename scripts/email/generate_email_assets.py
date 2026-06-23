@@ -145,7 +145,7 @@ def draw_header(variant: str) -> Image.Image:
         font = ImageFont.load_default()
         font_sm = font
     draw.text((96, 48), "PrestaFacture", fill=(*WHITE, 255), font=font)
-    draw.text((96, 82), "Devis · Factures · Conformité 2026", fill=(255, 255, 255, 200), font=font_sm)
+    draw.text((96, 82), "Devis · Factures · Paiement en ligne", fill=(255, 255, 255, 200), font=font_sm)
     return img_rgba.convert("RGB")
 
 
@@ -160,7 +160,7 @@ def save_webp(img: Image.Image, path: Path, quality: int = 90) -> None:
 def main() -> None:
     for size in (48, 96):
         icon = draw_icon(size)
-        save_webp(icon, OUT / f"facturio-icon-{size}.webp")
+        save_webp(icon, OUT / f"prestafacture-icon-{size}.webp")
 
     headers = {
         "header-default.webp": "default",

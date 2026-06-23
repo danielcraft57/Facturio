@@ -12,9 +12,9 @@ const HEADER_FILES: Record<EmailHeaderVariant, string> = {
 };
 
 export const EMAIL_CID = {
-	header: (variant: EmailHeaderVariant) => `facturio-header-${variant}@facturio`,
-	icon48: 'facturio-icon-48@facturio',
-	icon96: 'facturio-icon-96@facturio',
+	header: (variant: EmailHeaderVariant) => `prestafacture-header-${variant}@prestafacture.com`,
+	icon48: 'prestafacture-icon-48@prestafacture.com',
+	icon96: 'prestafacture-icon-96@prestafacture.com',
 } as const;
 
 export type EmailInlineAttachment = {
@@ -39,7 +39,7 @@ function warnMissingAssetsDir(): void {
 	if (assetsDirWarned) return;
 	assetsDirWarned = true;
 	console.warn(
-		'[email-inline-assets] WebP introuvables (facturio-icon-48.webp). ' +
+		'[email-inline-assets] WebP introuvables (prestafacture-icon-48.webp). ' +
 			'Générez-les : python scripts/email/generate_email_assets.py puis npm run build --prefix server',
 	);
 }
@@ -55,7 +55,7 @@ export function resolveEmailAssetsDir(): string | null {
 	].filter(Boolean) as string[];
 
 	for (const dir of candidates) {
-		const icon = path.join(dir, 'facturio-icon-48.webp');
+		const icon = path.join(dir, 'prestafacture-icon-48.webp');
 		if (fs.existsSync(icon)) return dir;
 	}
 	return null;
@@ -118,8 +118,8 @@ export function prepareBrandedEmailForDelivery(html: string): {
 	for (const [variant, filename] of Object.entries(HEADER_FILES) as [EmailHeaderVariant, string][]) {
 		replaceAssetUrl(filename, EMAIL_CID.header(variant));
 	}
-	replaceAssetUrl('facturio-icon-48.webp', EMAIL_CID.icon48);
-	replaceAssetUrl('facturio-icon-96.webp', EMAIL_CID.icon96);
+	replaceAssetUrl('prestafacture-icon-48.webp', EMAIL_CID.icon48);
+	replaceAssetUrl('prestafacture-icon-96.webp', EMAIL_CID.icon96);
 
 	if (attachments.some((a) => a.cid === EMAIL_CID.icon48)) {
 		const cid48 = EMAIL_CID.icon48;
@@ -153,12 +153,12 @@ export function embedEmailImagesAsBase64(html: string): string {
 		);
 	}
 
-	const icon48 = toDataUrl('facturio-icon-48.webp');
-	const icon96 = toDataUrl('facturio-icon-96.webp') ?? icon48;
+	const icon48 = toDataUrl('prestafacture-icon-48.webp');
+	const icon96 = toDataUrl('prestafacture-icon-96.webp') ?? icon48;
 	if (icon48) {
-		out = out.replace(/https?:\/\/[^"'\\s>]+\/images\/email\/facturio-icon-48\.webp/gi, icon48);
+		out = out.replace(/https?:\/\/[^"'\\s>]+\/images\/email\/prestafacture-icon-48\.webp/gi, icon48);
 		if (icon96) {
-			out = out.replace(/https?:\/\/[^"'\\s>]+\/images\/email\/facturio-icon-96\.webp/gi, icon96);
+			out = out.replace(/https?:\/\/[^"'\\s>]+\/images\/email\/prestafacture-icon-96\.webp/gi, icon96);
 		}
 		out = out.replace(/srcset="[^"]*"/gi, `srcset="${icon48} 1x, ${icon96} 2x"`);
 	}

@@ -34,7 +34,7 @@ export class EInvoicingService {
 				emissionPme: '2027-09-01',
 			},
 			nextSteps: planAllows
-				? ['Compléter le profil émetteur', 'Renseigner le SIREN de vos clients B2B', 'Générer Factur-X avant envoi PA (module PA à venir)']
+				? ['Compléter le profil émetteur', 'Renseigner le SIREN de vos clients B2B', 'Préparer vos factures avant envoi via plateforme agréée (module à venir)']
 				: ['Passer au plan Pro + e-facture pour activer le module'],
 		};
 	}
@@ -92,7 +92,7 @@ export class EInvoicingService {
 		return {
 			xml,
 			hash,
-			filename: `factur-x-${invoice.number.replace(/\//g, '-')}.xml`,
+			filename: `facture-electronique-${invoice.number.replace(/\//g, '-')}.xml`,
 			disclaimer:
 				'Fichier XML simplifié EN 16931 (PrestaFacture). L’envoi via Plateforme Agréée sera disponible dans une prochaine version.',
 		};

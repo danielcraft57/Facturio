@@ -1,6 +1,5 @@
-import { DEFAULT_KEYWORDS, DEFAULT_OG_IMAGE, DEFAULT_SEO } from '../config/seo'
+import { DEFAULT_KEYWORDS, DEFAULT_OG_IMAGE, DEFAULT_SEO, MARKETING_SEO } from '../config/seo'
 import { DOCUMENT_FOLDER_LABELS, isDocumentFolder } from '../types/documentFolders'
-import { SITE_DESCRIPTION } from '../modules/marketing/constants/siteContent'
 import type { SeoPayload, RobotsDirective } from './seoTypes'
 
 const PRIVATE_PREFIXES = [
@@ -44,71 +43,34 @@ function robotsForPath(path: string): RobotsDirective {
 type RouteSeo = Pick<SeoPayload, 'title' | 'description' | 'ogImage' | 'keywords'>
 
 const MARKETING: Record<string, RouteSeo> = {
-  '/': {
-    title: 'Accueil',
-    description: SITE_DESCRIPTION,
-    ogImage: DEFAULT_OG_IMAGE,
-    keywords: `${DEFAULT_KEYWORDS}, logiciel facturation développeur, facturation électronique 2026`,
-  },
-  '/prestations': {
-    title: 'Prestations',
-    description:
-      'Forfaits dev, maintenance, régie et packs catalogue : facturez sites, apps, intégrations API et offres IA comme vous travaillez.',
-    ogImage: '/images/facturio-prestations.png',
-  },
-  '/fonctionnalites': {
-    title: 'Fonctionnalités',
-    description:
-      'Devis, factures, Stripe, TVA, export FEC et conformité e-facture 2026 — outil vertical pour freelances tech et agences web.',
-    ogImage: '/images/facturio-features.png',
-  },
-  '/facturation-electronique': {
-    title: 'Facturation électronique',
-    description:
-      'Préparez la réforme 2026 : score conformité, export Factur-X (XML) — connecteur Plateforme Agréée en feuille de route.',
-    ogImage: '/images/facturio-efacture.png',
-  },
-  '/tarifs': {
-    title: 'Tarifs',
-    description:
-      'Free (25 factures/mois), Pro 12 €, Pro + e-facture 24 € et packs catalogue. Anticipez la réforme septembre 2026 sans engagement.',
-    ogImage: '/images/facturio-pricing.png',
-  },
-  '/legal': {
-    title: 'Mentions légales',
-    description: 'Mentions légales et informations sur l’éditeur du service.',
-  },
-  '/privacy': {
-    title: 'Politique de confidentialité',
-    description: 'Comment nous traitons vos données personnelles (RGPD) et vos droits.',
-  },
-  '/terms': {
-    title: "Conditions d'utilisation",
-    description: "Conditions générales d'utilisation du service.",
-  },
-  '/cgv': {
-    title: 'CGV',
-    description: 'Conditions générales de vente des abonnements.',
-  },
+  '/': MARKETING_SEO.home,
+  '/prestations': MARKETING_SEO.prestations,
+  '/fonctionnalites': MARKETING_SEO.fonctionnalites,
+  '/facturation-electronique': MARKETING_SEO.facturationElectronique,
+  '/tarifs': MARKETING_SEO.tarifs,
+  '/legal': MARKETING_SEO.legal,
+  '/privacy': MARKETING_SEO.privacy,
+  '/terms': MARKETING_SEO.terms,
+  '/cgv': MARKETING_SEO.cgv,
 }
 
 const APP_ROUTES: Record<string, RouteSeo> = {
   '/login': {
     title: 'Connexion',
-    description: 'Connectez-vous à votre espace pour gérer devis, factures et clients.',
+    description: 'Connectez-vous à PrestaFacture pour gérer devis, factures et clients.',
   },
   '/signup': {
-    title: 'Inscription',
+    title: 'Inscription gratuite',
     description:
-      'Créez votre compte développeur : assistant de configuration, catalogue de prestations et essai gratuit.',
+      'Créez votre compte en quelques minutes : catalogue de prestations, devis et factures. Essai gratuit sans carte bancaire.',
   },
   '/mot-de-passe-oublie': {
     title: 'Mot de passe oublié',
     description: 'Réinitialisez votre mot de passe par email.',
   },
   '/installation': {
-    title: 'Assistant développeur',
-    description: 'Configurez votre stack technique et installez votre catalogue de prestations.',
+    title: 'Configuration initiale',
+    description: 'Configurez votre entreprise et installez votre catalogue de prestations.',
   },
   '/inscription/confirmation': {
     title: 'Confirmer votre email',
@@ -151,7 +113,7 @@ const APP_ROUTES: Record<string, RouteSeo> = {
   '/parametres/quotas': { title: 'Quotas & usage', description: 'Limites mensuelles du plan Free.' },
   '/parametres/facturation-electronique': {
     title: 'Facturation électronique',
-    description: 'Options e-facture et conformité.',
+    description: 'Préparation réforme 2026 et indicateur de conformité sur vos factures.',
   },
   '/parametres/paiements': { title: 'Paiements', description: 'Stripe et encaissements en ligne.' },
   '/parametres/confidentialite': { title: 'Confidentialité', description: 'RGPD et export de données.' },

@@ -8,10 +8,22 @@ const nodemailer = require('nodemailer');
 
 const testEmail = process.argv[2] || 'loic5488@gmail.com';
 
+/** Complète SMTP_USER si seul le login local est fourni (ex. facture). */
+function resolveSmtpAuthUser() {
+  const raw = process.env.SMTP_USER?.trim();
+  if (!raw) return undefined;
+  if (raw.includes('@')) return raw;
+  const from = process.env.MAIL_FROM || '';
+  const domain = from.includes('@') ? from.split('@')[1] : '';
+  return domain ? `${raw}@${domain}` : raw;
+}
+
+const smtpUser = resolveSmtpAuthUser();
+
 console.log('Configuration SMTP:');
 console.log('  Host:', process.env.SMTP_HOST || 'localhost');
 console.log('  Port:', process.env.SMTP_PORT || 1025);
-console.log('  User:', process.env.SMTP_USER || 'non configuré');
+console.log('  User:', smtpUser || 'non configuré');
 console.log('  From:', process.env.MAIL_FROM || 'no-reply@example.com');
 console.log('');
 
@@ -19,15 +31,16 @@ const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'localhost',
   port: Number(process.env.SMTP_PORT || 1025),
   secure: process.env.SMTP_SECURE === 'true',
-  auth: process.env.SMTP_USER 
-    ? { 
-        user: process.env.SMTP_USER, 
-        pass: process.env.SMTP_PASS || '' 
-      } 
+  requireTLS: Number(process.env.SMTP_PORT || 1025) === 587 && process.env.SMTP_SECURE !== 'true',
+  auth: smtpUser
+    ? {
+        user: smtpUser,
+        pass: process.env.SMTP_PASS || '',
+      }
     : undefined,
-  tls: process.env.SMTP_REJECT_UNAUTHORIZED === 'false' 
-    ? { rejectUnauthorized: false } 
-    : undefined
+  tls: process.env.SMTP_REJECT_UNAUTHORIZED === 'false'
+    ? { rejectUnauthorized: false }
+    : undefined,
 });
 
 const mailOptions = {

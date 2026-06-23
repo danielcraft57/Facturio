@@ -58,7 +58,7 @@ export function PublicFooter() {
               PrestaFacture
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-              Devis, facturation et compta pour développeurs freelances et agences web.
+              Devis, factures et suivi client pour freelances, studios et petites équipes du digital.
             </Typography>
           </Box>
 

@@ -193,7 +193,7 @@ export const TERMS_SECTIONS: readonly LegalSection[] = [
     title: '7. Offres et limites',
     paragraphs: [
       'Le plan Free est limité (factures / mois, pas de compta FEC). Les paliers payants et le module e-facture peuvent évoluer ; les changements substantiels seront signalés.',
-      'Le module e-facture (PA, Factur-X) est en développement : son activation effective sera communiquée distinctement.',
+      'Le module e-facture (plateforme agréée) est en développement : son activation effective sera communiquée distinctement.',
     ],
   },
   {
@@ -273,7 +273,7 @@ export const SALES_TERMS_SECTIONS: readonly LegalSection[] = [
   {
     title: '7. Module e-facture 2026',
     paragraphs: [
-      'Le palier « Pro + e-facture » réserve l’accès au rapport de conformité et à l’export Factur-X. La connexion à une Plateforme Agréée partenaire est en cours de développement ; son activation effective sera communiquée distinctement sans surcoût abusif par rapport au palier réservé.',
+      'Le palier « Pro + e-facture » réserve l\'accès au rapport de conformité et à la préparation à la facturation électronique. La connexion à une plateforme agréée partenaire est en cours de développement ; son activation effective sera communiquée distinctement sans surcoût abusif par rapport au palier réservé.',
     ],
   },
   {

@@ -122,12 +122,12 @@ export const eInvoicingService = {
     const res = await fetch(`${base}/e-invoicing/invoices/${invoiceId}/factur-x`, { credentials: 'include' })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error((err as { message?: string }).message || 'Génération Factur-X impossible')
+      throw new Error((err as { message?: string }).message || 'Export de préparation impossible')
     }
     const blob = await res.blob()
     const disposition = res.headers.get('Content-Disposition')
     const match = disposition?.match(/filename="([^"]+)"/)
-    const filename = match?.[1] || `factur-x-${invoiceId}.xml`
+    const filename = match?.[1] || `facture-electronique-${invoiceId}.xml`
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

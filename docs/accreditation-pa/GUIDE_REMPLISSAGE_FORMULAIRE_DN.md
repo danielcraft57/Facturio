@@ -72,8 +72,8 @@ Ce SIREN (**842 541 129**) et l'adresse **La Guerche-de-Bretagne** ne correspond
 | Forme juridique | Micro-entreprise / entreprise individuelle | |
 | Adresse siège | **57000 Metz, France** | **À confirmer sur Kbis INSEE actuel** |
 | Code APE | Vérifier INSEE (souvent **6201Z** dev/logiciel, pas 7311Z pub) | Corriger si INSEE différent |
-| **Email entreprise** (contact public) | **contact@danielcraft.fr** | Publié sur impots.gouv.fr — adresse **générique** |
-| **Email authentification PPF** | **À créer** — ex. `ppf-auth@danielcraft.fr` | **Différent** de contact@ ; **sans** nom/prénom ; confidentiel ; dédié annuaire/PPF |
+| **Email entreprise** (contact public, publié impots.gouv.fr) | **contact@prestafacture.com** si la boîte existe, sinon **contact@danielcraft.fr** | Générique, pas un prénom |
+| **Email authentification PPF** | **ppf-auth@prestafacture.com** (ou `@danielcraft.fr`) | **Différent** du contact public ; **sans** nom/prénom ; confidentiel |
 | Téléphone | **03 87 78 09 16** | Aligné mentions légales PrestaFacture |
 | **URL site / service** | **https://prestafacture.com** | URL du SaaS PA |
 | URL éditeur (si champ séparé) | **https://danielcraft.fr** | |

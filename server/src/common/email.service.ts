@@ -1,6 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import {
+	createSmtpTransporter,
+	parseEmailHeaderAddress,
+	resolveSmtpAuthUser,
+} from './email-smtp.util';
 import {
 	emailAmountHighlight,
 	emailBanner,
@@ -35,7 +40,7 @@ export type EmailOrganizationProfile = Record<string, unknown> | null | undefine
  * - Mode test avec jsonTransport
  */
 @Injectable()
-export class EmailService {
+export class EmailService implements OnModuleInit {
 	private readonly logger = new Logger(EmailService.name);
 	private transporter: Transporter;
 	private readonly fromEmail: string;
@@ -54,20 +59,26 @@ export class EmailService {
 		if (process.env.NODE_ENV === 'test') {
 			this.transporter = nodemailer.createTransport({ jsonTransport: true }) as Transporter;
 		} else {
-			this.transporter = nodemailer.createTransport({
-				host: process.env.SMTP_HOST || 'localhost',
-				port: Number(process.env.SMTP_PORT || 1025),
-				secure: process.env.SMTP_SECURE === 'true',
-				auth: process.env.SMTP_USER 
-					? { 
-						user: process.env.SMTP_USER, 
-						pass: process.env.SMTP_PASS || '' 
-					} 
-					: undefined,
-				tls: process.env.SMTP_REJECT_UNAUTHORIZED === 'false' 
-					? { rejectUnauthorized: false } 
-					: undefined
-			}) as Transporter;
+			this.transporter = createSmtpTransporter();
+		}
+	}
+
+	/** Vérifie la connexion SMTP au démarrage (hors tests). */
+	async onModuleInit(): Promise<void> {
+		if (process.env.NODE_ENV === 'test') return;
+		const host = process.env.SMTP_HOST || 'localhost';
+		const port = process.env.SMTP_PORT || '1025';
+		const smtpUser = resolveSmtpAuthUser();
+		try {
+			await this.transporter.verify();
+			this.logger.log(
+				`SMTP prêt (${host}:${port}${smtpUser ? `, auth ${smtpUser}` : ', sans auth'})`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`SMTP inaccessible sur ${host}:${port} — les emails ne partiront pas. Vérifiez SMTP_* dans .env`,
+				error instanceof Error ? error.message : error,
+			);
 		}
 	}
 
@@ -125,6 +136,7 @@ export class EmailService {
 	}): Promise<void> {
 		try {
 			const from = options.from ?? `${this.fromName} <${this.fromEmail}>`;
+			const fromAddress = parseEmailHeaderAddress(from);
 			const { from: _omit, replyTo, html: rawHtml, attachments: rawAttachments, ...rest } = options;
 			let html = rawHtml;
 			let attachments = rawAttachments;
@@ -145,6 +157,10 @@ export class EmailService {
 				this.fromEmail;
 			await this.transporter.sendMail({
 				from,
+				envelope: {
+					from: fromAddress,
+					to: options.to,
+				},
 				replyTo: reply,
 				...rest,
 				html,
@@ -1341,7 +1357,7 @@ export class EmailService {
 
 		const betaEfactureNote = data.betaTester
 			? emailParagraph(
-					'<em>En beta : score conformité et export Factur-X (XML) disponibles — connecteur Plateforme Agréée pas encore activé dans l\'app.</em>',
+					'<em>En beta : indicateur de conformité disponible — connexion plateforme agréée pas encore activée dans l\'app.</em>',
 				)
 			: '';
 
@@ -1390,7 +1406,7 @@ export class EmailService {
 			lines.push(
 				'',
 				`Beta activée : ${data.betaTester.planLabel} — ${data.betaTester.durationDays} jours jusqu'au ${expiresFr}.`,
-				'Score conformité et export Factur-X (XML) disponibles — connecteur PA pas encore activé.',
+				'Indicateur de conformité disponible — plateforme agréée pas encore activée.',
 			);
 			if (data.betaTester.inviteCode?.trim()) {
 				lines.push(`Code : ${data.betaTester.inviteCode.trim()}`);
@@ -1698,7 +1714,7 @@ export class EmailService {
 				? {
 						headline: 'Il vous reste environ 2 mois d\'essai beta',
 						intro:
-							'Votre accès complet au plan Agence continue — testez compta, API, score conformité et export Factur-X (XML). Le connecteur Plateforme Agréée n\'est pas encore activé dans l\'app.',
+							'Votre accès complet au plan Agence continue — testez compta, exports et indicateur de conformité. La plateforme agréée n\'est pas encore activée dans l\'app.',
 					}
 				: options.phase === '30d'
 					? {
@@ -1723,7 +1739,7 @@ export class EmailService {
 				'<strong>Idées de tests avant la fin :</strong><br>' +
 					'• Export FEC et balance<br>' +
 					'• Créances / dettes fournisseurs<br>' +
-					'• Score conformité + export Factur-X (XML) sur une facture B2B',
+					'• Indicateur de conformité sur une facture B2B',
 			) +
 			emailParagraph(
 				'<em>Rappel : aucune transmission Plateforme Agréée dans l\'app — connecteur PA et e-reporting en développement.</em>',
@@ -1884,7 +1900,7 @@ export class EmailService {
 				'success',
 			) +
 			emailParagraph(
-				'Vous pouvez tester en conditions réelles : devis, factures, PDF, paiements Stripe, acomptes, échéancier, exports compta (FEC), score de conformité, export Factur-X (XML).',
+				'Vous pouvez tester en conditions réelles : devis, factures, PDF, paiements Stripe, acomptes, échéancier, exports compta (FEC) et indicateur de conformité réforme 2026.',
 			) +
 			emailParagraph(
 				'<strong>Pas encore activé dans l\'app</strong> : connecteur Plateforme Agréée (aucun envoi PA), e-reporting automatisé, sync bancaire. Votre retour aide à prioriser la suite.',
@@ -1919,11 +1935,11 @@ export class EmailService {
 			`Merci d'avoir activé le programme beta testeurs sur ${this.platformBrand}.\n\n` +
 			`${options.planLabel} — accès complet ${options.durationDays} jours, jusqu'au ${expiresFr}.\n` +
 			(options.inviteCode?.trim() ? `Code : ${options.inviteCode.trim()}\n` : '') +
-			'\nDisponible : score conformité, export Factur-X (XML). Pas encore activé : connecteur PA, e-reporting, sync bancaire.\n' +
+			'\nDisponible : indicateur de conformité. Pas encore activé : plateforme agréée, déclarations complémentaires, synchro bancaire.\n' +
 			`\nOuvrir ${this.platformBrand} : ${options.appUrl}\n` +
 			`Profil émetteur : ${options.settingsUrl}` +
 			surveyText +
-			`\nMerci,\nValentine Coubertain\nFacturio`;
+			`\nMerci,\nValentine Coubertain\n${this.platformBrand}`;
 
 		await this.send({
 			from: this.verifyFrom,

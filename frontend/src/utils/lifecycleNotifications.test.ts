@@ -30,11 +30,11 @@ describe('resolveBetaLifecyclePhase', () => {
 })
 
 describe('betaLifecycleNoticeCopy', () => {
-  it('précise Factur-X live et PA non activée pour la phase 60d', () => {
+  it('précise conformité et plateforme non activée pour la phase 60d', () => {
     const copy = betaLifecycleNoticeCopy('60d')
-    expect(copy.message).toMatch(/Factur-X/)
-    expect(copy.message).toMatch(/PA/)
-    expect(copy.message).not.toMatch(/e-facture/)
+    expect(copy.message).toMatch(/conformité/)
+    expect(copy.message).toMatch(/plateforme agréée/i)
+    expect(copy.message).not.toMatch(/Factur-X/)
   })
 })
 

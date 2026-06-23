@@ -76,7 +76,7 @@ export function computeReformSchedule(companySizeInput?: string): ReformSchedule
 			emissionDate,
 			'Émission des factures électroniques',
 			companySize === 'eti' || companySize === 'ge'
-				? 'Obligation d’émettre en format structuré (Factur-X, UBL ou CII) pour vos factures B2B.'
+				? 'Obligation d’émettre en format structuré requis par la réforme pour vos factures B2B.'
 				: 'Obligation d’émettre pour les PME, TPE et micro-entreprises — vos clients ETI peuvent exiger du électronique plus tôt.',
 		),
 		milestone(

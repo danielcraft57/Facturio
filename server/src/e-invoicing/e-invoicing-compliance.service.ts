@@ -54,7 +54,7 @@ export class EInvoicingComplianceService {
 			checks,
 			message:
 				score === 100
-					? 'Profil émetteur prêt pour la génération Factur-X.'
+					? 'Profil émetteur prêt pour la facturation électronique.'
 					: 'Complétez votre profil entreprise (Paramètres) pour préparer la facturation électronique.',
 		};
 	}

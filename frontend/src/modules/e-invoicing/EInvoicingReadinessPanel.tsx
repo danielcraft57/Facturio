@@ -159,7 +159,7 @@ export function EInvoicingReadinessPanel({ invoiceId, compact }: Props) {
               disabled={downloading}
               onClick={handleDownload}
             >
-              Télécharger Factur-X (XML)
+              Télécharger l'export de préparation
             </Button>
           </Box>
         )}

@@ -253,7 +253,7 @@ export class BillingService {
 		const plan = await this.getOrganizationPlan(organizationId);
 		if (!this.hasFeature(plan, 'eInvoicing')) {
 			throw new ForbiddenException(
-				'La facturation électronique (Factur-X) est réservée au plan Pro + e-facture.',
+				'La facturation électronique est réservée au plan Pro + e-facture.',
 			);
 		}
 	}

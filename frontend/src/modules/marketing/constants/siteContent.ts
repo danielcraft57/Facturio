@@ -1,44 +1,45 @@
-/** Contenu marketing aligné sur docs/planning (positionnement, monétisation, réforme 2026). */
+/** Contenu marketing — freelances, studios et petites équipes du digital. */
 
-export const SITE_TAGLINE = 'Facturez vos missions dev — conforme 2026'
+export const SITE_TAGLINE = 'Devis et factures pour le digital — sans prise de tête'
 
 export const SITE_DESCRIPTION =
-  'Devis, factures, TVA et pré-compta pour freelances développeurs et agences web. Catalogue de prestations numériques, score conformité e-facture et export FEC — sans tableur ni logiciel généraliste.'
+  'PrestaFacture, c\'est l\'outil pour vos devis, factures et suivi client. Pensé pour les freelances, studios et petites équipes : sites web, communication, marketing — catalogue, paiement en ligne, TVA et réforme 2026.'
 
 /** Résumé court des limites du plan Free — réutilisé sur toutes les pages publiques. */
 export const FREE_PLAN_SUMMARY =
-  '25 factures, 10 devis et 20 emails document / mois (PDF avec filigrane, sans compta FEC ni API)'
+  '25 factures, 10 devis et 20 envois par email par mois (PDF avec filigrane, sans export pour le comptable ni branchement technique)'
 
 export const BETA_PROGRAM = {
-  badge: 'Programme beta testeurs',
-  title: '3 mois gratuits avec accès complet',
+  badge: 'Offre beta testeurs',
+  title: '3 mois gratuits, tout inclus',
   description:
-    'Un code court partagé sur les réseaux (ex. DEV26) ? Même code pour tous, jusqu’à épuisement des places. Inscription ou Paramètres → Abonnement. Accès plan Agence pendant 90 jours.',
+    'Un code partagé sur les réseaux ? Même code pour tout le monde, jusqu\'à épuisement des places. Collez-le à l\'inscription ou dans Paramètres → Abonnement. Tout est débloqué pendant 90 jours.',
   durationLabel: '90 jours',
   steps: [
-    'Repérez le code campagne (3 à 6 lettres/chiffres)',
-    'Créez votre compte et collez le code à l’inscription',
-    'Profitez de toutes les fonctionnalités Pro et Agence pendant 3 mois',
+    'Récupérez le code campagne (quelques lettres ou chiffres)',
+    'Créez votre compte et entrez le code',
+    'Profitez de tout (Pro + Agence) pendant 3 mois',
   ] as const,
 } as const
 
 export const PRICING_SECTION = {
-  title: 'Tarifs simples, sans surprise',
+  title: 'Des tarifs clairs',
   subtitle:
-    'Gratuit pour tester. Pro pour facturer au quotidien. Pro + e-facture pour anticiper septembre 2026.',
+    'Gratuit pour essayer. Pro pour le quotidien. Pro + e-facture pour être prêt avant septembre 2026.',
 } as const
 
 export const MARKETING_CTA = {
-  defaultTitle: 'Prêt à facturer comme un pro du numérique ?',
-  defaultSubtitle: `Créez votre compte en quelques minutes. ${FREE_PLAN_SUMMARY}.`,
+  defaultTitle: 'Prêt à facturer vos missions sereinement ?',
+  defaultSubtitle: `Ouvrez un compte en quelques minutes. ${FREE_PLAN_SUMMARY}.`,
   landingTitle: 'Votre premier devis en 10 minutes',
-  landingSubtitle: `Compte gratuit, catalogue de démo inclus. Passez Pro quand vous dépassez les quotas Free ou avez besoin de la compta.`,
-  pricingTitle: 'Commencez gratuit — montez en gamme quand vous scalez',
-  pricingSubtitle: `Le plan Free (${FREE_PLAN_SUMMARY}) suffit pour valider le produit. Pro dès que vous avez besoin de la compta ou dépassez le quota.`,
+  landingSubtitle:
+    'Compte gratuit, exemples de prestations déjà dedans. Passez Pro quand vous en avez besoin ou quand vous dépassez les limites du gratuit.',
+  pricingTitle: 'Commencez gratuit — montez en gamme quand ça accélère',
+  pricingSubtitle: `Le gratuit (${FREE_PLAN_SUMMARY}) suffit pour tester. Pro dès que vous voulez l\'export comptable ou des volumes plus larges.`,
 } as const
 
 export const EFACTURE_ROADMAP_DISCLAIMER =
-  'Le connecteur Plateforme Agréée et l’e-reporting sont en cours de développement — aucune transmission PA n’est proposée tant que le module n’est pas activé. Aujourd’hui : devis, factures PDF, score de conformité, export Factur-X (XML), paiements Stripe. Le palier Pro + e-facture réserve l’accès dès la mise en production PA.'
+  'L\'envoi automatique vers la plateforme officielle et les déclarations associées arrivent bientôt — ce n\'est pas encore branché. Aujourd\'hui : devis, factures PDF, indicateur de conformité et paiements Stripe. L\'offre Pro + e-facture vous réserve la place dès que ce sera prêt.'
 
 export const REFORM_DATES = {
   reception: '1er septembre 2026',
@@ -57,81 +58,82 @@ export const PUBLIC_NAV = [
 
 export const VALUE_PROPOSITIONS = [
   {
-    title: 'Vertical métier',
-    description: 'Catalogue dev, intégration, maintenance et IA — pas un logiciel pour tout le monde.',
+    title: 'Pensé pour le digital',
+    description: 'Sites, campagnes, identité visuelle, maintenance client — pas un logiciel pour tout le monde.',
   },
   {
-    title: 'Réforme 2026',
-    description: 'Score de conformité et Factur-X dès maintenant ; PA partenaire en déploiement.',
+    title: 'Prêt pour 2026',
+    description: 'Indicateur de conformité sur chaque facture. La suite (plateforme agréée) arrive progressivement.',
   },
   {
-    title: 'Léger & exportable',
-    description: 'Pré-compta, FEC et bases URSSAF — votre expert-comptable garde la main.',
+    title: 'Léger et partageable',
+    description: 'Export pour votre comptable. Vous facturez, il valide — chacun son métier.',
   },
 ] as const
 
 export const REFORM_HIGHLIGHTS = [
   {
-    title: 'Assistant conformité',
+    title: 'Contrôle avant envoi',
     description:
-      'Score de préparation par facture : SIRET, SIREN client B2B, mentions obligatoires et lignes exploitables fiscalement.',
+      'Chaque facture a un petit score : SIRET, coordonnées client, mentions obligatoires… Vous voyez tout de suite ce qui manque.',
   },
   {
-    title: 'Export Factur-X (XML)',
-    description: 'Fichier structuré EN 16931 — base avant transmission Plateforme Agréée partenaire.',
+    title: 'Même outil, nouvelle obligation',
+    description:
+      'Vous continuez à faire vos devis et factures dans PrestaFacture. La connexion à la plateforme officielle s\'ajoutera quand elle sera prête.',
   },
   {
-    title: 'Réception dès sept. 2026',
+    title: 'Réception dès septembre 2026',
     description:
-      'Toutes les entreprises TVA doivent recevoir des e-factures en 2026 — anticipez avant l’embouteillage de rentrée.',
+      'Toutes les entreprises assujetties à la TVA devront recevoir des factures électroniques. Mieux vaut s\'y prendre avant la rentrée.',
   },
 ] as const
 
 export const VERTICAL_SEGMENTS = [
   {
-    title: 'Développement web',
-    description: 'Sites vitrine, refontes, intégrations — forfaits, acomptes 30/70 et devis structurés.',
+    title: 'Sites & e-commerce',
+    description: 'Vitrine, refonte, boutique en ligne — forfaits, acompte 30 % et solde à la livraison.',
   },
   {
-    title: 'Logiciel & apps métier',
-    description: 'Applications sur mesure, jalons de projet et facturation par phase.',
+    title: 'Communication & réseaux sociaux',
+    description: 'Campagnes, community management, contenus — forfait mensuel ou au projet.',
   },
   {
-    title: 'Automatisation & API',
-    description: 'Intégrations CRM, migrations, n8n/Make — régie (TJM) ou forfait par lot.',
+    title: 'Branding & créa',
+    description: 'Logo, charte, supports print et digital — devis clair, facturation par étape.',
   },
   {
-    title: 'IA & maintenance',
-    description: 'Abonnements mensuels, packs IA, SLA et contrats de support récurrents.',
+    title: 'Maintenance & abonnements',
+    description: 'Contrats au mois ou à l\'année, hébergement, mises à jour et support client.',
   },
 ] as const
 
 export const WORKFLOWS = [
   {
-    title: 'Forfait site ou application',
+    title: 'Projet site ou campagne',
     steps: [
-      'Devis depuis le catalogue (livrables & hors périmètre)',
+      'Devis depuis votre catalogue (ce qui est inclus et ce qui ne l\'est pas)',
       'Acompte 30 % à la commande',
       'Solde à la livraison',
-      'PDF, email et lien de paiement Stripe',
+      'PDF, email au client et lien de paiement si besoin',
     ],
   },
   {
-    title: 'Maintenance & SLA',
+    title: 'Contrat au mois',
     steps: [
-      'Contrat mensuel ou annuel (abonnements)',
-      'Facturation récurrente',
-      'Suivi encaissements et MRR',
-      'Préparation e-reporting 2026',
+      'Abonnement mensuel ou annuel dans l\'outil',
+      'Facture qui part toute seule chaque mois',
+      'Suivi des paiements reçus',
+      'Préparation pour les obligations 2026',
     ],
   },
   {
-    title: 'Régie & intégration',
+    title: 'Mission à la journée',
     steps: [
-      'Lignes heures × TJM (time tracking à venir)',
-      'Descriptions techniques par ligne',
-      'TVA FR ou autoliquidation UE B2B',
-      'Export FEC vers expert-comptable',
+      'Heures passées × votre tarif journalier',
+      'Description claire par prestation',
+      'TVA France ou client à l\'étranger (UE)',
+      'Export pour le comptable en fin de mois',
     ],
   },
 ] as const
@@ -142,155 +144,155 @@ export const CATALOG_PACKS_JUNIOR = [
     name: 'Premier client',
     price: '9',
     priceNote: '€ achat unique',
-    description: 'Site statique, SEO, pages — pour votre première mission facturable.',
-    cta: 'Idéal étudiant·e',
-    techStack: 'HTML · JS',
+    description: 'Site vitrine, pages, SEO — pour démarrer une première mission.',
+    cta: 'Idéal pour débuter',
+    techStack: 'Web · SEO',
   },
   {
     id: 'junior-fullstack-ts',
-    name: 'Full-Stack TypeScript',
+    name: 'Site & app sur mesure',
     price: '14',
     priceNote: '€ achat unique',
-    description: 'MVP React/Nest, Next+Supabase, Docker CI/CD.',
-    cta: 'Stack 2026',
-    techStack: 'TypeScript · React · Node',
+    description: 'Site dynamique, espace client, intégrations.',
+    cta: 'Projets avancés',
+    techStack: 'Web · App',
   },
   {
     id: 'junior-wordpress',
     name: 'WordPress',
     price: '12',
     priceNote: '€ achat unique',
-    description: 'Thème WP, maintenance, dépannage.',
-    cta: 'Intégrateur CMS',
-    techStack: 'PHP · WordPress',
+    description: 'Thème, maintenance, dépannage.',
+    cta: 'Agences WP',
+    techStack: 'WordPress',
   },
   {
     id: 'junior-python',
-    name: 'Python',
+    name: 'Outils & automatisations',
     price: '14',
     priceNote: '€ achat unique',
-    description: 'FastAPI, Django, agent RAG LangChain.',
-    cta: 'Backend Python',
-    techStack: 'Python · FastAPI',
+    description: 'Scripts, API, petits outils métier.',
+    cta: 'Tech & data',
+    techStack: 'API · Scripts',
   },
   {
     id: 'junior-ia',
-    name: 'IA & no-code',
+    name: 'IA & contenus',
     price: '13',
     priceNote: '€ achat unique',
-    description: 'Chatbot, n8n, Claude API.',
-    cta: 'Consultant IA junior',
-    techStack: 'OpenAI · n8n',
+    description: 'Chatbot, génération de contenu, workflows.',
+    cta: 'Communication & IA',
+    techStack: 'IA · No-code',
   },
 ] as const
 
 export const CATALOG_PACKS = [
   {
     id: 'pack-agence-web',
-    name: 'Pack Agence web',
+    name: 'Pack Web & digital',
     price: '19',
     priceNote: '€ achat unique',
-    description: 'Sites statiques, Next, Nuxt, SEO et formation.',
-    cta: 'Inclure à l’inscription',
+    description: 'Sites, refontes, SEO, formation client.',
+    cta: 'Inclure à l\'inscription',
   },
   {
     id: 'pack-automation',
-    name: 'Pack Automatisation',
+    name: 'Pack Marketing digital',
     price: '15',
     priceNote: '€ achat unique',
-    description: 'APIs, n8n, RAG, intégrations IA.',
+    description: 'Réseaux sociaux, newsletters, campagnes, tracking.',
     cta: 'Voir avec Pro',
   },
   {
     id: 'pack-maintenance',
-    name: 'Pack Maintenance & SLA',
+    name: 'Pack Maintenance',
     price: '12',
     priceNote: '€ ou +3 €/mois',
-    description: 'Contrats récurrents, dépannage, accompagnement.',
+    description: 'Contrats récurrents, support, petites évolutions.',
     cta: 'Voir avec Pro',
   },
 ] as const
 
 export const FEATURES = [
   {
-    title: 'Devis & portail client',
+    title: 'Devis en ligne',
     description:
-      'Devis en ligne, acceptation/refus public, conversion en facture — idéal forfaits dev et missions régie.',
+      'Le client reçoit un lien, accepte ou refuse, vous transformez en facture en un clic. Idéal forfaits et missions au mois.',
   },
   {
-    title: 'Catalogue prestations',
+    title: 'Catalogue de prestations',
     description:
-      'Bibliothèque dev, SaaS, maintenance et packs — filtres par type, langage et objectif métier.',
+      'Vos offres types (site, campagne, logo, maintenance…) prêtes à glisser dans un devis. Fini de tout retaper.',
   },
   {
-    title: 'Facturation & avoirs',
+    title: 'Factures & avoirs',
     description:
-      'Numérotation, paiements partiels, notes de crédit et traçabilité ISCA (inaltérabilité).',
+      'Numérotation automatique, paiements en plusieurs fois, notes de crédit — tout est tracé.',
   },
   {
-    title: 'Encaissement Stripe',
-    description: 'Liens de paiement sur vos factures avec votre compte Stripe prestataire (séparé de l’abo PrestaFacture).',
+    title: 'Paiement Stripe',
+    description: 'Lien de paiement sur la facture avec votre compte Stripe (séparé de l\'abonnement PrestaFacture).',
   },
   {
-    title: 'TVA FR & UE B2B',
-    description: 'Taux adaptés, autoliquidation intracommunautaire et export hors UE.',
+    title: 'TVA France & Europe',
+    description: 'Taux adaptés, client professionnel UE, export hors Europe — sans se prendre la tête.',
   },
   {
     title: 'Conformité 2026',
-    description: 'Score par facture, SIREN client, export Factur-X — palier Pro + e-facture pour la PA à venir.',
+    description: 'Un indicateur sur chaque facture — l\'offre Pro + e-facture ouvrira la suite quand la connexion officielle sera prête.',
   },
 ] as const
 
 export const FEATURES_COMMERCIAL = [
   {
-    title: 'Abonnements & MRR',
-    description: 'Plans récurrents pour maintenance et licences SaaS livrées au client.',
+    title: 'Abonnements clients',
+    description: 'Factures récurrentes pour la maintenance, la com mensuelle ou un forfait suivi.',
   },
   {
-    title: 'Packs & bundles',
-    description: 'Templates de prestations groupées pour accélérer devis et factures.',
+    title: 'Packs & forfaits',
+    description: 'Groupez vos prestations types pour chiffrer plus vite.',
   },
   {
     title: 'Liens publics',
-    description: 'Partage devis et factures sans compte client — paiement en un clic.',
+    description: 'Partagez devis et factures sans que le client ait besoin de compte — paiement en un clic.',
   },
 ] as const
 
 export const FEATURES_COMPTA = [
   {
-    title: 'Écritures automatiques',
-    description: 'Ventes, encaissements, achats services, paie et contributions micro-social.',
+    title: 'Suivi automatique',
+    description: 'Ventes et encaissements remontent dans votre tableau de bord, sans ressaisie.',
   },
   {
-    title: 'Export FEC',
-    description: 'Fichier pour votre expert-comptable — balance et grand livre côté API.',
+    title: 'Fichier pour le comptable',
+    description: 'Un export à lui envoyer en fin de mois — balance, grand livre, le classique.',
   },
   {
-    title: 'URSSAF & C3S',
-    description: 'Bases de déclaration et paiements URSSAF intégrés au module compta.',
+    title: 'Aide aux déclarations',
+    description: 'Des repères pour l\'URSSAF si vous êtes en micro ou indépendant.',
   },
   {
-    title: 'Quotas par plan',
-    description: 'Free : quotas mensuels ; Pro illimité — incitation claire à monter en gamme.',
+    title: 'Limites claires',
+    description: 'Gratuit : quotas mensuels. Pro : vous facturez sans compter.',
   },
 ] as const
 
 export const FEATURES_ROADMAP = [
   {
-    title: 'Connexion PA partenaire',
-    description: 'Émission et réception e-factures B2B via solution compatible (en développement).',
+    title: 'Plateforme officielle',
+    description: 'Envoi et réception des factures électroniques — en cours de développement.',
   },
   {
-    title: 'E-reporting',
-    description: 'B2C, international et encaissements — calendrier aligné réforme 2026–2027.',
+    title: 'Déclarations liées à la réforme',
+    description: 'Les flux complémentaires prévus par la loi — calendrier 2026–2027.',
   },
   {
-    title: 'Time tracking → facture',
-    description: 'Saisie heures et lignes TJM automatiques pour la régie.',
+    title: 'Suivi du temps',
+    description: 'Heures saisies → lignes de facture pour les missions facturées au jour.',
   },
   {
-    title: 'Vue missions / projets',
-    description: 'Devis → factures → paiements regroupés par client et par mission.',
+    title: 'Vue par projet',
+    description: 'Devis, factures et paiements regroupés par client et par mission.',
   },
 ] as const
 
@@ -312,15 +314,15 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     name: 'Free',
     price: '0',
     period: '€ / mois',
-    description: 'Découvrir PrestaFacture et les tout petits volumes.',
+    description: 'Pour découvrir et les tout petits volumes.',
     features: [
-      'Jusqu’à 25 factures / mois',
-      'Jusqu’à 10 devis / mois',
-      '20 emails document / mois',
+      'Jusqu\'à 25 factures / mois',
+      'Jusqu\'à 10 devis / mois',
+      '20 envois email / mois',
       'PDF avec filigrane PrestaFacture',
-      'Catalogue de base (seed)',
-      'Score conformité (lecture)',
-      'Sans compta FEC, créances, dettes ni API',
+      'Catalogue d\'exemple fourni',
+      'Indicateur conformité (lecture)',
+      'Sans export comptable, suivi impayés ni connexion technique',
     ],
     cta: 'Commencer gratuitement',
     highlighted: false,
@@ -330,13 +332,13 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     name: 'Pro',
     price: '12',
     period: '€ / mois',
-    description: 'Le quotidien du freelance dev et de la micro-agence.',
+    description: 'Le quotidien d\'un freelance, d\'un studio ou d\'une petite équipe qui facture souvent.',
     features: [
-      'Factures, devis & emails illimités',
-      'Clients, catalogue & packs',
-      'Créances, dettes & API publique',
+      'Factures, devis et emails illimités',
+      'Clients, catalogue et packs',
+      'Suivi impayés, charges et connexions techniques',
       'Stripe (votre compte)',
-      'Export FEC & compta de base',
+      'Export comptable et suivi de base',
     ],
     cta: 'Essayer Pro — 1er devis en 10 min',
     highlighted: true,
@@ -347,16 +349,16 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     name: 'Pro + e-facture',
     price: '24',
     period: '€ / mois',
-    description: 'Anticipez sept. 2026 : conformité, Factur-X et réservation du connecteur PA à venir.',
+    description: 'Pour anticiper septembre 2026 : conformité renforcée et accès prioritaire à la suite.',
     features: [
       'Tout le plan Pro',
-      'Rapport conformité avancé',
-      'Export Factur-X (XML)',
-      'Réservation connecteur PA',
-      'E-reporting (à venir)',
-      'Priorité feuille de route 2026',
+      'Rapport de conformité détaillé',
+      'Préparation facturation électronique',
+      'Réservation plateforme agréée',
+      'E-reporting (bientôt)',
+      'Priorité sur les nouveautés 2026',
     ],
-    cta: 'Sécuriser ma conformité 2026',
+    cta: 'Me préparer pour 2026',
     highlighted: false,
     badge: 'Réforme 2026',
   },
@@ -365,60 +367,60 @@ export const PRICING_PLANS: readonly PricingPlan[] = [
     name: 'Agence',
     price: '59',
     period: '€ / mois',
-    description: 'Petites équipes, studios et intégrateurs à plusieurs.',
+    description: 'Petites équipes : plusieurs personnes sur le même compte.',
     features: [
-      'Multi-utilisateurs par organisation',
+      'Plusieurs utilisateurs',
       'Tout Pro + e-facture inclus',
-      'Créances, dettes & API',
+      'Suivi impayés, charges et connexions techniques',
       'Support prioritaire',
       'Packs catalogue en option',
     ],
-    cta: 'Parler à l’équipe',
+    cta: 'Nous contacter',
     highlighted: false,
   },
 ]
 
 export const PRICING_ADDONS_INTRO =
-  'Enrichissez votre catalogue sans tout saisir à la main — idéal dès la première connexion.'
+  'Des modèles de prestations à ajouter d\'un coup — pratique dès la première connexion.'
 
 export const REFORM_STEPS = [
   {
     date: 'Sept. 2026',
     title: 'Réception obligatoire',
-    body: 'Toutes les entreprises assujetties à la TVA en France doivent pouvoir recevoir des factures électroniques B2B.',
+    body: 'Toutes les entreprises assujetties à la TVA en France doivent pouvoir recevoir des factures électroniques de leurs fournisseurs.',
   },
   {
     date: 'Sept. 2026',
-    title: 'Émission ETI & grandes entreprises',
-    body: 'Obligation d’émettre en format structuré (Factur-X, UBL ou CII) via une Plateforme Agréée.',
+    title: 'Grandes structures',
+    body: 'Les grosses boîtes et ETI doivent émettre en format électronique via une plateforme agréée.',
   },
   {
     date: 'Sept. 2027',
-    title: 'Émission PME & micro',
-    body: 'Extension aux PME et micro-entreprises — anticiper limite les migrations précipitées de rentrée.',
+    title: 'PME & micro',
+    body: 'Les plus petites structures suivent en 2027 — autant s\'organiser avant la ruée de septembre.',
   },
 ] as const
 
 export const PRICING_FAQ = [
   {
-    q: 'Je suis micro-entreprise : quand suis-je concerné ?',
-    a: 'Réception des e-factures : dès le 1er septembre 2026 pour toutes les structures assujetties à la TVA. Émission : pour les micro et PME, échéance au 1er septembre 2027 — mais vos clients ETI pourront vous demander du électronique plus tôt.',
+    q: 'Je suis en micro-entreprise : je suis concerné quand ?',
+    a: 'Réception des factures électroniques : dès le 1er septembre 2026 si vous êtes assujetti à la TVA. Émission : plutôt en 2027 pour les micro et PME — mais vos gros clients pourront déjà vous demander du électronique avant.',
   },
   {
-    q: 'Pourquoi le palier Pro + e-facture ?',
-    a: 'La réforme impose le passage par une Plateforme Agréée. Ce palier finance le connecteur PA, l’e-reporting et vous place en priorité sur la feuille de route conformité — sans payer une compta complète type Indy.',
+    q: 'Pourquoi une offre Pro + e-facture ?',
+    a: 'La loi impose bientôt de passer par une plateforme officielle. Cette offre finance le connecteur et vous met en avant — sans payer un gros logiciel de compta type Indy ou Pennylane.',
   },
   {
-    q: 'PrestaFacture remplace mon expert-comptable ?',
-    a: 'Non. Facturation verticale + pré-compta (FEC, balance). Votre expert garde la liasse ; vous gagnez du temps sur le cycle commercial.',
+    q: 'PrestaFacture remplace mon comptable ?',
+    a: 'Non. Vous faites devis et factures, l\'outil prépare l\'export. Votre expert-comptable garde la main sur la liasse officielle.',
   },
   {
-    q: 'Les packs catalogue sont-ils obligatoires ?',
-    a: 'Non. Un catalogue de démonstration est fourni à l’inscription. Les packs (Agence web, Automatisation, Maintenance) accélèrent l’onboarding pour 12 à 19 € en achat unique ou +3 €/mois sur Pro.',
+    q: 'Les packs catalogue sont obligatoires ?',
+    a: 'Non. Des exemples sont déjà là à l\'inscription. Les packs (web, communication, maintenance) servent à gagner du temps pour 12 à 19 € en une fois, ou +3 €/mois sur Pro.',
   },
   {
-    q: 'Comment limiter l’accès sur le plan Free ?',
-    a: 'Quotas mensuels : 25 factures, 10 devis et 20 emails (envoi facture/devis/relance). Compta FEC, créances, dettes et API sont réservés au Pro. Les PDF Free portent un filigrane discret. Compteurs remis à zéro le 1er de chaque mois.',
+    q: 'C\'est quoi les limites du gratuit ?',
+    a: '25 factures, 10 devis et 20 emails par mois. Pas d\'export pour le comptable, pas de suivi impayés/charges, pas de branchement technique. PDF avec un petit filigrane. Compteurs remis à zéro le 1er de chaque mois.',
   },
 ] as const
 
@@ -428,15 +430,15 @@ export const CTA = {
   betaSignup: { label: "S'inscrire avec un code beta", to: '/signup', gaEvent: 'cta_beta' },
   signupPro: { label: 'Passer Pro', to: '/parametres/abonnement', gaEvent: 'cta_pricing' },
   efacture2026: {
-    label: 'Préparer la réforme 2026',
+    label: 'Comprendre la réforme 2026',
     to: '/facturation-electronique',
     gaEvent: 'cta_efacture',
   },
   pricing: { label: 'Comparer les offres', to: '/tarifs', gaEvent: 'cta_pricing' },
-  prestations: { label: 'Voir les parcours métier', to: '/prestations', gaEvent: 'cta_prestations' },
+  prestations: { label: 'Voir des exemples concrets', to: '/prestations', gaEvent: 'cta_prestations' },
   features: { label: 'Toutes les fonctionnalités', to: '/fonctionnalites', gaEvent: 'cta_signup' },
   reserveEfacture: {
-    label: 'Réserver Pro + e-facture',
+    label: 'Offre Pro + e-facture',
     to: '/parametres/abonnement',
     gaEvent: 'cta_efacture',
   },

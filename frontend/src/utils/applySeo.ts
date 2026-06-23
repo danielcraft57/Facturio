@@ -1,4 +1,4 @@
-import { SITE_LOCALE, absoluteUrl, getSiteBrandName, getSiteOrigin } from '../config/seo'
+import { SEO_BRAND_NAME, SITE_LOCALE, absoluteUrl, getSiteBrandName, getSiteOrigin } from '../config/seo'
 import type { SeoPayload } from './seoTypes'
 
 const MANAGED = 'data-app-seo'
@@ -94,7 +94,7 @@ export function applySeo(meta: SeoPayload, pathname?: string) {
       script.setAttribute(MANAGED, 'true')
       document.head.appendChild(script)
     }
-    const appLabel = brandName || 'Logiciel de facturation'
+    const appLabel = brandName || SEO_BRAND_NAME
     script.textContent = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'SoftwareApplication',
@@ -103,11 +103,15 @@ export function applySeo(meta: SeoPayload, pathname?: string) {
       operatingSystem: 'Web',
       ...(origin ? { url: origin } : {}),
       description: meta.description,
+      audience: {
+        '@type': 'Audience',
+        audienceType: 'Freelances, studios et petites équipes du digital',
+      },
       offers: {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'EUR',
-        description: 'Essai gratuit',
+        description: 'Essai gratuit — 25 factures par mois',
       },
     })
   } else if (script) {

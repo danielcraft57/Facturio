@@ -27,21 +27,21 @@ export function PrestationsPage() {
     <Box>
       <MarketingHero
         compact
-        badge="Forfait · Régie · Récurrent"
-        title="Facturer comme vous livrez du code"
-        subtitle="Forfaits site, jalons applicatifs, maintenance mensuelle et intégrations API — avec un catalogue qui parle dev, pas retail."
+        badge="Forfait · Mensuel · Au projet"
+        title="Facturez comme vous vendez vos prestations"
+        subtitle="Site vitrine, campagne de communication, identité visuelle, maintenance client — un catalogue qui parle votre métier, pas le retail."
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.pricing}
-        visual={<MarketingImage src="/images/facturio-prestations.png" alt="Prestations dev et automatisation" float={false} />}
+        visual={<MarketingImage src="/images/facturio-prestations.png" alt="Catalogue de prestations digitales" float={false} />}
       />
 
       <Container maxWidth="lg" sx={{ py: { xs: 8, md: 10 } }}>
         <ScrollReveal>
           <Typography variant="h2" sx={{ fontWeight: 700, mb: 1, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-            Segments couverts
+            Vos types de missions
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 640 }}>
-            Freelance dev, intégrateur n8n/Make, petite agence ou consultant IA : mêmes parcours, même conformité 2026.
+            Freelance, studio créatif, consultant marketing ou petite équipe : mêmes parcours, même préparation pour 2026.
           </Typography>
         </ScrollReveal>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3, mb: 8 }}>
@@ -107,7 +107,7 @@ export function PrestationsPage() {
 
         <ScrollReveal>
           <Typography variant="h2" sx={{ fontWeight: 700, mb: 3, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-            Packs catalogue (options)
+            Packs de prestations (en option)
           </Typography>
         </ScrollReveal>
         <Grid container spacing={3} sx={{ mb: 8 }}>
@@ -145,11 +145,11 @@ export function PrestationsPage() {
         <ScrollReveal>
           <Box sx={{ p: 4, borderRadius: 3, bgcolor: 'action.hover' }}>
             <Typography variant="h6" fontWeight={600} gutterBottom>
-              Catalogue de démonstration intégré
+              Exemples de prestations déjà dans l'outil
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Un seed de prestations dev est fourni à l’inscription. Chaque organisation personnalise sa bibliothèque
-              tout en gardant une structure compatible facturation électronique (libellés, unités, TVA).
+              À l'inscription, vous avez déjà des modèles (site, campagne, logo, maintenance…). Vous les adaptez
+              à votre activité tout en gardant les bonnes infos pour la facture électronique.
             </Typography>
             <Button component={RouterLink} to={CTA.features.to} endIcon={<ArrowForwardIcon />}>
               {CTA.features.label}
@@ -159,8 +159,8 @@ export function PrestationsPage() {
       </Container>
 
       <CtaSection
-        title="Votre activité rentre dans ces cases ?"
-        subtitle="Créez un compte gratuit, importez un pack catalogue et envoyez votre premier devis aujourd’hui."
+        title="Ça correspond à votre activité ?"
+        subtitle="Créez un compte gratuit, choisissez un pack de prestations et envoyez votre premier devis aujourd'hui."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
         secondaryLabel={CTA.betaSignup.label}

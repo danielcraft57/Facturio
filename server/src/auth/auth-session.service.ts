@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, UnauthorizedException } from '
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../common/email.service';
+import { resolvePublicAppBaseUrl } from '../common/public-app-url';
 
 const ACTIVE_WINDOW_MS = 30 * 60 * 1000; // 30 min — connexion « simultanée »
 const VERIFICATION_TTL_MS = 60 * 60 * 1000; // 1 h
@@ -105,7 +106,7 @@ export class AuthSessionService {
 		if (isRisky && verificationToken) {
 			const user = await this.prisma.user.findUnique({ where: { id: userId } });
 			if (user) {
-				const baseUrl = process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+				const baseUrl = resolvePublicAppBaseUrl();
 				const verifyUrl = `${baseUrl}/auth/confirmer-appareil?token=${verificationToken}`;
 				await this.emailService.sendDeviceLoginEmail({
 					to: user.email,

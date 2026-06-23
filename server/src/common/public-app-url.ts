@@ -3,9 +3,10 @@
  * Ne jamais utiliser API_URL (port 3000) : les routes /facture/:token sont servies par Vite/React.
  */
 export function resolvePublicAppBaseUrl(): string {
+	// PUBLIC_APP_URL en priorité : URL canonique des liens email / pages publiques
 	let base =
-		process.env.FRONTEND_URL?.trim() ||
 		process.env.PUBLIC_APP_URL?.trim() ||
+		process.env.FRONTEND_URL?.trim() ||
 		'http://localhost:5173';
 
 	base = base.replace(/\/$/, '');

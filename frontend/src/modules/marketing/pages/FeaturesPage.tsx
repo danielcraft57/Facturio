@@ -22,9 +22,9 @@ export function FeaturesPage() {
     <Box>
       <MarketingHero
         compact
-        badge="Disponible · En cours · À venir"
-        title="Tout le cycle commercial, sans la compta lourde"
-        subtitle="Devis, factures, Stripe, TVA et pré-compta — plus la couche conformité 2026. Pas de sync bancaire : on reste léger."
+        badge="Déjà dispo · Bientôt · En préparation"
+        title="Tout pour vendre et facturer, sans usine à gaz"
+        subtitle="Devis, factures, paiement en ligne, TVA et suivi basique — plus ce qu'il faut pour préparer 2026. Pas de synchro bancaire : on reste simple."
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.efacture2026}
         visual={<MarketingImage src="/images/facturio-features.png" alt="Fonctionnalités PrestaFacture" float={false} />}
@@ -33,20 +33,20 @@ export function FeaturesPage() {
       <BetaTesterPromo compact />
 
       <FeatureGrid
-        title="Cœur métier"
-        subtitle="Ce que vous utilisez chaque semaine pour facturer vos missions."
+        title="Au quotidien"
+        subtitle="Ce que vous utilisez chaque semaine pour chiffrer et encaisser."
         features={FEATURES}
       />
 
       <FeatureGrid
-        title="Commercial & récurrence"
-        subtitle="Inclus dès le plan Pro — abonnements maintenance, packs et liens publics."
+        title="Abonnements & forfaits"
+        subtitle="Inclus dès le plan Pro — maintenance mensuelle, packs et liens à envoyer au client."
         features={FEATURES_COMMERCIAL}
       />
 
       <FeatureGrid
-        title="Pré-compta & exports"
-        subtitle="Le minimum pour suivre votre activité et alimenter votre expert-comptable."
+        title="Suivi & exports"
+        subtitle="Le minimum pour suivre votre activité et tenir votre comptable au courant."
         features={FEATURES_COMPTA}
       />
 
@@ -54,7 +54,7 @@ export function FeaturesPage() {
         <Container maxWidth="lg">
           <ScrollReveal>
             <Typography variant="h2" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '1.5rem', md: '2rem' }, textAlign: 'center' }}>
-              Conformité 2026 & feuille de route
+              Préparer 2026 — ce qui arrive
             </Typography>
             <EfactureRoadmapAlert sx={{ mb: 4, maxWidth: 720, mx: 'auto' }} />
           </ScrollReveal>
@@ -78,7 +78,7 @@ export function FeaturesPage() {
 
       <CtaSection
         title={`Testez gratuitement — ${FREE_PLAN_SUMMARY}`}
-        subtitle="Passez Pro pour l’illimité et la compta. Réservez Pro + e-facture pour l’export Factur-X et la priorité connecteur PA (à venir)."
+        subtitle="Passez Pro pour l'illimité et les exports. Réservez Pro + e-facture pour être prêt avant septembre 2026."
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
         secondaryLabel={CTA.betaSignup.label}

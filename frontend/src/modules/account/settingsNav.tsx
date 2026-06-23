@@ -113,7 +113,7 @@ export const settingsNavItems: SettingsNavItem[] = [
   {
     to: '/parametres/facturation-electronique',
     label: 'Réforme 2026',
-    description: 'Conformité e-facture, export Factur-X — connecteur PA à venir',
+    description: 'Conformité réforme 2026 — plateforme agréée à venir',
     icon: <VerifiedUserIcon fontSize="small" />,
     section: 'facturation',
   },
