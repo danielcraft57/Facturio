@@ -176,7 +176,6 @@ export function ScreenshotLightbox({
             display: 'block',
             borderRadius: 1.5,
             boxShadow: '0 24px 64px rgba(0,0,0,0.45)',
-            cursor: 'zoom-in',
             ...(zoomed
               ? {
                   width: { xs: '140%', sm: '120%' },
@@ -190,6 +189,7 @@ export function ScreenshotLightbox({
                   width: 'auto',
                   height: 'auto',
                   objectFit: 'contain',
+                  cursor: 'zoom-in',
                 }),
           }}
         />
