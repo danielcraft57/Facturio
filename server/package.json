@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "main": "index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-pdf-assets.js && node scripts/copy-email-assets.js",
