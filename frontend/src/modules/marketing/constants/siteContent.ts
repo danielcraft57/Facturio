@@ -35,7 +35,7 @@ export const MARKETING_CTA = {
   landingSubtitle:
     'Compte gratuit, exemples de prestations déjà dedans. Passez Pro quand vous en avez besoin ou quand vous dépassez les limites du gratuit.',
   pricingTitle: 'Commencez gratuit — montez en gamme quand ça accélère',
-  pricingSubtitle: `Le gratuit (${FREE_PLAN_SUMMARY}) suffit pour tester. Pro dès que vous voulez l\'export comptable ou des volumes plus larges.`,
+  pricingSubtitle: `Le gratuit (${FREE_PLAN_SUMMARY}) suffit pour tester. Pro dès que vous voulez l'export comptable ou des volumes plus larges.`,
 } as const
 
 export const EFACTURE_ROADMAP_DISCLAIMER =
