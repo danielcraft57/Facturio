@@ -32,7 +32,7 @@ export function PrestationsPage() {
         subtitle="Site vitrine, campagne de communication, identité visuelle, maintenance client — un catalogue qui parle votre métier, pas le retail."
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.pricing}
-        visual={<MarketingImage src="/images/facturio-prestations.png" alt="Catalogue de prestations digitales" float={false} />}
+        visual={<MarketingImage src="/images/facturio-prestations.jpg" alt="Catalogue de prestations digitales" float={false} />}
       />
 
       <Container maxWidth="lg" sx={{ py: { xs: 8, md: 10 } }}>
@@ -71,7 +71,7 @@ export function PrestationsPage() {
           }}
         >
           <ScrollReveal>
-            <MarketingImage src="/images/facturio-workflow.png" alt="Workflow facturation prestations" maxWidth={420} />
+            <MarketingImage src="/images/facturio-workflow.jpg" alt="Workflow facturation prestations" maxWidth={420} />
           </ScrollReveal>
           <Box sx={{ flex: 1 }}>
             <ScrollReveal delayMs={80}>

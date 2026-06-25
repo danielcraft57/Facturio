@@ -17,6 +17,7 @@ export function useSeo(overrides?: SeoOverrides | null) {
     overrides?.description,
     overrides?.robots,
     overrides?.ogImage,
+    overrides?.ogImageAlt,
     overrides?.keywords,
   ])
 }

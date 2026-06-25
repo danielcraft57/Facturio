@@ -27,7 +27,7 @@ export function FeaturesPage() {
         subtitle="Devis, factures, paiement en ligne, TVA et suivi basique — plus ce qu'il faut pour préparer 2026. Pas de synchro bancaire : on reste simple."
         primaryCta={CTA.signupFree}
         secondaryCta={CTA.efacture2026}
-        visual={<MarketingImage src="/images/facturio-features.png" alt="Fonctionnalités PrestaFacture" float={false} />}
+        visual={<MarketingImage src="/images/facturio-features.jpg" alt="Fonctionnalités PrestaFacture" float={false} />}
       />
 
       <BetaTesterPromo compact />

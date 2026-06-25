@@ -315,7 +315,7 @@ export function LandingPage() {
           <Grid container spacing={4} alignItems="center">
             <Grid size={{ xs: 12, lg: 6 }}>
               <ScrollReveal delayMs={100}>
-                <MarketingImage src="/images/facturio-prestations.png" alt="Catalogue de prestations" float />
+                <MarketingImage src="/images/facturio-prestations.jpg" alt="Catalogue de prestations" float />
               </ScrollReveal>
             </Grid>
             <Grid size={{ xs: 12, lg: 6 }}>

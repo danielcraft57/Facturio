@@ -1,4 +1,14 @@
-import { SEO_BRAND_NAME, SITE_LOCALE, absoluteUrl, getSiteBrandName, getSiteOrigin } from '../config/seo'
+import {
+  DEFAULT_OG_IMAGE_ALT,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_TYPE,
+  OG_IMAGE_WIDTH,
+  SEO_BRAND_NAME,
+  SITE_LOCALE,
+  absoluteUrl,
+  getSiteBrandName,
+  getSiteOrigin,
+} from '../config/seo'
 import type { SeoPayload } from './seoTypes'
 
 const MANAGED = 'data-app-seo'
@@ -50,7 +60,8 @@ export function applySeo(meta: SeoPayload, pathname?: string) {
   const brandName = getSiteBrandName()
   const canonical = absoluteUrl(path)
   const pageTitle = formatPageTitle(meta.title, brandName)
-  const ogImage = absoluteUrl(meta.ogImage ?? '/images/facturio-hero.png')
+  const ogImage = absoluteUrl(meta.ogImage ?? '/images/facturio-hero.jpg')
+  const ogImageAlt = meta.ogImageAlt ?? DEFAULT_OG_IMAGE_ALT
   const origin = getSiteOrigin() || (typeof window !== 'undefined' ? window.location.origin : '')
 
   document.title = pageTitle
@@ -74,11 +85,17 @@ export function applySeo(meta: SeoPayload, pathname?: string) {
   upsertMeta('property', 'og:description', meta.description)
   upsertMeta('property', 'og:url', canonical)
   upsertMeta('property', 'og:image', ogImage)
+  upsertMeta('property', 'og:image:width', String(OG_IMAGE_WIDTH))
+  upsertMeta('property', 'og:image:height', String(OG_IMAGE_HEIGHT))
+  upsertMeta('property', 'og:image:type', OG_IMAGE_TYPE)
+  upsertMeta('property', 'og:image:alt', ogImageAlt)
 
   upsertMeta('name', 'twitter:card', 'summary_large_image')
+  upsertMeta('name', 'twitter:url', canonical)
   upsertMeta('name', 'twitter:title', pageTitle)
   upsertMeta('name', 'twitter:description', meta.description)
   upsertMeta('name', 'twitter:image', ogImage)
+  upsertMeta('name', 'twitter:image:alt', ogImageAlt)
 
   upsertLink('canonical', canonical)
 

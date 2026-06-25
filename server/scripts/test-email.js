@@ -8,11 +8,13 @@ const nodemailer = require('nodemailer');
 
 const testEmail = process.argv[2] || 'loic5488@gmail.com';
 
-/** Complète SMTP_USER si seul le login local est fourni (ex. facture). */
+/** Login SMTP : par défaut tel quel (ex. facture). Compléter avec @domaine seulement si SMTP_AUTH_APPEND_DOMAIN=true */
 function resolveSmtpAuthUser() {
   const raw = process.env.SMTP_USER?.trim();
   if (!raw) return undefined;
   if (raw.includes('@')) return raw;
+  const append = process.env.SMTP_AUTH_APPEND_DOMAIN?.trim().toLowerCase();
+  if (append !== 'true' && append !== '1' && append !== 'yes') return raw;
   const from = process.env.MAIL_FROM || '';
   const domain = from.includes('@') ? from.split('@')[1] : '';
   return domain ? `${raw}@${domain}` : raw;

@@ -255,6 +255,14 @@ def img(name: str) -> Path:
     return IMG_DIR / name
 
 
+def marketing_img(stem: str) -> Path:
+    """Résout une image marketing (.jpg prioritaire, repli .png)."""
+    jpg = IMG_DIR / f"{stem}.jpg"
+    if jpg.exists():
+        return jpg
+    return IMG_DIR / f"{stem}.png"
+
+
 def build() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     IMG_DIR.mkdir(parents=True, exist_ok=True)
@@ -309,8 +317,9 @@ def build() -> None:
             "Design sobre, lisible, adapté au travail quotidien sur écran",
         ]
     )
-    if img("facturio-hero.png").exists():
-        pdf.image_block(img("facturio-hero.png"), "Page d'accueil — hero marketing PrestaFacture", max_h=70)
+    hero = marketing_img("facturio-hero")
+    if hero.exists():
+        pdf.image_block(hero, "Page d'accueil — hero marketing PrestaFacture", max_h=70)
 
     # 2 Cibles
     pdf.add_page()
@@ -327,7 +336,7 @@ def build() -> None:
         pdf.cell(0, 6, step, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_text_color(0, 0, 0)
         pdf.body(desc)
-    pdf.image_block(img("facturio-workflow.png"), "Workflow devis → facture → paiement → compta")
+    pdf.image_block(marketing_img("facturio-workflow"), "Workflow devis → facture → paiement → compta")
 
     # 4 UX UI
     pdf.add_page()
@@ -345,8 +354,9 @@ def build() -> None:
         ]
     )
     pdf.image_block(img("facturio-brochure-dashboard-ui.png"), "Maquette UX — tableau de bord")
-    if img("facturio-features.png").exists():
-        pdf.image_block(img("facturio-features.png"), "Vue fonctionnalités (site marketing)")
+    features = marketing_img("facturio-features")
+    if features.exists():
+        pdf.image_block(features, "Vue fonctionnalités (site marketing)")
 
     # 5 Fonctionnalités
     pdf.add_page()
@@ -357,8 +367,9 @@ def build() -> None:
     pdf.add_page()
     pdf.section_title("6. Segments métiers", "Prestations numériques")
     pdf.two_col_cards(VERTICALS, col_w=92)
-    if img("facturio-prestations.png").exists():
-        pdf.image_block(img("facturio-prestations.png"), "Catalogue prestations aligné métier dev")
+    prestations = marketing_img("facturio-prestations")
+    if prestations.exists():
+        pdf.image_block(prestations, "Catalogue prestations aligné métier dev")
 
     # 7 E-facture
     pdf.add_page()
@@ -379,14 +390,15 @@ def build() -> None:
         "Le module e-facture complet est réservé au palier Pro + e-facture. Aujourd'hui : "
         "devis, factures PDF, envoi email et paiements Stripe sont pleinement opérationnels."
     )
-    pdf.image_block(img("facturio-efacture.png"), "Page réforme e-facture 2026")
+    pdf.image_block(marketing_img("facturio-efacture"), "Page réforme e-facture 2026")
 
     # 8 Tarifs
     pdf.add_page()
     pdf.section_title("8. Offres & tarification", "Freemium transparent")
     pdf.pricing_table()
-    if img("facturio-pricing.png").exists():
-        pdf.image_block(img("facturio-pricing.png"), "Grille tarifaire — page marketing")
+    pricing = marketing_img("facturio-pricing")
+    if pricing.exists():
+        pdf.image_block(pricing, "Grille tarifaire — page marketing")
 
     # 9 DanielCraft
     pdf.add_page()

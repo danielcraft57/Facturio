@@ -2,7 +2,17 @@ import { SITE_TAGLINE } from '../modules/marketing/constants/siteContent'
 
 export const SITE_LOCALE = 'fr_FR'
 export const SEO_BRAND_NAME = 'PrestaFacture'
-export const DEFAULT_OG_IMAGE = '/images/facturio-hero.png'
+
+/** Dimensions recommandées OG / Twitter (ratio 1.91:1, Facebook, LinkedIn, Slack). */
+export const OG_IMAGE_WIDTH = 1200
+export const OG_IMAGE_HEIGHT = 630
+export const OG_IMAGE_TYPE = 'image/jpeg'
+
+export const DEFAULT_OG_IMAGE = '/images/facturio-hero.jpg'
+
+/** Texte alt par défaut pour l'image OG accueil. */
+export const DEFAULT_OG_IMAGE_ALT =
+  'Illustration PrestaFacture : freelance avec ordinateur, facture validée et pièces en euros sur fond teal.'
 
 /** Mots-clés communs — pages marketing complètent avec des termes ciblés. */
 export const DEFAULT_KEYWORDS =
@@ -20,6 +30,7 @@ export const MARKETING_SEO = {
     keywords:
       `${DEFAULT_KEYWORDS}, logiciel facturation indépendant, devis factures en ligne, réforme facturation 2026`,
     ogImage: DEFAULT_OG_IMAGE,
+    ogImageAlt: DEFAULT_OG_IMAGE_ALT,
   },
   prestations: {
     title: 'Facturation web, communication et marketing',
@@ -27,7 +38,9 @@ export const MARKETING_SEO = {
       'Forfaits site, campagne réseaux sociaux, identité visuelle et maintenance client. Catalogue de prestations prêt à l\'emploi pour chiffrer et facturer plus vite.',
     keywords:
       'facturation site internet, devis communication, forfait maintenance, prestations marketing, catalogue facturation',
-    ogImage: '/images/facturio-prestations.png',
+    ogImage: '/images/facturio-prestations.jpg',
+    ogImageAlt:
+      'Illustration PrestaFacture : personnage jonglant avec des icônes web, marketing, design et maintenance.',
   },
   fonctionnalites: {
     title: 'Devis, factures et paiement en ligne',
@@ -35,7 +48,9 @@ export const MARKETING_SEO = {
       'Devis acceptés en ligne, factures PDF, lien Stripe, TVA France et Europe, abonnements clients et indicateur de conformité pour la réforme 2026.',
     keywords:
       'fonctionnalités facturation, devis en ligne, paiement facture Stripe, TVA facture, abonnement client facturation',
-    ogImage: '/images/facturio-features.png',
+    ogImage: '/images/facturio-features.jpg',
+    ogImageAlt:
+      'Illustration PrestaFacture : envoi de devis, paiement mobile et facture PDF avec badge de conformité.',
   },
   facturationElectronique: {
     title: 'Facturation électronique 2026 — guide pratique',
@@ -43,7 +58,9 @@ export const MARKETING_SEO = {
       'Réception obligatoire dès septembre 2026 : calendrier, simulateur d\'échéances et contrôles SIRET/SIREN sur vos factures. Préparez-vous sans changer d\'outil.',
     keywords:
       'facturation électronique 2026, réforme facture électronique, plateforme agréée, réception facture électronique, conformité facture B2B',
-    ogImage: '/images/facturio-efacture.png',
+    ogImage: '/images/facturio-efacture.jpg',
+    ogImageAlt:
+      'Illustration PrestaFacture : transformation d\'une facture papier en fichier XML sécurisé pour la réforme 2026.',
   },
   tarifs: {
     title: 'Tarifs — gratuit, Pro et e-facture',
@@ -51,7 +68,9 @@ export const MARKETING_SEO = {
       'Plan gratuit : 25 factures/mois. Pro 12 €/mois illimité. Pro + e-facture 24 €/mois pour anticiper septembre 2026. Sans engagement, essai gratuit.',
     keywords:
       'tarif logiciel facturation, facturation gratuite freelance, abonnement facturation, prix PrestaFacture, offre e-facture',
-    ogImage: '/images/facturio-pricing.png',
+    ogImage: '/images/facturio-pricing.jpg',
+    ogImageAlt:
+      'Illustration PrestaFacture : personnage grimpant des paliers de formules avec pièces et couronne.',
   },
   legal: {
     title: 'Mentions légales',

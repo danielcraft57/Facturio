@@ -13,7 +13,9 @@ export function parseEmailHeaderAddress(from: string): string {
 }
 
 /**
- * Utilisateur SMTP : si seul le login local est fourni (ex. facture), complète avec le domaine de MAIL_FROM.
+ * Utilisateur SMTP tel que configuré dans .env.
+ * Complétion domaine uniquement si SMTP_AUTH_APPEND_DOMAIN=true (serveurs qui exigent user@domaine).
+ * Sur mail.prestafacture.com le login local « facture » suffit — ne pas forcer facture@….
  *
  * @returns Login SMTP ou undefined si non configuré
  */
@@ -21,6 +23,10 @@ export function resolveSmtpAuthUser(): string | undefined {
 	const raw = process.env.SMTP_USER?.trim();
 	if (!raw) return undefined;
 	if (raw.includes('@')) return raw;
+	const append = process.env.SMTP_AUTH_APPEND_DOMAIN?.trim().toLowerCase();
+	if (append !== 'true' && append !== '1' && append !== 'yes') {
+		return raw;
+	}
 	const fromDomain = parseEmailHeaderAddress(process.env.MAIL_FROM || '').split('@')[1];
 	return fromDomain ? `${raw}@${fromDomain}` : raw;
 }

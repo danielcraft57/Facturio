@@ -117,6 +117,24 @@ export class EmailService implements OnModuleInit {
 	}
 
 	/**
+	 * Reply-To pour devis/factures : email de l'organisation (fiche entreprise), sinon l'adresse d'envoi du document.
+	 *
+	 * @param organization - Profil organisation (BDD)
+	 * @param documentFrom - En-tête From du document (ex. devis@…)
+	 */
+	private resolveOrganizationReplyTo(
+		organization?: EmailOrganizationProfile,
+		documentFrom?: string,
+	): string | undefined {
+		const org = organization as Record<string, unknown> | null | undefined;
+		const email =
+			(org?.email != null ? String(org.email).trim() : '') ||
+			(org?.dataControllerEmail != null ? String(org.dataControllerEmail).trim() : '');
+		if (email) return email;
+		return documentFrom ? parseEmailHeaderAddress(documentFrom) : undefined;
+	}
+
+	/**
 	 * Envoie un email générique.
 	 * @param options.from - Optionnel : expéditeur (sinon fromEmail/fromName par défaut)
 	 */
@@ -152,8 +170,7 @@ export class EmailService implements OnModuleInit {
 			}
 			const reply =
 				replyTo ||
-				process.env.COMPANY_EMAIL ||
-				process.env.MAIL_FROM_INVOICE ||
+				parseEmailHeaderAddress(from) ||
 				this.fromEmail;
 			await this.transporter.sendMail({
 				from,
@@ -254,6 +271,7 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.invoiceFrom,
+			replyTo: this.resolveOrganizationReplyTo(options.organization, this.invoiceFrom),
 			to: options.to,
 			subject,
 			html,
@@ -321,6 +339,7 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.quoteFrom,
+			replyTo: this.resolveOrganizationReplyTo(options.organization, this.quoteFrom),
 			to: options.to,
 			subject,
 			html,
@@ -374,6 +393,7 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.invoiceFrom,
+			replyTo: this.resolveOrganizationReplyTo(options.organization, this.invoiceFrom),
 			to: options.to,
 			subject,
 			html,
@@ -444,6 +464,7 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.invoiceFrom,
+			replyTo: this.resolveOrganizationReplyTo(options.organization, this.invoiceFrom),
 			to: options.to,
 			subject,
 			html,
@@ -515,8 +536,10 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.invoiceFrom,
+			replyTo:
+				options.replyTo ??
+				this.resolveOrganizationReplyTo(options.organization, this.invoiceFrom),
 			to: options.to,
-			replyTo: options.replyTo,
 			subject: `Paiement reçu — Facture ${options.invoiceNumber}`,
 			html,
 			text,
@@ -546,6 +569,7 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.invoiceFrom,
+			replyTo: this.resolveOrganizationReplyTo(options.organization, this.invoiceFrom),
 			to: options.to,
 			subject: `Facture ${options.invoiceNumber} payée — ${options.clientName}`,
 			html,
@@ -595,6 +619,7 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.invoiceFrom,
+			replyTo: this.resolveOrganizationReplyTo(options.organization, this.invoiceFrom),
 			to: options.to,
 			subject,
 			html,
@@ -643,6 +668,7 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.invoiceFrom,
+			replyTo: this.resolveOrganizationReplyTo(options.organization, this.invoiceFrom),
 			to: options.to,
 			subject,
 			html,
@@ -715,6 +741,7 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.invoiceFrom,
+			replyTo: this.resolveOrganizationReplyTo(options.organization, this.invoiceFrom),
 			to: options.to,
 			subject,
 			html,
@@ -786,6 +813,7 @@ export class EmailService implements OnModuleInit {
 
 		await this.send({
 			from: this.invoiceFrom,
+			replyTo: this.resolveOrganizationReplyTo(options.organization, this.invoiceFrom),
 			to: options.to,
 			subject,
 			html,

@@ -13,9 +13,17 @@ describe('email-smtp.util', () => {
 		);
 	});
 
-	it('resolveSmtpAuthUser complète le domaine depuis MAIL_FROM', () => {
+	it('resolveSmtpAuthUser conserve le login local par défaut', () => {
 		process.env.SMTP_USER = 'facture';
 		process.env.MAIL_FROM = 'no-reply@prestafacture.com';
+		delete process.env.SMTP_AUTH_APPEND_DOMAIN;
+		expect(resolveSmtpAuthUser()).toBe('facture');
+	});
+
+	it('resolveSmtpAuthUser complète le domaine si SMTP_AUTH_APPEND_DOMAIN=true', () => {
+		process.env.SMTP_USER = 'facture';
+		process.env.MAIL_FROM = 'no-reply@prestafacture.com';
+		process.env.SMTP_AUTH_APPEND_DOMAIN = 'true';
 		expect(resolveSmtpAuthUser()).toBe('facture@prestafacture.com');
 	});
 

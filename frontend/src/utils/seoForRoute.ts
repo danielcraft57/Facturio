@@ -1,4 +1,4 @@
-import { DEFAULT_KEYWORDS, DEFAULT_OG_IMAGE, DEFAULT_SEO, MARKETING_SEO } from '../config/seo'
+import { DEFAULT_KEYWORDS, DEFAULT_OG_IMAGE, DEFAULT_OG_IMAGE_ALT, DEFAULT_SEO, MARKETING_SEO } from '../config/seo'
 import { DOCUMENT_FOLDER_LABELS, isDocumentFolder } from '../types/documentFolders'
 import type { SeoPayload, RobotsDirective } from './seoTypes'
 
@@ -40,7 +40,7 @@ function robotsForPath(path: string): RobotsDirective {
   return 'index, follow'
 }
 
-type RouteSeo = Pick<SeoPayload, 'title' | 'description' | 'ogImage' | 'keywords'>
+type RouteSeo = Pick<SeoPayload, 'title' | 'description' | 'ogImage' | 'ogImageAlt' | 'keywords'>
 
 const MARKETING: Record<string, RouteSeo> = {
   '/': MARKETING_SEO.home,
@@ -212,6 +212,7 @@ export function seoForRoute(pathname: string): SeoPayload {
       robots,
       ogType: 'website',
       ogImage: exact.ogImage ?? DEFAULT_OG_IMAGE,
+      ogImageAlt: exact.ogImageAlt ?? DEFAULT_OG_IMAGE_ALT,
       keywords: exact.keywords ?? DEFAULT_KEYWORDS,
       canonicalPath: path,
     }
@@ -223,6 +224,7 @@ export function seoForRoute(pathname: string): SeoPayload {
     robots,
     ogType: 'website',
     ogImage: DEFAULT_OG_IMAGE,
+    ogImageAlt: DEFAULT_OG_IMAGE_ALT,
     keywords: DEFAULT_KEYWORDS,
     canonicalPath: path,
   }

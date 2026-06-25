@@ -38,7 +38,7 @@ export function ElectronicInvoicingPage() {
         subtitle="La réforme concerne vos factures clients entreprises. PrestaFacture vous aide à vous y préparer, sans quitter votre outil habituel."
         primaryCta={CTA.reserveEfacture}
         secondaryCta={CTA.signupFree}
-        visual={<MarketingImage src="/images/facturio-efacture.png" alt="Schéma facturation électronique 2026" float={false} />}
+        visual={<MarketingImage src="/images/facturio-efacture.jpg" alt="Schéma facturation électronique 2026" float={false} />}
       />
 
       <BetaTesterPromo compact />
