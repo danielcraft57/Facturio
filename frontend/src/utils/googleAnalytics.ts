@@ -27,6 +27,7 @@ function ensureGtagStub(): void {
   window.dataLayer = window.dataLayer ?? []
   if (!window.gtag) {
     window.gtag = function gtag() {
+      // eslint-disable-next-line prefer-rest-params -- snippet Google : push(arguments), pas un tableau
       window.dataLayer!.push(arguments)
     } as GtagFn
   }
