@@ -44,6 +44,7 @@ import { OnboardingRoute } from '../../components/OnboardingRoute'
 import { AuthSessionHydrator } from '../../components/AuthSessionHydrator'
 import { SeoManager } from '../../components/SeoManager'
 import { GoogleAnalytics } from '../../components/GoogleAnalytics'
+import { CookieConsentBanner } from '../legal/CookieConsentBanner'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { AuthBootPage } from './pages/AuthBootPage'
 import { ConfirmDevicePage } from './pages/ConfirmDevicePage'
@@ -207,6 +208,7 @@ export function App() {
           <AuthSessionHydrator />
           <SeoManager />
           <GoogleAnalytics />
+          <CookieConsentBanner />
           <TopRouteProgress />
           
           <Suspense fallback={

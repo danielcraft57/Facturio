@@ -1,9 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const CONSENT_KEY = 'facturio_cookie_consent_v1'
+
+function fireGtagScriptLoad(): void {
+  const script = document.querySelector(
+    'script[src*="googletagmanager"]',
+  ) as HTMLScriptElement | null
+  script?.onload?.(new Event('load') as Event)
+}
+
 describe('googleAnalytics', () => {
   beforeEach(() => {
     vi.resetModules()
     document.head.innerHTML = ''
+    localStorage.clear()
     delete (window as { dataLayer?: unknown[] }).dataLayer
     delete (window as { gtag?: (...args: unknown[]) => void }).gtag
   })
@@ -12,56 +22,47 @@ describe('googleAnalytics', () => {
     vi.unstubAllEnvs()
   })
 
-  it('n’initialise pas gtag en environnement de test', async () => {
+  it('n’initialise pas gtag si GA désactivé', async () => {
     vi.stubEnv('PROD', false)
     vi.stubEnv('VITE_GA_ENABLED', '')
+
+    const { initGoogleAnalytics } = await import('./googleAnalytics')
+    initGoogleAnalytics()
+
+    expect(window.gtag).toBeUndefined()
+  })
+
+  it('envoie page_view après chargement script et consentement', async () => {
+    vi.stubEnv('PROD', true)
+    localStorage.setItem(CONSENT_KEY, new Date().toISOString())
 
     const { initGoogleAnalytics, trackGoogleAnalyticsPageView } = await import('./googleAnalytics')
 
     initGoogleAnalytics()
-    trackGoogleAnalyticsPageView('/factures/inbox')
+    fireGtagScriptLoad()
+    trackGoogleAnalyticsPageView('/')
 
-    expect(window.gtag).toBeUndefined()
-    expect(document.querySelector('script[src*="googletagmanager"]')).toBeNull()
+    const pageView = window.dataLayer?.find(
+      (entry) => entry[0] === 'event' && entry[1] === 'page_view',
+    )
+    expect(pageView).toBeTruthy()
+    expect(pageView?.[2]).toMatchObject({ page_path: '/' })
   })
 
-  it('initialise gtag et envoie les pages vues en production', async () => {
-    vi.stubEnv('PROD', true)
+  it('bypass consentement en dev avec VITE_GA_ENABLED', async () => {
+    vi.stubEnv('PROD', false)
+    vi.stubEnv('VITE_GA_ENABLED', 'true')
 
-    const { initGoogleAnalytics, trackGoogleAnalyticsPageView, trackGoogleAnalyticsEvent } =
-      await import('./googleAnalytics')
+    const { initGoogleAnalytics, trackGoogleAnalyticsPageView } = await import('./googleAnalytics')
 
     initGoogleAnalytics()
-    trackGoogleAnalyticsPageView('/creances')
-    trackGoogleAnalyticsEvent('cta_signup_hero', {
-      link_text: 'Commencer',
-      link_url: '/signup',
-      section: 'hero',
-    })
+    fireGtagScriptLoad()
+    trackGoogleAnalyticsPageView('/tarifs')
 
-    expect(window.gtag).toBeTypeOf('function')
-    expect(document.querySelector('script[src*="G-TVDKVFYP25"]')).not.toBeNull()
-    expect(window.dataLayer).toEqual(
-      expect.arrayContaining([
-        ['js', expect.any(Date)],
-        ['config', 'G-TVDKVFYP25', { send_page_view: false }],
-        ['config', 'G-TVDKVFYP25', { page_path: '/creances' }],
-        [
-          'event',
-          'cta_signup_hero',
-          { link_text: 'Commencer', link_url: '/signup', section: 'hero' },
-        ],
-      ]),
+    const pageView = window.dataLayer?.find(
+      (entry) => entry[0] === 'event' && entry[1] === 'page_view',
     )
-  })
-
-  it('ignore les événements si GA désactivé', async () => {
-    vi.stubEnv('PROD', false)
-    vi.stubEnv('VITE_GA_ENABLED', '')
-
-    const { trackGoogleAnalyticsEvent } = await import('./googleAnalytics')
-    trackGoogleAnalyticsEvent('cta_signup', { link_text: 'Test' })
-
-    expect(window.gtag).toBeUndefined()
+    expect(pageView).toBeTruthy()
+    expect(pageView?.[2]).toMatchObject({ page_path: '/tarifs' })
   })
 })

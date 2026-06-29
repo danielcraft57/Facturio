@@ -294,4 +294,4 @@ export const SALES_TERMS_SECTIONS: readonly LegalSection[] = [
 ]
 
 export const COOKIE_NOTICE =
-  'Nous utilisons un cookie de session strictement nécessaire à la connexion et, avec votre accord, des préférences locales. Aucun cookie publicitaire tiers.'
+  'Nous utilisons un cookie de session strictement nécessaire à la connexion et, avec votre accord, une mesure d’audience (Google Analytics) ainsi que des préférences locales. Aucun cookie publicitaire tiers.'

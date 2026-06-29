@@ -24,7 +24,6 @@ import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../../stores/authStore'
 import { PUBLIC_NAV } from '../../marketing/constants/siteContent'
-import { CookieConsentBanner } from '../../legal/CookieConsentBanner'
 import { PublicFooter } from './PublicFooter'
 
 const NavLink = ({
@@ -287,7 +286,6 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       </Box>
 
       <PublicFooter />
-      <CookieConsentBanner />
     </Box>
   )
 }

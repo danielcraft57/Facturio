@@ -1,27 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Alert, Box, Button, Link, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
+import { grantAnalyticsConsent, hasAnalyticsConsent } from '../../utils/cookieConsent'
 import { COOKIE_NOTICE } from './content'
-
-const STORAGE_KEY = 'facturio_cookie_consent_v1'
 
 export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    try {
-      if (!localStorage.getItem(STORAGE_KEY)) setVisible(true)
-    } catch {
-      setVisible(true)
-    }
+    setVisible(!hasAnalyticsConsent())
   }, [])
 
   const accept = () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, new Date().toISOString())
-    } catch {
-      /* ignore */
-    }
+    grantAnalyticsConsent()
     setVisible(false)
   }
 
