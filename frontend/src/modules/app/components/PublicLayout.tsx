@@ -21,6 +21,7 @@ import MenuIcon from '@mui/icons-material/Menu'
 import CloseIcon from '@mui/icons-material/Close'
 import LoginIcon from '@mui/icons-material/Login'
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt'
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../../stores/authStore'
 import { PUBLIC_NAV } from '../../marketing/constants/siteContent'
@@ -174,6 +175,9 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 </NavLink>
               ) : (
                 <>
+                  <NavLink to="/essayer" compact active={location.pathname === '/essayer'}>
+                    Essayer la démo
+                  </NavLink>
                   <NavLink to="/login" compact active={location.pathname === '/login'}>
                     Connexion
                   </NavLink>
@@ -252,6 +256,18 @@ export function PublicLayout({ children }: PublicLayoutProps) {
             </ListItem>
           ) : (
             <>
+              <ListItem disablePadding>
+                <ListItemButton
+                  component={RouterLink}
+                  to="/essayer"
+                  onClick={handleDrawerToggle}
+                  selected={location.pathname === '/essayer'}
+                  sx={{ borderRadius: 2, py: 1.1 }}
+                >
+                  <PlayCircleOutlineIcon fontSize="small" sx={{ mr: 1.5, color: 'primary.main' }} />
+                  <ListItemText primary="Essayer la démo" />
+                </ListItemButton>
+              </ListItem>
               <ListItem disablePadding>
                 <ListItemButton
                   component={RouterLink}

@@ -37,6 +37,7 @@ const SalesTermsPage = lazy(() =>
   import('../marketing/pages/SalesTermsPage').then((m) => ({ default: m.SalesTermsPage })),
 )
 import { LoginPage } from './pages/LoginPage'
+import { DemoEnterPage } from './pages/DemoEnterPage'
 import { SignupPage } from './pages/SignupPage'
 import { SignupConfirmationPage } from './pages/SignupConfirmationPage'
 import { OnboardingInstallPage } from './pages/OnboardingInstallPage'
@@ -234,6 +235,14 @@ export function App() {
               <Route path="/privacy" element={<PublicLayout><PrivacyPage /></PublicLayout>} />
               <Route path="/terms" element={<PublicLayout><TermsPage /></PublicLayout>} />
               <Route path="/cgv" element={<PublicLayout><SalesTermsPage /></PublicLayout>} />
+              <Route
+                path="/essayer"
+                element={
+                  <PublicLayout>
+                    <DemoEnterPage />
+                  </PublicLayout>
+                }
+              />
               <Route
                 path="/login"
                 element={

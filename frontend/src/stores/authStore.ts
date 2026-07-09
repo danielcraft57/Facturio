@@ -59,6 +59,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         return response as DeviceVerificationResponse
       }
       const auth = response as { user: User }
+      const { demoService } = await import('../services/demoService')
+      demoService.clearDemoFlag()
       set({
         user: auth.user,
         isAuthenticated: true,
@@ -85,6 +87,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const response = await authService.signup(data)
+      const { demoService } = await import('../services/demoService')
+      demoService.clearDemoFlag()
       set({
         user: response.user,
         isAuthenticated: true,
@@ -110,6 +114,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       await authService.logout()
     } catch (_) {}
+    const { demoService } = await import('../services/demoService')
+    demoService.clearDemoFlag()
     set({
       user: null,
       isAuthenticated: false,

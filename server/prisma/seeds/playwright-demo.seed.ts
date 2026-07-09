@@ -12,6 +12,9 @@ import {
 type DemoConfig = {
 	email: string;
 	password: string;
+	orgName: string;
+	firstName: string;
+	lastName: string;
 	monthsBack: number;
 	clients: number;
 	invoices: number;
@@ -91,6 +94,9 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 	const config: DemoConfig = {
 		email: cfg?.email ?? process.env.PLAYWRIGHT_DEMO_EMAIL ?? 'playwright@facturio.local',
 		password: cfg?.password ?? process.env.PLAYWRIGHT_DEMO_PASSWORD ?? 'playwright',
+		orgName: cfg?.orgName ?? process.env.PLAYWRIGHT_DEMO_ORG_NAME ?? 'Playwright Demo',
+		firstName: cfg?.firstName ?? process.env.PLAYWRIGHT_DEMO_FIRST_NAME ?? 'Playwright',
+		lastName: cfg?.lastName ?? process.env.PLAYWRIGHT_DEMO_LAST_NAME ?? 'Demo',
 		monthsBack: clamp(Number(cfg?.monthsBack ?? process.env.PLAYWRIGHT_DEMO_MONTHS_BACK ?? 6), 2, 18),
 		clients: clamp(Number(cfg?.clients ?? process.env.PLAYWRIGHT_DEMO_CLIENTS ?? 18), 8, 60),
 		invoices: clamp(Number(cfg?.invoices ?? process.env.PLAYWRIGHT_DEMO_INVOICES ?? 40), 12, 200),
@@ -101,7 +107,7 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 
 	// 1) Organisation + user
 	const onboardingCompletedAt = new Date();
-	const existingOrg = await prisma.organization.findFirst({ where: { name: 'Playwright Demo' } });
+	const existingOrg = await prisma.organization.findFirst({ where: { name: config.orgName } });
 	const org = existingOrg
 		? await prisma.organization.update({
 				where: { id: existingOrg.id },
@@ -109,10 +115,10 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 		  })
 		: await prisma.organization.create({
 				data: {
-					name: 'Playwright Demo',
+					name: config.orgName,
 					companyType: 'B2B',
 					address: 'Paris, France',
-					email: 'demo@facturio.local',
+					email: config.email,
 					defaultCurrency: 'EUR',
 					defaultLanguage: 'fr',
 					onboardingCompletedAt,
@@ -131,14 +137,14 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 			status: 'ACTIVE',
 			emailVerified: true,
 			role: 'ADMIN',
-			firstName: 'Playwright',
-			lastName: 'Demo',
+			firstName: config.firstName,
+			lastName: config.lastName,
 		},
 		create: {
 			email: config.email,
 			password: hashed,
-			firstName: 'Playwright',
-			lastName: 'Demo',
+			firstName: config.firstName,
+			lastName: config.lastName,
 			organizationId: org.id,
 			status: 'ACTIVE',
 			emailVerified: true,

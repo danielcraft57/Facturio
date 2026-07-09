@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthSessionService } from '../auth-session.service';
+import { isDemoUser } from '../../demo/demo-policy.util';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -44,7 +45,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 			await this.authSessionService.assertSessionActive(payload.sid, user.id);
 		}
 
-		return { ...user, sessionId: payload.sid as number | undefined };
+		return {
+			...user,
+			sessionId: payload.sid as number | undefined,
+			isDemo: isDemoUser(user),
+		};
 	}
 }
 

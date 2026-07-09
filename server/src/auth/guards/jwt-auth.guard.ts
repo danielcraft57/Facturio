@@ -18,6 +18,9 @@ const PUBLIC_EXACT_PATHS = new Set([
 	'/api/e-invoicing/reform-schedule',
 	'/api/billing/beta-invite/validate',
 	'/api/billing/beta-program/stats',
+	'/api/demo/info',
+	'/api/demo/enter',
+	'/api/demo/ensure',
 ]);
 
 /** Préfixes pour arbres entiers (devis publics, webhooks, etc.). */

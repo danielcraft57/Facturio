@@ -38,8 +38,9 @@ export class AuthSessionService {
 		return crypto.createHash('sha256').update(`${salt}:${ip.trim()}`).digest('hex');
 	}
 
-	normalizeFingerprint(raw?: string): string {
-		const fp = (raw || '').trim().slice(0, 128);
+	normalizeFingerprint(raw?: unknown): string {
+		const value = typeof raw === 'string' ? raw : raw != null ? String(raw) : '';
+		const fp = value.trim().slice(0, 128);
 		return fp.length >= 8 ? fp : 'unknown-device';
 	}
 

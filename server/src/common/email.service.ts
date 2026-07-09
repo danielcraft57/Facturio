@@ -26,6 +26,7 @@ import {
 	buildPayableDebtEmailLegalHtml,
 	buildPayableDebtEmailLegalPlain,
 } from './payable-debt-legal.util';
+import { assertDemoOutboundEmailBlocked } from '../demo/demo-policy.util';
 
 /** Profil organisation (fiche entreprise) pour pied de page et objet des emails. */
 export type EmailOrganizationProfile = Record<string, unknown> | null | undefined;
@@ -224,6 +225,7 @@ export class EmailService implements OnModuleInit {
 		informativeCopy?: boolean;
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const company = resolveEmailIssuerDisplayName(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const copy = options.informativeCopy === true;
@@ -314,6 +316,7 @@ export class EmailService implements OnModuleInit {
 		informativeCopy?: boolean;
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const company = resolveEmailIssuerDisplayName(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const copy = options.informativeCopy === true;
@@ -372,6 +375,7 @@ export class EmailService implements OnModuleInit {
 		pdfBuffer?: Buffer;
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const subject = options.daysOverdue
 			? `Relance - Facture ${options.invoiceNumber} (${options.daysOverdue} jour(s) de retard)`
@@ -424,6 +428,7 @@ export class EmailService implements OnModuleInit {
 		pdfBuffer?: Buffer;
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const dueFr = new Date(options.installmentDueDate).toLocaleDateString('fr-FR');
 		const subject =
@@ -501,6 +506,7 @@ export class EmailService implements OnModuleInit {
 		};
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const html = this.getInvoicePaidClientTemplate({ ...options, legalFooter });
 		const viewLine = options.invoiceViewUrl
@@ -559,6 +565,7 @@ export class EmailService implements OnModuleInit {
 		appInvoiceUrl: string;
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const html = this.getInvoicePaidProviderTemplate({ ...options, legalFooter });
 		const text =
@@ -591,6 +598,7 @@ export class EmailService implements OnModuleInit {
 		issuerName: string;
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const subject = `Remboursement effectué — Facture ${options.invoiceNumber}`;
 		const reasonBlock = options.refundReason?.trim()
@@ -637,6 +645,7 @@ export class EmailService implements OnModuleInit {
 		issuerName: string;
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const subject = `Crédit émis — Facture ${options.invoiceNumber}`;
 		const reasonBlock = options.reason?.trim()
@@ -690,6 +699,7 @@ export class EmailService implements OnModuleInit {
 		viewUrl?: string;
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const subject = 'Reconnaissance de dette';
 		const dueLine = options.dueDate
@@ -764,6 +774,7 @@ export class EmailService implements OnModuleInit {
 		viewUrl?: string;
 		organization?: EmailOrganizationProfile;
 	}): Promise<void> {
+		assertDemoOutboundEmailBlocked(options.organization);
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const subject = options.fullyPaid
 			? 'Remboursement de la dette'

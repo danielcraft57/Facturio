@@ -146,7 +146,17 @@ class ApiClient {
         }
 
         if (response?.status === 403) {
-          const quotaMessage = response?.data?.message
+          const code = response?.data?.code as string | undefined
+          const blockedMessage = response?.data?.message as string | undefined
+          if (code === 'DEMO_READ_ONLY' || code === 'DEMO_EMAIL_BLOCKED') {
+            void import('../utils/quotaNotifications').then(({ dispatchDemoBlockedEvent }) => {
+              dispatchDemoBlockedEvent(
+                blockedMessage ?? 'Action désactivée en mode démo.',
+                code,
+              )
+            })
+          }
+          const quotaMessage = blockedMessage
           if (typeof quotaMessage === 'string' && /quota/i.test(quotaMessage)) {
             void import('../utils/quotaNotifications').then(({ dispatchQuotaExceededEvent }) => {
               dispatchQuotaExceededEvent(quotaMessage)

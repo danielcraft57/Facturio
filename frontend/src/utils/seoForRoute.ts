@@ -21,7 +21,7 @@ const PRIVATE_PREFIXES = [
   '/loaders',
 ]
 
-const AUTH_PREFIXES = ['/login', '/signup', '/mot-de-passe', '/auth/', '/verifier-email', '/reinitialiser-mot-de-passe']
+const AUTH_PREFIXES = ['/login', '/signup', '/essayer', '/mot-de-passe', '/auth/', '/verifier-email', '/reinitialiser-mot-de-passe']
 
 function normalizePath(pathname: string): string {
   return pathname.split('?')[0].replace(/\/+$/, '') || '/'
@@ -63,6 +63,11 @@ const APP_ROUTES: Record<string, RouteSeo> = {
     title: 'Inscription gratuite',
     description:
       'Créez votre compte en quelques minutes : catalogue de prestations, devis et factures. Essai gratuit sans carte bancaire.',
+  },
+  '/essayer': {
+    title: 'Essayer la démo',
+    description:
+      'Explorez Facturio sans inscription : espace prérempli avec clients, devis et factures.',
   },
   '/mot-de-passe-oublie': {
     title: 'Mot de passe oublié',

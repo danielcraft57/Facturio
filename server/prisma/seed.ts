@@ -16,6 +16,8 @@ import { seedQuotes } from './seeds/quotes.seed';
 import { seedSubscriptions } from './seeds/subscriptions.seed';
 import { seedFilings } from './seeds/filings.seed';
 import { seedPacks } from './seeds/packs.seed';
+import { seedPlaywrightDemo } from './seeds/playwright-demo.seed';
+import { getDemoSeedConfig } from './demo-seed.config';
 
 const prisma = createSeedPrismaClient();
 
@@ -100,6 +102,14 @@ async function main(): Promise<void> {
 	console.log('📦 Seeds des packs...');
 	await seedOrSkip(prisma, 'Pack', () => seedPacks(prisma, products));
 	console.log('✅ Packs créés\n');
+
+	const demoSeedOnDev = String(process.env.DEMO_SEED_ON_DEV ?? 'true').toLowerCase() !== 'false';
+	if (demoSeedOnDev) {
+		const demo = getDemoSeedConfig();
+		console.log('🎬 Seed organisation démo (lecture seule)…');
+		await seedPlaywrightDemo(prisma, demo);
+		console.log(`✅ Compte démo prêt (${demo.email})\n`);
+	}
 
 	console.log('🎉 Seeds terminés avec succès !');
 }

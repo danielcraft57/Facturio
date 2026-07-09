@@ -36,6 +36,7 @@ import { AppTopNav } from './AppTopNav'
 import { AppMobileNav } from './AppMobileNav'
 import { NotificationCenter } from './NotificationCenter'
 import { BillingQuotaStrip } from './BillingQuotaStrip'
+import { DemoModeBanner } from '../../../components/demo/DemoModeBanner'
 import { LifecycleNotifier } from './LifecycleNotifier'
 import { userMenuLinks } from '../config/userMenuConfig'
 import { PageTransition } from '../../../components/PageTransition'
@@ -303,6 +304,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
       <Box component="main" sx={{ flexGrow: 1, width: '100%', p: { xs: 1, sm: 2, md: 3 } }}>
         <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }} />
         <BillingQuotaStrip />
+        <DemoModeBanner />
         <LifecycleNotifier />
         <PageTransition>{children}</PageTransition>
       </Box>

@@ -243,9 +243,20 @@ export function LoginPage() {
             size="large"
             startIcon={<GoogleIcon />}
             onClick={handleGoogleLogin}
-            sx={{ mb: 3, py: 1.5 }}
+            sx={{ mb: 2, py: 1.5 }}
           >
             Continuer avec Google
+          </Button>
+
+          <Button
+            fullWidth
+            variant="text"
+            size="large"
+            component={RouterLink}
+            to="/essayer"
+            sx={{ mb: 3, py: 1 }}
+          >
+            Essayer la démo sans compte
           </Button>
 
           <Box sx={{ textAlign: 'center' }}>

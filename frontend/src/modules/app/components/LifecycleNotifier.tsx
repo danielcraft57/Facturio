@@ -6,8 +6,10 @@ import { useAuthStore } from '../../../stores/authStore'
 import { useBillingUsage, invalidateBillingUsageCache } from '../../../hooks/useBillingUsage'
 import {
   QUOTA_EXCEEDED_EVENT,
+  DEMO_BLOCKED_EVENT,
   ONBOARDING_INSTALLED_EVENT,
   type QuotaExceededDetail,
+  type DemoBlockedDetail,
   type OnboardingInstalledDetail,
   wasLifecycleNoticeShown,
   markLifecycleNoticeShown,
@@ -28,6 +30,27 @@ export function LifecycleNotifier() {
   const user = useAuthStore((s) => s.user)
   const { usage } = useBillingUsage()
   const userId = user?.id
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<DemoBlockedDetail>).detail
+      const message = detail?.message ?? 'Action désactivée en mode démo.'
+      const title = detail?.code === 'DEMO_EMAIL_BLOCKED' ? 'Envoi désactivé' : 'Mode démo'
+
+      toast.info(message, {
+        title,
+        duration: 10000,
+        action: (
+          <Button component={RouterLink} to="/signup" size="small" color="inherit">
+            Créer un compte
+          </Button>
+        ),
+      })
+    }
+
+    window.addEventListener(DEMO_BLOCKED_EVENT, handler)
+    return () => window.removeEventListener(DEMO_BLOCKED_EVENT, handler)
+  }, [toast])
 
   useEffect(() => {
     const handler = (event: Event) => {

@@ -11,7 +11,7 @@ import { normalizeDatabaseUrl, redactDatabaseUrl } from './config/database-url.u
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { winstonConfig } from './logger/winston.config';
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 
 const nodeEnv = process.env.NODE_ENV || 'dev';
 if (nodeEnv === 'prod' && process.env.DATABASE_URL) {
@@ -89,9 +89,9 @@ async function bootstrap(): Promise<void> {
 	logger.log(`🗄️  Base de données: ${redactDatabaseUrl(config.databaseUrl)}`);
 	const dbUrl = config.databaseUrl;
 	if (dbUrl.startsWith('file:')) {
-		const path = await import('path');
-		const filePath = path.resolve(process.cwd(), dbUrl.replace(/^file:\/?/, ''));
-		logger.log(`🗄️  Fichier DB (absolu): ${filePath}`);
+		const serverRoot = path.resolve(__dirname, '..');
+		const fsPath = path.resolve(serverRoot, dbUrl.replace(/^file:\/?/, ''));
+		logger.log(`🗄️  Fichier DB (absolu): ${fsPath}`);
 	}
 	logger.log(`🌐 CORS: ${Array.isArray(config.corsOrigin) ? config.corsOrigin.join(', ') : config.corsOrigin}`);
 	logger.log(`📝 Log level: ${config.logLevel}`);

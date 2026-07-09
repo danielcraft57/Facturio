@@ -22,10 +22,18 @@ export function isQuotaErrorMessage(message: string | undefined): boolean {
   return /quota/i.test(message)
 }
 
-export function dispatchQuotaExceededEvent(message: string): void {
+/** Événement navigateur : action bloquée en mode démo. */
+export const DEMO_BLOCKED_EVENT = 'facturio:demo-blocked'
+
+export type DemoBlockedDetail = {
+  message: string
+  code?: 'DEMO_READ_ONLY' | 'DEMO_EMAIL_BLOCKED'
+}
+
+export function dispatchDemoBlockedEvent(message: string, code?: DemoBlockedDetail['code']): void {
   if (typeof window === 'undefined') return
   window.dispatchEvent(
-    new CustomEvent<QuotaExceededDetail>(QUOTA_EXCEEDED_EVENT, { detail: { message } }),
+    new CustomEvent<DemoBlockedDetail>(DEMO_BLOCKED_EVENT, { detail: { message, code } }),
   )
 }
 

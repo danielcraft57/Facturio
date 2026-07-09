@@ -4,6 +4,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { EmailVerifiedGuard } from './auth/guards/email-verified.guard';
+import { DemoWriteGuard } from './demo/guards/demo-write.guard';
 import { RateLimitMiddleware, RateLimitService } from './common/rate-limit.middleware';
 import { PublicAccessRateLimitMiddleware } from './common/public-access-rate-limit.middleware';
 import { ClientsModule } from './clients/clients.module';
@@ -37,6 +38,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { MobileNotificationsModule } from './mobile-notifications/mobile-notifications.module';
 import { ReceivablesModule } from './receivables/receivables.module';
 import { PayablesModule } from './payables/payables.module';
+import { DemoModule } from './demo/demo.module';
 import { SecurityHeadersMiddleware } from './common/security-headers.middleware';
 
 @Module({
@@ -73,11 +75,13 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
 		MobileNotificationsModule,
 		ReceivablesModule,
 		PayablesModule,
+		DemoModule,
 	],
 	controllers: [WebhooksController],
 	providers: [
 		{ provide: APP_GUARD, useClass: JwtAuthGuard },
 		{ provide: APP_GUARD, useClass: EmailVerifiedGuard },
+		{ provide: APP_GUARD, useClass: DemoWriteGuard },
 		RateLimitService,
 		PublicAccessRateLimitMiddleware,
 	]
@@ -87,7 +91,7 @@ export class AppModule implements NestModule {
 		consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
 		consumer
 			.apply(RateLimitMiddleware)
-			.forRoutes('auth/login', 'auth/signup', 'auth/forgot-password');
+			.forRoutes('auth/login', 'auth/signup', 'auth/forgot-password', 'demo/enter');
 		consumer
 			.apply(PublicAccessRateLimitMiddleware)
 			.forRoutes(
