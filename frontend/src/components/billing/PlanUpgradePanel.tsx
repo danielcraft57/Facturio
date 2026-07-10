@@ -18,15 +18,20 @@ import { Link as RouterLink } from 'react-router-dom'
 import { financePagePadding, financePrimaryButtonSx } from '../finance/financeStyles'
 import { ProPlanBadge } from './ProPlanBadge'
 import type { BillingGatedFeature } from './BillingFeatureGate'
+import { ProFeatureVitrinePreview, type ProVitrineVariant } from './ProFeatureVitrinePreview'
 
 type PlanUpgradePanelProps = {
   featureLabel: string
-  feature?: BillingGatedFeature | 'publicApi'
+  feature?: BillingGatedFeature | 'publicApi' | 'compliance'
   highlights?: string[]
   extraHint?: string
+  /** Aperçu statique au-dessus du panneau upgrade. */
+  previewVariant?: ProVitrineVariant
+  /** Variante compacte (bannière dans une page paramètres). */
+  compact?: boolean
 }
 
-const DEFAULT_HIGHLIGHTS: Record<BillingGatedFeature | 'publicApi', string[]> = {
+const DEFAULT_HIGHLIGHTS: Record<BillingGatedFeature | 'publicApi' | 'compliance', string[]> = {
   financeModule: [
     'Créances clients et relances',
     'Dettes fournisseurs, archives et lien public',
@@ -42,6 +47,12 @@ const DEFAULT_HIGHLIGHTS: Record<BillingGatedFeature | 'publicApi', string[]> = 
     'Documentation REST complète',
     'Automatiser devis, factures et clients',
   ],
+  compliance: [
+    'Score de conformité détaillé par facture',
+    'Export Factur-X de préparation',
+    'Checklist SIRET, SIREN et mentions obligatoires',
+    'Accès prioritaire à la suite plateforme agréée',
+  ],
 }
 
 /**
@@ -52,6 +63,8 @@ export function PlanUpgradePanel({
   feature = 'financeModule',
   highlights,
   extraHint,
+  previewVariant,
+  compact = false,
 }: PlanUpgradePanelProps) {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
@@ -60,18 +73,18 @@ export function PlanUpgradePanel({
   return (
     <Box
       sx={{
-        p: financePagePadding,
+        p: compact ? 0 : financePagePadding,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'flex-start',
-        minHeight: { xs: '50vh', md: '58vh' },
+        minHeight: compact ? undefined : { xs: '50vh', md: '58vh' },
       }}
     >
       <Card
         elevation={0}
         sx={{
           width: '100%',
-          maxWidth: 560,
+          maxWidth: compact ? '100%' : 560,
           borderRadius: 3,
           border: '1px solid',
           borderColor: isDark ? alpha('#fff', 0.1) : alpha('#0f172a', 0.08),
@@ -88,6 +101,7 @@ export function PlanUpgradePanel({
           }}
         />
         <CardContent sx={{ p: { xs: 2.5, sm: 3.5 } }}>
+          {previewVariant ? <ProFeatureVitrinePreview variant={previewVariant} /> : null}
           <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 2 }}>
             <Box
               sx={{

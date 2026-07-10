@@ -1,13 +1,7 @@
 import { Box, Container, Typography, alpha } from '@mui/material'
 import { AnimatedCounter } from './AnimatedCounter'
 import { ScrollReveal } from './ScrollReveal'
-
-const STATS = [
-  { value: 10, suffix: ' min', label: 'pour envoyer un premier devis' },
-  { value: 2026, suffix: '', label: 'facture électronique obligatoire' },
-  { value: 0, suffix: ' €', label: 'pour commencer (offre gratuite)' },
-  { value: 100, suffix: '%', label: 'pensé pour les pros du digital' },
-] as const
+import { MARKETING_HONEST_STATS } from '../constants/siteContent'
 
 export function StatsBar() {
   return (
@@ -21,7 +15,7 @@ export function StatsBar() {
             textAlign: 'center',
           }}
         >
-          {STATS.map((stat, i) => (
+          {MARKETING_HONEST_STATS.map((stat, i) => (
             <ScrollReveal key={stat.label} delayMs={i * 80}>
               <AnimatedCounter
                 value={stat.value}

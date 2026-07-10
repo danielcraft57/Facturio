@@ -25,6 +25,7 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { useAppNotifications } from '../../../stores/appStore'
 import type { Notification } from '../../../stores/appStore'
 import { financeOutlinedButtonSx, financePrimaryButtonSx } from '../../../components/finance/financeStyles'
+import { NotificationCenterEmptyState } from './NotificationCenterEmptyState'
 
 function formatRelativeTime(date: Date): string {
   const d = date instanceof Date ? date : new Date(date)
@@ -214,16 +215,11 @@ export function NotificationCenter() {
           }}
         >
           {listItems.length === 0 ? (
-            <Box sx={{ py: 4, px: 2, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                {tab === 0 ? 'Aucune notification non lue' : 'Aucune activité enregistrée'}
-              </Typography>
-              {tab === 0 && history.length > 0 && (
-                <Button size="small" sx={{ mt: 1, textTransform: 'none' }} onClick={() => setTab(1)}>
-                  Voir l&apos;historique
-                </Button>
-              )}
-            </Box>
+            <NotificationCenterEmptyState
+              variant={tab === 0 ? 'unread' : 'history'}
+              hasHistory={history.length > 0}
+              onShowHistory={tab === 0 ? () => setTab(1) : undefined}
+            />
           ) : (
             listItems.map((item) => (
               <NotificationRow

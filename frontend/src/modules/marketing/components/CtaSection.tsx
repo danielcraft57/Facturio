@@ -12,6 +12,9 @@ type CtaSectionProps = {
   secondaryLabel?: string
   secondaryTo?: string
   secondaryGaEvent?: string
+  tertiaryLabel?: string
+  tertiaryTo?: string
+  tertiaryGaEvent?: string
   /** Zone GA4 (cta_band, landing_footer, etc.) */
   analyticsSection?: string
 }
@@ -25,6 +28,9 @@ export function CtaSection({
   secondaryLabel,
   secondaryTo,
   secondaryGaEvent,
+  tertiaryLabel,
+  tertiaryTo,
+  tertiaryGaEvent,
   analyticsSection = 'cta_band',
 }: CtaSectionProps) {
   return (
@@ -93,6 +99,30 @@ export function CtaSection({
                 }}
               >
                 {secondaryLabel}
+              </Button>
+            )}
+            {tertiaryLabel && tertiaryTo && (
+              <Button
+                component={RouterLink}
+                to={tertiaryTo}
+                variant="text"
+                size="large"
+                onClick={() =>
+                  trackMarketingCtaClick({
+                    event: tertiaryGaEvent ?? GA_EVENTS.CTA_SIGNUP,
+                    label: tertiaryLabel,
+                    destination: tertiaryTo,
+                    section: analyticsSection,
+                  })
+                }
+                sx={{
+                  color: 'white',
+                  fontWeight: 600,
+                  opacity: 0.92,
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
+                }}
+              >
+                {tertiaryLabel}
               </Button>
             )}
           </Box>

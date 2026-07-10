@@ -6,6 +6,8 @@ import {
   filterProductLinesForSubmit,
   isProductLineEmpty,
   removeProductLine,
+  normalizeProductLineQuantity,
+  calculateProductLinesTotals,
 } from './editableProductLinesUtils'
 
 const empty = () => ({
@@ -56,5 +58,22 @@ describe('editableProductLinesUtils', () => {
     ]
     const next = removeProductLine(lines, 1, empty)
     expect(filterProductLinesForSubmit(next).map((l) => l.description)).toEqual(['A'])
+  })
+
+  it('normalise la quantité (min 1, entier)', () => {
+    expect(normalizeProductLineQuantity(0)).toBe(1)
+    expect(normalizeProductLineQuantity(2.7)).toBe(3)
+    expect(normalizeProductLineQuantity('4')).toBe(4)
+  })
+
+  it('calcule les totaux avec quantité', () => {
+    const lines = [
+      { ...empty(), description: 'Dev', quantity: 2, unitPrice: 100, taxRate: 20 },
+    ]
+    expect(calculateProductLinesTotals(lines)).toEqual({
+      subtotal: 200,
+      taxTotal: 40,
+      total: 240,
+    })
   })
 })

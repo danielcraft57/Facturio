@@ -1,16 +1,63 @@
 import { ReactNode } from 'react'
 import { Box, Container, Paper, Step, StepLabel, Stepper, Typography, alpha } from '@mui/material'
 import CodeIcon from '@mui/icons-material/Code'
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
+import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined'
+import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined'
+import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined'
+import {
+  ONBOARDING_PROFILE_GROUPS,
+  resolveOnboardingProfile,
+} from './onboardingProfiles'
 
 type Props = {
   activeStep: number
   steps: readonly string[]
   title: string
   subtitle?: string
+  profileId?: string | null
   children: ReactNode
 }
 
-export function OnboardingLayout({ activeStep, steps, title, subtitle, children }: Props) {
+const GROUP_ICONS = {
+  dev: CodeIcon,
+  design: PaletteOutlinedIcon,
+  commercial: CampaignOutlinedIcon,
+  communication: ForumOutlinedIcon,
+  consulting: HandshakeOutlinedIcon,
+} as const
+
+/**
+ * En-tête adaptatif selon le profil onboarding sélectionné.
+ *
+ * @param profileId - Identifiant profil (étape 1+)
+ */
+function resolveLayoutMeta(profileId?: string | null): { overline: string; hint: string; Icon: typeof CodeIcon } {
+  const profile = profileId ? resolveOnboardingProfile(profileId) : null
+  const group = profile
+    ? ONBOARDING_PROFILE_GROUPS.find((g) => g.id === profile.groupId)
+    : null
+  const Icon = profile ? (GROUP_ICONS[profile.groupId as keyof typeof GROUP_ICONS] ?? CodeIcon) : CodeIcon
+  if (!profile || !group) {
+    return {
+      overline: 'Configuration initiale',
+      hint: 'Assistant catalogue · 2 min',
+      Icon,
+    }
+  }
+  return {
+    overline: group.label,
+    hint: `${profile.label} · catalogue sur mesure`,
+    Icon,
+  }
+}
+
+/**
+ * Layout assistant d'installation (onboarding catalogue).
+ */
+export function OnboardingLayout({ activeStep, steps, title, subtitle, profileId, children }: Props) {
+  const meta = resolveLayoutMeta(profileId)
+
   return (
     <Box
       sx={{
@@ -34,14 +81,14 @@ export function OnboardingLayout({ activeStep, steps, title, subtitle, children 
               color: 'primary.contrastText',
             }}
           >
-            <CodeIcon />
+            <meta.Icon />
           </Box>
           <Box>
             <Typography variant="overline" color="primary" sx={{ fontWeight: 700, letterSpacing: 1.2 }}>
-              Espace développeur
+              {meta.overline}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Configuration initiale · 2 min
+              {meta.hint}
             </Typography>
           </Box>
         </Box>

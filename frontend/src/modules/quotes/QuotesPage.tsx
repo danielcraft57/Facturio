@@ -78,9 +78,12 @@ import {
   documentFolderColDueSx,
   documentFolderColActionsSx,
 } from '../../components/finance/documentFolderStyles';
-import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch';
+import { isLifecycleHandledApiError } from '../../utils/lifecycleNotifications';
 import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell';
 import { DocumentFolderStatusChip } from '../../components/finance/DocumentFolderStatusChip';
+import { DraftResumeBanner } from '../../components/finance/DraftResumeBanner';
+import { FinanceFolderEmptyState } from '../../components/finance/FinanceFolderEmptyState';
+import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch';
 import { DocumentFolderInitialLoader } from '../../components/loading/DocumentFolderInitialLoader';
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -91,6 +94,12 @@ import {
 import { quoteService } from '../../services/quoteService';
 import { resolveQuoteDisplayStatus } from './quoteDisplayStatus';
 import { openInvoiceView } from '../../utils/openDocumentView';
+import {
+  DOCUMENT_CREATE_TOAST_DURATION_MS,
+  getDocumentCreateSuccessMessage,
+  getDocumentCreateSuccessTitle,
+} from '../../utils/documentCreateSuccessToast';
+import { pushActivityNotification } from '../../utils/activityNotifications';
 import { useQuotesFolderList } from '../../hooks/useQuotesFolderList';
 import { useOptimisticDocumentFlagsPatch } from '../../hooks/useOptimisticDocumentFlagsPatch';
 import { DocumentFolderLoadMore } from '../../components/finance/DocumentFolderLoadMore';
@@ -116,7 +125,6 @@ export function QuotesPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'));
-  const isWideActions = useMediaQuery(theme.breakpoints.up('lg'));
   const quotesStore = useQuotes();
   const toast = useToast();
   const { savedTags, rememberTag, removeFromLibrary } = useUserDocumentTags();
@@ -354,6 +362,33 @@ export function QuotesPage() {
           setQuoteToSend(quote);
         }
         setSendDialogOpen(true);
+        toast.success(getDocumentCreateSuccessMessage('devis'), {
+          title: getDocumentCreateSuccessTitle('devis', quote.number),
+          duration: DOCUMENT_CREATE_TOAST_DURATION_MS,
+          action: (
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                void import('../../utils/openDocumentView').then(({ openQuoteView }) =>
+                  openQuoteView(quote.id),
+                );
+              }}
+            >
+              Voir le détail
+            </Button>
+          ),
+        });
+        pushActivityNotification('quote-created', {
+          title: getDocumentCreateSuccessTitle('devis', quote.number),
+          message: `Devis ${quote.number} prêt à envoyer.`,
+          href: `/devis/${quote.id}`,
+        });
+      }
+    } catch (err: unknown) {
+      if (!isLifecycleHandledApiError(err)) {
+        const message = err instanceof Error ? err.message : 'Impossible de créer le devis';
+        toast.error(message);
       }
     } finally {
       createQuoteInFlightRef.current = false;
@@ -408,6 +443,12 @@ export function QuotesPage() {
       initialLoading={coldLoading}
       countsLoading={!countsReady}
     >
+      <DraftResumeBanner
+        resource="devis"
+        draftCount={folderCounts.brouillons ?? 0}
+        hidden={activeFolder === 'brouillons'}
+      />
+
       {coldLoading ? (
         <DocumentFolderInitialLoader
           resource="devis"
@@ -479,7 +520,7 @@ export function QuotesPage() {
                         Montant
                       </TableCell>
                       <TableCell sx={documentFolderColDueSx}>Validité</TableCell>
-                      <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>
+                      <TableCell align="center" sx={documentFolderColActionsSx(false)}>
                         Actions
                       </TableCell>
                     </TableRow>
@@ -568,10 +609,9 @@ export function QuotesPage() {
                               {quote.expiryDate ? formatDate(quote.expiryDate) : '—'}
                             </Typography>
                           </TableCell>
-                          <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>
+                          <TableCell align="center" sx={documentFolderColActionsSx(false)}>
                             <QuoteRowActionsMenu
                               quote={quote}
-                              expanded={isWideActions}
                               onEdit={() => navigate(`/devis/${quote.id}/edit`)}
                               onSend={() => openSendQuoteDialog(quote)}
                               onConvert={() => void handleViewOrConvertInvoice(quote)}
@@ -588,13 +628,14 @@ export function QuotesPage() {
             )}
 
             {displayedQuotes.length === 0 && !loading && (
-              <Box sx={[documentFolderTableCardContentPaddedSx, { textAlign: 'center', py: 4, color: 'text.secondary' }] as SxProps<Theme>}>
-                <Typography variant="body1">
-                  {searchTerm.trim()
-                    ? 'Aucun devis ne correspond à la recherche'
-                    : `Aucun devis dans « ${DOCUMENT_FOLDER_LABELS[activeFolder]} » — bouton dans le menu latéral`}
-                </Typography>
-              </Box>
+              <FinanceFolderEmptyState
+                variant={searchTerm.trim() ? 'search' : 'folder'}
+                resourceLabel="devis"
+                folderLabel={DOCUMENT_FOLDER_LABELS[activeFolder]}
+                onCreate={openCreateDialog}
+                createLabel="Nouveau devis"
+                onOpenFolders={() => setMobileNavOpen(true)}
+              />
             )}
 
             <Box sx={documentFolderTableCardFooterSx}>

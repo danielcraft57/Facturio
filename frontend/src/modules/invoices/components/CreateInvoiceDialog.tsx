@@ -13,6 +13,7 @@ import {
   useTheme,
   useMediaQuery,
   CircularProgress,
+  Link,
 } from '@mui/material'
 import {
   ReceiptLong,
@@ -32,6 +33,8 @@ import {
   ensureTrailingEmptyLine,
   filterProductLinesForSubmit,
   removeProductLine,
+  normalizeProductLineQuantity,
+  calculateProductLinesTotals,
 } from '../../../components/finance/editableProductLinesUtils'
 import { FinanceClientAutocomplete, type FinanceClientOption } from '../../../components/finance/FinanceClientAutocomplete'
 import { clientQueryDraft, guessClientNameFromQuery, isClientEmail } from '../../../components/finance/financeClientQuery'
@@ -120,11 +123,13 @@ export function CreateInvoiceDialog({
   const [splitCount, setSplitCount] = useState(3)
   const [splitFirstDue, setSplitFirstDue] = useState('')
   const [splitIntervalMonths, setSplitIntervalMonths] = useState(1)
+  const [advancedMode, setAdvancedMode] = useState(false)
 
   useEffect(() => {
     if (!open) return
     submitInFlightRef.current = false
     setSubmitInFlight(false)
+    setAdvancedMode(false)
     const nextMonth = new Date()
     nextMonth.setMonth(nextMonth.getMonth() + 1)
     setSplitFirstDue(nextMonth.toISOString().slice(0, 10))
@@ -211,7 +216,7 @@ export function CreateInvoiceDialog({
         index,
         (item) => {
           if (field === 'quantity') {
-            item.quantity = 1
+            item.quantity = normalizeProductLineQuantity(value)
           } else if (field === 'unitPrice') {
             item.unitPrice = Math.round(Number(value) || 0)
           } else if (field === 'description') {
@@ -225,18 +230,6 @@ export function CreateInvoiceDialog({
         createEmptyInvoiceItem,
       ),
     }))
-  }
-
-  const calculateTotals = () => {
-    const activeItems = filterProductLinesForSubmit(formData.items)
-    const subtotal = activeItems.reduce((sum, item) => sum + 1 * item.unitPrice, 0)
-    const taxTotal = activeItems.reduce((sum, item) => {
-      const itemTotal = 1 * item.unitPrice
-      return sum + (itemTotal * item.taxRate / 100)
-    }, 0)
-    const total = subtotal + taxTotal
-    
-    return { subtotal, taxTotal, total }
   }
 
   const ensureProductsLinked = async (itemsToLink: typeof formData.items) => {
@@ -292,14 +285,20 @@ export function CreateInvoiceDialog({
     try {
       const email = formData.clientEmail?.trim()
       const filledItems = filterProductLinesForSubmit(formData.items)
-      if (
-        !email ||
-        filledItems.length === 0 ||
-        filledItems.some((item) => item.unitPrice < 0)
-      ) {
+      if (!email) {
+        toast.error('Choisissez ou saisissez un client (email requis).', { title: 'Client manquant' })
+        return
+      }
+      if (filledItems.length === 0) {
+        toast.error('Ajoutez au moins une ligne avec un montant.', { title: 'Lignes manquantes' })
+        return
+      }
+      if (filledItems.some((item) => item.unitPrice < 0)) {
+        toast.error('Les montants doivent être positifs ou nuls.', { title: 'Montant invalide' })
         return
       }
       if (willCreateClient && !formData.newClientName?.trim()) {
+        toast.error('Le nom du nouveau client est obligatoire.', { title: 'Client à créer' })
         return
       }
       const items = await ensureProductsLinked(filledItems)
@@ -310,7 +309,7 @@ export function CreateInvoiceDialog({
         clientId: formData.clientId || undefined,
         items: items.map((it) => ({
           ...it,
-          quantity: 1,
+          quantity: normalizeProductLineQuantity(it.quantity),
           unitPrice: Math.round(Number(it.unitPrice) || 0),
         })),
         currency: 'EUR',
@@ -331,7 +330,7 @@ export function CreateInvoiceDialog({
     }
   }
 
-  const { subtotal, taxTotal, total } = calculateTotals()
+  const { subtotal, taxTotal, total } = calculateProductLinesTotals(formData.items)
 
   const currencySymbol = '€'
   const submitBusy = submitting || submitInFlight
@@ -343,7 +342,11 @@ export function CreateInvoiceDialog({
       closeDisabled={submitBusy}
       fullScreen={isMobile}
       title="Nouvelle facture"
-      subtitle="Client, lignes, échéances et options de règlement."
+      subtitle={
+        advancedMode
+          ? 'Client, lignes, échéances et options de règlement.'
+          : 'Mode rapide — client, prestation et montant.'
+      }
       icon={<ReceiptLong />}
       actions={
         <>
@@ -371,6 +374,17 @@ export function CreateInvoiceDialog({
       }
     >
         <Stack spacing={2.5}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Link
+              component="button"
+              type="button"
+              variant="body2"
+              onClick={() => setAdvancedMode((v) => !v)}
+              sx={{ fontWeight: 600, cursor: 'pointer' }}
+            >
+              {advancedMode ? 'Revenir au mode rapide' : 'Options avancées (échéancier, règlement…)'}
+            </Link>
+          </Box>
           <Box>
             <FinanceFormSectionTitle>Client</FinanceFormSectionTitle>
             <Box sx={financeFieldSx}>
@@ -450,19 +464,21 @@ export function CreateInvoiceDialog({
           </Box>
 
           <EditableProductLinesTable
-              title="Lignes de facturation"
+              title={advancedMode ? 'Lignes de facturation' : 'Prestation'}
               lines={formData.items.map((it) => ({
                 description: it.description,
-                quantity: 1,
+                quantity: normalizeProductLineQuantity(it.quantity),
                 unitPrice: Math.round(Number(it.unitPrice) || 0),
                 taxRate: it.taxRate,
               }))}
               products={productsStore.products}
               taxHeader="TVA (%)"
               taxInputProps={{ min: 0, max: 100, step: 0.1 }}
-              unitPriceWidth={96}
-              taxWidth={80}
-              descriptionWidth="64%"
+              showQuantity={advancedMode}
+              quantityWidth={64}
+              unitPriceWidth={88}
+              taxWidth={72}
+              descriptionWidth="52%"
               onRemoveLine={handleRemoveItem}
               onLineChange={(index, field, value) => {
                 if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
@@ -489,7 +505,7 @@ export function CreateInvoiceDialog({
             />
 
           <Box>
-            <FinanceFormSectionTitle>Échéances</FinanceFormSectionTitle>
+            {advancedMode ? <FinanceFormSectionTitle>Échéances</FinanceFormSectionTitle> : null}
             <Box
               sx={{
                 display: 'grid',
@@ -507,7 +523,7 @@ export function CreateInvoiceDialog({
                 sx={financeFieldSx}
               />
             </Box>
-            {!formData.paidExternally && (
+            {advancedMode && !formData.paidExternally ? (
               <Box sx={{ mt: 2 }}>
                 <FormControlLabel
                   control={
@@ -565,7 +581,7 @@ export function CreateInvoiceDialog({
                   </Box>
                 )}
               </Box>
-            )}
+            ) : null}
           </Box>
 
           <FinanceFormTotalsBox
@@ -577,6 +593,8 @@ export function CreateInvoiceDialog({
             totalValue={`${Math.round(total).toFixed(0)} ${currencySymbol}`}
           />
 
+          {advancedMode ? (
+          <>
           <Box>
             <FinanceFormSectionTitle>Options</FinanceFormSectionTitle>
           <Alert severity="info" sx={{ borderRadius: 2, mb: 2 }}>
@@ -699,6 +717,8 @@ export function CreateInvoiceDialog({
             />
           </Box>
           </Box>
+          </>
+          ) : null}
         </Stack>
     </FinanceFormDialogShell>
   )

@@ -30,6 +30,10 @@ type FinanceDocumentSearchProps = {
   placeholder?: string
   /** Libellé court dans l'en-tête du menu (ex. Factures, Devis). */
   resourceLabel?: string
+  /** Message quand la requête ne matche aucune option. */
+  noResultsHint?: string
+  /** Message quand le champ est vide (suggestions). */
+  emptyHint?: string
 }
 
 function renderHighlighted(text: string, query: string) {
@@ -57,6 +61,8 @@ export function FinanceDocumentSearch({
   loading = false,
   placeholder = 'Rechercher…',
   resourceLabel = 'Documents',
+  noResultsHint,
+  emptyHint,
 }: FinanceDocumentSearchProps) {
   const hasQuery = value.trim().length > 0
 
@@ -77,8 +83,8 @@ export function FinanceDocumentSearch({
         <Box sx={{ py: 2, px: 2, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary" fontWeight={500}>
             {hasQuery
-              ? 'Aucun résultat — essayez n°, client, statut ou montant'
-              : 'Ex. fac 20€ payé, dupont, brouillon…'}
+              ? (noResultsHint ?? 'Aucun résultat — essayez n°, client, statut ou montant')
+              : (emptyHint ?? 'Ex. fac 20€ payé, dupont, brouillon…')}
           </Typography>
         </Box>
       }

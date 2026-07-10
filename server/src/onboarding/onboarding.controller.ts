@@ -42,4 +42,10 @@ export class OnboardingController {
 			body.templateProductIds,
 		);
 	}
+
+	/** Passe l'installation catalogue : accès immédiat au tableau de bord. */
+	@Post('skip')
+	skip(@CurrentUser() user: { organizationId: number }) {
+		return this.onboarding.skipInstall(user.organizationId);
+	}
 }

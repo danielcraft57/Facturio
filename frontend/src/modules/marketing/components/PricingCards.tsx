@@ -1,10 +1,11 @@
-import { Box, Button, Card, CardContent, Chip, Container, Typography, alpha } from '@mui/material'
+import { Box, Button, Card, CardContent, Chip, Container, Stack, Typography, alpha } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
 import { Link as RouterLink } from 'react-router-dom'
-import { CATALOG_PACKS, PRICING_ADDONS_INTRO, PRICING_PLANS, PRICING_SECTION } from '../constants/siteContent'
+import { CATALOG_PACKS, CTA, PRICING_ADDONS_INTRO, PRICING_PLANS, PRICING_SECTION } from '../constants/siteContent'
 import { GA_EVENTS, trackMarketingCtaClick } from '../../../config/analyticsEvents'
 import { EfactureRoadmapAlert } from './EfactureRoadmapAlert'
 import { ScrollReveal } from './ScrollReveal'
+import { MARKETING_CONTRAST_BAND } from '../constants/marketingContrast'
 
 function planCtaTo(planId: string): string {
   if (planId === 'pro' || planId === 'pro-efacture') return '/parametres/abonnement'
@@ -86,24 +87,44 @@ export function PricingCards() {
                 </Box>
               ))}
             </Box>
-            <Button
-              component={RouterLink}
-              to={planCtaTo(plan.id)}
-              variant={plan.highlighted || plan.id === 'pro-efacture' ? 'contained' : 'outlined'}
-              color={plan.id === 'pro-efacture' ? 'warning' : 'primary'}
-              fullWidth
-              size="large"
-              onClick={() =>
-                trackMarketingCtaClick({
-                  event: GA_EVENTS.CTA_PRICING,
-                  label: plan.cta,
-                  destination: planCtaTo(plan.id),
-                  section: `pricing_${plan.id}`,
-                })
-              }
-            >
-              {plan.cta}
-            </Button>
+            <Stack spacing={1}>
+              <Button
+                component={RouterLink}
+                to={planCtaTo(plan.id)}
+                variant={plan.highlighted || plan.id === 'pro-efacture' ? 'contained' : 'outlined'}
+                color={plan.id === 'pro-efacture' ? 'warning' : 'primary'}
+                fullWidth
+                size="large"
+                onClick={() =>
+                  trackMarketingCtaClick({
+                    event: GA_EVENTS.CTA_PRICING,
+                    label: plan.cta,
+                    destination: planCtaTo(plan.id),
+                    section: `pricing_${plan.id}`,
+                  })
+                }
+              >
+                {plan.cta}
+              </Button>
+              <Button
+                component={RouterLink}
+                to={CTA.tryDemo.to}
+                variant="text"
+                color="inherit"
+                fullWidth
+                size="small"
+                onClick={() =>
+                  trackMarketingCtaClick({
+                    event: GA_EVENTS.CTA_DEMO,
+                    label: CTA.tryDemo.label,
+                    destination: CTA.tryDemo.to,
+                    section: `pricing_${plan.id}_demo`,
+                  })
+                }
+              >
+                {CTA.tryDemo.label}
+              </Button>
+            </Stack>
           </CardContent>
         </Card>
       ))}
@@ -172,16 +193,48 @@ export function PricingAddonsSection() {
   )
 }
 
-export function PricingSection({ showTitle = true }: { showTitle?: boolean }) {
+export function PricingSection({
+  showTitle = true,
+  contrastBand = false,
+}: {
+  showTitle?: boolean
+  contrastBand?: boolean
+}) {
   return (
-    <Box sx={{ py: { xs: 8, md: 10 } }}>
+    <Box
+      sx={{
+        py: { xs: 8, md: 10 },
+        ...(contrastBand
+          ? {
+              background: MARKETING_CONTRAST_BAND.pricing.background,
+              borderTop: MARKETING_CONTRAST_BAND.pricing.borderTop,
+            }
+          : {}),
+      }}
+    >
       <Container maxWidth="lg">
         {showTitle && (
           <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Typography variant="h2" sx={{ fontSize: { xs: '1.75rem', md: '2.25rem' }, fontWeight: 700, mb: 1.5 }}>
+            <Typography
+              variant="h2"
+              sx={{
+                fontSize: { xs: '1.75rem', md: '2.25rem' },
+                fontWeight: 700,
+                mb: 1.5,
+                color: contrastBand ? MARKETING_CONTRAST_BAND.pricing.titleColor : 'text.primary',
+              }}
+            >
               {PRICING_SECTION.title}
             </Typography>
-            <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 600, mx: 'auto' }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 400,
+                maxWidth: 600,
+                mx: 'auto',
+                color: contrastBand ? 'text.secondary' : 'text.secondary',
+              }}
+            >
               {PRICING_SECTION.subtitle}
             </Typography>
           </Box>

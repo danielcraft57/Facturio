@@ -1,11 +1,12 @@
 import { Box, Button, alpha, useTheme } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { navDashboard, navGroups, createNavSettingsGroup, filterNavGroups, isNavActive, navPlanFilterFromUsage } from '../config/navConfig'
 import { useBillingUsage } from '../../../hooks/useBillingUsage'
 import { settingsNavFilterFromUsage } from '../../account/settingsNav'
 import { AppMegaMenu } from './AppMegaMenu'
 import { topNavItemSx } from './topNavItemStyles'
+import { blockDemoCreateIfNeeded } from '../../../utils/demoCreateGuard'
 
 function NavTextLink({ to, label, active }: { to: string; label: string; active: boolean }) {
   const theme = useTheme()
@@ -25,6 +26,7 @@ function NavTextLink({ to, label, active }: { to: string; label: string; active:
 /** Navigation desktop — mega-menus style finance (Bloxs / Finch / fintech). */
 export function AppTopNav() {
   const location = useLocation()
+  const navigate = useNavigate()
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
   const { usage } = useBillingUsage()
@@ -53,11 +55,13 @@ export function AppTopNav() {
       <AppMegaMenu group={settingsGroup} />
 
       <Button
-        component={RouterLink}
-        to="/factures/inbox?create=1"
         variant="contained"
         size="small"
         startIcon={<AddIcon sx={{ fontSize: 18 }} />}
+        onClick={() => {
+          if (blockDemoCreateIfNeeded()) return
+          navigate('/factures/inbox?create=1')
+        }}
         sx={{
           ml: 1.5,
           textTransform: 'none',

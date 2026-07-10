@@ -30,10 +30,38 @@ export type DemoBlockedDetail = {
   code?: 'DEMO_READ_ONLY' | 'DEMO_EMAIL_BLOCKED'
 }
 
+let lastDemoBlockedToastAt = 0
+let lastDemoBlockedToastKey = ''
+
+/** Indique si l'erreur API a déjà déclenché un toast lifecycle (démo, quota). */
+export function isLifecycleHandledApiError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const code = (err as { code?: string }).code
+  const message = (err as { message?: string }).message ?? ''
+  return (
+    code === 'DEMO_READ_ONLY' ||
+    code === 'DEMO_EMAIL_BLOCKED' ||
+    /quota/i.test(message)
+  )
+}
+
 export function dispatchDemoBlockedEvent(message: string, code?: DemoBlockedDetail['code']): void {
   if (typeof window === 'undefined') return
+  const now = Date.now()
+  const dedupeKey = code ?? 'generic'
+  if (now - lastDemoBlockedToastAt < 2_500 && lastDemoBlockedToastKey === dedupeKey) return
+  lastDemoBlockedToastAt = now
+  lastDemoBlockedToastKey = dedupeKey
   window.dispatchEvent(
     new CustomEvent<DemoBlockedDetail>(DEMO_BLOCKED_EVENT, { detail: { message, code } }),
+  )
+}
+
+/** Déclenche un toast quota via LifecycleNotifier. */
+export function dispatchQuotaExceededEvent(message: string): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(
+    new CustomEvent<QuotaExceededDetail>(QUOTA_EXCEEDED_EVENT, { detail: { message } }),
   )
 }
 

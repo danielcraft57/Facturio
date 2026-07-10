@@ -1999,4 +1999,135 @@ export class EmailService implements OnModuleInit {
 			currency: 'EUR'
 		}).format(amount);
 	}
+
+	/**
+	 * Relance inscription : email non vérifié après 48 h.
+	 */
+	async sendWinbackVerifyEmail(options: {
+		to: string;
+		firstName?: string | null;
+		verifyUrl: string;
+	}): Promise<void> {
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				'Vous avez créé un compte sur ' +
+					this.platformBrand +
+					' mais l\'adresse email n\'est pas encore confirmée. Sans ça, vous ne pouvez pas accéder au tableau de bord ni créer vos premières factures.',
+			) +
+			emailBanner(
+				'<strong>Une minute suffit</strong> — cliquez ci-dessous pour activer votre compte.',
+				'info',
+			) +
+			emailButton(options.verifyUrl, 'Confirmer mon email', 'primary') +
+			emailParagraph(
+				'<span style="font-size:13px;color:#64748b;">Ce lien expire dans 24 h. Si vous n\'êtes pas à l\'origine de cette inscription, ignorez cet email.</span>',
+			) +
+			emailParagraph(`À bientôt,<br><strong>Valentine Coubertain</strong><br>${this.platformBrand}`);
+
+		const subject = `${this.platformBrand} — confirmez votre email pour commencer`;
+
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			subject,
+			html: this.getBaseLayout({
+				title: 'Confirmez votre email',
+				headline: 'Votre compte vous attend',
+				content,
+			}),
+			text: `${greeting}\n\nConfirmez votre email : ${options.verifyUrl}\n\nLien valide 24 h.\n\n${this.platformBrand}`,
+		});
+	}
+
+	/**
+	 * Relance onboarding : assistant catalogue non terminé après 72 h post-vérification.
+	 */
+	async sendWinbackOnboarding(options: {
+		to: string;
+		firstName?: string | null;
+		onboardingUrl: string;
+		dashboardUrl: string;
+	}): Promise<void> {
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				'Votre email est confirmé, mais l\'assistant d\'installation n\'a pas encore été terminé. C\'est l\'étape qui prépare votre catalogue de prestations et personnalise ' +
+					this.platformBrand +
+					' pour votre activité.',
+			) +
+			emailBanner(
+				'<strong>5 minutes</strong> — stack technique, prestations types, et vous êtes prêt à facturer.',
+				'info',
+			) +
+			emailButtonRow([
+				{ href: options.onboardingUrl, label: 'Reprendre l\'assistant', variant: 'primary' },
+				{ href: options.dashboardUrl, label: 'Voir le tableau de bord', variant: 'secondary' },
+			]) +
+			emailParagraph(`Besoin d\'aide ? Répondez à cet email.<br><br>Valentine Coubertain<br>${this.platformBrand}`);
+
+		const subject = `${this.platformBrand} — terminez votre configuration`;
+
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			subject,
+			html: this.getBaseLayout({
+				title: 'Terminez votre configuration',
+				headline: 'Votre catalogue n\'est pas encore prêt',
+				content,
+			}),
+			text: `${greeting}\n\nReprenez l'assistant : ${options.onboardingUrl}\n\n${this.platformBrand}`,
+		});
+	}
+
+	/**
+	 * Relance première facture : onboarding terminé mais aucune facture après 7 jours.
+	 */
+	async sendWinbackFirstInvoice(options: {
+		to: string;
+		firstName?: string | null;
+		createInvoiceUrl: string;
+		dashboardUrl: string;
+	}): Promise<void> {
+		const greeting = options.firstName ? `Bonjour ${options.firstName},` : 'Bonjour,';
+		const content =
+			emailParagraph(greeting) +
+			emailParagraph(
+				'Votre compte ' +
+					this.platformBrand +
+					' est configuré, mais vous n\'avez pas encore créé de facture. C\'est souvent le dernier pas avant de vraiment tester l\'outil au quotidien.',
+			) +
+			emailBanner(
+				'<strong>Plan Free</strong> — 25 factures/mois, PDF et Factur-X inclus. Pas de carte bancaire pour commencer.',
+				'info',
+			) +
+			emailParagraph(
+				'<strong>Idée de test rapide :</strong><br>' +
+					'• Créez une facture brouillon sur une prestation de votre catalogue<br>' +
+					'• Vérifiez le PDF et le score de conformité<br>' +
+					'• Envoyez-la à un vrai client quand vous êtes prêt',
+			) +
+			emailButtonRow([
+				{ href: options.createInvoiceUrl, label: 'Créer ma première facture', variant: 'primary' },
+				{ href: options.dashboardUrl, label: 'Tableau de bord', variant: 'secondary' },
+			]) +
+			emailParagraph(`À bientôt,<br><strong>Valentine Coubertain</strong><br>${this.platformBrand}`);
+
+		const subject = `${this.platformBrand} — créez votre première facture`;
+
+		await this.send({
+			from: this.verifyFrom,
+			to: options.to,
+			subject,
+			html: this.getBaseLayout({
+				title: 'Créez votre première facture',
+				headline: 'Tout est prêt, il ne manque que la facture',
+				content,
+			}),
+			text: `${greeting}\n\nCréez votre première facture : ${options.createInvoiceUrl}\n\n${this.platformBrand}`,
+		});
+	}
 }

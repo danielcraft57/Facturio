@@ -67,6 +67,12 @@ class OnboardingService {
     })
     return unwrap(res)
   }
+
+  /** Marque l'onboarding terminé sans installer le catalogue. */
+  async skip(): Promise<{ message: string }> {
+    const res = await apiClient.post('/onboarding/skip', {})
+    return unwrap<{ message: string }>(res)
+  }
 }
 
 export const onboardingService = new OnboardingService()

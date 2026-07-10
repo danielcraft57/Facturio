@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom'
 import {
   Box,
   Card,
@@ -27,6 +27,14 @@ import {
 import type { SxProps, Theme } from '@mui/material/styles'
 import { Upload, Download } from '@mui/icons-material'
 import { clientService, toCreateClientPayload, type Client, type ClientFolder } from '../../services/clients'
+import { blockDemoCreateIfNeeded } from '../../utils/demoCreateGuard'
+import { useToast } from '../../components/useToast'
+import { pushActivityNotification } from '../../utils/activityNotifications'
+import {
+  DOCUMENT_CREATE_TOAST_DURATION_MS,
+  getDocumentCreateSuccessMessage,
+  getDocumentCreateSuccessTitle,
+} from '../../utils/documentCreateSuccessToast'
 import { useClientsFolderList } from '../../hooks/useClientsFolderList'
 import { DocumentFolderLoadMore } from '../../components/finance/DocumentFolderLoadMore'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -37,6 +45,9 @@ import {
 } from '../../components/finance/ClientFolderSidebar'
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
 import { DocumentFolderInitialLoader } from '../../components/loading/DocumentFolderInitialLoader'
+import { FinanceFolderEmptyState } from '../../components/finance/FinanceFolderEmptyState'
+import { GhostInlineEdit } from '../../components/finance/GhostInlineEdit'
+import { isClientEmail } from '../../components/finance/financeClientQuery'
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton'
 import {
   financeTableHeadSx,
@@ -98,6 +109,7 @@ export function ClientsPage() {
   const { folder: folderParam } = useParams<{ folder?: string }>()
   const activeFolder: ClientFolder = isClientFolder(folderParam) ? folderParam : 'inbox'
   const navigate = useNavigate()
+  const toast = useToast()
   const theme = useTheme()
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'))
   const isWideActions = useMediaQuery(theme.breakpoints.up('lg'))
@@ -210,6 +222,7 @@ export function ClientsPage() {
   }
 
   const handleOpenCreateDialog = () => {
+    if (blockDemoCreateIfNeeded()) return
     resetClientForm()
     if (activeFolder === 'prospects') {
       setClientForm({ ...emptyClientFormValues, status: 'prospect' })
@@ -250,6 +263,25 @@ export function ClientsPage() {
         if (created && activeFolder === 'inbox' && !debouncedSearch.trim()) {
           prependClients([created])
         }
+        toast.success(getDocumentCreateSuccessMessage('client'), {
+          title: getDocumentCreateSuccessTitle('client', name),
+          duration: DOCUMENT_CREATE_TOAST_DURATION_MS,
+          action: created?.id ? (
+            <Button
+              color="inherit"
+              size="small"
+              component={RouterLink}
+              to={`/factures/inbox?create=1&clientId=${created.id}`}
+            >
+              Créer une facture
+            </Button>
+          ) : undefined,
+        })
+        pushActivityNotification('client-created', {
+          title: getDocumentCreateSuccessTitle('client', name),
+          message: `Client « ${name} » ajouté à votre carnet.`,
+          href: created?.id ? `/factures/inbox?create=1&clientId=${created.id}` : '/clients/inbox',
+        })
       } else if (formDialogMode === 'edit' && selectedClientId) {
         await clientService.updateClient({
           id: selectedClientId,
@@ -280,6 +312,36 @@ export function ClientsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  /**
+   * Met à jour un champ client depuis l'édition inline (email, téléphone).
+   */
+  const saveClientInlineField = async (
+    client: Client,
+    field: 'email' | 'phone',
+    rawValue: string,
+  ) => {
+    const value = rawValue.trim()
+    if (field === 'email') {
+      if (!value || !isClientEmail(value)) {
+        toast.error('Email invalide')
+        throw new Error('invalid')
+      }
+    }
+    await clientService.updateClient({
+      id: client.id,
+      name: client.name,
+      email: field === 'email' ? value : client.email,
+      phone: field === 'phone' ? value || undefined : client.phone,
+      status: client.status,
+    })
+    patchClientById(client.id, (c) => ({
+      ...c,
+      email: field === 'email' ? value : c.email,
+      phone: field === 'phone' ? value || undefined : c.phone,
+    }))
+    toast.success(field === 'email' ? 'Email mis à jour' : 'Téléphone mis à jour')
   }
 
   const handleDeleteClient = async () => {
@@ -469,12 +531,21 @@ export function ClientsPage() {
                           />
                         </TableCell>
                         <TableCell sx={[clientFolderColContactSx, clientFolderTableBodyCellSx] as SxProps<Theme>}>
-                          <Typography variant="body2" noWrap>
-                            {client.email}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" noWrap display="block">
-                            {client.phone || '—'}
-                          </Typography>
+                          <GhostInlineEdit
+                            value={client.email ?? ''}
+                            placeholder="Ajouter un email"
+                            inputType="email"
+                            typographyVariant="body2"
+                            validate={(v) => (!v.trim() || isClientEmail(v) ? null : 'Email invalide')}
+                            onSave={(v) => saveClientInlineField(client, 'email', v)}
+                          />
+                          <GhostInlineEdit
+                            value={client.phone ?? ''}
+                            placeholder="Ajouter un téléphone"
+                            inputType="tel"
+                            typographyVariant="caption"
+                            onSave={(v) => saveClientInlineField(client, 'phone', v)}
+                          />
                         </TableCell>
                         <TableCell
                           align="right"
@@ -526,13 +597,14 @@ export function ClientsPage() {
             )}
 
             {displayedClients.length === 0 && !loading && (
-              <Box sx={[documentFolderTableCardContentPaddedSx, { textAlign: 'center', py: 4, color: 'text.secondary' }] as SxProps<Theme>}>
-                <Typography variant="body1">
-                  {searchTerm.trim()
-                    ? 'Aucun client ne correspond à la recherche'
-                    : `Aucun client dans « ${CLIENT_FOLDER_LABELS[activeFolder]} »`}
-                </Typography>
-              </Box>
+              <FinanceFolderEmptyState
+                variant={searchTerm.trim() ? 'search' : 'folder'}
+                resourceLabel="clients"
+                folderLabel={CLIENT_FOLDER_LABELS[activeFolder]}
+                onCreate={handleOpenCreateDialog}
+                createLabel="Nouveau client"
+                onOpenFolders={() => setMobileNavOpen(true)}
+              />
             )}
 
             <Box sx={documentFolderTableCardFooterSx}>

@@ -74,6 +74,7 @@ import {
 import { RefundsPanel } from './components/RefundsPanel'
 import { AvoirsPanel } from './components/AvoirsPanel'
 import { DepositsPanel } from './components/DepositsPanel'
+import { AccountingEmptyPanel } from './components/AccountingEmptyPanel'
 import { subscribeFinanceRealtime, connectFinanceRealtime } from '../../services/financeRealtime'
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -760,10 +761,12 @@ export function AccountingPage() {
               <CircularProgress />
             </Box>
           ) : filteredMovements.length === 0 ? (
-            <Alert severity="info">
-              Aucun mouvement sur la période. Cliquez sur « Synchroniser factures » pour générer les
-              écritures à partir de vos factures émises, payées et remboursées.
-            </Alert>
+            <AccountingEmptyPanel
+              title="Aucun mouvement sur la période"
+              description="Synchronisez vos factures émises, payées et remboursées pour générer les écritures comptables, ou créez une nouvelle facture."
+              onSync={() => void handleSync()}
+              syncing={syncing}
+            />
           ) : (
             <TableContainer>
               <Table size="small" sx={financeTableSx}>
@@ -854,7 +857,12 @@ export function AccountingPage() {
               <CircularProgress />
             </Box>
           ) : trialBalance.length === 0 ? (
-            <Alert severity="info">Aucune donnée pour la période sélectionnée</Alert>
+            <AccountingEmptyPanel
+              title="Aucune donnée pour la période"
+              description="La balance des comptes se remplit après synchronisation des factures. Lancez une sync ou émettez une facture pour démarrer."
+              onSync={() => void handleSync()}
+              syncing={syncing}
+            />
           ) : (
             <TableContainer>
               <Table size="small" sx={financeTableSx}>
@@ -904,7 +912,12 @@ export function AccountingPage() {
               <CircularProgress />
             </Box>
           ) : generalLedger.length === 0 ? (
-            <Alert severity="info">Aucune écriture pour la période sélectionnée</Alert>
+            <AccountingEmptyPanel
+              title="Aucune écriture pour la période"
+              description="Le grand livre affiche les lignes comptables issues de vos factures. Synchronisez ou créez une facture pour alimenter le journal."
+              onSync={() => void handleSync()}
+              syncing={syncing}
+            />
           ) : (
             <TableContainer>
               <Table size="small" sx={financeTableSx}>

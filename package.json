@@ -13,11 +13,13 @@
     "seed:dev": "npm run seed:dev --prefix server",
     "seed:playwright": "npm run seed:playwright --prefix server",
     "marketing:capture": "node docs/marketing/scripts/capture-marketing-screenshots.mjs",
+    "demo:capture": "node docs/marketing/scripts/capture-demo-screenshots.mjs",
     "marketing:clips": "node docs/marketing/scripts/record-marketing-clips.mjs",
     "marketing:workflow": "node docs/marketing/scripts/record-workflow-demo.mjs",
     "marketing:tts": "python scripts/marketing/generate_facturio_marketing_tts.py --variant all --concat-full",
     "marketing:video": "python scripts/marketing/build_pub_video.py --variant 30s-main",
     "marketing:clean": "node docs/marketing/scripts/clean-marketing-legacy.mjs",
+    "marketing:mobile-ux": "node docs/marketing/scripts/playwright-marketing-mobile-ux.mjs",
     "email:preview": "npm run preview:emails --prefix server",
     "start:mobile": "npm run start --prefix mobile",
     "test:mobile": "npm test --prefix mobile"

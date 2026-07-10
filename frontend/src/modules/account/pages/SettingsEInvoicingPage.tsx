@@ -2,6 +2,7 @@ import { Alert, Box, Button, List, ListItem, ListItemText, Stack, Typography, al
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import { Link as RouterLink } from 'react-router-dom'
 import { EInvoicingReadinessPanel } from '../../e-invoicing/EInvoicingReadinessPanel'
+import { EInvoicingUpgradeVitrine } from '../../../components/billing/EInvoicingUpgradeVitrine'
 import {
   EFACTURE_IN_APP_DISCLAIMER,
   EFACTURE_LIVE_IN_APP,
@@ -62,6 +63,8 @@ export function SettingsEInvoicingPage() {
           </Box>
         </Stack>
       </Box>
+
+      <EInvoicingUpgradeVitrine />
 
       <EInvoicingReadinessPanel />
       <Box

@@ -122,7 +122,9 @@ export async function waitForDesktopNav(page, { timeout = 30_000 } = {}) {
       (await page.getByRole('button', { name: /finance/i }).first().isVisible().catch(() => false)) ||
       (await page.getByRole('link', { name: /tableau de bord/i }).first().isVisible().catch(() => false)) ||
       (await page.getByRole('link', { name: /nouvelle facture/i }).first().isVisible().catch(() => false)) ||
-      (await page.getByRole('button', { name: /nouvelle facture/i }).first().isVisible().catch(() => false))
+      (await page.getByRole('button', { name: /nouvelle facture/i }).first().isVisible().catch(() => false)) ||
+      (await page.getByText(/espace démo prérempli/i).first().isVisible().catch(() => false)) ||
+      (await page.getByRole('heading', { name: /^tous$/i }).first().isVisible().catch(() => false))
 
     if (ready) {
       const busy = page.locator('.MuiCircularProgress-root:visible, .MuiLinearProgress-root:visible')
@@ -210,6 +212,23 @@ export async function gotoReadyVideo(page, url, baseUrl = envBaseUrl()) {
     })
   }
   await waitForPageReadyVideo(page)
+}
+
+/** Navigation démo : shell visible sans networkidle (Vite HMR en dev). */
+export async function gotoDemoReady(page, url, baseUrl = envBaseUrl()) {
+  const cfg = getScreenshotConfig()
+  const target = url.startsWith('http') ? url : `${baseUrl.replace(/\/$/, '')}${url}`
+  await page.goto(target, {
+    waitUntil: cfg.gotoWaitUntil,
+    timeout: Math.max(cfg.gotoTimeoutMs, 60_000),
+  })
+  await waitForDesktopNav(page, { timeout: 90_000 })
+  const busy = page.locator('.MuiCircularProgress-root:visible, .MuiSkeleton-root:visible')
+  for (let i = 0; i < 40; i++) {
+    if ((await busy.count()) === 0) break
+    await page.waitForTimeout(200)
+  }
+  await page.waitForTimeout(cfg.waitMs)
 }
 
 /** Navigation + attente contenu prêt (captures PNG). */
@@ -383,42 +402,78 @@ export async function marketingApiHeaders(page) {
 export async function navigateToFirstInvoiceDetail(page, baseUrl = envBaseUrl()) {
   const apiBase = envApiBase(baseUrl)
   const headers = await marketingApiHeaders(page)
-  const res = await page.context().request.get(`${apiBase}/invoices?folder=inbox&page=1&limit=5`, {
+  const res = await page.context().request.get(`${apiBase}/factures?folder=inbox&page=1&limit=5`, {
     headers,
   })
   if (!res.ok()) {
     await gotoReadyVideo(page, '/factures/inbox', baseUrl)
-    const row = page.locator('table tbody tr').first()
-    await row.waitFor({ timeout: 12_000 })
-    await row.click()
+    const link = page.locator('a[href*="/factures/voir/"]').first()
+    if (await link.isVisible().catch(() => false)) {
+      await link.click()
+    } else {
+      const row = page.locator('table tbody tr').first()
+      await row.waitFor({ timeout: 12_000 })
+      await row.click()
+    }
     await page.waitForURL(/\/factures\/voir\//, { timeout: 20_000 }).catch(() => {})
     await waitForPageReadyVideo(page)
     return
   }
   const payload = unwrapApiBody(await res.json())
   const inv = payload?.invoices?.[0]
-  if (!inv?.id) throw new Error('Aucune facture dans inbox — relancez seed:playwright')
+  if (!inv?.id) {
+    await gotoReadyVideo(page, '/factures/inbox', baseUrl)
+    const link = page.locator('a[href*="/factures/voir/"]').first()
+    if (await link.isVisible().catch(() => false)) {
+      await link.click()
+    } else {
+      const row = page.locator('table tbody tr').first()
+      await row.waitFor({ timeout: 12_000 })
+      await row.click()
+    }
+    await page.waitForURL(/\/factures\/voir\//, { timeout: 20_000 })
+    await waitForPageReadyVideo(page)
+    return
+  }
   await gotoReadyVideo(page, `/factures/voir/${encodeURIComponent(String(inv.id))}`, baseUrl)
 }
 
 export async function navigateToFirstQuoteDetail(page, baseUrl = envBaseUrl()) {
   const apiBase = envApiBase(baseUrl)
   const headers = await marketingApiHeaders(page)
-  const res = await page.context().request.get(`${apiBase}/quotes?folder=inbox&page=1&limit=5`, {
+  const res = await page.context().request.get(`${apiBase}/devis?folder=inbox&page=1&limit=5`, {
     headers,
   })
   if (!res.ok()) {
     await gotoReadyVideo(page, '/devis/inbox', baseUrl)
-    const row = page.locator('table tbody tr').first()
-    await row.waitFor({ timeout: 12_000 })
-    await row.click()
+    const link = page.locator('a[href*="/devis/voir/"]').first()
+    if (await link.isVisible().catch(() => false)) {
+      await link.click()
+    } else {
+      const row = page.locator('table tbody tr').first()
+      await row.waitFor({ timeout: 12_000 })
+      await row.click()
+    }
     await page.waitForURL(/\/devis\/voir\//, { timeout: 20_000 }).catch(() => {})
     await waitForPageReadyVideo(page)
     return
   }
   const payload = unwrapApiBody(await res.json())
   const quote = payload?.quotes?.[0]
-  if (!quote?.id) throw new Error('Aucun devis dans inbox — relancez seed:playwright')
+  if (!quote?.id) {
+    await gotoReadyVideo(page, '/devis/inbox', baseUrl)
+    const link = page.locator('a[href*="/devis/voir/"]').first()
+    if (await link.isVisible().catch(() => false)) {
+      await link.click()
+    } else {
+      const row = page.locator('table tbody tr').first()
+      await row.waitFor({ timeout: 12_000 })
+      await row.click()
+    }
+    await page.waitForURL(/\/devis\/voir\//, { timeout: 20_000 })
+    await waitForPageReadyVideo(page)
+    return
+  }
   await gotoReadyVideo(page, `/devis/voir/${encodeURIComponent(String(quote.id))}`, baseUrl)
 }
 
@@ -457,6 +512,7 @@ export async function loginViaApi(page, baseUrl = envBaseUrl()) {
       localStorage.setItem('auth_token', token)
       if (user) localStorage.setItem('user', JSON.stringify(user))
       localStorage.setItem('facturio_device_fp', deviceFingerprint)
+      localStorage.setItem('facturio_cookie_consent_v1', new Date().toISOString())
     },
     { token, user, deviceFingerprint: MARKETING_DEVICE_FINGERPRINT },
   )
@@ -505,6 +561,75 @@ export async function login(page, baseUrl = envBaseUrl()) {
   }
 
   await gotoReady(page, `/auth/session?from=${encodeURIComponent('/dashboard')}`, baseUrl)
+}
+
+/**
+ * Connexion sur le compte démo partagé (POST /api/demo/enter).
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} [baseUrl]
+ */
+export async function loginDemoViaApi(page, baseUrl = envBaseUrl()) {
+  const apiBase = envApiBase(baseUrl)
+  const res = await page.context().request.post(`${apiBase}/demo/enter`, {
+    data: { deviceFingerprint: MARKETING_DEVICE_FINGERPRINT },
+  })
+
+  if (!res.ok()) {
+    const body = await res.text().catch(() => '')
+    throw new Error(
+      `Demo enter API ${res.status()} — lancez npm run ensure-demo --prefix server.\n${body.slice(0, 300)}`,
+    )
+  }
+
+  const payload = unwrapApiBody(await res.json())
+  const token = payload?.access_token
+  const user = payload?.user
+  if (!token) throw new Error('Demo enter : pas de access_token')
+
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+  await page.evaluate(
+    ({ token, user, deviceFingerprint }) => {
+      localStorage.setItem('auth_token', token)
+      if (user) localStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('demo_mode', '1')
+      localStorage.setItem('facturio_device_fp', deviceFingerprint)
+      localStorage.setItem('facturio_cookie_consent_v1', new Date().toISOString())
+    },
+    { token, user, deviceFingerprint: MARKETING_DEVICE_FINGERPRINT },
+  )
+
+  const org = user?.organization?.name ?? '?'
+  console.log(`[demo-capture] Session démo OK — ${user?.email ?? 'demo'} (org: ${org})`)
+}
+
+/** Entre en démo puis ouvre l'application (bootstrap session comme après /essayer). */
+export async function enterDemo(page, baseUrl = envBaseUrl()) {
+  await loginDemoViaApi(page, baseUrl)
+  const origin = baseUrl.replace(/\/$/, '')
+  const from = encodeURIComponent('/factures/inbox')
+  await page.goto(`${origin}/auth/session?from=${from}`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 60_000,
+  })
+  await page.waitForURL(/\/(factures|dashboard|devis|auth\/session)/, { timeout: 90_000 })
+  if (page.url().includes('/auth/session')) {
+    await page.waitForURL(/\/(factures|dashboard|devis)/, { timeout: 90_000 })
+  }
+  await waitForDesktopNav(page, { timeout: 90_000 })
+  await page.waitForTimeout(800)
+}
+
+/** Ferme la popin de bienvenue démo si elle est ouverte. */
+export async function dismissDemoWelcomeDialog(page) {
+  const dialog = page.getByRole('dialog').filter({ hasText: /espace démo/i })
+  if (!(await dialog.isVisible().catch(() => false))) return
+  await dialog
+    .getByRole('button', { name: /explorer seul|fermer|voir les factures/i })
+    .first()
+    .click({ timeout: 4000 })
+    .catch(() => page.keyboard.press('Escape').catch(() => {}))
+  await dialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
 }
 
 /**

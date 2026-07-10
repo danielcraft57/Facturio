@@ -5,8 +5,8 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Stack,
   Divider,
+  Typography,
 } from '@mui/material'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import VisibilityIcon from '@mui/icons-material/Visibility'
@@ -33,14 +33,16 @@ export type InvoiceRowActionsHandlers = {
 
 type InvoiceRowActionsMenuProps = InvoiceRowActionsHandlers & {
   invoice: Invoice
-  /** Afficher les boutons principaux en ligne (desktop large). */
+  /** @deprecated Toujours menu « … » (phase UX navigation). */
   expanded?: boolean
 }
 
+/**
+ * Actions ligne facture : menu compact, archivage séparé en bas.
+ */
 export function InvoiceRowActionsMenu({
   invoice,
   busy,
-  expanded = false,
   onView,
   onEdit,
   onSend,
@@ -52,25 +54,33 @@ export function InvoiceRowActionsMenu({
 }: InvoiceRowActionsMenuProps) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null)
   const emailed = wasInvoiceEmailed(invoice)
+  const isDraft = invoice.status === 'draft'
 
   const close = () => setAnchor(null)
 
-  const menuItems = [
-    <MenuItem key="view" onClick={() => { close(); onView() }} disabled={busy}>
-      <ListItemIcon>
-        <VisibilityIcon fontSize="small" />
-      </ListItemIcon>
-      <ListItemText>Voir</ListItemText>
-    </MenuItem>,
-    <MenuItem key="edit" onClick={() => { close(); onEdit() }} disabled={busy}>
-      <ListItemIcon>
-        <EditIcon fontSize="small" />
-      </ListItemIcon>
-      <ListItemText>Éditer</ListItemText>
-    </MenuItem>,
-    ...(canSend
-      ? [
-          <MenuItem key="send" onClick={() => { close(); onSend() }} disabled={busy}>
+  return (
+    <>
+      <IconButton size="small" disabled={busy} onClick={(e) => setAnchor(e.currentTarget)} aria-label="Actions facture">
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={close}>
+        {isDraft ? (
+          <MenuItem onClick={() => { close(); onEdit() }} disabled={busy}>
+            <ListItemIcon>
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Modifier</ListItemText>
+          </MenuItem>
+        ) : (
+          <MenuItem onClick={() => { close(); onView() }} disabled={busy}>
+            <ListItemIcon>
+              <VisibilityIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Voir</ListItemText>
+          </MenuItem>
+        )}
+        {canSend ? (
+          <MenuItem onClick={() => { close(); onSend() }} disabled={busy}>
             <ListItemIcon>
               {emailed ? (
                 <MarkEmailReadIcon fontSize="small" color="success" />
@@ -79,76 +89,36 @@ export function InvoiceRowActionsMenu({
               )}
             </ListItemIcon>
             <ListItemText>{emailed ? 'Renvoyer' : 'Envoyer'}</ListItemText>
-          </MenuItem>,
-        ]
-      : []),
-    ...(canRemind && onRemind
-      ? [
-          <MenuItem key="remind" onClick={() => { close(); onRemind() }} disabled={busy}>
+          </MenuItem>
+        ) : null}
+        {canRemind && onRemind ? (
+          <MenuItem onClick={() => { close(); onRemind() }} disabled={busy}>
             <ListItemIcon>
               <NotificationsActiveIcon fontSize="small" color="warning" />
             </ListItemIcon>
             <ListItemText>Relancer</ListItemText>
-          </MenuItem>,
-        ]
-      : []),
-    <Divider key="divider" />,
-    <MenuItem key="archive" onClick={() => { close(); onArchive() }} disabled={busy}>
-      <ListItemIcon>
-        <ArchiveIcon fontSize="small" />
-      </ListItemIcon>
-      <ListItemText>Archiver</ListItemText>
-    </MenuItem>,
-    <MenuItem key="pdf" onClick={() => { close(); onDownload() }} disabled={busy}>
-      <ListItemIcon>
-        <DownloadIcon fontSize="small" />
-      </ListItemIcon>
-      <ListItemText>PDF</ListItemText>
-    </MenuItem>,
-  ]
-
-  if (expanded) {
-    return (
-      <Stack direction="row" spacing={0.25} justifyContent="center" flexWrap="nowrap">
-        <IconButton size="small" title="Voir" disabled={busy} onClick={onView}>
-          <VisibilityIcon fontSize="small" />
-        </IconButton>
-        <IconButton size="small" title="Éditer" disabled={busy} onClick={onEdit}>
-          <EditIcon fontSize="small" />
-        </IconButton>
-        {canSend && (
-          <IconButton
-            size="small"
-            title={emailed ? 'Email envoyé' : 'Envoyer'}
-            disabled={busy}
-            color={emailed ? 'success' : 'default'}
-            onClick={onSend}
-          >
-            {emailed ? <MarkEmailReadIcon fontSize="small" /> : <SendIcon fontSize="small" />}
-          </IconButton>
-        )}
-        {canRemind && onRemind && (
-          <IconButton size="small" title="Relancer" disabled={busy} color="warning" onClick={onRemind}>
-            <NotificationsActiveIcon fontSize="small" />
-          </IconButton>
-        )}
-        <IconButton size="small" title="Archiver" disabled={busy} onClick={onArchive}>
-          <ArchiveIcon fontSize="small" />
-        </IconButton>
-        <IconButton size="small" title="PDF" disabled={busy} onClick={onDownload}>
-          <DownloadIcon fontSize="small" />
-        </IconButton>
-      </Stack>
-    )
-  }
-
-  return (
-    <>
-      <IconButton size="small" disabled={busy} onClick={(e) => setAnchor(e.currentTarget)} aria-label="Actions">
-        <MoreVertIcon fontSize="small" />
-      </IconButton>
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={close}>
-        {menuItems}
+          </MenuItem>
+        ) : null}
+        <MenuItem onClick={() => { close(); onDownload() }} disabled={busy}>
+          <ListItemIcon>
+            <DownloadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Télécharger PDF</ListItemText>
+        </MenuItem>
+        <Divider sx={{ my: 0.5 }} />
+        <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5, display: 'block' }}>
+          Retrait de la liste
+        </Typography>
+        <MenuItem
+          onClick={() => { close(); onArchive() }}
+          disabled={busy}
+          sx={{ color: 'warning.dark' }}
+        >
+          <ListItemIcon>
+            <ArchiveIcon fontSize="small" color="warning" />
+          </ListItemIcon>
+          <ListItemText>Archiver</ListItemText>
+        </MenuItem>
       </Menu>
     </>
   )

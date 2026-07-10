@@ -23,7 +23,8 @@ import { MarketingHero } from '../components/MarketingHero'
 import { OverflowScreenshotFrame } from '../components/OverflowScreenshotFrame'
 import { MarketingScreensShowcase } from '../components/MarketingScreensShowcase'
 import { MarketingWorkflowDemo } from '../components/MarketingWorkflowDemo'
-import { INVOICE_WORKFLOW_STEPS, QUOTE_WORKFLOW_STEPS } from '../constants/workflowDemoSteps'
+import { MarketingComparisonBlock } from '../components/MarketingComparisonBlock'
+import { DEMO_ALIGNED_INVOICE_STEPS, DEMO_ALIGNED_QUOTE_STEPS } from '../constants/demoWorkflowSteps'
 import { FeatureGrid } from '../components/FeatureGrid'
 import { PricingSection } from '../components/PricingCards'
 import { CtaSection } from '../components/CtaSection'
@@ -34,8 +35,7 @@ import { MarketingImage } from '../components/MarketingImage'
 import { EfactureRoadmapAlert } from '../components/EfactureRoadmapAlert'
 import { BetaTesterPromo } from '../components/BetaTesterPromo'
 import {
-  SITE_TAGLINE,
-  SITE_DESCRIPTION,
+  LANDING_HERO,
   REFORM_DATES,
   REFORM_HIGHLIGHTS,
   VERTICAL_SEGMENTS,
@@ -97,11 +97,11 @@ export function LandingPage() {
       )}
 
       <MarketingHero
-        badge="Réforme 2026 · Devis · Factures · Suivi client"
-        title={SITE_TAGLINE}
-        subtitle={SITE_DESCRIPTION}
+        badge={LANDING_HERO.badge}
+        title={LANDING_HERO.title}
+        subtitle={LANDING_HERO.subtitle}
         primaryCta={{ ...CTA.signupFree, gaEvent: GA_EVENTS.CTA_SIGNUP_HERO }}
-        secondaryCta={CTA.efacture2026}
+        secondaryCta={CTA.tryDemo}
         analyticsSection="landing_hero"
         visual={
           <Box sx={{ display: { xs: 'none', md: 'block' } }}>
@@ -121,7 +121,11 @@ export function LandingPage() {
 
       <BetaTesterPromo />
 
-      <MarketingScreensShowcase />
+      <MarketingScreensShowcase
+        contrastBand
+        title="L'app en vrai"
+        subtitle="Même interface que la démo : factures, devis, clients, conformité."
+      />
 
       <Box sx={{ py: { xs: 6, md: 8 } }}>
         <Container maxWidth="lg">
@@ -139,7 +143,7 @@ export function LandingPage() {
               align="center"
               sx={{ mb: 3, maxWidth: 560, mx: 'auto' }}
             >
-              Parcours réel dans l'app : création, lignes de prestation, envoi au client.
+              Parcours identique à la démo guidée : mêmes écrans, sans créer de compte.
             </Typography>
             <Tabs
               value={workflowTab}
@@ -156,13 +160,13 @@ export function LandingPage() {
               <MarketingWorkflowDemo
                 title="Créer et envoyer un devis"
                 subtitle="Choisissez le client, ajoutez vos prestations du catalogue, vérifiez le total, envoyez."
-                steps={QUOTE_WORKFLOW_STEPS}
+                steps={DEMO_ALIGNED_QUOTE_STEPS}
               />
             ) : (
               <MarketingWorkflowDemo
                 title="Émettre et envoyer une facture"
                 subtitle="Même écran que pour les devis : date d'échéance, PDF et relance si besoin."
-                steps={INVOICE_WORKFLOW_STEPS}
+                steps={DEMO_ALIGNED_INVOICE_STEPS}
               />
             )}
           </ScrollReveal>
@@ -291,6 +295,8 @@ export function LandingPage() {
         </Grid>
       </Container>
 
+      <MarketingComparisonBlock />
+
       <Box sx={{ py: { xs: 8, md: 10 }, bgcolor: 'background.default' }}>
         <Container maxWidth="lg">
           <ScrollReveal>
@@ -375,16 +381,19 @@ export function LandingPage() {
         </Container>
       </Box>
 
-      <PricingSection />
+      <PricingSection contrastBand />
       <CtaSection
         title={MARKETING_CTA.landingTitle}
         subtitle={MARKETING_CTA.landingSubtitle}
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
         primaryGaEvent={GA_EVENTS.CTA_SIGNUP}
-        secondaryLabel={CTA.betaSignup.label}
-        secondaryTo={CTA.betaSignup.to}
-        secondaryGaEvent={GA_EVENTS.CTA_BETA}
+        secondaryLabel={CTA.tryDemo.label}
+        secondaryTo={CTA.tryDemo.to}
+        secondaryGaEvent={GA_EVENTS.CTA_DEMO}
+        tertiaryLabel={CTA.betaSignup.label}
+        tertiaryTo={CTA.betaSignup.to}
+        tertiaryGaEvent={GA_EVENTS.CTA_BETA}
         analyticsSection="landing_footer"
       />
     </Box>

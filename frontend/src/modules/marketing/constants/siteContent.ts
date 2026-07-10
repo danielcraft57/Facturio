@@ -3,7 +3,59 @@
 export const SITE_TAGLINE = 'Devis et factures pour le digital — sans prise de tête'
 
 export const SITE_DESCRIPTION =
-  'PrestaFacture, c\'est l\'outil pour vos devis, factures et suivi client. Pensé pour les freelances, studios et petites équipes : sites web, communication, marketing — catalogue, paiement en ligne, TVA et réforme 2026.'
+  'Devis, factures et suivi client pour freelances et petites équipes du digital. Catalogue, PDF, TVA et réforme 2026.'
+
+/** Copy hero landing — court, une idée par ligne (effort cognitif). */
+export const LANDING_HERO = {
+  badge: 'Freelance dev · Micro-agence web',
+  title: 'Devis et factures pour vos missions techniques',
+  subtitle:
+    'Catalogue prestations dev déjà là, PDF en un clic, score conformité 2026. Compte gratuit ou démo guidée en 2 minutes — sans usine à gaz.',
+} as const
+
+/** Chiffres affichés sur la landing — uniquement des faits produit (pas de vanity metrics). */
+export const MARKETING_HONEST_STATS = [
+  { value: 12, suffix: ' €', label: 'plan Pro / mois (tarif affiché)' },
+  { value: 25, suffix: '', label: 'factures gratuites / mois (plan Free)' },
+  { value: 2026, suffix: '', label: 'réception facture électronique obligatoire' },
+  { value: 2, suffix: ' min', label: 'pour parcourir la démo guidée' },
+] as const
+
+/** Positionnement honnête vs logiciels compta généralistes. */
+export const MARKETING_COMPARISON = {
+  title: 'PrestaFacture ou Indy / Pennylane ?',
+  subtitle:
+    'Indy et Pennylane visent la compta complète (TPE, PME). PrestaFacture cible comment vous vendez et facturez vos missions web : devis, forfaits, maintenance.',
+  disclaimer:
+    'La plateforme agréée n\'est pas encore branchée chez nous — connecteur PA et e-reporting en cours. Indy/Pennylane proposent déjà plus de couverture compta.',
+  rows: [
+    {
+      label: 'Cible',
+      prestafacture: 'Freelance dev, intégrateur, micro-agence web',
+      others: 'TPE / PME, profils compta généraliste',
+    },
+    {
+      label: 'Devis & factures missions',
+      prestafacture: 'Cœur du produit (catalogue, packs, Stripe)',
+      others: 'Oui, mais dans un écosystème compta large',
+    },
+    {
+      label: 'Export comptable (FEC)',
+      prestafacture: 'Plan Pro — pour votre expert-comptable',
+      others: 'Inclus dans l\'offre compta',
+    },
+    {
+      label: 'PA / e-facture connectée',
+      prestafacture: 'En développement (offre Pro + e-facture)',
+      others: 'Déjà plus avancé sur ce volet',
+    },
+    {
+      label: 'Prix d\'entrée',
+      prestafacture: '0 € (Free) puis 12 €/mois Pro',
+      others: 'Souvent plus élevé, orienté compta complète',
+    },
+  ],
+} as const
 
 /** Résumé court des limites du plan Free — réutilisé sur toutes les pages publiques. */
 export const FREE_PLAN_SUMMARY =
@@ -427,6 +479,7 @@ export const PRICING_FAQ = [
 /** Libellés CTA réutilisables */
 export const CTA = {
   signupFree: { label: 'Commencer gratuitement', to: '/signup', gaEvent: 'cta_signup' },
+  tryDemo: { label: 'Essayer la démo', to: '/essayer', gaEvent: 'cta_demo' as const },
   betaSignup: { label: "S'inscrire avec un code beta", to: '/signup', gaEvent: 'cta_beta' },
   signupPro: { label: 'Passer Pro', to: '/parametres/abonnement', gaEvent: 'cta_pricing' },
   efacture2026: {

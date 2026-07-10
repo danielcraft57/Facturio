@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { Box, CircularProgress } from '@mui/material'
+import { Alert, Box, Button, CircularProgress } from '@mui/material'
 import { useAuthStore } from '../stores/authStore'
 import { onboardingService } from '../services/onboardingService'
 
@@ -18,10 +18,13 @@ export function OnboardingRoute({ children }: Props) {
   const user = useAuthStore((s) => s.user)
   const [loading, setLoading] = useState(true)
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null)
+  const [statusError, setStatusError] = useState(false)
 
   const exempt = SETUP_EXEMPT_PATHS.includes(location.pathname)
 
-  useEffect(() => {
+  const loadStatus = useCallback(() => {
+    setLoading(true)
+    setStatusError(false)
     let cancelled = false
     onboardingService
       .getStatus()
@@ -29,7 +32,10 @@ export function OnboardingRoute({ children }: Props) {
         if (!cancelled) setOnboardingCompleted(s.completed)
       })
       .catch(() => {
-        if (!cancelled) setOnboardingCompleted(true)
+        if (!cancelled) {
+          setOnboardingCompleted(null)
+          setStatusError(true)
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -39,6 +45,8 @@ export function OnboardingRoute({ children }: Props) {
     }
   }, [])
 
+  useEffect(() => loadStatus(), [loadStatus])
+
   if (exempt) {
     return <>{children}</>
   }
@@ -47,6 +55,23 @@ export function OnboardingRoute({ children }: Props) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
         <CircularProgress />
+      </Box>
+    )
+  }
+
+  if (statusError) {
+    return (
+      <Box sx={{ maxWidth: 480, mx: 'auto', mt: 6, px: 2 }}>
+        <Alert
+          severity="warning"
+          action={
+            <Button color="inherit" size="small" onClick={loadStatus}>
+              Réessayer
+            </Button>
+          }
+        >
+          Impossible de vérifier l&apos;état de votre configuration. Réessayez ou reconnectez-vous.
+        </Alert>
       </Box>
     )
   }

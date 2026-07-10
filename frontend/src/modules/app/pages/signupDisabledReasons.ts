@@ -1,3 +1,5 @@
+import { isSignupPasswordConfirmed, isSignupPasswordValid } from '../../utils/signupPasswordRules'
+
 /**
  * Raisons pour lesquelles le bouton « Créer mon compte » reste désactivé.
  */
@@ -29,15 +31,15 @@ export function getSignupSubmitDisabledReasons(params: {
   }
   if (!params.password) {
     reasons.push('Choisissez un mot de passe')
-  } else if (params.password.length < 8) {
-    reasons.push('Le mot de passe doit contenir au moins 8 caractères')
+  } else if (!isSignupPasswordValid(params.password)) {
+    reasons.push('Le mot de passe ne respecte pas tous les critères')
   }
   if (!params.confirmPassword) {
     reasons.push('Confirmez votre mot de passe')
   } else if (
     params.password &&
     params.confirmPassword &&
-    params.password !== params.confirmPassword
+    !isSignupPasswordConfirmed(params.password, params.confirmPassword)
   ) {
     reasons.push('Les mots de passe ne correspondent pas')
   }

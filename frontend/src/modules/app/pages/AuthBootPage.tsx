@@ -10,11 +10,36 @@ import { usePageTitle } from '../../../hooks/usePageTitle'
 
 const MIN_DISPLAY_MS = 1200
 
-const STEPS = [
+const STEPS_DEFAULT = [
   'Vérification de votre session…',
   'Chargement de votre espace…',
   'Préparation du tableau de bord…',
 ] as const
+
+/**
+ * Libellés de chargement selon la destination post-connexion.
+ *
+ * @param from - Chemin cible (query `from`)
+ */
+function stepsForDestination(from: string): readonly string[] {
+  if (from.startsWith('/installation')) {
+    return [
+      'Vérification de votre session…',
+      'Préparation de l\'assistant catalogue…',
+      'Presque prêt…',
+    ]
+  }
+  if (from.includes('/factures')) {
+    return ['Vérification de votre session…', 'Chargement des factures…', 'Ouverture…']
+  }
+  if (from.includes('/devis')) {
+    return ['Vérification de votre session…', 'Chargement des devis…', 'Ouverture…']
+  }
+  if (from.includes('/parametres')) {
+    return ['Vérification de votre session…', 'Chargement des paramètres…', 'Ouverture…']
+  }
+  return STEPS_DEFAULT
+}
 
 /**
  * Page d’attente entre connexion et application (validation session + appareil).
@@ -32,18 +57,22 @@ export function AuthBootPage() {
   const [progress, setProgress] = useState(8)
   const [error, setError] = useState<string | null>(null)
 
-  const stepLabel = useMemo(() => STEPS[Math.min(stepIndex, STEPS.length - 1)], [stepIndex])
+  const stepLabel = useMemo(() => {
+    const steps = stepsForDestination(from)
+    return steps[Math.min(stepIndex, steps.length - 1)]
+  }, [from, stepIndex])
 
   usePageTitle(pendingDevice ? 'Confirmer la connexion' : error ? 'Connexion interrompue' : stepLabel)
 
   useEffect(() => {
     if (pendingDevice) return
 
+    const steps = stepsForDestination(from)
     let cancelled = false
     const started = performance.now()
 
     const stepTimer = window.setInterval(() => {
-      setStepIndex((i) => Math.min(i + 1, STEPS.length - 1))
+      setStepIndex((i) => Math.min(i + 1, steps.length - 1))
       setProgress((p) => Math.min(p + 18, 92))
     }, 420)
 

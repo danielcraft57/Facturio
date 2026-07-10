@@ -46,6 +46,7 @@ import { invoiceService, normalizeInvoiceFromApi, unwrapApiPayload, type Invoice
 import { wasInvoiceEmailed } from './invoiceEmailUi'
 import { resolveInvoiceDisplayStatus } from './invoiceDisplayStatus'
 import { useToast } from '../../components/useToast'
+import { trackFirstPdfDownloadedIfNeeded } from '../../utils/activationAnalytics'
 import { logActivity } from '../../utils/activity'
 import { apiClient } from '../../services/api'
 import { formatCurrency, formatDate } from '../../utils/formatters'
@@ -54,6 +55,7 @@ import { RefundPaymentDialog } from './components/RefundPaymentDialog'
 import { CancelDepositDialog } from './components/CancelDepositDialog'
 import { refundsService, type Refund } from '../../services/refunds'
 import { SendInvoiceDialog, type SendInvoicePayload } from './components/SendInvoiceDialog'
+import { FinanceDocumentBreadcrumb } from '../../components/finance/FinanceDocumentBreadcrumb'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { EInvoicingReadinessPanel } from '../e-invoicing/EInvoicingReadinessPanel'
 import { useRealtimePanelHighlight } from '../../hooks/useRealtimeRowHighlight'
@@ -192,6 +194,7 @@ export function InvoiceDetailPage() {
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
+      trackFirstPdfDownloadedIfNeeded({ documentType: 'invoice', documentId: id })
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la génération du PDF')
     } finally {
@@ -294,6 +297,12 @@ export function InvoiceDetailPage() {
   if (error || !invoice) {
     return (
       <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+        <FinanceDocumentBreadcrumb
+          items={[
+            { label: 'Factures', to: '/factures/inbox' },
+            { label: 'Facture introuvable' },
+          ]}
+        />
         <Button
           startIcon={<ArrowBack />}
           onClick={() => navigate('/factures/inbox')}
@@ -355,6 +364,12 @@ export function InvoiceDetailPage() {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+      <FinanceDocumentBreadcrumb
+        items={[
+          { label: 'Factures', to: '/factures/inbox' },
+          { label: invoice.number },
+        ]}
+      />
       {isArchived && (
         <Alert
           severity="info"
@@ -370,13 +385,6 @@ export function InvoiceDetailPage() {
       )}
       {/* En-tête avec actions */}
       <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/factures/inbox')}
-        >
-          Retour
-        </Button>
-        
         <Box sx={{ flexGrow: 1 }} />
         
         <Stack direction="row" spacing={1} flexWrap="wrap">

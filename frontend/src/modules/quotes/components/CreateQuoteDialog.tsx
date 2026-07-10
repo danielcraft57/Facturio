@@ -5,6 +5,7 @@ import {
   Box,
   Stack,
   CircularProgress,
+  Link,
 } from '@mui/material'
 import { Description } from '@mui/icons-material'
 import { apiClient } from '../../../services/api'
@@ -27,6 +28,8 @@ import {
   ensureTrailingEmptyLine,
   filterProductLinesForSubmit,
   removeProductLine,
+  normalizeProductLineQuantity,
+  calculateQuoteLinesTotals,
 } from '../../../components/finance/editableProductLinesUtils'
 import { FinanceClientAutocomplete, type FinanceClientOption } from '../../../components/finance/FinanceClientAutocomplete'
 import { useToast } from '../../../components/useToast'
@@ -75,6 +78,7 @@ export function CreateQuoteDialog({
   const [willCreateClient, setWillCreateClient] = useState(false)
   const [createClientError, setCreateClientError] = useState<string | null>(null)
   const [clientFormSaving, setClientFormSaving] = useState(false)
+  const [advancedMode, setAdvancedMode] = useState(false)
   const [formData, setFormData] = useState<CreateQuoteFormData>({
     clientId: '',
     expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -87,6 +91,7 @@ export function CreateQuoteDialog({
     if (!open) return
     submitInFlightRef.current = false
     setSubmitInFlight(false)
+    setAdvancedMode(false)
   }, [open])
 
   useEffect(() => {
@@ -161,7 +166,7 @@ export function CreateQuoteDialog({
         index,
         (line) => {
           if (field === 'quantity') {
-            line.quantity = 1
+            line.quantity = normalizeProductLineQuantity(value)
           } else if (field === 'unitPrice') {
             line.unitPrice = Math.round(Number(value) || 0)
           } else if (field === 'taxRate') {
@@ -269,7 +274,16 @@ export function CreateQuoteDialog({
     try {
       const clientId = (await resolveClientId()) ?? formData.clientId
       const filledLines = filterProductLinesForSubmit(formData.lines)
-      if (!clientId || filledLines.length === 0 || filledLines.some((l) => Number(l.unitPrice) < 0)) {
+      if (!clientId) {
+        toast.error('Choisissez ou créez un client.', { title: 'Client manquant' })
+        return
+      }
+      if (filledLines.length === 0) {
+        toast.error('Ajoutez au moins une ligne avec un montant.', { title: 'Lignes manquantes' })
+        return
+      }
+      if (filledLines.some((l) => Number(l.unitPrice) < 0)) {
+        toast.error('Les montants doivent être positifs ou nuls.', { title: 'Montant invalide' })
         return
       }
 
@@ -280,7 +294,7 @@ export function CreateQuoteDialog({
         lines: lines.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
           productId: productId ?? undefined,
           description: description.trim(),
-          quantity: 1,
+          quantity: normalizeProductLineQuantity(quantity),
           unitPrice: Math.round(Number(unitPrice)),
           taxRate: Number(taxRate),
         })),
@@ -352,10 +366,14 @@ export function CreateQuoteDialog({
     }
   }
 
-  const linesForTotals = filterProductLinesForSubmit(formData.lines)
-  const subtotal = linesForTotals.reduce((s, l) => s + 1 * Number(l.unitPrice), 0)
-  const tax = linesForTotals.reduce((s, l) => s + 1 * Number(l.unitPrice) * Number(l.taxRate ?? 0), 0)
-  const total = subtotal + tax
+  const { subtotal, taxTotal: tax, total } = calculateQuoteLinesTotals(
+    filterProductLinesForSubmit(formData.lines).map((line) => ({
+      description: line.description,
+      quantity: normalizeProductLineQuantity(line.quantity),
+      unitPrice: Math.round(Number(line.unitPrice ?? 0)),
+      taxRate: Number(line.taxRate ?? 0.2),
+    })),
+  )
 
   const clientReady =
     formData.clientId !== '' ||
@@ -378,7 +396,11 @@ export function CreateQuoteDialog({
       onClose={onClose}
       closeDisabled={submitBusy}
       title="Nouveau devis"
-      subtitle="Client, validité, lignes HT et taux de TVA (décimal, ex. 0,2 = 20 %)."
+      subtitle={
+        advancedMode
+          ? 'Client, validité, lignes HT et taux de TVA (décimal, ex. 0,2 = 20 %).'
+          : 'Mode rapide — client, prestation et montant.'
+      }
       icon={<Description />}
       actions={
         <>
@@ -400,6 +422,17 @@ export function CreateQuoteDialog({
       }
     >
       <Stack spacing={2.5}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Link
+            component="button"
+            type="button"
+            variant="body2"
+            onClick={() => setAdvancedMode((v) => !v)}
+            sx={{ fontWeight: 600, cursor: 'pointer' }}
+          >
+            {advancedMode ? 'Revenir au mode rapide' : 'Options avancées (validité, quantités…)'}
+          </Link>
+        </Box>
         <Box>
           <FinanceFormSectionTitle>Client</FinanceFormSectionTitle>
           <Box sx={{ ...financeFieldSx }}>
@@ -461,6 +494,7 @@ export function CreateQuoteDialog({
           </Box>
         </Box>
 
+        {advancedMode ? (
         <Box>
           <FinanceFormSectionTitle>Validité</FinanceFormSectionTitle>
           <TextField
@@ -473,18 +507,20 @@ export function CreateQuoteDialog({
             sx={financeFieldSx}
           />
         </Box>
+        ) : null}
 
         <EditableProductLinesTable
-          title="Lignes du devis"
+          title={advancedMode ? 'Lignes du devis' : 'Prestation'}
           lines={formData.lines.map((line) => ({
             description: line.description,
-            quantity: 1,
+            quantity: normalizeProductLineQuantity(line.quantity),
             unitPrice: Math.round(Number(line.unitPrice ?? 0)),
             taxRate: Number(line.taxRate ?? 0.2),
           }))}
           products={productsStore.products}
           taxHeader="TVA (0-1)"
           taxInputProps={{ min: 0, max: 1, step: 0.01 }}
+          showQuantity={advancedMode}
           unitPriceWidth={96}
           taxWidth={80}
           descriptionWidth="64%"

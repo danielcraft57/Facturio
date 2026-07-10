@@ -29,6 +29,8 @@ import {
 } from '../../../services/onboardingService'
 import { catalogService, type CatalogPack, type TechStackChoices } from '../../../services/catalogService'
 import { dispatchOnboardingInstalledEvent } from '../../../utils/lifecycleNotifications'
+import { useToast } from '../../../components/useToast'
+import { GA_EVENTS, trackActivationEvent } from '../../../config/analyticsEvents'
 
 const INSTALL_STEPS = [
   'Analyse de votre stack…',
@@ -90,6 +92,8 @@ export function OnboardingInstallPage() {
   const [catalogPacks, setCatalogPacks] = useState<CatalogPack[]>([])
   const [selectedPackIds, setSelectedPackIds] = useState<string[]>([])
   const packsSuggestedRef = useRef(false)
+  const [skipping, setSkipping] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
     void catalogService.listPacks().then(setCatalogPacks).catch(() => {})
@@ -188,6 +192,33 @@ export function OnboardingInstallPage() {
 
   usePageTitle(`Assistant — ${WIZARD_STEPS[wizardStep] ?? 'Configuration'}`)
 
+  const advanceWizardStep = (next: number, victoryMessage?: string) => {
+    setWizardStep(next)
+    if (victoryMessage) {
+      toast.success(victoryMessage, { duration: 4000 })
+    }
+  }
+
+  const handleSkipOnboarding = async () => {
+    if (replayMode || skipping) return
+    setSkipping(true)
+    setError(null)
+    try {
+      const res = await onboardingService.skip()
+      trackActivationEvent(GA_EVENTS.ONBOARDING_SKIPPED)
+      const destination =
+        user?.emailVerified !== true ? '/inscription/confirmation' : returnTo
+      const navState =
+        destination === '/inscription/confirmation'
+          ? { email: user?.email ?? '', onboardingDone: true, skippedCatalog: true }
+          : { onboardingDone: true, skippedCatalog: true, message: res.message }
+      navigate(destination, { replace: true, state: navState })
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Impossible de passer cette étape')
+      setSkipping(false)
+    }
+  }
+
   const handlePreview = async () => {
     if (!canValidate) {
       setTechError('Choisissez au moins 2 technologies')
@@ -200,7 +231,7 @@ export function OnboardingInstallPage() {
       const res = await onboardingService.preview(technologyIds)
       setPreview(res.products)
       setSelectedProductIds(res.products.filter((p) => p.suggested).map((p) => p.id))
-      setWizardStep(3)
+      advanceWizardStep(3, `${res.products.length} prestation(s) trouvée(s) pour votre stack.`)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erreur lors de la prévisualisation')
     } finally {
@@ -310,6 +341,7 @@ export function OnboardingInstallPage() {
       steps={WIZARD_STEPS}
       title={layoutTitle}
       subtitle={layoutSubtitle}
+      profileId={devProfile}
     >
       {replayMode && wizardStep < 4 && (
         <Alert
@@ -333,14 +365,20 @@ export function OnboardingInstallPage() {
         </Alert>
       )}
 
-      {wizardStep === 0 && <OnboardingDevWelcomeStep onNext={() => setWizardStep(1)} />}
+      {wizardStep === 0 && (
+        <OnboardingDevWelcomeStep
+          onNext={() => advanceWizardStep(1)}
+          onSkip={!replayMode ? () => void handleSkipOnboarding() : undefined}
+          skipping={skipping}
+        />
+      )}
 
       {wizardStep === 1 && (
         <OnboardingDevProfileStep
           selected={devProfile}
           onSelect={handleProfileSelect}
           onBack={() => setWizardStep(0)}
-          onNext={() => setWizardStep(2)}
+          onNext={() => advanceWizardStep(2, 'Profil enregistré — on adapte technos et catalogue.')}
         />
       )}
 
@@ -416,7 +454,7 @@ export function OnboardingInstallPage() {
           </Typography>
           <LinearProgress variant="determinate" value={installProgress} sx={{ mb: 2, height: 8, borderRadius: 1 }} />
           <Typography variant="body2" color="text.secondary">
-            Votre espace développeur est en cours de préparation…
+            Votre catalogue est en cours de préparation…
           </Typography>
         </Box>
       )}

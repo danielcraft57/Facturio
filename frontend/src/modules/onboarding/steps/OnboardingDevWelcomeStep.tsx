@@ -7,8 +7,8 @@ import SpeedIcon from '@mui/icons-material/Speed'
 const HIGHLIGHTS = [
   {
     icon: <TerminalIcon color="primary" />,
-    title: 'Pensé pour coder',
-    text: 'Catalogue de prestations aligné sur votre stack — pas un ERP générique.',
+    title: 'Pensé pour le web',
+    text: 'Catalogue de prestations aligné sur votre métier — pas un ERP générique.',
   },
   {
     icon: <EuroIcon color="primary" />,
@@ -18,20 +18,25 @@ const HIGHLIGHTS = [
   {
     icon: <Inventory2OutlinedIcon color="primary" />,
     title: 'Offre clé en main',
-    text: 'Modèles inspirés de prestations dev réelles : sites, API, maintenance, IA.',
+    text: 'Modèles inspirés de prestations réelles : sites, design, contenu, conseil.',
   },
   {
     icon: <SpeedIcon color="primary" />,
     title: 'Budget maîtrisé',
-    text: 'Idéal quand on démarre : peu de clients, beaucoup de techno, peu de temps admin.',
+    text: 'Idéal quand on démarre : peu de clients, beaucoup à livrer, peu de temps admin.',
   },
 ] as const
 
 type Props = {
   onNext: () => void
+  onSkip?: () => void
+  skipping?: boolean
 }
 
-export function OnboardingDevWelcomeStep({ onNext }: Props) {
+/**
+ * Étape d'accueil de l'assistant d'installation (tous profils freelances web).
+ */
+export function OnboardingDevWelcomeStep({ onNext, onSkip, skipping }: Props) {
   return (
     <Box>
       <Box
@@ -45,10 +50,10 @@ export function OnboardingDevWelcomeStep({ onNext }: Props) {
         })}
       >
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-          PrestaFacture est réservé aux développeurs
+          PrestaFacture, pour les freelances du web
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Freelances, indie hackers, petites structures tech : on vous aide à facturer comme vous codez —
+          Dev, design, commercial, communication : on vous aide à facturer votre activité —
           sans tableur ni catalogue figé hérité d&apos;un autre métier.
         </Typography>
       </Box>
@@ -69,9 +74,16 @@ export function OnboardingDevWelcomeStep({ onNext }: Props) {
         ))}
       </Stack>
 
-      <Button variant="contained" size="large" fullWidth onClick={onNext}>
-        C&apos;est pour moi — continuer
-      </Button>
+      <Stack spacing={1.5}>
+        <Button variant="contained" size="large" fullWidth onClick={onNext}>
+          C&apos;est pour moi — continuer
+        </Button>
+        {onSkip ? (
+          <Button variant="text" size="medium" fullWidth onClick={onSkip} disabled={skipping}>
+            {skipping ? 'Ouverture de votre espace…' : 'Configurer mon catalogue plus tard'}
+          </Button>
+        ) : null}
+      </Stack>
     </Box>
   )
 }

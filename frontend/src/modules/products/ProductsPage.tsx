@@ -2,13 +2,11 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
-  TextField,
   Button,
   MenuItem,
   Fade,
   IconButton,
   Menu,
-  InputAdornment,
   Typography,
   ToggleButton,
   ToggleButtonGroup,
@@ -17,14 +15,17 @@ import {
   Tooltip,
   Alert,
 } from '@mui/material';
+import { blockDemoCreateIfNeeded } from '../../utils/demoCreateGuard'
+import { pushActivityNotification } from '../../utils/activityNotifications';
 import { PageHeader } from '../../components/finance/PageHeader';
 import { financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles';
 import { useProducts } from '../../hooks/useStores';
 import { useProductsCatalogList } from '../../hooks/useProductsCatalogList';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import type { Product } from '../../types/product';
-import SearchIcon from '@mui/icons-material/Search';
-import ClearIcon from '@mui/icons-material/Clear';
+import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch';
+import { FinanceFolderEmptyState } from '../../components/finance/FinanceFolderEmptyState';
+import { buildProductSearchOptions } from '../../utils/productSearch';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewCompactIcon from '@mui/icons-material/ViewCompact';
 import ViewStreamIcon from '@mui/icons-material/ViewStream';
@@ -96,7 +97,6 @@ export function ProductsPage() {
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim().toLowerCase(), 280);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [displayMode, setDisplayMode] = useState<'catalog' | 'list' | 'compact'>(loadDisplayMode);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -141,6 +141,8 @@ export function ProductsPage() {
       .sort((a, b) => b.s - a.s || a.p.name.localeCompare(b.p.name))
       .map((x) => x.p);
   }, [products, debouncedSearch]);
+
+  const searchOptions = useMemo(() => buildProductSearchOptions(products), [products]);
 
   const flashHighlight = (productId: number, tone: RealtimeHighlightTone = 'created') => {
     setHighlightProductId(productId);
@@ -245,6 +247,23 @@ export function ProductsPage() {
     }
   };
 
+  const handleInlineUnitPrice = async (product: Product, unitPrice: number) => {
+    const updated = await productsStore.updateProduct(product.id, { unitPrice });
+    if (!updated) {
+      toast.error('Impossible de mettre à jour le tarif.');
+      throw new Error('update failed');
+    }
+    patchProduct(updated);
+    flashHighlight(updated.id, 'updated');
+    toast.success(`Tarif de « ${updated.name} » mis à jour`);
+    pushActivityNotification('product-price-updated', {
+      title: `Tarif mis à jour`,
+      message: `« ${updated.name} » : ${unitPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}.`,
+      href: '/produits/liste',
+    });
+    syncStoreCache();
+  };
+
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
     const { id, name } = productToDelete;
@@ -311,7 +330,10 @@ export function ProductsPage() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => setCreateProductOpen(true)}
+              onClick={() => {
+                if (blockDemoCreateIfNeeded()) return
+                setCreateProductOpen(true)
+              }}
               sx={financePrimaryButtonSx}
             >
               Nouveau produit
@@ -342,47 +364,20 @@ export function ProductsPage() {
           </ToggleButton>
         </ToggleButtonGroup>
 
-        <Box
-          sx={{
-            flex: 1,
-            p: 0.5,
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: searchFocused ? 'primary.main' : 'divider',
-            bgcolor: 'background.paper',
-            boxShadow: searchFocused ? '0 12px 30px rgba(25,118,210,0.16)' : '0 2px 10px rgba(15,23,42,0.05)',
-            transform: searchFocused ? 'translateY(-1px)' : 'translateY(0)',
-            transition: 'all 180ms ease',
-          }}
-        >
-          <TextField
-            fullWidth
-            placeholder="Recherche intelligente: nom, SKU, description, détails, techno..."
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <FinanceDocumentSearch
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2.5,
-                '& fieldset': { border: 'none' },
-              },
-            }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-                endAdornment: search ? (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearch('')} aria-label="Effacer la recherche">
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ) : undefined,
-              },
+            onChange={setSearch}
+            options={searchOptions}
+            loading={loading && !initialLoading}
+            resourceLabel="Produits"
+            placeholder="Nom, SKU, techno, catégorie…"
+            noResultsHint="Aucun produit — essayez un autre nom, SKU ou techno"
+            emptyHint="Ex. react, audit, forfait, SKU…"
+            onSelect={(opt) => {
+              if (!opt) return;
+              const productId = Number(opt.id);
+              if (!Number.isNaN(productId)) flashHighlight(productId);
             }}
           />
         </Box>
@@ -440,23 +435,42 @@ export function ProductsPage() {
             )}
 
             <Fade key={contentKey} in timeout={{ enter: 280, exit: 160 }}>
-              <Box
-                sx={{
-                  opacity: showProgress ? 0.72 : 1,
-                  transition: 'opacity 0.22s ease',
-                  pointerEvents: loading ? 'none' : 'auto',
-                  pt: showProgress ? 0.5 : 0,
-                }}
-              >
-                <ProductCatalogSections
-                  products={filteredProducts}
-                  onMenu={openProductMenu}
-                  onCardClick={setEditingProduct}
-                  mode={displayMode}
-                  highlightProductId={highlightProductId}
-                  highlightTone={highlightTone}
-                />
-              </Box>
+                <Box
+                  sx={{
+                    opacity: showProgress ? 0.72 : 1,
+                    transition: 'opacity 0.22s ease',
+                    pointerEvents: loading ? 'none' : 'auto',
+                    pt: showProgress ? 0.5 : 0,
+                  }}
+                >
+                  {filteredProducts.length === 0 ? (
+                    <FinanceFolderEmptyState
+                      variant={debouncedSearch ? 'search' : 'folder'}
+                      resourceLabel="produits"
+                      onCreate={() => {
+                        if (blockDemoCreateIfNeeded()) return;
+                        setCreateProductOpen(true);
+                      }}
+                      createLabel="Nouveau produit"
+                      secondaryCta={
+                        debouncedSearch
+                          ? undefined
+                          : { label: 'Installer le catalogue', to: '/installation?returnTo=/produits' }
+                      }
+                      showFolderHint={false}
+                    />
+                  ) : (
+                    <ProductCatalogSections
+                      products={filteredProducts}
+                      onMenu={openProductMenu}
+                      onCardClick={setEditingProduct}
+                      onUnitPriceSave={(product, unitPrice) => handleInlineUnitPrice(product, unitPrice)}
+                      mode={displayMode}
+                      highlightProductId={highlightProductId}
+                      highlightTone={highlightTone}
+                    />
+                  )}
+                </Box>
             </Fade>
           </>
         )}

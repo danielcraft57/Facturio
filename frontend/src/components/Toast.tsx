@@ -4,9 +4,7 @@ import {
   AlertTitle,
   Box,
   Typography,
-  IconButton,
 } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
 import { useState, useEffect, useCallback } from 'react'
 import type { ToastMessage } from './toastContext'
 
@@ -50,16 +48,6 @@ export function Toast({ message, onClose }: ToastProps) {
         action={
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             {message.action}
-            {message.closable && (
-              <IconButton
-                size="small"
-                color="inherit"
-                onClick={handleClose}
-                sx={{ ml: 1 }}
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            )}
           </Box>
         }
         sx={{
@@ -142,14 +130,6 @@ export function PersistentToast({ message, onClose }: ToastProps) {
         action={
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             {message.action}
-            <IconButton
-              size="small"
-              color="inherit"
-              onClick={handleClose}
-              sx={{ ml: 1 }}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
           </Box>
         }
         sx={{

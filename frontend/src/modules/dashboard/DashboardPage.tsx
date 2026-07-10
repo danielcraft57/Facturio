@@ -28,6 +28,9 @@ import {
 } from '@mui/icons-material'
 import { useEffect, useState } from 'react'
 import { useDashboard, useClients, useInvoices } from '../../hooks/useStores'
+import { quoteService } from '../../services/quoteService'
+import { unwrapApiPayload } from '../../services/invoices'
+import { DraftResumeBanner } from '../../components/finance/DraftResumeBanner'
 import { RevenueChart } from './components/RevenueChart'
 import { TopClientsChart } from './components/TopClientsChart'
 import { InvoiceStatusChart } from './components/InvoiceStatusChart'
@@ -35,12 +38,17 @@ import { PeriodFilter } from './components/PeriodFilter'
 import { PageHeader } from '../../components/finance/PageHeader'
 import { financeCardSx, financeKpiGradients, financePagePadding } from '../../components/finance/financeStyles'
 import { EInvoicingReadinessPanel } from '../e-invoicing/EInvoicingReadinessPanel'
+import { DemoExploreChecklist } from '../../components/demo/DemoExploreChecklist'
+import { AccountActivationChecklist } from '../../components/activation/AccountActivationChecklist'
+import { VerifyEmailSuccessNotifier } from '../../components/activation/VerifyEmailSuccessNotifier'
+import { DashboardRecentEmptyState } from '../../components/dashboard/DashboardRecentEmptyState'
 
 export function DashboardPage() {
   const dashboardStore = useDashboard()
   const clientsStore = useClients()
   const invoicesStore = useInvoices()
   const [period, setPeriod] = useState('1y')
+  const [quoteDraftCount, setQuoteDraftCount] = useState(0)
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -57,6 +65,18 @@ export function DashboardPage() {
     }
 
     fetchDashboardData()
+  }, [])
+
+  useEffect(() => {
+    void quoteService
+      .getFolderCounts()
+      .then((res) => {
+        const counts = unwrapApiPayload<{ brouillons?: number }>(res)
+        setQuoteDraftCount(counts.brouillons ?? 0)
+      })
+      .catch(() => {
+        /* ignore */
+      })
   }, [])
 
   const formatCurrency = (amount: number) => {
@@ -126,6 +146,13 @@ export function DashboardPage() {
         title="Tableau de bord"
         subtitle="Indicateurs clés, trésorerie et suivi de l'activité"
       />
+
+      <VerifyEmailSuccessNotifier />
+      <DemoExploreChecklist />
+      <AccountActivationChecklist />
+
+      <DraftResumeBanner resource="factures" draftCount={invoices.draft ?? 0} />
+      <DraftResumeBanner resource="devis" draftCount={quoteDraftCount} />
 
       <EInvoicingReadinessPanel compact />
 
@@ -262,6 +289,10 @@ export function DashboardPage() {
             </Card>
           ))}
         </Box>
+      ) : !dashboardStore.isLoading ? (
+        <Alert severity="info" sx={{ mb: 4 }}>
+          Vos graphiques apparaîtront dès votre première facture émise.
+        </Alert>
       ) : null}
 
       {/* Contenu principal */}
@@ -288,6 +319,13 @@ export function DashboardPage() {
               />
             </Box>
             
+            {invoicesStore.invoices.length === 0 ? (
+              <DashboardRecentEmptyState
+                resource="factures"
+                actionTo="/factures/inbox?create=1"
+                actionLabel="Créer une facture"
+              />
+            ) : (
             <TableContainer>
               <Table size="small">
                 <TableHead>
@@ -364,6 +402,7 @@ export function DashboardPage() {
                 </TableBody>
               </Table>
             </TableContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -382,6 +421,13 @@ export function DashboardPage() {
               />
             </Box>
             
+            {clientsStore.clients.length === 0 ? (
+              <DashboardRecentEmptyState
+                resource="clients"
+                actionTo="/clients/inbox?create=1"
+                actionLabel="Ajouter un client"
+              />
+            ) : (
             <Stack spacing={2}>
               {clientsStore.clients.map((client) => (
                 <Box key={client.id} sx={{ 
@@ -428,6 +474,7 @@ export function DashboardPage() {
                 </Box>
               ))}
             </Stack>
+            )}
           </CardContent>
         </Card>
       </Box>

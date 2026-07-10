@@ -19,8 +19,8 @@ import {
   betaLifecycleNoticeCopy,
   onboardingInstalledNoticeCopy,
 } from '../../../utils/lifecycleNotifications'
-
-type QuotaKind = 'invoices' | 'quotes' | 'emails'
+import { pushActivityNotification } from '../../../utils/activityNotifications'
+import { getNotificationMatrixRule } from '../../../config/notificationMatrix'
 
 /**
  * Toasts lifecycle : quotas Free, jalons beta, installation catalogue.
@@ -34,15 +34,22 @@ export function LifecycleNotifier() {
   useEffect(() => {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<DemoBlockedDetail>).detail
-      const message = detail?.message ?? 'Action désactivée en mode démo.'
-      const title = detail?.code === 'DEMO_EMAIL_BLOCKED' ? 'Envoi désactivé' : 'Mode démo'
+      const message =
+        detail?.message ??
+        'Cette action nécessite votre compte. Vous pouvez continuer à explorer les exemples.'
+      const title =
+        detail?.code === 'DEMO_EMAIL_BLOCKED'
+          ? 'Envoi désactivé en démo'
+          : detail?.code === 'DEMO_READ_ONLY'
+            ? 'Création réservée à votre compte'
+            : 'Mode démo'
 
       toast.info(message, {
         title,
         duration: 10000,
         action: (
-          <Button component={RouterLink} to="/signup" size="small" color="inherit">
-            Créer un compte
+          <Button component={RouterLink} to={getNotificationMatrixRule('demo-blocked').ctaHref!} size="small" color="inherit" variant="outlined">
+            {getNotificationMatrixRule('demo-blocked').ctaLabel}
           </Button>
         ),
       })
@@ -64,10 +71,14 @@ export function LifecycleNotifier() {
         title: 'Quota atteint',
         duration: 12000,
         action: (
-          <Button component={RouterLink} to="/parametres/quotas" size="small" color="inherit">
-            Voir les quotas
+          <Button component={RouterLink} to={getNotificationMatrixRule('quota-api-block').ctaHref!} size="small" color="inherit">
+            {getNotificationMatrixRule('quota-api-block').ctaLabel}
           </Button>
         ),
+      })
+      pushActivityNotification('quota-api-block', {
+        title: 'Quota atteint',
+        message,
       })
     }
 
@@ -90,10 +101,14 @@ export function LifecycleNotifier() {
         title: copy.title,
         duration: 11000,
         action: (
-          <Button component={RouterLink} to="/produits" size="small" color="inherit">
-            Mon catalogue
+          <Button component={RouterLink} to={getNotificationMatrixRule('onboarding-installed').ctaHref!} size="small" color="inherit">
+            {getNotificationMatrixRule('onboarding-installed').ctaLabel}
           </Button>
         ),
+      })
+      pushActivityNotification('onboarding-installed', {
+        title: copy.title,
+        message: copy.message,
       })
     }
 
@@ -104,29 +119,6 @@ export function LifecycleNotifier() {
   useEffect(() => {
     if (!usage || usage.plan !== 'FREE' || !userId) return
 
-    const notify = (kind: QuotaKind, atLimit: boolean, nearLimit: boolean, label: string) => {
-      if (!atLimit && !nearLimit) return
-      const toastKind = atLimit ? `${kind}-limit` : `${kind}-warn`
-      if (wasQuotaToastShown(toastKind)) return
-      markQuotaToastShown(toastKind)
-
-      const fn = atLimit ? toast.error : toast.warning
-      fn(
-        atLimit
-          ? `Quota ${label} atteint ce mois-ci. Passez au Pro ou attendez le 1er du mois prochain.`
-          : `Vous approchez du quota ${label} sur le plan Free.`,
-        {
-          title: atLimit ? 'Quota atteint' : 'Quota bientôt atteint',
-          duration: atLimit ? 12000 : 9000,
-          action: (
-            <Button component={RouterLink} to="/parametres/quotas" size="small" color="inherit">
-              Détails
-            </Button>
-          ),
-        },
-      )
-    }
-
     const maxInv = usage.limits.maxInvoicesPerMonth ?? 25
     const maxQuotes = usage.limits.maxQuotesPerMonth ?? 10
     const maxEmails = usage.limits.maxEmailsPerMonth ?? 20
@@ -135,9 +127,64 @@ export function LifecycleNotifier() {
     const quotePct = maxQuotes > 0 ? (usage.usage.quotesThisMonth / maxQuotes) * 100 : 0
     const emailPct = maxEmails > 0 ? (usage.usage.emailsSentThisMonth / maxEmails) * 100 : 0
 
-    notify('invoices', usage.atLimit, invPct >= 80 && !usage.atLimit, 'factures')
-    notify('quotes', usage.atQuoteLimit, quotePct >= 80 && !usage.atQuoteLimit, 'devis')
-    notify('emails', usage.atEmailLimit, emailPct >= 80 && !usage.atEmailLimit, 'emails')
+    const atLimitLabels: string[] = []
+    const warnLabels: string[] = []
+
+    if (usage.atLimit) atLimitLabels.push('factures')
+    else if (invPct >= 80) warnLabels.push('factures')
+
+    if (usage.atQuoteLimit) atLimitLabels.push('devis')
+    else if (quotePct >= 80 && !usage.atQuoteLimit) warnLabels.push('devis')
+
+    if (usage.atEmailLimit) atLimitLabels.push('emails')
+    else if (emailPct >= 80 && !usage.atEmailLimit) warnLabels.push('emails')
+
+    if (atLimitLabels.length === 0 && warnLabels.length === 0) return
+
+    const monthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+
+    if (atLimitLabels.length > 0) {
+      const kind = `quota-batch-limit-${monthKey}`
+      if (wasQuotaToastShown(kind)) return
+      markQuotaToastShown(kind)
+      toast.error(
+        `Quotas atteints ce mois-ci : ${atLimitLabels.join(', ')}. Passez au Pro ou attendez le 1er du mois prochain.`,
+        {
+          title: 'Quota atteint',
+          duration: 12_000,
+          action: (
+            <Button component={RouterLink} to={getNotificationMatrixRule('quota-batch-limit').ctaHref!} size="small" color="inherit">
+              {getNotificationMatrixRule('quota-batch-limit').ctaLabel}
+            </Button>
+          ),
+        },
+      )
+      pushActivityNotification('quota-batch-limit', {
+        title: 'Quota atteint',
+        message: `Quotas atteints : ${atLimitLabels.join(', ')}.`,
+      })
+      return
+    }
+
+    const kind = `quota-batch-warn-${monthKey}`
+    if (wasQuotaToastShown(kind)) return
+    markQuotaToastShown(kind)
+    toast.warning(
+      `Vous approchez des quotas Free : ${warnLabels.join(', ')}.`,
+      {
+        title: 'Quota bientôt atteint',
+        duration: 9000,
+        action: (
+          <Button component={RouterLink} to={getNotificationMatrixRule('quota-batch-warn').ctaHref!} size="small" color="inherit">
+            {getNotificationMatrixRule('quota-batch-warn').ctaLabel}
+          </Button>
+        ),
+      },
+    )
+    pushActivityNotification('quota-batch-warn', {
+      title: 'Quota bientôt atteint',
+      message: `Proche des limites : ${warnLabels.join(', ')}.`,
+    })
   }, [usage, toast, userId])
 
   useEffect(() => {
@@ -157,10 +204,15 @@ export function LifecycleNotifier() {
       title: copy.title,
       duration: phase === 'expired' || phase === '7d' ? 14000 : 11000,
       action: (
-        <Button component={RouterLink} to="/parametres/abonnement" size="small" color="inherit">
-          {phase === 'expired' ? 'Passer Pro' : 'Mon abonnement'}
+        <Button component={RouterLink} to={getNotificationMatrixRule('beta-lifecycle').ctaHref!} size="small" color="inherit">
+          {phase === 'expired' ? 'Passer Pro' : getNotificationMatrixRule('beta-lifecycle').ctaLabel}
         </Button>
       ),
+    })
+    pushActivityNotification('beta-lifecycle', {
+      title: copy.title,
+      message: copy.message,
+      type: copy.severity === 'error' ? 'error' : copy.severity === 'warning' ? 'warning' : 'info',
     })
   }, [usage?.betaTester, userId, toast])
 

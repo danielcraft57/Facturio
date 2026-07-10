@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Box,
-  Button,
   Collapse,
   List,
   ListItemButton,
@@ -11,8 +10,8 @@ import {
   Skeleton,
   Typography,
 } from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
 import ExpandLess from '@mui/icons-material/ExpandLess'
+import { DemoRestrictedCreateButton } from '../demo/DemoRestrictedCreateButton'
 import ExpandMore from '@mui/icons-material/ExpandMore'
 import type { FolderNavConfig } from '../../types/folderNav'
 import { formatDocumentFolderCount } from '../../types/documentFolders'
@@ -223,18 +222,12 @@ export function GroupedFolderSidebarContent<F extends string>({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ p: 1.5, pb: 1 }}>
-        <Button
-          fullWidth
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            onNew()
-            onNavigate?.()
-          }}
+        <DemoRestrictedCreateButton
+          label={newLabel}
+          onCreate={onNew}
+          onAfterClick={onNavigate}
           sx={documentFolderNewButtonSx}
-        >
-          {newLabel}
-        </Button>
+        />
       </Box>
 
       <List dense sx={{ flex: 1, px: 0.75, py: 0.5 }}>

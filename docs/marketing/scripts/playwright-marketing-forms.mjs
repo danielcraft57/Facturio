@@ -126,13 +126,16 @@ export async function fillEditProductWizard(page) {
 
 /** @param {import('playwright').Page} page */
 export async function openFirstProductForEdit(page) {
-  await page.getByRole('button', { name: /^catalogue$/i }).click()
-  await page.waitForTimeout(600)
-  const card = page.locator('[class*="MuiCard"]').filter({ hasText: /site|vitrine|react|api/i }).first()
+  await page.getByRole('button', { name: /^catalogue$/i }).click({ timeout: 8000 }).catch(() => {})
+  await page.waitForTimeout(800)
+  const card = page.locator('.MuiCard-root').filter({ hasText: /site|vitrine|react|api|développement/i }).first()
   if ((await card.count()) > 0) {
-    await card.click()
+    await card.click({ timeout: 10_000 })
   } else {
-    await page.locator('[class*="MuiCard-root"]').first().click()
+    await page.getByRole('button', { name: /^liste$/i }).click({ timeout: 5000 }).catch(() => {})
+    await page.waitForTimeout(500)
+    const row = page.locator('tr, [class*="MuiCard-root"]').first()
+    await row.click({ timeout: 10_000 })
   }
-  await page.getByRole('dialog').waitFor({ timeout: 12_000 })
+  await page.getByRole('dialog').waitFor({ timeout: 15_000 })
 }

@@ -8,6 +8,7 @@ import { ScrollReveal } from '../components/ScrollReveal'
 import { MarketingImage } from '../components/MarketingImage'
 import { BetaTesterPromo } from '../components/BetaTesterPromo'
 import { CTA, FREE_PLAN_SUMMARY, MARKETING_CTA, PRICING_FAQ, REFORM_DATES } from '../constants/siteContent'
+import { GA_EVENTS } from '../../../config/analyticsEvents'
 
 export function PricingPage() {
   return (
@@ -101,8 +102,12 @@ export function PricingPage() {
         subtitle={MARKETING_CTA.pricingSubtitle}
         primaryLabel={CTA.signupFree.label}
         primaryTo={CTA.signupFree.to}
-        secondaryLabel={CTA.betaSignup.label}
-        secondaryTo={CTA.betaSignup.to}
+        secondaryLabel={CTA.tryDemo.label}
+        secondaryTo={CTA.tryDemo.to}
+        secondaryGaEvent={GA_EVENTS.CTA_DEMO}
+        tertiaryLabel={CTA.betaSignup.label}
+        tertiaryTo={CTA.betaSignup.to}
+        tertiaryGaEvent={GA_EVENTS.CTA_BETA}
       />
     </Box>
   )

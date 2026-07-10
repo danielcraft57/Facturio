@@ -46,7 +46,7 @@ export function assertDemoReadOnly(user: DemoAwareUser): void {
 	if (!isDemoUser(user)) return;
 	throw new ForbiddenException({
 		message:
-			'Cette action est désactivée en mode démo. Créez un compte gratuit pour modifier vos données.',
+			'En démo vous explorez des exemples. Inscrivez-vous gratuitement pour modifier ou créer vos documents.',
 		code: 'DEMO_READ_ONLY',
 	});
 }

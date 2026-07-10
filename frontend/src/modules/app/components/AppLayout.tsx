@@ -37,6 +37,10 @@ import { AppMobileNav } from './AppMobileNav'
 import { NotificationCenter } from './NotificationCenter'
 import { BillingQuotaStrip } from './BillingQuotaStrip'
 import { DemoModeBanner } from '../../../components/demo/DemoModeBanner'
+import { DemoEntryMessageNotifier } from '../../../components/demo/DemoEntryMessageNotifier'
+import { DemoEntryNotice } from '../../../components/demo/DemoEntryNotice'
+import { demoService } from '../../../services/demoService'
+import { blockDemoCreateIfNeeded } from '../../../utils/demoCreateGuard'
 import { LifecycleNotifier } from './LifecycleNotifier'
 import { userMenuLinks } from '../config/userMenuConfig'
 import { PageTransition } from '../../../components/PageTransition'
@@ -56,6 +60,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const { user, logout } = useAuthStore()
+  const isDemo = demoService.isDemoSession()
 
   useEffect(() => {
     prefetchFinanceRouteChunks()
@@ -144,7 +149,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
             edge="start"
             sx={{ display: { md: 'none' }, color: 'inherit' }}
             onClick={() => setMobileOpen(true)}
-            aria-label="menu"
+            aria-label="Menu principal"
           >
             <MenuIcon />
           </IconButton>
@@ -183,10 +188,12 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
 
           <Box sx={{ flexGrow: 1, display: { xs: 'block', md: 'none' } }} />
 
-          <Tooltip title="Nouvelle facture">
+          <Tooltip title={isDemo ? 'Création réservée à votre compte' : 'Nouvelle facture'}>
             <IconButton
-              component={RouterLink}
-              to="/factures/inbox?create=1"
+              onClick={() => {
+                if (blockDemoCreateIfNeeded()) return
+                navigate('/factures/inbox?create=1')
+              }}
               color="inherit"
               aria-label="nouvelle facture"
               sx={{
@@ -304,7 +311,9 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
       <Box component="main" sx={{ flexGrow: 1, width: '100%', p: { xs: 1, sm: 2, md: 3 } }}>
         <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }} />
         <BillingQuotaStrip />
+        <DemoEntryNotice />
         <DemoModeBanner />
+        <DemoEntryMessageNotifier />
         <LifecycleNotifier />
         <PageTransition>{children}</PageTransition>
       </Box>

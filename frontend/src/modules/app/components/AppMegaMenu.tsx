@@ -16,13 +16,14 @@ import {
 } from '@mui/material'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import type { NavFeatured, NavGroup, NavItem } from '../config/navConfig'
 import { isGroupActive, isNavActive } from '../config/navConfig'
 import { topNavItemSx } from './topNavItemStyles'
 import { prefetchFinanceRouteFromPath } from '../../../utils/prefetchFinanceRoutes'
 import { ProPlanBadge } from '../../../components/billing/ProPlanBadge'
 import { SettingsMegaMenuColumns } from './SettingsMegaMenuColumns'
+import { blockDemoCreateIfNeeded, isDocumentCreateUrl } from '../../../utils/demoCreateGuard'
 
 /** Au-dessus de l’AppBar (drawer+2) et des panneaux latéraux. */
 const MEGA_MENU_Z_INDEX = 1500
@@ -207,6 +208,7 @@ function MegaMenuFeatured({
   pathname,
   onNavigate,
   menuOpen,
+  planLocked = false,
 }: {
   featured: NavFeatured
   accentKey: string
@@ -214,9 +216,25 @@ function MegaMenuFeatured({
   pathname: string
   onNavigate: () => void
   menuOpen: boolean
+  /** Fonctionnalité Pro : navigation vers aperçu + CTA upgrade. */
+  planLocked?: boolean
 }) {
   const accent = ACCENT[accentKey] ?? ACCENT.navy
+  const navigate = useNavigate()
   const primaryActive = isNavActive(pathname, featured.to)
+  const primaryCtaLabel = planLocked ? "Voir l'aperçu" : featured.cta
+  const secondaryCta = planLocked
+    ? { label: 'Passer Pro', to: '/parametres/abonnement' }
+    : featured.secondaryCta
+  const description = planLocked
+    ? `${featured.description} — inclus dans Pro, aperçu disponible.`
+    : featured.description
+
+  const handleFeaturedNav = (to: string) => {
+    if (isDocumentCreateUrl(to) && blockDemoCreateIfNeeded()) return
+    onNavigate()
+    navigate(to)
+  }
 
   const ctaButtonSx = (active: boolean) => ({
     textTransform: 'none' as const,
@@ -240,25 +258,21 @@ function MegaMenuFeatured({
   const ctas = (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: horizontal ? 0 : 1.5 }}>
       <Button
-        component={RouterLink}
-        to={featured.to}
-        onClick={onNavigate}
+        onClick={() => handleFeaturedNav(featured.to)}
         size="small"
         variant="contained"
         sx={ctaButtonSx(primaryActive)}
       >
-        {featured.cta}
+        {primaryCtaLabel}
       </Button>
-      {featured.secondaryCta && (
+      {secondaryCta && (
         <Button
-          component={RouterLink}
-          to={featured.secondaryCta.to}
-          onClick={onNavigate}
+          onClick={() => handleFeaturedNav(secondaryCta.to)}
           size="small"
           variant="outlined"
-          sx={ctaButtonSx(isNavActive(pathname, featured.secondaryCta.to))}
+          sx={ctaButtonSx(isNavActive(pathname, secondaryCta.to))}
         >
-          {featured.secondaryCta.label}
+          {secondaryCta.label}
         </Button>
       )}
     </Box>
@@ -306,11 +320,14 @@ function MegaMenuFeatured({
           {featured.icon}
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'inherit' }}>
-            {featured.title}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.25 }}>
+            <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'inherit' }}>
+              {featured.title}
+            </Typography>
+            {planLocked ? <ProPlanBadge /> : null}
+          </Box>
           <Typography variant="caption" sx={{ color: alpha('#fff', 0.8), lineHeight: 1.4 }}>
-            {featured.description}
+            {description}
           </Typography>
         </Box>
         {ctas}
@@ -350,9 +367,12 @@ function MegaMenuFeatured({
         {featured.icon}
       </Box>
       <Box>
-        <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'inherit', mb: 0.5 }}>
-          {featured.title}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5 }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'inherit' }}>
+            {featured.title}
+          </Typography>
+          {planLocked ? <ProPlanBadge /> : null}
+        </Box>
         <Typography
           variant="caption"
           sx={{
@@ -365,7 +385,7 @@ function MegaMenuFeatured({
             overflow: 'hidden',
           }}
         >
-          {featured.description}
+          {description}
         </Typography>
         {ctas}
       </Box>
@@ -415,6 +435,16 @@ function groupItemsBySection(group: NavGroup): MenuSections {
 
   empty.other = group.items
   return empty
+}
+
+/**
+ * Indique si la carte mise en avant du groupe est verrouillée par le plan.
+ *
+ * @param group - Groupe de navigation (items déjà annotés planLocked)
+ */
+function isFeaturedPlanLocked(group: NavGroup): boolean {
+  const match = group.items.find((item) => item.to === group.featured.to)
+  return match?.planLocked === true
 }
 
 function renderMenuItems(
@@ -688,6 +718,7 @@ export function AppMegaMenu({ group }: { group: NavGroup }) {
                         pathname={location.pathname}
                         onNavigate={close}
                         menuOpen={open}
+                        planLocked={isFeaturedPlanLocked(group)}
                       />
                     </Box>
                   </Box>

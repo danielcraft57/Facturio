@@ -37,6 +37,22 @@ import { useOptimisticDocumentFlagsPatch } from '../../hooks/useOptimisticDocume
 import { DocumentFolderLoadMore } from '../../components/finance/DocumentFolderLoadMore'
 import type { CreateInvoiceData, Invoice } from '../../services/invoices'
 import { useToast } from '../../components/useToast'
+import { isLifecycleHandledApiError } from '../../utils/lifecycleNotifications'
+import { useAuthStore } from '../../stores/authStore'
+import { useBillingUsage } from '../../hooks/useBillingUsage'
+import { GA_EVENTS, trackActivationEvent } from '../../config/analyticsEvents'
+import {
+  markAccountActivationStep,
+  markFirstInvoiceTracked,
+  wasFirstInvoiceTracked,
+} from '../../utils/accountActivationStorage'
+import { trackFirstPdfDownloadedIfNeeded } from '../../utils/activationAnalytics'
+import {
+  DOCUMENT_CREATE_TOAST_DURATION_MS,
+  getDocumentCreateSuccessMessage,
+  getDocumentCreateSuccessTitle,
+} from '../../utils/documentCreateSuccessToast'
+import { pushActivityNotification } from '../../utils/activityNotifications'
 import { DocumentFolderPageShell } from '../../components/finance/DocumentFolderPageShell'
 import {
   financeCardSx,
@@ -44,6 +60,8 @@ import {
   financeTableHeadSx,
   financeTableSx,
 } from '../../components/finance/financeStyles'
+import { DraftResumeBanner } from '../../components/finance/DraftResumeBanner'
+import { FinanceFolderEmptyState } from '../../components/finance/FinanceFolderEmptyState'
 import { DocumentFolderInitialLoader } from '../../components/loading/DocumentFolderInitialLoader'
 import { DocumentFolderContentSkeleton } from '../../components/loading/DocumentFolderContentSkeleton'
 import { FinanceDocumentSearch } from '../../components/finance/FinanceDocumentSearch'
@@ -123,10 +141,11 @@ export function InvoicesPage() {
   const defaultClientId = searchParams.get('clientId') ?? undefined
   const navigate = useNavigate()
   const toast = useToast()
+  const user = useAuthStore((s) => s.user)
+  const { usage } = useBillingUsage()
   const { savedTags, rememberTag, removeFromLibrary } = useUserDocumentTags()
   const theme = useTheme()
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'))
-  const isWideActions = useMediaQuery(theme.breakpoints.up('lg'))
 
   const [searchTerm, setSearchTerm] = useState('')
   const debouncedSearch = useDebouncedValue(searchTerm, 320)
@@ -275,7 +294,40 @@ export function InvoicesPage() {
         prependItems([created])
         bumpFolderCounts(folderCountsAfterInboxCreate(!created.seenAt))
       }
-      toast.success(`Facture ${created.number} créée`)
+      toast.success(getDocumentCreateSuccessMessage('facture'), {
+        title: getDocumentCreateSuccessTitle('facture', created.number),
+        duration: DOCUMENT_CREATE_TOAST_DURATION_MS,
+        action: (
+          <Button
+            color="inherit"
+            size="small"
+            onClick={() => {
+              void import('../../utils/openDocumentView').then(({ openInvoiceView }) =>
+                openInvoiceView(created.id),
+              )
+            }}
+          >
+            Voir le détail
+          </Button>
+        ),
+      })
+      pushActivityNotification('invoice-created', {
+        title: getDocumentCreateSuccessTitle('facture', created.number),
+        message: `Facture ${created.number} prête à envoyer.`,
+        href: `/factures/${created.id}`,
+      })
+
+      const invoicesBefore = usage?.usage?.invoicesThisMonth ?? 0
+      if (user?.id) {
+        markAccountActivationStep(user.id, 'first-invoice')
+      }
+      if (!wasFirstInvoiceTracked() && invoicesBefore === 0) {
+        markFirstInvoiceTracked()
+        trackActivationEvent(GA_EVENTS.FIRST_INVOICE_CREATED, {
+          invoice_id: created.id,
+          source: 'invoices_page',
+        })
+      }
 
       const clientEmail = data.clientEmail?.trim()
       const invoiceForSend: Invoice =
@@ -285,8 +337,10 @@ export function InvoicesPage() {
       setInvoiceToSend(invoiceForSend)
       setSendDialogOpen(true)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Impossible de créer la facture'
-      toast.error(message)
+      if (!isLifecycleHandledApiError(err)) {
+        const message = err instanceof Error ? err.message : 'Impossible de créer la facture'
+        toast.error(message)
+      }
       throw err
     } finally {
       setCreating(false)
@@ -421,6 +475,7 @@ export function InvoicesPage() {
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
+      trackFirstPdfDownloadedIfNeeded({ documentType: 'invoice', documentId: invoice.id })
       toast.success('PDF téléchargé')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erreur lors du téléchargement du PDF')
@@ -468,6 +523,12 @@ export function InvoicesPage() {
           {error}
         </Alert>
       )}
+
+      <DraftResumeBanner
+        resource="factures"
+        draftCount={folderCounts.brouillons ?? 0}
+        hidden={activeFolder === 'brouillons'}
+      />
 
       {coldLoading ? (
         <DocumentFolderInitialLoader
@@ -550,7 +611,7 @@ export function InvoicesPage() {
                     Montant
                   </TableCell>
                   <TableCell sx={documentFolderColDueSx}>Échéance</TableCell>
-                  <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>
+                  <TableCell align="center" sx={documentFolderColActionsSx(false)}>
                     Actions
                   </TableCell>
                 </TableRow>
@@ -655,15 +716,14 @@ export function InvoicesPage() {
                           })()}
                         </Typography>
                       </TableCell>
-                      <TableCell align="center" sx={documentFolderColActionsSx(isWideActions)}>
+                      <TableCell align="center" sx={documentFolderColActionsSx(false)}>
                         <InvoiceRowActionsMenu
                           invoice={invoice}
                           busy={busy}
-                          expanded={isWideActions}
                           canSend={canSend}
                           canRemind={canRemind(invoice.status)}
                           onView={() => void openInvoice(invoice)}
-                          onEdit={() => void openInvoice(invoice)}
+                          onEdit={() => navigate(`/factures/${invoice.id}/edit`)}
                           onSend={() => openSendDialog(invoice)}
                           onRemind={() => handleSendReminder(invoice)}
                           onArchive={() => openArchiveDialog([invoice.id])}
@@ -679,13 +739,14 @@ export function InvoicesPage() {
           )}
 
           {displayedInvoices.length === 0 && !loading && (
-            <Box sx={[documentFolderTableCardContentPaddedSx, { textAlign: 'center', py: 4, color: 'text.secondary' }] as SxProps<Theme>}>
-              <Typography variant="body1">
-                {searchTerm.trim()
-                  ? 'Aucune facture ne correspond à la recherche'
-                  : `Aucune facture dans « ${DOCUMENT_FOLDER_LABELS[activeFolder]} » — bouton dans le menu latéral`}
-              </Typography>
-            </Box>
+            <FinanceFolderEmptyState
+              variant={searchTerm.trim() ? 'search' : 'folder'}
+              resourceLabel="factures"
+              folderLabel={DOCUMENT_FOLDER_LABELS[activeFolder]}
+              onCreate={openCreateDialog}
+              createLabel="Nouvelle facture"
+              onOpenFolders={() => setMobileNavOpen(true)}
+            />
           )}
 
           <Box sx={documentFolderTableCardFooterSx}>

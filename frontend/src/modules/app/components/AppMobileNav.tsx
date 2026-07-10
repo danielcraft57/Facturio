@@ -171,7 +171,16 @@ export function AppMobileNav({ onNavigate }: AppMobileNavProps) {
 
       <Divider />
 
-      <List sx={{ px: 1, pt: 1, pb: 2 }}>
+      <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+        <Typography
+          variant="overline"
+          sx={{ fontWeight: 700, letterSpacing: '0.08em', color: 'text.secondary', display: 'block' }}
+        >
+          Menu principal
+        </Typography>
+      </Box>
+
+      <List sx={{ px: 1, pt: 0.5, pb: 2 }}>
         <ListItem disablePadding sx={{ mb: 0.5 }}>
           <ListItemButton
             component={RouterLink}

@@ -10,6 +10,7 @@ type Props = {
   loading?: boolean;
   onMenu: (event: MouseEvent<HTMLElement>, product: Product) => void;
   onCardClick?: (product: Product) => void;
+  onUnitPriceSave?: (product: Product, unitPrice: number) => Promise<void> | void;
   mode?: 'catalog' | 'compact' | 'list';
   highlightProductId?: number | null;
   highlightTone?: RealtimeHighlightTone;
@@ -20,12 +21,13 @@ export function ProductCatalogSections({
   loading,
   onMenu,
   onCardClick,
+  onUnitPriceSave,
   mode = 'catalog',
   highlightProductId,
   highlightTone,
 }: Props) {
   if (loading) {
-    return <ProductCatalogGrid products={[]} loading onMenu={onMenu} onCardClick={onCardClick} mode={mode} />;
+    return <ProductCatalogGrid products={[]} loading onMenu={onMenu} onCardClick={onCardClick} onUnitPriceSave={onUnitPriceSave} mode={mode} />;
   }
 
   const sections = groupProductsBySection(products);
@@ -44,6 +46,7 @@ export function ProductCatalogSections({
             products={sectionProducts}
             onMenu={onMenu}
             onCardClick={onCardClick}
+            onUnitPriceSave={onUnitPriceSave}
             mode={mode}
             highlightProductId={highlightProductId}
             highlightTone={highlightTone}

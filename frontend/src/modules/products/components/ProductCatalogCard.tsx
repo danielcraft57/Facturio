@@ -21,12 +21,14 @@ import { PURPOSE_LABELS, CATEGORY_LABELS, KIND_LABELS } from '../constants/produ
 import { ProductTechStackChips } from './ProductTechStackChips';
 import { resolveProductImageUrl, getProductIconGradientCss } from '../utils/productVisual';
 import { withProductVisualFallback } from '../utils/productVisualFallback';
+import { GhostInlineAmount } from '../../../components/finance/GhostInlineEdit';
 import { downloadDataUrl } from '../utils/generateProductImage';
 
 type Props = {
   product: Product;
   onMenu: (event: MouseEvent<HTMLElement>, product: Product) => void;
   onClick?: (product: Product) => void;
+  onUnitPriceSave?: (product: Product, unitPrice: number) => Promise<void> | void;
   mode?: 'catalog' | 'compact' | 'list';
   highlight?: boolean;
   highlightTone?: RealtimeHighlightTone;
@@ -36,6 +38,7 @@ export function ProductCatalogCard({
   product,
   onMenu,
   onClick,
+  onUnitPriceSave,
   mode = 'catalog',
   highlight = false,
   highlightTone,
@@ -203,9 +206,18 @@ export function ProductCatalogCard({
       </CardContent>
 
       <CardActions sx={{ px: isCompact ? 1.2 : 2, pb: isCompact ? 1.1 : 2, pt: 0, justifyContent: 'space-between' }}>
-        <Typography variant={isCompact ? 'subtitle1' : 'h6'} color="primary.main" fontWeight={800}>
-          {Math.round(price)} €
-        </Typography>
+        {onUnitPriceSave ? (
+          <Box onClick={(e) => e.stopPropagation()}>
+            <GhostInlineAmount
+              value={price}
+              onSave={(next) => onUnitPriceSave(product, next)}
+            />
+          </Box>
+        ) : (
+          <Typography variant={isCompact ? 'subtitle1' : 'h6'} color="primary.main" fontWeight={800}>
+            {Math.round(price)} €
+          </Typography>
+        )}
         {Number(product.estimatedHours) > 0 && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
             <FontAwesomeIcon icon={faClock} style={{ fontSize: 12 }} />

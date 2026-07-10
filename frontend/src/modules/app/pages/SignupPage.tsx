@@ -23,6 +23,8 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { useAuthStore } from '../../../stores/authStore'
 import { authService } from '../../../services/authService'
 import { PendingEmailVerificationCard } from '../../../components/auth/PendingEmailVerificationCard'
+import { SignupPasswordCriteria } from '../../../components/auth/SignupPasswordCriteria'
+import { SignupProgressIndicator } from '../../../components/auth/SignupProgressIndicator'
 import { DisabledActionTooltip, formatDisabledReasons } from '../../../components/auth/DisabledActionTooltip'
 import {
   getGoogleSignupDisabledReasons,
@@ -31,6 +33,10 @@ import {
 import { usePendingEmailVerification } from '../../../hooks/usePendingEmailVerification'
 import { GA_EVENTS } from '../../../config/analyticsEvents'
 import { trackGoogleAnalyticsEvent } from '../../../utils/googleAnalytics'
+import {
+  isSignupPasswordConfirmed,
+  isSignupPasswordValid,
+} from '../../../utils/signupPasswordRules'
 
 /**
  * Page d'inscription
@@ -127,12 +133,12 @@ export function SignupPage() {
       return
     }
 
-    if (formData.password.length < 8) {
-      setLocalError('Le mot de passe doit contenir au moins 8 caractères')
+    if (!isSignupPasswordValid(formData.password)) {
+      setLocalError('Le mot de passe ne respecte pas tous les critères')
       return
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (!isSignupPasswordConfirmed(formData.password, formData.confirmPassword)) {
       setLocalError('Les mots de passe ne correspondent pas')
       return
     }
@@ -153,7 +159,11 @@ export function SignupPage() {
       })
       trackGoogleAnalyticsEvent(GA_EVENTS.SIGNUP_COMPLETED, {
         has_beta_code: Boolean(formData.betaInviteCode.trim()),
+        from_demo: searchParams.get('from') === 'demo',
       })
+      if (searchParams.get('from') === 'demo') {
+        trackGoogleAnalyticsEvent(GA_EVENTS.SIGNUP_FROM_DEMO)
+      }
       await setPendingFromEmail(formData.email)
       navigate('/auth/session?from=/installation', { replace: true })
     } catch (err: any) {
@@ -190,9 +200,10 @@ export function SignupPage() {
     !pending &&
     formData.email.trim().length > 0 &&
     formData.organizationName.trim().length > 0 &&
-    formData.password.length >= 8 &&
+    formData.password.length > 0 &&
+    isSignupPasswordValid(formData.password) &&
     formData.confirmPassword.length > 0 &&
-    formData.password === formData.confirmPassword
+    isSignupPasswordConfirmed(formData.password, formData.confirmPassword)
 
   const submitDisabled = isLoading || !canSubmit
   const submitDisabledReasons = getSignupSubmitDisabledReasons({
@@ -254,6 +265,14 @@ export function SignupPage() {
           )}
 
           <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
+            <SignupProgressIndicator
+              email={formData.email}
+              organizationName={formData.organizationName}
+              password={formData.password}
+              confirmPassword={formData.confirmPassword}
+              acceptTerms={acceptTerms}
+              acceptPrivacy={acceptPrivacy}
+            />
             <TextField
               fullWidth
               label="Email"
@@ -265,6 +284,7 @@ export function SignupPage() {
               required
               autoComplete="email"
               autoFocus
+              placeholder="vous@entreprise.com"
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
@@ -275,6 +295,7 @@ export function SignupPage() {
                 onChange={handleChange}
                 margin="normal"
                 autoComplete="given-name"
+                placeholder="Alex"
               />
               <TextField
                 fullWidth
@@ -284,6 +305,7 @@ export function SignupPage() {
                 onChange={handleChange}
                 margin="normal"
                 autoComplete="family-name"
+                placeholder="Martin"
               />
             </Box>
             <TextField
@@ -294,6 +316,7 @@ export function SignupPage() {
               onChange={handleChange}
               margin="normal"
               required
+              placeholder="Mon studio web"
             />
             <TextField
               fullWidth
@@ -319,7 +342,7 @@ export function SignupPage() {
               margin="normal"
               required
               autoComplete="new-password"
-              helperText="Au moins 8 caractères"
+              placeholder="Choisissez un mot de passe sécurisé"
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -334,6 +357,10 @@ export function SignupPage() {
                 ),
               }}
             />
+            <SignupPasswordCriteria
+              password={formData.password}
+              confirmPassword={formData.confirmPassword}
+            />
             <TextField
               fullWidth
               label="Confirmer le mot de passe"
@@ -344,6 +371,7 @@ export function SignupPage() {
               margin="normal"
               required
               autoComplete="new-password"
+              placeholder="Retapez le mot de passe"
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -516,12 +544,21 @@ export function SignupPage() {
             </Button>
           </DisabledActionTooltip>
           {formData.betaInviteCode.trim() ? (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mb: 2 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mb: 1 }}>
               Le code beta {formData.betaInviteCode.trim().toUpperCase()} sera appliqué après connexion Google.
             </Typography>
-          ) : (
-            <Box sx={{ mb: 2 }} />
-          )}
+          ) : null}
+
+          <Button
+            fullWidth
+            variant="text"
+            size="large"
+            component={RouterLink}
+            to="/essayer"
+            sx={{ mb: 3, py: 1 }}
+          >
+            Essayer la démo sans compte
+          </Button>
 
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">

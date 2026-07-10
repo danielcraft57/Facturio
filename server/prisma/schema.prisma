@@ -59,6 +59,10 @@ model Organization {
   betaReminder30SentAt        DateTime?
   betaReminder7SentAt         DateTime?
   betaExpiredNoticeSentAt     DateTime?
+  /// Relance win-back : onboarding non terminé (>72 h après vérif email).
+  winbackOnboardingSentAt     DateTime?
+  /// Relance win-back : aucune facture (>7 j après onboarding).
+  winbackFirstInvoiceSentAt   DateTime?
   /// JSON { invoices?: "YYYY-MM", quotes?: "YYYY-MM", emails?: "YYYY-MM" }
   freeQuotaEmailsSentMonth    Json?
   betaInviteRedemption        BetaInviteRedemption?
@@ -175,6 +179,8 @@ model User {
   passwordResetExpires     DateTime?
   emailVerificationToken   String?       @unique
   emailVerificationExpires DateTime?
+  /// Relance win-back email non vérifié (>48 h après inscription).
+  winbackVerifyEmailSentAt DateTime?
   organizationId           Int
   createdAt                DateTime      @default(now())
   updatedAt                DateTime      @updatedAt

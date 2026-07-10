@@ -68,3 +68,44 @@ export function canRemoveProductLine(lines: EditableLine[], index: number): bool
   if (isTrailingEmpty && !hasFilled) return false
   return true
 }
+
+/**
+ * Normalise une quantité de ligne produit (entier >= 1).
+ *
+ * @param value - Valeur saisie
+ */
+export function normalizeProductLineQuantity(value: string | number): number {
+  const n = Number(value)
+  if (!Number.isFinite(n) || n < 1) return 1
+  return Math.round(Math.min(n, 9999))
+}
+
+/**
+ * Calcule sous-total HT, TVA et total TTC des lignes renseignées.
+ *
+ * @param lines - Lignes du formulaire
+ */
+export function calculateProductLinesTotals(lines: EditableLine[]) {
+  const active = filterProductLinesForSubmit(lines)
+  const subtotal = active.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+  const taxTotal = active.reduce((sum, item) => {
+    const itemTotal = item.quantity * item.unitPrice
+    return sum + (itemTotal * item.taxRate) / 100
+  }, 0)
+  return { subtotal, taxTotal, total: subtotal + taxTotal }
+}
+
+/**
+ * Calcule totaux devis (taux TVA décimal, ex. 0,2 = 20 %).
+ *
+ * @param lines - Lignes du formulaire
+ */
+export function calculateQuoteLinesTotals(lines: EditableLine[]) {
+  const active = filterProductLinesForSubmit(lines)
+  const subtotal = active.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+  const taxTotal = active.reduce((sum, item) => {
+    const itemTotal = item.quantity * item.unitPrice
+    return sum + itemTotal * item.taxRate
+  }, 0)
+  return { subtotal, taxTotal, total: subtotal + taxTotal }
+}

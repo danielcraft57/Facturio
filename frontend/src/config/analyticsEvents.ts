@@ -10,11 +10,20 @@ export const GA_EVENTS = {
   CTA_BETA: 'cta_beta',
   CTA_BETA_CODE: 'cta_beta_code',
   CTA_EFACTURE: 'cta_efacture',
+  CTA_DEMO: 'cta_demo',
   CTA_PRICING: 'cta_pricing',
   CTA_PRESTATIONS: 'cta_prestations',
   SCROLL_DEPTH: 'scroll_depth',
   SIGNUP_STARTED: 'signup_started',
   SIGNUP_COMPLETED: 'signup_completed',
+  DEMO_QUEST_COMPLETED: 'demo_quest_completed',
+  DEMO_QUEST_STEP: 'demo_quest_step',
+  SIGNUP_FROM_DEMO: 'signup_from_demo',
+  FIRST_INVOICE_CREATED: 'first_invoice_created',
+  FIRST_PDF_DOWNLOADED: 'first_pdf_downloaded',
+  ACTIVATION_QUEST_COMPLETED: 'activation_quest_completed',
+  ACTIVATION_QUEST_STEP: 'activation_quest_step',
+  ONBOARDING_SKIPPED: 'onboarding_skipped',
 } as const
 
 export type GaEventName = (typeof GA_EVENTS)[keyof typeof GA_EVENTS]
@@ -54,4 +63,17 @@ export function trackScrollDepth(percent: number, pagePath: string): void {
     percent,
     page_path: pagePath,
   })
+}
+
+/**
+ * Événements d'activation produit (entonnoir signup → première facture).
+ *
+ * @param event - Nom d'événement GA4
+ * @param params - Paramètres optionnels
+ */
+export function trackActivationEvent(
+  event: string,
+  params?: GoogleAnalyticsEventParams,
+): void {
+  trackGoogleAnalyticsEvent(event, params)
 }

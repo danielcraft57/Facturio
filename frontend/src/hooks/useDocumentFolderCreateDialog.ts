@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { blockDemoCreateIfNeeded } from '../utils/demoCreateGuard'
 
 function stripCreateFromBrowserUrl() {
   const url = new URL(window.location.href)
@@ -27,6 +28,10 @@ export function useDocumentFolderCreateDialog() {
     }
     if (createConsumedRef.current) return
     createConsumedRef.current = true
+    if (blockDemoCreateIfNeeded()) {
+      stripCreateFromBrowserUrl()
+      return
+    }
     setOpen(true)
     stripCreateFromBrowserUrl()
   }, [searchParams])
@@ -37,6 +42,7 @@ export function useDocumentFolderCreateDialog() {
   }, [])
 
   const openDialog = useCallback(() => {
+    if (blockDemoCreateIfNeeded()) return
     setOpen(true)
   }, [])
 

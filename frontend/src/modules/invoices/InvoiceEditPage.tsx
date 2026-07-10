@@ -41,6 +41,8 @@ import {
   ensureTrailingEmptyLine,
   filterProductLinesForSubmit,
   removeProductLine,
+  normalizeProductLineQuantity,
+  calculateProductLinesTotals,
 } from '../../components/finance/editableProductLinesUtils'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 
@@ -153,13 +155,7 @@ export function InvoiceEditPage() {
 
   const totals = useMemo(() => {
     if (!form) return { subtotal: 0, taxTotal: 0, total: 0 }
-    const active = filterProductLinesForSubmit(form.items)
-    const subtotal = active.reduce((s, it) => s + 1 * it.unitPrice, 0)
-    const taxTotal = active.reduce((s, it) => {
-      const base = 1 * it.unitPrice
-      return s + base * (it.taxRate / 100)
-    }, 0)
-    return { subtotal, taxTotal, total: subtotal + taxTotal }
+    return calculateProductLinesTotals(form.items)
   }, [form])
 
   const currencySymbol =
@@ -181,7 +177,7 @@ export function InvoiceEditPage() {
           index,
           (item) => {
             if (field === 'quantity') {
-              item.quantity = 1
+              item.quantity = normalizeProductLineQuantity(value)
             } else if (field === 'unitPrice') {
               item.unitPrice = Math.round(Number(value) || 0)
             } else {
@@ -236,12 +232,15 @@ export function InvoiceEditPage() {
         status: form.status,
         items: filledItems.map((it) => ({
           ...it,
-          quantity: 1,
+          quantity: normalizeProductLineQuantity(it.quantity),
           unitPrice: Math.round(Number(it.unitPrice) || 0),
         })),
       }
       await invoiceService.updateInvoice(payload)
-      toast.success('Facture mise à jour')
+      toast.success('Consultez le détail ou envoyez la facture au client.', {
+        title: 'Facture mise à jour',
+        duration: 10000,
+      })
       navigate(`/factures/${id}`)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Enregistrement impossible')
@@ -381,6 +380,10 @@ export function InvoiceEditPage() {
           lines={form.items}
           products={productsStore.products}
           taxHeader="TVA (%)"
+          showQuantity
+          quantityWidth={64}
+          unitPriceWidth={88}
+          descriptionWidth="52%"
           onRemoveLine={handleRemoveItem}
           onLineChange={(index, field, value) => {
             if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {

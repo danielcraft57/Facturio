@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { ScrollReveal } from './ScrollReveal'
 import { OverflowScreenshotFrame, type ResponsiveFrameHeight } from './OverflowScreenshotFrame'
 import { ScreenshotLightbox } from './ScreenshotLightbox'
+import { MARKETING_CONTRAST_BAND } from '../constants/marketingContrast'
 
 export type MarketingScreenItem = {
   slug: string
@@ -90,12 +91,15 @@ type MarketingScreensShowcaseProps = {
   title?: string
   subtitle?: string
   screens?: MarketingScreenItem[]
+  /** Bande sombre pour contraste landing (zone preuve produit). */
+  contrastBand?: boolean
 }
 
 export function MarketingScreensShowcase({
   title = 'À quoi ressemble l\'outil au quotidien',
-  subtitle = 'Clients, catalogue, factures, devis, tableau de bord… Cliquez sur une capture pour l\'agrandir.',
+  subtitle = 'Factures, devis, clients, tableau de bord. Cliquez pour agrandir.',
   screens = MARKETING_SHOWCASE_SCREENS,
+  contrastBand = false,
 }: MarketingScreensShowcaseProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
@@ -110,7 +114,17 @@ export function MarketingScreensShowcase({
   )
 
   return (
-    <Box sx={{ py: { xs: 6, md: 8 }, bgcolor: 'background.default' }}>
+    <Box
+      sx={{
+        py: { xs: 6, md: 8 },
+        ...(contrastBand
+          ? {
+              background: MARKETING_CONTRAST_BAND.proof.background,
+              color: MARKETING_CONTRAST_BAND.proof.color,
+            }
+          : { bgcolor: 'background.default' }),
+      }}
+    >
       <Container maxWidth="lg">
         <ScrollReveal>
           <Typography
@@ -122,9 +136,13 @@ export function MarketingScreensShowcase({
           </Typography>
           <Typography
             variant="body1"
-            color="text.secondary"
             align="center"
-            sx={{ mb: 5, maxWidth: 640, mx: 'auto' }}
+            sx={{
+              mb: 5,
+              maxWidth: 560,
+              mx: 'auto',
+              color: contrastBand ? MARKETING_CONTRAST_BAND.proof.subtitleColor : 'text.secondary',
+            }}
           >
             {subtitle}
           </Typography>

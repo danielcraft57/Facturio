@@ -1,11 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import {
-  Box,
-  Drawer,
-  IconButton,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material'
+import { Box, Drawer, IconButton, Tooltip, useMediaQuery, useTheme } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread'
@@ -139,8 +133,14 @@ export function DocumentFolderSidebar(props: DocumentFolderSidebarProps) {
 
 export function DocumentFolderMobileMenuButton({ onClick }: { onClick: () => void }) {
   return (
-    <IconButton onClick={onClick} sx={{ display: { md: 'none' } }} aria-label="Menu dossiers">
-      <MenuIcon />
-    </IconButton>
+    <Tooltip title="Dossiers et création (ce module)">
+      <IconButton
+        onClick={onClick}
+        sx={{ display: { md: 'none' } }}
+        aria-label="Dossiers et création"
+      >
+        <MenuIcon />
+      </IconButton>
+    </Tooltip>
   )
 }

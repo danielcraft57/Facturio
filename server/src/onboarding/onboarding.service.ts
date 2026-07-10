@@ -64,6 +64,32 @@ export class OnboardingService {
 		return this.catalog.buildCatalogPreview(technologyIds);
 	}
 
+	/**
+	 * Marque l'onboarding comme terminé sans installer de catalogue (parcours « configurer plus tard »).
+	 *
+	 * @param organizationId - Organisation cible
+	 * @returns Message de confirmation pour l'utilisateur
+	 */
+	async skipInstall(organizationId: number): Promise<{ message: string }> {
+		const org = await this.prisma.organization.findUnique({
+			where: { id: organizationId },
+			select: { onboardingCompletedAt: true },
+		});
+		if (!org) {
+			throw new BadRequestException('Organisation introuvable');
+		}
+		if (!org.onboardingCompletedAt) {
+			await this.prisma.organization.update({
+				where: { id: organizationId },
+				data: { onboardingCompletedAt: new Date() },
+			});
+		}
+		return {
+			message:
+				'Vous pourrez configurer votre catalogue plus tard depuis Produits ou relancer l\'assistant.',
+		};
+	}
+
 	async install(
 		organizationId: number,
 		technologyIds: string[],

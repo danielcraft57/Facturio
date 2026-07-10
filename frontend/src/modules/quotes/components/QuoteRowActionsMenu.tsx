@@ -5,8 +5,8 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Stack,
   Divider,
+  Typography,
 } from '@mui/material'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import SendIcon from '@mui/icons-material/Send'
@@ -29,7 +29,7 @@ export type QuoteRowActionsHandlers = {
 
 type QuoteRowActionsMenuProps = QuoteRowActionsHandlers & {
   quote: Quote
-  /** Boutons en ligne (desktop large). */
+  /** @deprecated Toujours menu « … ». */
   expanded?: boolean
 }
 
@@ -38,10 +38,12 @@ function wasQuoteEmailed(quote: Quote): boolean {
   return Boolean(eng?.emailSent ?? quote.emailSent)
 }
 
+/**
+ * Actions ligne devis : menu compact, archivage séparé.
+ */
 export function QuoteRowActionsMenu({
   quote,
   busy = false,
-  expanded = false,
   onEdit,
   onSend,
   onConvert,
@@ -62,43 +64,47 @@ export function QuoteRowActionsMenu({
     onConvert()
   }
 
-  const menuItems = [
-    <MenuItem
-      key="view"
-      onClick={() => {
-        close()
-        void import('../../../utils/openDocumentView').then(({ openQuoteView }) => openQuoteView(quote.id))
-      }}
-      disabled={busy}
-    >
-      <ListItemIcon>
-        <VisibilityIcon fontSize="small" />
-      </ListItemIcon>
-      <ListItemText>Voir</ListItemText>
-    </MenuItem>,
-    ...(quote.status === 'DRAFT' || quote.status === 'SENT'
-      ? [
-          <MenuItem key="edit" onClick={() => { close(); onEdit?.() }} disabled={busy || !onEdit}>
+  return (
+    <>
+      <IconButton
+        size="small"
+        disabled={busy}
+        onClick={(e) => setAnchor(e.currentTarget)}
+        aria-label="Actions devis"
+      >
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={close}>
+        <MenuItem
+          onClick={() => {
+            close()
+            void import('../../../utils/openDocumentView').then(({ openQuoteView }) => openQuoteView(quote.id))
+          }}
+          disabled={busy}
+        >
+          <ListItemIcon>
+            <VisibilityIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Voir</ListItemText>
+        </MenuItem>
+        {(quote.status === 'DRAFT' || quote.status === 'SENT') && onEdit ? (
+          <MenuItem onClick={() => { close(); onEdit() }} disabled={busy}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Modifier</ListItemText>
-          </MenuItem>,
-        ]
-      : []),
-    ...(quote.status === 'DRAFT'
-      ? [
-          <MenuItem key="send" onClick={() => { close(); onSend() }} disabled={busy}>
+          </MenuItem>
+        ) : null}
+        {quote.status === 'DRAFT' ? (
+          <MenuItem onClick={() => { close(); onSend() }} disabled={busy}>
             <ListItemIcon>
               <SendIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Envoyer</ListItemText>
-          </MenuItem>,
-        ]
-      : []),
-    ...(quote.status === 'SENT'
-      ? [
-          <MenuItem key="resend" onClick={() => { close(); onSend() }} disabled={busy}>
+          </MenuItem>
+        ) : null}
+        {quote.status === 'SENT' ? (
+          <MenuItem onClick={() => { close(); onSend() }} disabled={busy}>
             <ListItemIcon>
               {emailed ? (
                 <MarkEmailReadIcon fontSize="small" color="success" />
@@ -107,114 +113,42 @@ export function QuoteRowActionsMenu({
               )}
             </ListItemIcon>
             <ListItemText>{emailed ? 'Renvoyer' : 'Envoyer'}</ListItemText>
-          </MenuItem>,
-        ]
-      : []),
-    ...(quote.status === 'ACCEPTED'
-      ? [
-          <MenuItem key="convert" onClick={() => { close(); openInvoiceOrConvert() }} disabled={busy}>
-            <ListItemIcon>
-              <ReceiptIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Voir facture</ListItemText>
-          </MenuItem>,
-          ...(onRemindDeposit
-            ? [
-                <MenuItem
-                  key="remindDeposit"
-                  onClick={() => {
-                    close()
-                    onRemindDeposit()
-                  }}
-                  disabled={busy}
-                >
-                  <ListItemIcon>
-                    <ReplayIcon fontSize="small" color="warning" />
-                  </ListItemIcon>
-                  <ListItemText>Relancer acompte</ListItemText>
-                </MenuItem>,
-              ]
-            : []),
-        ]
-      : []),
-    <Divider key="divider" />,
-    <MenuItem key="archive" onClick={() => { close(); onArchive() }} disabled={busy}>
-      <ListItemIcon>
-        <ArchiveIcon fontSize="small" />
-      </ListItemIcon>
-      <ListItemText>Archiver</ListItemText>
-    </MenuItem>,
-  ]
-
-  if (expanded) {
-    return (
-      <Stack direction="row" spacing={0.25} justifyContent="center" flexWrap="nowrap">
-        <IconButton
-          size="small"
-          title="Voir"
-          disabled={busy}
-          onClick={() => {
-            void import('../../../utils/openDocumentView').then(({ openQuoteView }) =>
-              openQuoteView(quote.id),
-            )
-          }}
-        >
-          <VisibilityIcon fontSize="small" />
-        </IconButton>
-        {(quote.status === 'DRAFT' || quote.status === 'SENT') && onEdit && (
-          <IconButton size="small" title="Modifier" disabled={busy} onClick={onEdit}>
-            <EditIcon fontSize="small" />
-          </IconButton>
-        )}
-        {quote.status === 'DRAFT' && (
-          <IconButton size="small" title="Envoyer" disabled={busy} onClick={onSend}>
-            <SendIcon fontSize="small" />
-          </IconButton>
-        )}
-        {quote.status === 'SENT' && (
-          <IconButton
-            size="small"
-            title={emailed ? 'Renvoyer' : 'Envoyer'}
-            disabled={busy}
-            onClick={onSend}
-          >
-            {emailed ? (
-              <MarkEmailReadIcon fontSize="small" color="success" />
-            ) : (
-              <SendIcon fontSize="small" />
-            )}
-          </IconButton>
-        )}
-        {quote.status === 'ACCEPTED' && (
-          <IconButton
-            size="small"
-            title="Voir facture"
-            disabled={busy}
-            color="secondary"
-            onClick={openInvoiceOrConvert}
-          >
-            <ReceiptIcon fontSize="small" />
-          </IconButton>
-        )}
-        <IconButton size="small" title="Archiver" disabled={busy} onClick={onArchive}>
-          <ArchiveIcon fontSize="small" />
-        </IconButton>
-      </Stack>
-    )
-  }
-
-  return (
-    <>
-      <IconButton
-        size="small"
-        disabled={busy}
-        onClick={(e) => setAnchor(e.currentTarget)}
-        aria-label="Actions"
-      >
-        <MoreVertIcon fontSize="small" />
-      </IconButton>
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={close}>
-        {menuItems}
+          </MenuItem>
+        ) : null}
+        {quote.status === 'ACCEPTED' ? (
+          <>
+            <MenuItem onClick={() => { close(); openInvoiceOrConvert() }} disabled={busy}>
+              <ListItemIcon>
+                <ReceiptIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Voir facture</ListItemText>
+            </MenuItem>
+            {onRemindDeposit ? (
+              <MenuItem
+                onClick={() => {
+                  close()
+                  onRemindDeposit()
+                }}
+                disabled={busy}
+              >
+                <ListItemIcon>
+                  <ReplayIcon fontSize="small" color="warning" />
+                </ListItemIcon>
+                <ListItemText>Relancer acompte</ListItemText>
+              </MenuItem>
+            ) : null}
+          </>
+        ) : null}
+        <Divider sx={{ my: 0.5 }} />
+        <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5, display: 'block' }}>
+          Retrait de la liste
+        </Typography>
+        <MenuItem onClick={() => { close(); onArchive() }} disabled={busy} sx={{ color: 'warning.dark' }}>
+          <ListItemIcon>
+            <ArchiveIcon fontSize="small" color="warning" />
+          </ListItemIcon>
+          <ListItemText>Archiver</ListItemText>
+        </MenuItem>
       </Menu>
     </>
   )

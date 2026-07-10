@@ -23,6 +23,7 @@ import { quoteService } from '../../services/quoteService'
 import { unwrapApiPayload } from '../../services/clients'
 import type { Quote } from '../../types/quote'
 import { formatCurrency, formatDate } from '../../utils/formatters'
+import { FinanceDocumentBreadcrumb } from '../../components/finance/FinanceDocumentBreadcrumb'
 import { TablePageSkeleton } from '../../components/loading/TablePageSkeleton'
 import { isEntityId } from '../../utils/entityId'
 import { usePageTitle } from '../../hooks/usePageTitle'
@@ -130,6 +131,12 @@ export function QuoteDetailPage() {
   if (error || !quote) {
     return (
       <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+        <FinanceDocumentBreadcrumb
+          items={[
+            { label: 'Devis', to: '/devis/inbox' },
+            { label: 'Devis introuvable' },
+          ]}
+        />
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/devis/inbox')} sx={{ mb: 2 }}>
           Retour aux devis
         </Button>
@@ -143,11 +150,13 @@ export function QuoteDetailPage() {
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, ...getRealtimePanelSx(panelHighlight) }}>
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
-        <Button startIcon={<ArrowBack />} onClick={() => navigate('/devis/inbox')}>
-          Retour
-        </Button>
-        <Box sx={{ flexGrow: 1 }} />
+      <FinanceDocumentBreadcrumb
+        items={[
+          { label: 'Devis', to: '/devis/inbox' },
+          { label: quote.number },
+        ]}
+      />
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap" justifyContent="flex-end">
         {canEdit && (
           <Button
             variant="outlined"
