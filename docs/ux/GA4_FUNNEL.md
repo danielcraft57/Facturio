@@ -30,6 +30,13 @@
 - Segment **démo** : utilisateurs avec `demo_quest_completed` sans `signup_completed` (exploration).
 - Segment **activé** : `first_invoice_created` dans les 7 jours après `signup_completed`.
 
+## Engagement produit (app connectée)
+
+| Action | Événement GA4 | Déclencheur |
+|--------|---------------|-------------|
+| Palette ouverte | `command_palette_open` | Ctrl+K / Cmd+K ou bouton recherche |
+| Navigation palette | `command_palette_select` | Entrée sur un résultat |
+
 ## Limites
 
 Pas de volume garanti sans trafic. Ne pas inventer de taux de conversion dans la com' — juger sur la tendance mois après mois.

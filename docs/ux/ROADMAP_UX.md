@@ -72,7 +72,7 @@ Légende : `[ ]` à faire · `[~]` en cours · `[x]` fait
 - [x] Variante démo dans empty states (`FinanceFolderEmptyState`, dashboard récents)
 - [x] Recherche produits alignée sur `FinanceDocumentSearch`
 - [x] État « aucun résultat » riche (produits + autocomplete hints)
-- [ ] (V2) Palette globale Cmd+K
+- [x] (V2) Palette globale Cmd+K (`CommandPalette`, raccourci + barre recherche)
 
 ---
 

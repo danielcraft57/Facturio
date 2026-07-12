@@ -26,6 +26,8 @@ export const GA_EVENTS = {
   ACTIVATION_QUEST_COMPLETED: 'activation_quest_completed',
   ACTIVATION_QUEST_STEP: 'activation_quest_step',
   ONBOARDING_SKIPPED: 'onboarding_skipped',
+  COMMAND_PALETTE_OPEN: 'command_palette_open',
+  COMMAND_PALETTE_SELECT: 'command_palette_select',
 } as const
 
 export type GaEventName = (typeof GA_EVENTS)[keyof typeof GA_EVENTS]

@@ -44,6 +44,7 @@ import { LifecycleNotifier } from './LifecycleNotifier'
 import { userMenuLinks } from '../config/userMenuConfig'
 import { PageTransition } from '../../../components/PageTransition'
 import { WelcomeDialogHost } from '../../../components/marketing/WelcomeDialogHost'
+import { CommandPaletteHost } from './CommandPalette'
 
 type AppLayoutProps = PropsWithChildren<{
   mode: 'light' | 'dark'
@@ -205,6 +206,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
           </Tooltip>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, ml: { md: 'auto' } }}>
+            <CommandPaletteHost />
             <NotificationCenter />
             <Tooltip title={mode === 'light' ? 'Mode sombre' : 'Mode clair'}>
               <IconButton color="inherit" onClick={onToggleMode} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
