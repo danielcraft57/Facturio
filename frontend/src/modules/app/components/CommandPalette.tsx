@@ -185,7 +185,7 @@ export function CommandPalette({ open: controlledOpen, onClose: controlledOnClos
         <TextField
           inputRef={inputRef}
           fullWidth
-          placeholder="Rechercher une page, une action…"
+          placeholder="N° facture, client, ou action…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoComplete="off"

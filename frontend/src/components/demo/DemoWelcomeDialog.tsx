@@ -17,9 +17,10 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import DescriptionIcon from '@mui/icons-material/Description'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { demoService } from '../../services/demoService'
 import { hasSeenDemoWelcome, markDemoWelcomeSeen, demoExploreProgress } from '../../utils/demoExploreStorage'
+import { getDemoWelcomePrimaryCta } from '../../utils/demoHeroPaths'
 import { DEMO_HERO_COLORS, DEMO_HERO_GRADIENT, DEMO_NEON_GRADIENT, demoModeChipSx, demoPrimaryButtonSx, demoProgressBarSx } from './demoTheme'
 
 const QUESTS = [
@@ -27,7 +28,7 @@ const QUESTS = [
     step: 1,
     icon: <ReceiptLongIcon fontSize="small" />,
     title: 'Ouvrir une facture exemple',
-    hint: 'PDF, lignes, statut payé ou en retard',
+    hint: 'PDF, lignes et statut payé — résultat concret en 30 secondes',
     path: '/factures/inbox',
     cta: 'Voir les factures',
   },
@@ -35,7 +36,7 @@ const QUESTS = [
     step: 2,
     icon: <DescriptionIcon fontSize="small" />,
     title: 'Consulter un devis',
-    hint: 'Du brouillon à l\'accepté',
+    hint: 'Du brouillon à l\'accepté — même flux que vos vrais devis',
     path: '/devis/inbox',
     cta: 'Voir les devis',
   },
@@ -43,7 +44,7 @@ const QUESTS = [
     step: 3,
     icon: <VerifiedUserIcon fontSize="small" />,
     title: 'Score conformité facture électronique',
-    hint: 'Paramètres → Facturation électronique',
+    hint: 'Savoir si vous êtes prêt avant septembre 2026',
     path: '/parametres/facturation-electronique',
     cta: 'Voir le score',
   },
@@ -55,6 +56,7 @@ const QUESTS = [
 export function DemoWelcomeDialog() {
   const theme = useTheme()
   const navigate = useNavigate()
+  const location = useLocation()
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -78,6 +80,15 @@ export function DemoWelcomeDialog() {
 
   const { done, total } = demoExploreProgress()
   const progressPct = total > 0 ? (done / total) * 100 : 0
+  const primaryCta = getDemoWelcomePrimaryCta(location.pathname)
+
+  const handlePrimaryCta = () => {
+    if (primaryCta.path) {
+      go(primaryCta.path)
+    } else {
+      close()
+    }
+  }
 
   return (
     <Dialog
@@ -192,11 +203,11 @@ export function DemoWelcomeDialog() {
 
       <DialogActions sx={{ flexWrap: 'wrap', gap: 1, px: 3, pb: 2.5, pt: 0 }}>
         <Button
-          onClick={() => go('/factures/inbox')}
+          onClick={handlePrimaryCta}
           variant="contained"
           sx={demoPrimaryButtonSx()}
         >
-          Première victoire : voir une facture prête à envoyer
+          {primaryCta.label}
         </Button>
         <Button onClick={close} color="inherit">
           Explorer seul

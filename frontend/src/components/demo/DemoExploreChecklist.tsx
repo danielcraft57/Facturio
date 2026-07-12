@@ -68,7 +68,11 @@ export function DemoExploreChecklist() {
         markDemoExploreStep(step.id)
         setTick((n) => n + 1)
         setCelebrateStep(step.id)
-        celebrateQuestStepUnlock(toast, DEMO_UNLOCK_COPY[step.id])
+        celebrateQuestStepUnlock(toast, {
+          title: DEMO_UNLOCK_COPY[step.id].title,
+          message: DEMO_UNLOCK_COPY[step.id].message,
+          nextAction: DEMO_UNLOCK_COPY[step.id].nextAction,
+        })
         window.setTimeout(() => setCelebrateStep(null), 500)
       }
     }
@@ -100,10 +104,10 @@ export function DemoExploreChecklist() {
   const remaining = total - done
   const progressHint =
     remaining === total
-      ? 'Commencez par une facture exemple — résultat concret en moins de 2 minutes.'
+      ? 'En 2 minutes : facture conforme, devis signé, score 2026 — sans créer de compte.'
       : remaining === 1
-        ? 'Plus qu\'une étape avant de maîtriser la conformité 2026.'
-        : `Plus que ${remaining} étapes pour terminer le parcours démo.`
+        ? 'Dernière étape : savoir si vous êtes prêt avant septembre 2026.'
+        : `Plus que ${remaining} étapes pour voir tout votre flux commercial + conformité PA.`
 
   return (
     <Card variant="outlined" sx={{ mb: 2, ...demoHudSurfaceSx('light') }}>

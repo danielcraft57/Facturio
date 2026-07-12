@@ -18,7 +18,7 @@ import {
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { demoService } from '../../../services/demoService'
-import { invoiceService } from '../../../services/invoices'
+import { resolveDemoHeroInvoicePath } from '../../../utils/demoHeroPaths'
 import { useAuthStore } from '../../../stores/authStore'
 import { usePageTitle } from '../../../hooks/usePageTitle'
 
@@ -72,18 +72,7 @@ export function DemoEnterPage() {
       const { warmAppDataAfterLogin } = await import('../../../utils/warmAppData')
       await warmAppDataAfterLogin()
 
-      let landingPath = '/factures/inbox'
-      try {
-        const list = await invoiceService.getInvoices({ page: 1, limit: 8, folder: 'inbox' })
-        const sample =
-          list.data?.invoices?.find((inv) => inv.status === 'paid' || inv.status === 'sent') ??
-          list.data?.invoices?.[0]
-        if (sample?.id) {
-          landingPath = `/factures/voir/${sample.id}`
-        }
-      } catch {
-        /* fallback inbox */
-      }
+      let landingPath = await resolveDemoHeroInvoicePath()
 
       navigate(landingPath, {
         replace: true,

@@ -146,7 +146,7 @@ const APP_TARGETS = [
     path: '/dashboard',
     waitMs: 1200,
     before: async (page) => {
-      await page.getByRole('dialog').getByRole('button', { name: /explorer seul|fermer|première victoire/i }).click({ timeout: 2000 }).catch(() => {})
+      await page.getByRole('dialog').getByRole('button', { name: /explorer seul|fermer|première victoire|continuer/i }).click({ timeout: 2000 }).catch(() => {})
       await page.keyboard.press('Escape').catch(() => {})
     },
   },
@@ -364,6 +364,9 @@ async function main() {
   const publicPage = await publicContext.newPage()
   const selectedPublicTargets = filterTargets(PUBLIC_TARGETS)
   const selectedAppTargets = filterTargets(APP_TARGETS)
+  if (CAPTURE_ONLY.length > 0) {
+    console.log(`[demo-capture] Filtre CAPTURE_ONLY : ${CAPTURE_ONLY.join(', ')}\n`)
+  }
   console.log('[demo-capture] — Pages publiques —\n')
   for (const target of selectedPublicTargets) {
     try {

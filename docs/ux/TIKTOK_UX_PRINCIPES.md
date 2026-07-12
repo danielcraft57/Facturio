@@ -11,6 +11,9 @@ Synthèse des transcripts `Videos/tiktokUX/transcripts` appliquée à l'espace d
 | Faire accomplir | Onboarding skippé | Welcome : CTA unique « Première victoire » |
 | Call to Value | CTV vs CTA | Boutons orientés résultat (facture conforme, pas « configurer ») |
 | Cmd+K copilote | Barre de recherche copilote | Actions populaires à l'ouverture, suggestions si zéro résultat |
+| Welcome deep-link | Time to value | CTA adaptatif si atterrissage sur facture (`demoHeroPaths`) |
+| Toasts quête + CTA | Notification = 1 action | `questCelebration` avec lien prochaine étape |
+| Zeigarnik orienté bénéfice | Effet Zeigarnik | Copy checklist + welcome (ce qu'on obtient, pas juste 1/3) |
 | Empty + CTA | Plus voir en 2026 | `FinanceFolderEmptyState` (déjà en place) |
 | Erreur qui guide | Blocage sans explication | Toasts démo + guards avec lien signup |
 | Aha moment Factur-X | Onboarding s'arrête à l'inscription | Quêtes démo → facture + score conformité |

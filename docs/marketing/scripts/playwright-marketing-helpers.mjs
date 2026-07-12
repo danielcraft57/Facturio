@@ -657,7 +657,7 @@ export async function dismissDemoWelcomeDialog(page) {
   const dialog = page.getByRole('dialog').filter({ hasText: /espace démo/i })
   if (!(await dialog.isVisible().catch(() => false))) return
   await dialog
-    .getByRole('button', { name: /explorer seul|fermer|première victoire|voir les factures/i })
+    .getByRole('button', { name: /explorer seul|fermer|première victoire|continuer|voir les factures/i })
     .first()
     .click({ timeout: 4000 })
     .catch(() => page.keyboard.press('Escape').catch(() => {}))
