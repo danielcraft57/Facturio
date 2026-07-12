@@ -35,6 +35,8 @@ import {
 } from './playwright-marketing-helpers.mjs'
 import {
   fillEditProductWizard,
+  fillInvoiceModal,
+  fillQuoteModal,
   openFirstProductForEdit,
 } from './playwright-marketing-forms.mjs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -89,9 +91,22 @@ async function openDemoCreateModalPreview(page, inboxPath) {
 /** Clique sur « enregistrer » en démo pour déclencher le toast de persistance bloquée. */
 async function triggerDemoPersistBlockedToast(page, inboxPath) {
   const dialog = await openDemoCreateModalPreview(page, inboxPath)
+  if (inboxPath.includes('devis')) {
+    await fillQuoteModal(page)
+  } else {
+    await fillInvoiceModal(page)
+  }
   const submitBtn = dialog
     .getByRole('button', { name: /aperçu|créer la facture|créer le devis|inscription pour enregistrer/i })
     .last()
+  await submitBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  for (let i = 0; i < 80; i++) {
+    if (await submitBtn.isEnabled().catch(() => false)) break
+    await page.waitForTimeout(200)
+  }
+  if (!(await submitBtn.isEnabled().catch(() => false))) {
+    throw new Error('Bouton enregistrement toujours désactivé après remplissage du formulaire démo')
+  }
   await submitBtn.click({ timeout: 8_000 })
   await page.waitForTimeout(500)
 }
@@ -230,12 +245,42 @@ const APP_TARGETS = [
     },
   },
   {
+    slug: 'demo-command-palette',
+    path: '/dashboard',
+    waitMs: 600,
+    before: async (page) => {
+      await dismissDemoWelcomeDialog(page)
+      await page.keyboard.press('Control+k')
+      await page.getByPlaceholder(/rechercher une page/i).waitFor({ state: 'visible', timeout: 8_000 })
+      await page.waitForTimeout(500)
+    },
+  },
+  {
+    slug: 'demo-quest-complete-dialog',
+    path: '/dashboard',
+    waitMs: 800,
+    skipGoto: true,
+    before: async (page) => {
+      await page.evaluate(() => {
+        const prefix = 'facturio_demo_explore_'
+        for (const step of ['see-invoice', 'see-quote', 'see-efacture']) {
+          localStorage.setItem(`${prefix}${step}`, '1')
+        }
+        localStorage.removeItem(`${prefix}quest_recap_seen`)
+        localStorage.setItem(`${prefix}welcome_seen`, '1')
+      })
+      await gotoDemoReady(page, '/dashboard', BASE_URL)
+      await page.getByRole('dialog').filter({ hasText: /mission accomplie/i }).waitFor({ state: 'visible', timeout: 12_000 })
+      await page.waitForTimeout(400)
+    },
+  },
+  {
     slug: 'demo-toast-creation-bloquee',
-    path: '/devis/inbox',
+    path: '/factures/inbox',
     waitMs: 300,
     skipGoto: false,
     before: async (page) => {
-      await triggerDemoPersistBlockedToast(page, '/devis/inbox')
+      await triggerDemoPersistBlockedToast(page, '/factures/inbox')
       await snapDemoToast(
         page,
         path.join(OUT_DIR, captureFilename('demo-toast-creation-bloquee')),
@@ -248,6 +293,9 @@ const APP_TARGETS = [
     path: '/comptabilite',
     waitMs: 2500,
     before: async (page) => {
+      await page.keyboard.press('Escape').catch(() => {})
+      await page.locator('[role="dialog"]').first().waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {})
+      await dismissDemoWelcomeDialog(page)
       await syncAccountingFromInvoices(page)
       await gotoDemoReady(page, '/comptabilite', BASE_URL)
     },

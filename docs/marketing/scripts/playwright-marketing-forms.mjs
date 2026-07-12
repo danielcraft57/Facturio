@@ -37,11 +37,19 @@ async function fillFirstLineInDialog(page, description, unitPrice) {
   const descCombo = row.getByRole('combobox')
   await descCombo.click()
   await descCombo.fill(description)
-  await page.waitForTimeout(200)
+  await page.waitForTimeout(400)
+  const option = page.getByRole('option').first()
+  if (await option.isVisible().catch(() => false)) {
+    await option.click()
+  } else {
+    await descCombo.press('Tab')
+  }
+  await page.waitForTimeout(350)
   const price = row.locator('input[inputmode="numeric"]')
   await price.click()
   await price.fill(String(unitPrice))
-  await page.waitForTimeout(350)
+  await price.press('Tab')
+  await page.waitForTimeout(500)
 }
 
 /** @param {import('playwright').Page} page */

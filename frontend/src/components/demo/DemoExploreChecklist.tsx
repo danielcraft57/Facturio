@@ -97,6 +97,13 @@ export function DemoExploreChecklist() {
   void tick
 
   const progressPct = (done / total) * 100
+  const remaining = total - done
+  const progressHint =
+    remaining === total
+      ? 'Commencez par une facture exemple — résultat concret en moins de 2 minutes.'
+      : remaining === 1
+        ? 'Plus qu\'une étape avant de maîtriser la conformité 2026.'
+        : `Plus que ${remaining} étapes pour terminer le parcours démo.`
 
   return (
     <Card variant="outlined" sx={{ mb: 2, ...demoHudSurfaceSx('light') }}>
@@ -113,7 +120,7 @@ export function DemoExploreChecklist() {
               <Chip label={`${done}/${total}`} size="small" sx={demoBadgeChipSx()} />
             </Stack>
             <Typography variant="body2" color="text.secondary">
-              Chaque étape montre une fonction clé — prochaine action en surbrillance.
+              {progressHint}
             </Typography>
             <LinearProgress
               variant="determinate"

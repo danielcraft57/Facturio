@@ -123,8 +123,13 @@ export async function waitForDesktopNav(page, { timeout = 30_000 } = {}) {
       (await page.getByRole('link', { name: /tableau de bord/i }).first().isVisible().catch(() => false)) ||
       (await page.getByRole('link', { name: /nouvelle facture/i }).first().isVisible().catch(() => false)) ||
       (await page.getByRole('button', { name: /nouvelle facture/i }).first().isVisible().catch(() => false)) ||
-      (await page.getByText(/espace démo prérempli/i).first().isVisible().catch(() => false)) ||
-      (await page.getByRole('heading', { name: /^tous$/i }).first().isVisible().catch(() => false))
+      (await page.getByText(/données exemple prêtes/i).first().isVisible().catch(() => false)) ||
+      (await page.getByText(/mode démo/i).first().isVisible().catch(() => false)) ||
+      (await page.getByRole('button', { name: /recherche rapide/i }).first().isVisible().catch(() => false)) ||
+      (await page.getByText(/quêtes démo/i).first().isVisible().catch(() => false)) ||
+      (await page.getByRole('heading', { name: /^tous$/i }).first().isVisible().catch(() => false)) ||
+      (await page.getByRole('heading', { name: /factures/i }).first().isVisible().catch(() => false)) ||
+      (await page.getByRole('heading', { name: /comptabilité/i }).first().isVisible().catch(() => false))
 
     if (ready) {
       const busy = page.locator('.MuiCircularProgress-root:visible, .MuiLinearProgress-root:visible')
@@ -642,6 +647,7 @@ export async function enterDemo(page, baseUrl = envBaseUrl()) {
   if (page.url().includes('/auth/session')) {
     await page.waitForURL(/\/(factures|dashboard|devis)/, { timeout: 90_000 })
   }
+  await dismissDemoWelcomeDialog(page)
   await waitForDesktopNav(page, { timeout: 90_000 })
   await page.waitForTimeout(800)
 }
@@ -651,7 +657,7 @@ export async function dismissDemoWelcomeDialog(page) {
   const dialog = page.getByRole('dialog').filter({ hasText: /espace démo/i })
   if (!(await dialog.isVisible().catch(() => false))) return
   await dialog
-    .getByRole('button', { name: /explorer seul|fermer|voir les factures/i })
+    .getByRole('button', { name: /explorer seul|fermer|première victoire|voir les factures/i })
     .first()
     .click({ timeout: 4000 })
     .catch(() => page.keyboard.press('Escape').catch(() => {}))

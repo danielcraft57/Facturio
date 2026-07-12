@@ -9,6 +9,7 @@ import {
   ListItemIcon,
   ListItemText,
   TextField,
+  Tooltip,
   Typography,
   alpha,
   useTheme,
@@ -29,8 +30,10 @@ import {
 import { settingsNavFilterFromUsage } from '../../account/settingsNav'
 import {
   buildCommandPaletteItems,
+  COMMAND_PALETTE_ZERO_RESULT_SUGGESTIONS,
   filterCommandPaletteItems,
   groupCommandPaletteItems,
+  sortCommandPaletteItemsForDisplay,
   type CommandPaletteItem,
 } from '../config/commandPaletteConfig'
 
@@ -68,8 +71,13 @@ export function CommandPalette({ open: controlledOpen, onClose: controlledOnClos
     [visibleNavGroups, settingsGroup],
   )
 
-  const filteredItems = useMemo(() => filterCommandPaletteItems(allItems, query), [allItems, query])
+  const filteredItems = useMemo(() => {
+    const base = filterCommandPaletteItems(allItems, query)
+    if (query.trim() && base.length === 0) return COMMAND_PALETTE_ZERO_RESULT_SUGGESTIONS
+    return sortCommandPaletteItemsForDisplay(base, query)
+  }, [allItems, query])
   const groupedItems = useMemo(() => groupCommandPaletteItems(filteredItems), [filteredItems])
+  const isZeroResultFallback = query.trim().length > 0 && filterCommandPaletteItems(allItems, query).length === 0
 
   const handleClose = useCallback(() => {
     if (isControlled) {
@@ -181,6 +189,7 @@ export function CommandPalette({ open: controlledOpen, onClose: controlledOnClos
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoComplete="off"
+          aria-label="Recherche rapide"
           slotProps={{
             input: {
               startAdornment: (
@@ -206,6 +215,16 @@ export function CommandPalette({ open: controlledOpen, onClose: controlledOnClos
             borderColor: isDark ? alpha('#fff', 0.06) : alpha('#0f172a', 0.06),
           }}
         >
+          {!query.trim() ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 2.5, pt: 1.5, pb: 0.25 }}>
+              Actions populaires — tapez pour filtrer
+            </Typography>
+          ) : null}
+          {isZeroResultFallback ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 2.5, pt: 1.5, pb: 0.5 }}>
+              Aucun résultat pour « {query.trim()} » — suggestions :
+            </Typography>
+          ) : null}
           {filteredItems.length === 0 ? (
             <Box sx={{ px: 3, py: 4, textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
@@ -329,36 +348,41 @@ export function CommandPaletteHost() {
 
   useCommandPaletteShortcut(() => openPalette('shortcut'), !open)
 
+  const toolbarShortcut =
+    typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘K' : 'Ctrl+K'
+
   return (
     <>
       <CommandPalette open={open} onClose={() => setOpen(false)} />
-      <Box
-        component="button"
-        type="button"
-        onClick={() => openPalette('toolbar')}
-        aria-label="Recherche rapide"
-        sx={{
-          display: { xs: 'none', sm: 'inline-flex' },
-          alignItems: 'center',
-          gap: 1,
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 2,
-          px: 1.5,
-          py: 0.5,
-          bgcolor: 'transparent',
-          color: 'text.secondary',
-          cursor: 'pointer',
-          font: 'inherit',
-          fontSize: '0.8125rem',
-          '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
-        }}
-      >
-        <SearchIcon sx={{ fontSize: 18 }} />
-        <Typography variant="caption" sx={{ display: { sm: 'none', md: 'inline' } }}>
-          Rechercher…
-        </Typography>
-      </Box>
+      <Tooltip title={`Recherche rapide (${toolbarShortcut})`}>
+        <Box
+          component="button"
+          type="button"
+          onClick={() => openPalette('toolbar')}
+          aria-label="Recherche rapide"
+          sx={{
+            display: { xs: 'none', sm: 'inline-flex' },
+            alignItems: 'center',
+            gap: 1,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2,
+            px: 1.5,
+            py: 0.5,
+            bgcolor: 'transparent',
+            color: 'text.secondary',
+            cursor: 'pointer',
+            font: 'inherit',
+            fontSize: '0.8125rem',
+            '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+          }}
+        >
+          <SearchIcon sx={{ fontSize: 18 }} />
+          <Typography variant="caption" sx={{ display: { sm: 'none', md: 'inline' } }}>
+            Rechercher…
+          </Typography>
+        </Box>
+      </Tooltip>
     </>
   )
 }

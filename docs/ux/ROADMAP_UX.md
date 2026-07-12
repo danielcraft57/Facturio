@@ -1,6 +1,6 @@
 # Roadmap UX Facturio
 
-Référence : transcripts TikTok UX (`Videos/tiktokUX/transcripts`) + captures démo (`docs/marketing/demo/captures/`).
+Référence : transcripts TikTok UX (`Videos/tiktokUX/transcripts`) + captures démo (`docs/marketing/demo/captures/`) + synthèse `docs/ux/TIKTOK_UX_PRINCIPES.md`.
 
 Légende : `[ ]` à faire · `[~]` en cours · `[x]` fait
 

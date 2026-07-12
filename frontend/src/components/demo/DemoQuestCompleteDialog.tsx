@@ -51,16 +51,15 @@ export function DemoQuestCompleteDialog({ open, onClose }: Props) {
       <DialogContent>
         <Stack spacing={2}>
           <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.65 }}>
-            Vous avez vu factures, devis et score de conformité. Créez votre compte gratuit pour
-            émettre vos propres documents et suivre votre activité.
+            Vous avez vu une facture conforme, un devis et le score e-facture. Créez votre compte
+            gratuit pour émettre vos propres documents avec vos données.
           </Typography>
           <Box sx={demoMissionPanelSx()}>
             <Typography variant="subtitle2" fontWeight={700} gutterBottom sx={{ color: DEMO_HERO_COLORS.ink }}>
               Prochaine étape
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Inscription gratuite, assistant catalogue, puis votre première facture en quelques
-              minutes.
+              Inscription gratuite, puis votre première facture conforme en quelques minutes.
             </Typography>
           </Box>
         </Stack>
@@ -74,7 +73,7 @@ export function DemoQuestCompleteDialog({ open, onClose }: Props) {
           fullWidth
           sx={demoPrimaryButtonSx()}
         >
-          Créer mon compte gratuit
+          Émettre ma première facture avec mon compte
         </Button>
         <Button variant="text" onClick={handleClose} fullWidth sx={{ color: 'text.secondary' }}>
           Continuer à explorer

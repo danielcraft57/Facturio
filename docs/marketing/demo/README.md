@@ -36,4 +36,5 @@ Workflow manuel GitHub Actions : **Demo captures** (`workflow_dispatch`).
 - Pages publiques : landing, login (lien démo), `/essayer`
 - App connectée : dashboard avec bandeau démo, clients, factures, devis, produits
 - Modales : aperçu création facture / devis (interactif, sans enregistrement)
+- Popins : welcome, quêtes terminées, palette Cmd+K
 - Toast : tentative d'enregistrement bloquée en mode démo

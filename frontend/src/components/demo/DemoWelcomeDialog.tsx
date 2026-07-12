@@ -117,8 +117,8 @@ export function DemoWelcomeDialog() {
           Bienvenue dans l&apos;espace démo
         </DialogTitle>
         <Typography variant="body2" sx={{ mt: 0.5, opacity: 0.92, lineHeight: 1.65 }}>
-          Données préremplies pour freelances dev. Explorez sans configurer — la création et
-          l&apos;envoi d&apos;emails s&apos;activent avec votre compte gratuit.
+          Factures, devis et score conformité déjà remplis. En moins de 2 minutes, voyez ce que
+          Facturio change pour votre facturation — sans configurer votre entreprise.
         </Typography>
       </Box>
 
@@ -127,7 +127,7 @@ export function DemoWelcomeDialog() {
           <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-                Parcours express — 3 min
+                Parcours express — votre aha moment
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                 {done}/{total}
@@ -196,7 +196,7 @@ export function DemoWelcomeDialog() {
           variant="contained"
           sx={demoPrimaryButtonSx()}
         >
-          Première victoire : voir une facture
+          Première victoire : voir une facture prête à envoyer
         </Button>
         <Button onClick={close} color="inherit">
           Explorer seul

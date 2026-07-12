@@ -223,6 +223,50 @@ export function filterCommandPaletteItems(items: CommandPaletteItem[], query: st
 }
 
 /**
+ * Trie les items pour l'affichage : actions rapides en tête si pas de requête.
+ *
+ * @param items - Items filtrés
+ * @param query - Requête utilisateur
+ */
+export function sortCommandPaletteItemsForDisplay(items: CommandPaletteItem[], query: string): CommandPaletteItem[] {
+  if (query.trim()) return items
+  const priority: Record<CommandPaletteItemKind, number> = {
+    action: 3,
+    navigation: 2,
+    account: 1,
+  }
+  return [...items].sort((a, b) => priority[b.kind] - priority[a.kind] || a.label.localeCompare(b.label, 'fr'))
+}
+
+/** Suggestions affichées quand la recherche ne retourne aucun résultat. */
+export const COMMAND_PALETTE_ZERO_RESULT_SUGGESTIONS: CommandPaletteItem[] = [
+  {
+    id: 'fallback-invoice',
+    label: 'Créer une facture',
+    description: 'Action la plus utilisée',
+    to: '/factures/inbox?create=1',
+    kind: 'action',
+    groupLabel: 'Essayez plutôt',
+  },
+  {
+    id: 'fallback-client',
+    label: 'Ajouter un client',
+    description: 'Carnet acheteurs',
+    to: '/clients/inbox?create=1',
+    kind: 'action',
+    groupLabel: 'Essayez plutôt',
+  },
+  {
+    id: 'fallback-products',
+    label: 'Voir le catalogue produits',
+    description: 'Tarifs et prestations',
+    to: '/produits',
+    kind: 'action',
+    groupLabel: 'Essayez plutôt',
+  },
+]
+
+/**
  * Regroupe les items filtrés par libellé de section (ordre d'apparition conservé).
  *
  * @param items - Items filtrés
