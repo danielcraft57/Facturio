@@ -13,7 +13,7 @@
  * Sortie : docs/marketing/demo/captures/
  */
 
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { captureFilename } from './marketing-screenshot-env.mjs'
@@ -73,19 +73,33 @@ async function snapDemoToast(page, file, labelPattern) {
   await snap(page, file, { waitMs: 300 })
 }
 
-/** Ouvre la modale de création en démo (?create=1) et attend le bandeau aperçu. */
+/** Ouvre la modale de création en démo et attend le bandeau aperçu. */
 async function openDemoCreateModalPreview(page, inboxPath) {
-  const pathWithCreate = inboxPath.includes('?') ? `${inboxPath}&create=1` : `${inboxPath}?create=1`
+  const isInvoice = inboxPath.includes('factures')
+  const createAria = isInvoice ? 'Nouvelle facture' : 'Nouveau devis'
+  const dialogLocator = () =>
+    page.getByRole('dialog').filter({
+      hasText: isInvoice ? /nouvelle facture/i : /nouveau devis/i,
+    })
+
+  const pathWithCreate = `${inboxPath}${inboxPath.includes('?') ? '&' : '?'}create=1`
   await gotoDemoReady(page, pathWithCreate, BASE_URL)
   await dismissDemoWelcomeDialog(page)
-  const isInvoice = inboxPath.includes('factures')
-  const dialog = page.getByRole('dialog').filter({
-    hasText: isInvoice ? /nouvelle facture/i : /nouveau devis/i,
-  })
-  await dialog.waitFor({ state: 'visible', timeout: 15_000 })
-  await page.getByText(/aperçu interactif/i).first().waitFor({ timeout: 8_000 }).catch(() => {})
+  await page.waitForTimeout(2500)
+
+  if (!(await dialogLocator().isVisible().catch(() => false))) {
+    await gotoDemoReady(page, inboxPath, BASE_URL)
+    await dismissDemoWelcomeDialog(page)
+    const createBtn = page.getByRole('button', { name: createAria }).first()
+    await createBtn.scrollIntoViewIfNeeded().catch(() => {})
+    await createBtn.click({ timeout: 15_000 })
+    await page.waitForTimeout(1200)
+  }
+
+  await dialogLocator().waitFor({ state: 'visible', timeout: 35_000 })
+  await page.getByText(/aperçu interactif/i).first().waitFor({ timeout: 12_000 }).catch(() => {})
   await page.waitForTimeout(600)
-  return dialog
+  return dialogLocator()
 }
 
 /** Clique sur « enregistrer » en démo pour déclencher le toast de persistance bloquée. */
@@ -251,7 +265,10 @@ const APP_TARGETS = [
     before: async (page) => {
       await dismissDemoWelcomeDialog(page)
       await page.keyboard.press('Control+k')
-      await page.getByPlaceholder(/rechercher une page/i).waitFor({ state: 'visible', timeout: 8_000 })
+      await page.getByRole('dialog').filter({ has: page.locator('input') }).last().waitFor({
+        state: 'visible',
+        timeout: 12_000,
+      })
       await page.waitForTimeout(500)
     },
   },
@@ -403,8 +420,22 @@ async function main() {
     }
   }
 
-  await writeFile(path.join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2))
   await browser.close()
+
+  if (CAPTURE_ONLY.length > 0) {
+    try {
+      const existing = JSON.parse(await readFile(path.join(OUT_DIR, 'manifest.json'), 'utf8'))
+      if (Array.isArray(existing.files) && existing.files.length > 0) {
+        const merged = new Map(existing.files.map((file) => [file.slug, file]))
+        for (const file of manifest.files) merged.set(file.slug, file)
+        manifest.files = Array.from(merged.values())
+      }
+    } catch {
+      /* pas de manifest précédent */
+    }
+  }
+
+  await writeFile(path.join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2))
   console.log(`\n[demo-capture] ${manifest.files.length} captures → ${OUT_DIR}`)
 }
 

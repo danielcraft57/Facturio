@@ -28,7 +28,9 @@ export function DemoRestrictedCreateButton({
     onAfterClick?.()
   }
 
-  const displayLabel = isDemo ? `Aperçu : ${label.replace(/^Nouveau /i, '')}` : label
+  const displayLabel = isDemo
+    ? `Aperçu : ${label.replace(/^nouve(?:au|lle)\s+/i, '')}`
+    : label
 
   const button = (
     <Button
@@ -36,6 +38,7 @@ export function DemoRestrictedCreateButton({
       variant="contained"
       startIcon={startIcon}
       onClick={handleClick}
+      aria-label={label}
       {...buttonProps}
     >
       {displayLabel}

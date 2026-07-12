@@ -648,7 +648,16 @@ export async function enterDemo(page, baseUrl = envBaseUrl()) {
     await page.waitForURL(/\/(factures|dashboard|devis)/, { timeout: 90_000 })
   }
   await dismissDemoWelcomeDialog(page)
-  await waitForDesktopNav(page, { timeout: 90_000 })
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await waitForDesktopNav(page, { timeout: 45_000 })
+      break
+    } catch (err) {
+      if (attempt >= 2) throw err
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 })
+      await dismissDemoWelcomeDialog(page)
+    }
+  }
   await page.waitForTimeout(800)
 }
 
