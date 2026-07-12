@@ -161,7 +161,7 @@ export class DemoService {
 
 		if (existing) {
 			const counts = await this.countOrgData(existing.id);
-			if (counts.clients > 0 && counts.invoices > 0) {
+			if (counts.clients > 0 && counts.invoices > 0 && counts.quotes > 0) {
 				return;
 			}
 		}

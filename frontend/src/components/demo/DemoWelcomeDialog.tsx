@@ -20,7 +20,7 @@ import SportsEsportsIcon from '@mui/icons-material/SportsEsports'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { demoService } from '../../services/demoService'
 import { hasSeenDemoWelcome, markDemoWelcomeSeen, demoExploreProgress } from '../../utils/demoExploreStorage'
-import { DEMO_HERO_COLORS, DEMO_HERO_GRADIENT } from './demoTheme'
+import { DEMO_HERO_COLORS, DEMO_HERO_GRADIENT, DEMO_NEON_GRADIENT, demoModeChipSx, demoPrimaryButtonSx, demoProgressBarSx } from './demoTheme'
 
 const QUESTS = [
   {
@@ -107,10 +107,9 @@ export function DemoWelcomeDialog() {
             label="Mode démo"
             size="small"
             sx={{
-              bgcolor: alpha('#fff', 0.16),
-              color: '#fff',
-              fontWeight: 700,
-              letterSpacing: '0.06em',
+              ...demoModeChipSx(),
+              bgcolor: alpha(DEMO_HERO_COLORS.accent, 0.28),
+              color: DEMO_HERO_COLORS.accent,
             }}
           />
         </Stack>
@@ -137,15 +136,7 @@ export function DemoWelcomeDialog() {
             <LinearProgress
               variant="determinate"
               value={progressPct}
-              sx={{
-                height: 8,
-                borderRadius: 4,
-                bgcolor: alpha(DEMO_HERO_COLORS.main, 0.12),
-                '& .MuiLinearProgress-bar': {
-                  borderRadius: 4,
-                  background: DEMO_HERO_GRADIENT,
-                },
-              }}
+              sx={{ ...demoProgressBarSx() }}
             />
           </Box>
 
@@ -175,9 +166,9 @@ export function DemoWelcomeDialog() {
                     justifyContent: 'center',
                     fontWeight: 800,
                     fontSize: '0.8rem',
-                    color: '#fff',
-                    background: DEMO_HERO_GRADIENT,
-                    boxShadow: `0 0 12px ${alpha(DEMO_HERO_COLORS.main, 0.4)}`,
+                    color: DEMO_HERO_COLORS.deep,
+                    background: DEMO_NEON_GRADIENT,
+                    boxShadow: `0 0 12px ${alpha(DEMO_HERO_COLORS.main, 0.45)}`,
                   }}
                 >
                   {quest.step}
@@ -203,12 +194,7 @@ export function DemoWelcomeDialog() {
         <Button
           onClick={() => go('/factures/inbox')}
           variant="contained"
-          sx={{
-            fontWeight: 700,
-            background: DEMO_HERO_GRADIENT,
-            boxShadow: `0 8px 24px ${alpha(DEMO_HERO_COLORS.main, 0.35)}`,
-            '&:hover': { background: DEMO_HERO_GRADIENT, filter: 'brightness(1.06)' },
-          }}
+          sx={demoPrimaryButtonSx()}
         >
           Première victoire : voir une facture
         </Button>

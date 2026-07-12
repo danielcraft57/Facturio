@@ -15,7 +15,7 @@ import {
   Tooltip,
   Alert,
 } from '@mui/material';
-import { blockDemoCreateIfNeeded } from '../../utils/demoCreateGuard'
+import { blockDemoPersistIfNeeded } from '../../utils/demoCreateGuard'
 import { pushActivityNotification } from '../../utils/activityNotifications';
 import { PageHeader } from '../../components/finance/PageHeader';
 import { financePagePadding, financePrimaryButtonSx } from '../../components/finance/financeStyles';
@@ -204,6 +204,7 @@ export function ProductsPage() {
   };
 
   const handleCreateProduct = async (data: CreateProductData | UpdateProductData) => {
+    if (blockDemoPersistIfNeeded('product')) return
     setSaving(true);
     try {
       const created = await productsStore.createProduct(data as CreateProductData);
@@ -226,7 +227,8 @@ export function ProductsPage() {
   };
 
   const handleUpdateProduct = async (data: UpdateProductData) => {
-    if (!editingProduct) return;
+    if (!editingProduct) return
+    if (blockDemoPersistIfNeeded('product')) return
     setSaving(true);
     try {
       const updated = await productsStore.updateProduct(editingProduct.id, data);
@@ -248,6 +250,7 @@ export function ProductsPage() {
   };
 
   const handleInlineUnitPrice = async (product: Product, unitPrice: number) => {
+    if (blockDemoPersistIfNeeded('product')) return
     const updated = await productsStore.updateProduct(product.id, { unitPrice });
     if (!updated) {
       toast.error('Impossible de mettre à jour le tarif.');
@@ -331,7 +334,6 @@ export function ProductsPage() {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => {
-                if (blockDemoCreateIfNeeded()) return
                 setCreateProductOpen(true)
               }}
               sx={financePrimaryButtonSx}
@@ -448,8 +450,7 @@ export function ProductsPage() {
                       variant={debouncedSearch ? 'search' : 'folder'}
                       resourceLabel="produits"
                       onCreate={() => {
-                        if (blockDemoCreateIfNeeded()) return;
-                        setCreateProductOpen(true);
+                        setCreateProductOpen(true)
                       }}
                       createLabel="Nouveau produit"
                       secondaryCta={

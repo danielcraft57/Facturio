@@ -1,6 +1,12 @@
 const PREFIX = 'facturio_demo_explore_'
+const STEP_HISTORY_KEY = `${PREFIX}step_history`
 
 export type DemoExploreStepId = 'see-invoice' | 'see-quote' | 'see-efacture'
+
+export type DemoExploreHistoryEntry = {
+  step: DemoExploreStepId
+  completedAt: string
+}
 
 const STEPS: DemoExploreStepId[] = ['see-invoice', 'see-quote', 'see-efacture']
 
@@ -8,12 +14,34 @@ function key(step: DemoExploreStepId): string {
   return `${PREFIX}${step}`
 }
 
-/** Marque une étape du parcours démo comme complétée. */
+/**
+ * Marque une étape du parcours démo comme complétée.
+ *
+ * @param step - Étape visitée
+ */
 export function markDemoExploreStep(step: DemoExploreStepId): void {
   try {
+    if (isDemoExploreStepDone(step)) return
     localStorage.setItem(key(step), '1')
+    const history = getDemoExploreStepHistory()
+    history.push({ step, completedAt: new Date().toISOString() })
+    localStorage.setItem(STEP_HISTORY_KEY, JSON.stringify(history))
   } catch {
     /* ignore */
+  }
+}
+
+/**
+ * Historique chronologique des étapes démo validées.
+ */
+export function getDemoExploreStepHistory(): DemoExploreHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(STEP_HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as DemoExploreHistoryEntry[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
   }
 }
 
@@ -39,7 +67,26 @@ export function hasSeenDemoWelcome(): boolean {
   try {
     return localStorage.getItem(WELCOME_KEY) === '1'
   } catch {
-    return true
+    return false
+  }
+}
+
+/**
+ * Réinitialise la progression locale démo (parcours, welcome, récap).
+ * Appelé à chaque nouvelle entrée via /essayer pour réafficher les modales.
+ */
+export function resetDemoExploreState(): void {
+  try {
+    const keysToRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k?.startsWith(PREFIX)) keysToRemove.push(k)
+    }
+    for (const k of keysToRemove) {
+      localStorage.removeItem(k)
+    }
+  } catch {
+    /* ignore */
   }
 }
 
@@ -59,7 +106,7 @@ export function hasSeenDemoQuestRecap(): boolean {
   try {
     return localStorage.getItem(QUEST_RECAP_KEY) === '1'
   } catch {
-    return true
+    return false
   }
 }
 

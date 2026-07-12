@@ -1,5 +1,6 @@
-import { DEMO_CREATE_HINT } from '../hooks/useDemoMode'
+import { DEMO_PERSIST_HINT } from '../hooks/useDemoMode'
 import { demoService } from '../services/demoService'
+import { trackDemoPersistBlocked } from './demoAnalytics'
 import { dispatchDemoBlockedEvent } from './quotaNotifications'
 
 /**
@@ -12,22 +13,39 @@ export function isDocumentCreateUrl(path: string): boolean {
 }
 
 /**
- * Bloque l'action de création en mode démo et affiche le toast guidé.
+ * Bloque l'enregistrement en mode démo (ouverture des modales autorisée).
  *
- * @returns true si l'action a été bloquée
+ * @param surface - Contexte analytics (facture, devis, client…)
+ * @returns true si l'action de persistance a été bloquée
  */
-export function blockDemoCreateIfNeeded(): boolean {
+export function blockDemoPersistIfNeeded(surface = 'form'): boolean {
   if (!demoService.isDemoSession()) return false
-  dispatchDemoBlockedEvent(DEMO_CREATE_HINT, 'DEMO_READ_ONLY')
+  trackDemoPersistBlocked(surface)
+  dispatchDemoBlockedEvent(DEMO_PERSIST_HINT, 'DEMO_READ_ONLY')
   return true
 }
 
 /**
- * Exécute une navigation ou une action de création, sauf en mode démo.
- *
- * @param onAllowed - Callback si la création est autorisée
+ * @deprecated Préférer {@link blockDemoPersistIfNeeded}
  */
-export function runUnlessDemoCreateBlocked(onAllowed: () => void): void {
-  if (blockDemoCreateIfNeeded()) return
+export function blockDemoCreateIfNeeded(surface = 'form'): boolean {
+  return blockDemoPersistIfNeeded(surface)
+}
+
+/**
+ * Exécute une action de persistance sauf en mode démo.
+ *
+ * @param onAllowed - Callback si l'enregistrement est autorisé
+ * @param surface - Contexte analytics
+ */
+export function runUnlessDemoPersistBlocked(onAllowed: () => void, surface = 'form'): void {
+  if (blockDemoPersistIfNeeded(surface)) return
   onAllowed()
+}
+
+/**
+ * @deprecated Préférer {@link runUnlessDemoPersistBlocked}
+ */
+export function runUnlessDemoCreateBlocked(onAllowed: () => void, surface = 'form'): void {
+  runUnlessDemoPersistBlocked(onAllowed, surface)
 }

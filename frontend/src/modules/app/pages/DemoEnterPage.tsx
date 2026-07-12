@@ -59,6 +59,12 @@ export function DemoEnterPage() {
       const info = await demoService.getInfo()
       setInfoMessage(info.message)
 
+      if (!info.available) {
+        throw new Error(
+          'La démo est vide ou en cours de préparation. Lancez `npm run ensure-demo --prefix server` puis réessayez.',
+        )
+      }
+
       const result = await demoService.enter()
       setUser(result.user)
       useAuthStore.setState({ isAuthenticated: true, error: null })

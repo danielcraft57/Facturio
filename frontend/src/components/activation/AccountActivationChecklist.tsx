@@ -27,6 +27,7 @@ import {
 import { ActivationQuestCompleteDialog } from './ActivationQuestCompleteDialog'
 import { ActivationProgressHistory } from './ActivationProgressHistory'
 import { ACTIVATION_UNLOCK_COPY } from './activationUnlockCopy'
+import { celebrateQuestStepUnlock } from '../../utils/questCelebration'
 import { GA_EVENTS, trackActivationEvent } from '../../config/analyticsEvents'
 import {
   QUEST_COLORS,
@@ -38,7 +39,12 @@ import {
   questStepRowSx,
 } from '../demo/demoTheme'
 
-const STEPS: Array<{ id: AccountActivationStepId; label: string; to: string; match: RegExp }> = [
+const STEPS: Array<{
+  id: AccountActivationStepId
+  label: string
+  to: string
+  match?: RegExp
+}> = [
   {
     id: 'setup-company',
     label: 'Infos entreprise',
@@ -49,13 +55,11 @@ const STEPS: Array<{ id: AccountActivationStepId; label: string; to: string; mat
     id: 'first-invoice',
     label: 'Première facture',
     to: '/factures/inbox?create=1',
-    match: /^\/factures\/voir\//,
   },
   {
     id: 'first-client',
     label: 'Premier client',
     to: '/clients/inbox?create=1',
-    match: /^\/clients\/(inbox|voir|prospects)/,
   },
 ]
 
@@ -90,17 +94,13 @@ export function AccountActivationChecklist() {
   useEffect(() => {
     if (!showChecklist || !userId) return
     for (const step of STEPS) {
-      if (step.match.test(location.pathname) && !isAccountActivationStepDone(userId, step.id)) {
-        markAccountActivationStep(userId, step.id)
-        setTick((n) => n + 1)
-        setCelebrateStep(step.id)
-        const unlock = ACTIVATION_UNLOCK_COPY[step.id]
-        toast.success(unlock.message, {
-          title: `Étape validée — ${unlock.title}`,
-          duration: 6000,
-        })
-        window.setTimeout(() => setCelebrateStep(null), 500)
-      }
+      if (!step.match?.test(location.pathname)) continue
+      if (isAccountActivationStepDone(userId, step.id)) continue
+      markAccountActivationStep(userId, step.id)
+      setTick((n) => n + 1)
+      setCelebrateStep(step.id)
+      celebrateQuestStepUnlock(toast, ACTIVATION_UNLOCK_COPY[step.id])
+      window.setTimeout(() => setCelebrateStep(null), 500)
     }
   }, [showChecklist, userId, location.pathname, toast])
 

@@ -111,19 +111,20 @@ Légende : `[ ]` à faire · `[~]` en cours · `[x]` fait
 
 ## Phase 7 — UX futuriste / gamification
 
-- [ ] Étendre `demoTheme.ts` au produit (progress, badges, CTA)
-- [ ] HUD quêtes dashboard compte neuf
-- [ ] Animations micro (étape validée, level up)
-- [ ] Déblocage capacité après 1er client / 1ère facture
-- [ ] Historique progression personnelle
-- [ ] Mega-menus accent emerald
-- [ ] Transitions « mission complete »
+- [x] Étendre `demoTheme.ts` au produit (progress, badges, CTA)
+- [x] HUD quêtes dashboard compte neuf
+- [x] Animations micro (étape validée, level up)
+- [x] Déblocage capacité après 1er client / 1ère facture
+- [x] Historique progression personnelle
+- [x] Mega-menus accent emerald
+- [x] Transitions « mission complete »
 
 ---
 
-## Phase 8 — Mesure `[~]`
+## Phase 8 — Mesure `[x]`
 
 - [x] Events GA4 : quêtes démo, signup depuis démo, 1ère facture (`analyticsEvents.ts`)
-- [ ] Entonnoir landing → essayer → quête → signup → facture (rapport GA4 à configurer)
-- [ ] Playwright parcours démo stable
-- [ ] Captures marketing en CI (optionnel)
+- [x] Events aperçu démo : `demo_form_preview`, `demo_persist_blocked` (`demoAnalytics.ts`)
+- [x] Entonnoir landing → essayer → quête → signup → facture — voir `docs/ux/GA4_FUNNEL.md`
+- [x] Playwright parcours démo stable (helpers, seed org-scoped, modales aperçu)
+- [x] Captures marketing en CI — workflow manuel `.github/workflows/demo-captures.yml`

@@ -23,7 +23,6 @@ import { topNavItemSx } from './topNavItemStyles'
 import { prefetchFinanceRouteFromPath } from '../../../utils/prefetchFinanceRoutes'
 import { ProPlanBadge } from '../../../components/billing/ProPlanBadge'
 import { SettingsMegaMenuColumns } from './SettingsMegaMenuColumns'
-import { blockDemoCreateIfNeeded, isDocumentCreateUrl } from '../../../utils/demoCreateGuard'
 
 /** Au-dessus de l’AppBar (drawer+2) et des panneaux latéraux. */
 const MEGA_MENU_Z_INDEX = 1500
@@ -231,7 +230,6 @@ function MegaMenuFeatured({
     : featured.description
 
   const handleFeaturedNav = (to: string) => {
-    if (isDocumentCreateUrl(to) && blockDemoCreateIfNeeded()) return
     onNavigate()
     navigate(to)
   }

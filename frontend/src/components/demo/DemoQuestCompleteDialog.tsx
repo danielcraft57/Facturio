@@ -7,11 +7,15 @@ import {
   DialogTitle,
   Stack,
   Typography,
-  alpha,
 } from '@mui/material'
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
 import { Link as RouterLink } from 'react-router-dom'
-import { DEMO_HERO_COLORS, DEMO_HERO_GRADIENT } from './demoTheme'
+import {
+  DEMO_HERO_COLORS,
+  demoMissionPanelSx,
+  demoPrimaryButtonSx,
+  questMissionReveal,
+} from './demoTheme'
 import { markDemoQuestRecapSeen } from '../../utils/demoExploreStorage'
 
 type Props = {
@@ -29,10 +33,20 @@ export function DemoQuestCompleteDialog({ open, onClose }: Props) {
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          animation: open ? `${questMissionReveal} 0.45s ease-out` : 'none',
+        },
+      }}
+    >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <EmojiEventsIcon sx={{ color: DEMO_HERO_COLORS.main }} />
-        Parcours démo terminé
+        Mission accomplie — démo
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2}>
@@ -40,16 +54,8 @@ export function DemoQuestCompleteDialog({ open, onClose }: Props) {
             Vous avez vu factures, devis et score de conformité. Créez votre compte gratuit pour
             émettre vos propres documents et suivre votre activité.
           </Typography>
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: alpha(DEMO_HERO_COLORS.main, 0.35),
-              background: `linear-gradient(135deg, ${alpha(DEMO_HERO_COLORS.main, 0.08)} 0%, ${alpha(DEMO_HERO_COLORS.deep, 0.04)} 100%)`,
-            }}
-          >
-            <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+          <Box sx={demoMissionPanelSx()}>
+            <Typography variant="subtitle2" fontWeight={700} gutterBottom sx={{ color: DEMO_HERO_COLORS.ink }}>
               Prochaine étape
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -66,11 +72,7 @@ export function DemoQuestCompleteDialog({ open, onClose }: Props) {
           to="/signup?from=demo"
           onClick={handleClose}
           fullWidth
-          sx={{
-            fontWeight: 700,
-            background: DEMO_HERO_GRADIENT,
-            '&:hover': { background: DEMO_HERO_GRADIENT, filter: 'brightness(1.05)' },
-          }}
+          sx={demoPrimaryButtonSx()}
         >
           Créer mon compte gratuit
         </Button>

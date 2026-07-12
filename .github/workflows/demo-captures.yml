@@ -1,0 +1,93 @@
+name: Demo captures
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  demo-capture:
+    name: captures espace démo
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install server
+        working-directory: server
+        run: npm ci
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+
+      - name: Préparer base démo
+        working-directory: server
+        run: |
+          cp env.example .env
+          npx prisma generate
+          npm run ensure-demo
+        env:
+          NODE_ENV: dev
+
+      - name: Démarrer API et frontend
+        run: |
+          cd server
+          npm run start:dev > ../api.log 2>&1 &
+          echo $! > ../api.pid
+          cd ../frontend
+          npm run dev -- --host 127.0.0.1 --port 5173 > ../web.log 2>&1 &
+          echo $! > ../web.pid
+          cd ..
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:5173/login > /dev/null; then
+              if curl -sf http://127.0.0.1:3000/api/auth/me > /dev/null 2>&1; then
+                echo "App prête"
+                exit 0
+              fi
+            fi
+            sleep 2
+          done
+          echo "=== api.log ==="
+          tail -n 40 api.log || true
+          echo "=== web.log ==="
+          tail -n 40 web.log || true
+          exit 1
+
+      - name: Captures Playwright
+        run: npm run demo:capture
+        env:
+          FACTURIO_BASE_URL: http://127.0.0.1:5173
+          FACTURIO_API_URL: http://127.0.0.1:3000/api
+
+      - name: Arrêter les services
+        if: always()
+        run: |
+          if [ -f api.pid ]; then kill $(cat api.pid) 2>/dev/null || true; fi
+          if [ -f web.pid ]; then kill $(cat web.pid) 2>/dev/null || true; fi
+
+      - id: artifact
+        if: success()
+        shell: bash
+        run: echo "name=demo-captures-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: docs/marketing/demo/captures/
+          retention-days: 14

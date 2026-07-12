@@ -40,7 +40,6 @@ import { DemoModeBanner } from '../../../components/demo/DemoModeBanner'
 import { DemoEntryMessageNotifier } from '../../../components/demo/DemoEntryMessageNotifier'
 import { DemoEntryNotice } from '../../../components/demo/DemoEntryNotice'
 import { demoService } from '../../../services/demoService'
-import { blockDemoCreateIfNeeded } from '../../../utils/demoCreateGuard'
 import { LifecycleNotifier } from './LifecycleNotifier'
 import { userMenuLinks } from '../config/userMenuConfig'
 import { PageTransition } from '../../../components/PageTransition'
@@ -188,10 +187,9 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
 
           <Box sx={{ flexGrow: 1, display: { xs: 'block', md: 'none' } }} />
 
-          <Tooltip title={isDemo ? 'Création réservée à votre compte' : 'Nouvelle facture'}>
+          <Tooltip title={isDemo ? 'Aperçu création facture' : 'Nouvelle facture'}>
             <IconButton
               onClick={() => {
-                if (blockDemoCreateIfNeeded()) return
                 navigate('/factures/inbox?create=1')
               }}
               color="inherit"

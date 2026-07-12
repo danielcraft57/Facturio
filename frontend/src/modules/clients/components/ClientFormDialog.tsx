@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -40,6 +40,9 @@ import {
   isPhoneValid,
   parsePhoneInput,
 } from '../../../utils/french-phone'
+import { DemoFormPreviewNotice } from '../../../components/demo/DemoFormPreviewNotice'
+import { getDemoSubmitLabel } from '../../../hooks/useDemoMode'
+import { trackDemoFormPreviewOpened } from '../../../utils/demoAnalytics'
 
 export type ClientFormValues = {
   name: string
@@ -138,6 +141,10 @@ export function ClientFormDialog({
     sirenValidation.state === 'invalid' ||
     (sirenValidation.state === 'incomplete' && parseSirenInput(values.siren).length > 0)
 
+  useEffect(() => {
+    if (open) trackDemoFormPreviewOpened('client')
+  }, [open])
+
   return (
     <Dialog
       open={open}
@@ -201,6 +208,7 @@ export function ClientFormDialog({
       </DialogTitle>
 
       <DialogContent sx={{ px: 2.5, py: 2.5 }}>
+        <DemoFormPreviewNotice />
         {error && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={onClearError}>
             {error}
@@ -382,9 +390,7 @@ export function ClientFormDialog({
         >
           {saving
             ? 'Enregistrement…'
-            : mode === 'create'
-              ? 'Créer le client'
-              : 'Enregistrer'}
+            : getDemoSubmitLabel(mode === 'create' ? 'Créer le client' : 'Enregistrer')}
         </Button>
       </DialogActions>
     </Dialog>

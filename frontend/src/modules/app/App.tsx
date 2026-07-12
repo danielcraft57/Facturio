@@ -204,8 +204,8 @@ export function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <ToastProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <ToastProvider>
           <AuthSessionHydrator />
           <SeoManager />
           <GoogleAnalytics />
@@ -605,8 +605,8 @@ export function App() {
             settings={settings}
             onChange={handleSettingsChange}
           />
-        </BrowserRouter>
-      </ToastProvider>
+        </ToastProvider>
+      </BrowserRouter>
     </ThemeProvider>
   )
 }

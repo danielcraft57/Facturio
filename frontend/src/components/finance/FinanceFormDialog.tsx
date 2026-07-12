@@ -18,6 +18,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import type { Breakpoint } from '@mui/material'
 import { financeOutlinedButtonSx } from './financeStyles'
+import { DemoFormPreviewNotice } from '../demo/DemoFormPreviewNotice'
 
 /** Champs outline style finance (aligné ClientFormDialog). */
 export const financeFieldSx = {
@@ -144,7 +145,10 @@ export function FinanceFormDialogShell({
         </Stack>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 2.5, py: 2.5 }}>{children}</DialogContent>
+      <DialogContent sx={{ px: 2.5, py: 2.5 }}>
+        <DemoFormPreviewNotice />
+        {children}
+      </DialogContent>
 
       <Divider />
 

@@ -45,6 +45,9 @@ import { useProductsStore } from '../../../stores/productsStore'
 import { productService } from '../../../services/productService'
 import { suggestProductSkuFromName } from '../../products/utils/productSku'
 import { useToast } from '../../../components/useToast'
+import { blockDemoPersistIfNeeded } from '../../../utils/demoCreateGuard'
+import { getDemoSubmitLabel } from '../../../hooks/useDemoMode'
+import { trackDemoFormPreviewOpened } from '../../../utils/demoAnalytics'
 
 interface InvoiceItem {
   id: string
@@ -127,6 +130,7 @@ export function CreateInvoiceDialog({
 
   useEffect(() => {
     if (!open) return
+    trackDemoFormPreviewOpened('invoice')
     submitInFlightRef.current = false
     setSubmitInFlight(false)
     setAdvancedMode(false)
@@ -280,6 +284,7 @@ export function CreateInvoiceDialog({
 
   const handleSubmit = async () => {
     if (submitInFlightRef.current || submitting) return
+    if (blockDemoPersistIfNeeded('invoice')) return
     submitInFlightRef.current = true
     setSubmitInFlight(true)
     try {
@@ -368,7 +373,7 @@ export function CreateInvoiceDialog({
               submitBusy ? <CircularProgress size={18} color="inherit" /> : undefined
             }
           >
-            {submitBusy ? 'Création…' : 'Créer la facture'}
+            {submitBusy ? 'Création…' : getDemoSubmitLabel('Créer la facture')}
           </Button>
         </>
       }

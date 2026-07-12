@@ -25,6 +25,15 @@ function clamp(n: number, min: number, max: number) {
 	return Math.max(min, Math.min(max, n));
 }
 
+/**
+ * Code organisation pour numéros de documents (contrainte @unique globale sur number).
+ *
+ * @param organizationId - ID organisation propriétaire du seed
+ */
+function orgScopedDocCode(organizationId: number): string {
+	return String(organizationId).padStart(3, '0');
+}
+
 /** PRNG deterministe (LCG) pour avoir des seeds stables. */
 function makeRng(seed: number) {
 	let s = seed >>> 0;
@@ -127,6 +136,7 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 		  });
 
 	await configurePlaywrightOrgPlan(prisma, org.id);
+	const orgDocCode = orgScopedDocCode(org.id);
 
 	const hashed = await bcrypt.hash(config.password, 12);
 	await prisma.user.upsert({
@@ -199,7 +209,7 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 	for (let i = 0; i < config.quotes; i++) {
 		const d = dateMonthsBack(config.monthsBack, rng);
 		const status = pick(rng, [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.ACCEPTED, QuoteStatus.REJECTED, QuoteStatus.EXPIRED]);
-		const number = `DEV-${d.getFullYear()}-${String(3000 + i).padStart(4, '0')}`;
+		const number = `DEV-${orgDocCode}-${d.getFullYear()}-${String(3000 + i).padStart(4, '0')}`;
 		const client = pick(rng, createdClients);
 
 		const l1 = pick(rng, quoteLinesPool);
@@ -211,7 +221,7 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 		await prisma.quote.upsert({
 			where: { number },
 			update: mb,
-			create: {
+			create: withEntityId({
 				number,
 				date: d,
 				expiryDate: addDays(d, 30),
@@ -229,7 +239,7 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 						total: l.quantity * l.unitPrice * (1 + l.taxRate),
 					})),
 				},
-			},
+			}),
 		});
 	}
 
@@ -244,7 +254,7 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 	for (let i = 0; i < config.invoices; i++) {
 		const d = dateMonthsBack(config.monthsBack, rng);
 		const status = pick(rng, [InvoiceStatus.DRAFT, InvoiceStatus.SENT, InvoiceStatus.PAID, InvoiceStatus.OVERDUE]);
-		const number = `FAC-${d.getFullYear()}-${String(6000 + i).padStart(4, '0')}`;
+		const number = `FAC-${orgDocCode}-${d.getFullYear()}-${String(6000 + i).padStart(4, '0')}`;
 		const client = pick(rng, createdClients);
 
 		const l1 = pick(rng, invoiceLinesPool);
@@ -259,7 +269,7 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 		await prisma.invoice.upsert({
 			where: { number },
 			update: mb,
-			create: {
+			create: withEntityId({
 				number,
 				date: d,
 				dueDate,
@@ -279,7 +289,7 @@ export async function seedPlaywrightDemo(prisma: PrismaClient, cfg?: Partial<Dem
 						total: l.quantity * l.unitPrice * (1 + l.taxRate),
 					})),
 				},
-			},
+			}),
 		});
 	}
 

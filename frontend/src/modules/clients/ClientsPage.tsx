@@ -27,8 +27,15 @@ import {
 import type { SxProps, Theme } from '@mui/material/styles'
 import { Upload, Download } from '@mui/icons-material'
 import { clientService, toCreateClientPayload, type Client, type ClientFolder } from '../../services/clients'
-import { blockDemoCreateIfNeeded } from '../../utils/demoCreateGuard'
+import { blockDemoPersistIfNeeded } from '../../utils/demoCreateGuard'
 import { useToast } from '../../components/useToast'
+import { useAuthStore } from '../../stores/authStore'
+import {
+  isAccountActivationStepDone,
+  markAccountActivationStep,
+} from '../../utils/accountActivationStorage'
+import { ACTIVATION_UNLOCK_COPY } from '../../components/activation/activationUnlockCopy'
+import { celebrateQuestStepUnlock } from '../../utils/questCelebration'
 import { pushActivityNotification } from '../../utils/activityNotifications'
 import {
   DOCUMENT_CREATE_TOAST_DURATION_MS,
@@ -222,7 +229,6 @@ export function ClientsPage() {
   }
 
   const handleOpenCreateDialog = () => {
-    if (blockDemoCreateIfNeeded()) return
     resetClientForm()
     if (activeFolder === 'prospects') {
       setClientForm({ ...emptyClientFormValues, status: 'prospect' })
@@ -239,6 +245,7 @@ export function ClientsPage() {
 
   const handleSaveClient = async () => {
     if (!validateClientForm()) return
+    if (blockDemoPersistIfNeeded('client')) return
 
     const name = clientForm.name.trim()
     const email = clientForm.email.trim()
@@ -282,6 +289,11 @@ export function ClientsPage() {
           message: `Client « ${name} » ajouté à votre carnet.`,
           href: created?.id ? `/factures/inbox?create=1&clientId=${created.id}` : '/clients/inbox',
         })
+        const userId = useAuthStore.getState().user?.id
+        if (userId && !isAccountActivationStepDone(userId, 'first-client')) {
+          markAccountActivationStep(userId, 'first-client')
+          celebrateQuestStepUnlock(toast, ACTIVATION_UNLOCK_COPY['first-client'])
+        }
       } else if (formDialogMode === 'edit' && selectedClientId) {
         await clientService.updateClient({
           id: selectedClientId,

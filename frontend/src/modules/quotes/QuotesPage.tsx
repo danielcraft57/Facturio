@@ -79,6 +79,7 @@ import {
   documentFolderColActionsSx,
 } from '../../components/finance/documentFolderStyles';
 import { isLifecycleHandledApiError } from '../../utils/lifecycleNotifications';
+import { blockDemoPersistIfNeeded } from '../../utils/demoCreateGuard';
 import { DocumentFolderPartyCell } from '../../components/finance/DocumentFolderPartyCell';
 import { DocumentFolderStatusChip } from '../../components/finance/DocumentFolderStatusChip';
 import { DraftResumeBanner } from '../../components/finance/DraftResumeBanner';
@@ -345,8 +346,9 @@ export function QuotesPage() {
   const createQuoteInFlightRef = useRef(false);
 
   const handleCreateQuote = async (data: CreateQuoteData) => {
-    if (createQuoteInFlightRef.current || quotesStore.isCreating) return;
-    createQuoteInFlightRef.current = true;
+    if (createQuoteInFlightRef.current || quotesStore.isCreating) return
+    if (blockDemoPersistIfNeeded('quote')) return
+    createQuoteInFlightRef.current = true
     try {
       const quote = await quotesStore.createQuote(data);
       if (quote) {

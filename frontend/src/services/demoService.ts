@@ -1,6 +1,11 @@
 import { apiClient } from './api'
 import { getDeviceFingerprint } from '../utils/deviceFingerprint'
-import type { AuthResponse } from './authService'
+import { resetDemoExploreState } from '../utils/demoExploreStorage'
+import { resetDemoAnalyticsSession } from '../utils/demoAnalytics'
+import type { AuthResponse, User } from './authService'
+
+const DEMO_USER_EMAIL = 'demo@facturio.local'
+const DEMO_ORG_NAME = 'Facturio Démo'
 
 /** Statistiques de l'espace démo. */
 export interface DemoCounts {
@@ -58,6 +63,8 @@ class DemoService {
     const payload = this.unwrap<DemoEnterResponse>(response)
 
     if (payload?.access_token) {
+      resetDemoExploreState()
+      resetDemoAnalyticsSession()
       localStorage.setItem('auth_token', payload.access_token)
       localStorage.setItem('user', JSON.stringify(payload.user))
       localStorage.setItem('demo_mode', '1')
@@ -75,6 +82,26 @@ class DemoService {
   /** Efface l'indicateur démo (logout). */
   clearDemoFlag(): void {
     localStorage.removeItem('demo_mode')
+  }
+
+  /**
+   * Aligne le flag session démo avec le profil utilisateur (après refresh / bootstrap).
+   *
+   * @param user - Utilisateur courant ou null
+   */
+  syncDemoSessionFlag(user: User | null | undefined): void {
+    if (!user) {
+      this.clearDemoFlag()
+      return
+    }
+    const email = user.email?.trim().toLowerCase()
+    const orgName = user.organization?.name?.trim()
+    const isDemoUser = email === DEMO_USER_EMAIL || orgName === DEMO_ORG_NAME
+    if (isDemoUser) {
+      localStorage.setItem('demo_mode', '1')
+      return
+    }
+    this.clearDemoFlag()
   }
 }
 

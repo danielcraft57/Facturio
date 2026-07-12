@@ -42,10 +42,14 @@ import { useAuthStore } from '../../stores/authStore'
 import { useBillingUsage } from '../../hooks/useBillingUsage'
 import { GA_EVENTS, trackActivationEvent } from '../../config/analyticsEvents'
 import {
+  isAccountActivationStepDone,
   markAccountActivationStep,
   markFirstInvoiceTracked,
   wasFirstInvoiceTracked,
 } from '../../utils/accountActivationStorage'
+import { ACTIVATION_UNLOCK_COPY } from '../../components/activation/activationUnlockCopy'
+import { celebrateQuestStepUnlock } from '../../utils/questCelebration'
+import { blockDemoPersistIfNeeded } from '../../utils/demoCreateGuard'
 import { trackFirstPdfDownloadedIfNeeded } from '../../utils/activationAnalytics'
 import {
   DOCUMENT_CREATE_TOAST_DURATION_MS,
@@ -282,6 +286,7 @@ export function InvoicesPage() {
 
   const handleCreateInvoice = async (data: CreateInvoiceData) => {
     if (creating || createInvoiceInFlightRef.current) return
+    if (blockDemoPersistIfNeeded('invoice')) return
     createInvoiceInFlightRef.current = true
     try {
       setCreating(true)
@@ -319,7 +324,10 @@ export function InvoicesPage() {
 
       const invoicesBefore = usage?.usage?.invoicesThisMonth ?? 0
       if (user?.id) {
-        markAccountActivationStep(user.id, 'first-invoice')
+        if (!isAccountActivationStepDone(user.id, 'first-invoice')) {
+          markAccountActivationStep(user.id, 'first-invoice')
+          celebrateQuestStepUnlock(toast, ACTIVATION_UNLOCK_COPY['first-invoice'])
+        }
       }
       if (!wasFirstInvoiceTracked() && invoicesBefore === 0) {
         markFirstInvoiceTracked()

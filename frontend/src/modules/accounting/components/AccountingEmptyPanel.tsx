@@ -2,7 +2,6 @@ import { Box, Button, Stack, Typography } from '@mui/material'
 import SyncIcon from '@mui/icons-material/Sync'
 import AddIcon from '@mui/icons-material/Add'
 import { Link as RouterLink } from 'react-router-dom'
-import { blockDemoCreateIfNeeded } from '../../../utils/demoCreateGuard'
 import { demoService } from '../../../services/demoService'
 
 type Props = {
@@ -38,23 +37,19 @@ export function AccountingEmptyPanel({ title, description, onSync, syncing = fal
               {syncing ? 'Synchronisation…' : 'Synchroniser factures'}
             </Button>
           ) : null}
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            component={RouterLink}
+            to="/factures/inbox?create=1"
+          >
+            {isDemo ? 'Aperçu : créer une facture' : 'Créer une facture'}
+          </Button>
           {isDemo ? (
-            <Button variant="outlined" component={RouterLink} to="/signup?from=demo">
-              Créer mon compte pour débloquer
+            <Button variant="text" component={RouterLink} to="/signup?from=demo">
+              S&apos;inscrire pour enregistrer
             </Button>
-          ) : (
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              component={RouterLink}
-              to="/factures/inbox?create=1"
-              onClick={(e) => {
-                if (blockDemoCreateIfNeeded()) e.preventDefault()
-              }}
-            >
-              Créer une facture
-            </Button>
-          )}
+          ) : null}
         </Stack>
       </Stack>
     </Box>

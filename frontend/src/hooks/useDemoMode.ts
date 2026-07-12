@@ -5,10 +5,23 @@ export function useDemoMode(): boolean {
   return demoService.isDemoSession()
 }
 
-/** Message standard pour les actions bloquées en démo (erreur qui guide). */
+/** Message pour les boutons d'ouverture en démo (aperçu). */
 export const DEMO_CREATE_HINT =
-  'En démo vous explorez des exemples. Inscrivez-vous gratuitement pour créer votre première facture ou devis.'
+  'Aperçu interactif — inscrivez-vous gratuitement pour enregistrer vos documents.'
+
+/** Message affiché à la tentative d'enregistrement en démo. */
+export const DEMO_PERSIST_HINT =
+  'Enregistrement désactivé en démo. Créez votre compte gratuit pour sauvegarder.'
 
 /** Message aligné avec l'API backend (lecture seule démo). */
 export const DEMO_API_READ_ONLY_MESSAGE =
   'En démo vous explorez des exemples. Inscrivez-vous gratuitement pour modifier ou créer vos documents.'
+
+/**
+ * Libellé du bouton principal de formulaire en mode démo.
+ *
+ * @param saveLabel - Libellé normal (hors démo)
+ */
+export function getDemoSubmitLabel(saveLabel: string): string {
+  return demoService.isDemoSession() ? 'Aperçu — inscription pour enregistrer' : saveLabel
+}

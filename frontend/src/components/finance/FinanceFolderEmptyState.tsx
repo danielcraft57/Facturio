@@ -53,7 +53,9 @@ export function FinanceFolderEmptyState({
             ? 'Essayez un autre mot-clé (n°, client, montant…).'
             : folderLabel
               ? `Le dossier « ${folderLabel} » est vide pour l'instant.`
-              : `Commencez par créer votre premier ${resourceLabel.toLowerCase().replace(/s$/, '')}.`}
+              : isDemo
+                ? `Explorez les autres dossiers ou testez l'aperçu de création (sans enregistrement).`
+                : `Commencez par créer votre premier ${resourceLabel.toLowerCase().replace(/s$/, '')}.`}
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ pt: 1 }}>
           {isSearch && isDemo ? (
@@ -61,14 +63,14 @@ export function FinanceFolderEmptyState({
               Créer mon compte pour continuer
             </Button>
           ) : null}
-          {!isSearch && !isDemo && onCreate && createLabel ? (
+          {!isSearch && onCreate && createLabel ? (
             <Button variant="contained" startIcon={<AddIcon />} onClick={onCreate}>
-              {createLabel}
+              {isDemo ? `Aperçu : ${createLabel.replace(/^Nouveau /i, '')}` : createLabel}
             </Button>
           ) : null}
           {!isSearch && isDemo ? (
-            <Button variant="contained" component={RouterLink} to="/signup?from=demo">
-              Créer mon compte pour facturer
+            <Button variant="outlined" component={RouterLink} to="/signup?from=demo">
+              S&apos;inscrire pour enregistrer
             </Button>
           ) : null}
           {!isSearch && !isDemo && secondaryCta ? (

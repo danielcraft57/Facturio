@@ -71,53 +71,29 @@ async function snapDemoToast(page, file, labelPattern) {
   await snap(page, file, { waitMs: 300 })
 }
 
-/** Déclenche le toast « création bloquée » via ?create=1 (plus fiable que le clic sidebar). */
-async function triggerDemoCreateBlockedToast(page, inboxPath) {
+/** Ouvre la modale de création en démo (?create=1) et attend le bandeau aperçu. */
+async function openDemoCreateModalPreview(page, inboxPath) {
   const pathWithCreate = inboxPath.includes('?') ? `${inboxPath}&create=1` : `${inboxPath}?create=1`
   await gotoDemoReady(page, pathWithCreate, BASE_URL)
   await dismissDemoWelcomeDialog(page)
-  await page.evaluate(() => {
-    window.dispatchEvent(
-      new CustomEvent('facturio:demo-blocked', {
-        detail: {
-          message:
-            'En démo vous explorez des exemples. Inscrivez-vous gratuitement pour créer votre première facture ou devis.',
-          code: 'DEMO_READ_ONLY',
-        },
-      }),
-    )
+  const isInvoice = inboxPath.includes('factures')
+  const dialog = page.getByRole('dialog').filter({
+    hasText: isInvoice ? /nouvelle facture/i : /nouveau devis/i,
   })
+  await dialog.waitFor({ state: 'visible', timeout: 15_000 })
+  await page.getByText(/aperçu interactif/i).first().waitFor({ timeout: 8_000 }).catch(() => {})
+  await page.waitForTimeout(600)
+  return dialog
+}
+
+/** Clique sur « enregistrer » en démo pour déclencher le toast de persistance bloquée. */
+async function triggerDemoPersistBlockedToast(page, inboxPath) {
+  const dialog = await openDemoCreateModalPreview(page, inboxPath)
+  const submitBtn = dialog
+    .getByRole('button', { name: /aperçu|créer la facture|créer le devis|inscription pour enregistrer/i })
+    .last()
+  await submitBtn.click({ timeout: 8_000 })
   await page.waitForTimeout(500)
-  const toastVisible = await page
-    .locator('.MuiSnackbar-root, [role="alert"], [role="status"]')
-    .first()
-    .isVisible()
-    .catch(() => false)
-  if (!toastVisible) {
-    await page.evaluate(() => {
-      const existing = document.getElementById('facturio-capture-demo-toast')
-      if (existing) existing.remove()
-      const toast = document.createElement('div')
-      toast.id = 'facturio-capture-demo-toast'
-      toast.setAttribute('role', 'alert')
-      toast.textContent =
-        'En démo vous explorez des exemples. Inscrivez-vous gratuitement pour créer votre première facture ou devis.'
-      toast.style.position = 'fixed'
-      toast.style.top = '92px'
-      toast.style.right = '24px'
-      toast.style.maxWidth = '420px'
-      toast.style.padding = '12px 16px'
-      toast.style.borderRadius = '10px'
-      toast.style.background = '#1f2937'
-      toast.style.color = '#ffffff'
-      toast.style.fontSize = '14px'
-      toast.style.lineHeight = '1.4'
-      toast.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.25)'
-      toast.style.zIndex = '999999'
-      document.body.appendChild(toast)
-    })
-  }
-  await page.waitForTimeout(900)
 }
 
 /** @type {Array<{ slug: string, path: string, waitMs?: number, fullPage?: boolean, public?: boolean, before?: (page: import('playwright').Page) => Promise<void>, skipGoto?: boolean }>} */
@@ -202,11 +178,11 @@ const APP_TARGETS = [
     path: '/devis/inbox',
     waitMs: 600,
     before: async (page) => {
-      await triggerDemoCreateBlockedToast(page, '/devis/inbox')
-      await snapDemoToast(
+      await openDemoCreateModalPreview(page, '/devis/inbox')
+      await snap(
         page,
         path.join(OUT_DIR, captureFilename('demo-devis-create-vitrine')),
-        /inscrivez-vous|compte gratuit|explorer des exemples|création réservée|première facture/i,
+        { waitMs: 400 },
       )
     },
   },
@@ -215,11 +191,11 @@ const APP_TARGETS = [
     path: '/factures/inbox',
     waitMs: 600,
     before: async (page) => {
-      await triggerDemoCreateBlockedToast(page, '/factures/inbox')
-      await snapDemoToast(
+      await openDemoCreateModalPreview(page, '/factures/inbox')
+      await snap(
         page,
         path.join(OUT_DIR, captureFilename('demo-factures-create-vitrine')),
-        /inscrivez-vous|compte gratuit|explorer des exemples|création réservée|première facture/i,
+        { waitMs: 400 },
       )
     },
   },
@@ -259,11 +235,11 @@ const APP_TARGETS = [
     waitMs: 300,
     skipGoto: false,
     before: async (page) => {
-      await triggerDemoCreateBlockedToast(page, '/devis/inbox')
+      await triggerDemoPersistBlockedToast(page, '/devis/inbox')
       await snapDemoToast(
         page,
         path.join(OUT_DIR, captureFilename('demo-toast-creation-bloquee')),
-        /inscrivez-vous|compte gratuit|explorer des exemples|création réservée|première facture/i,
+        /inscrivez|enregistrement désactivé|compte gratuit|aperçu interactif|s'inscrire/i,
       )
     },
   },
@@ -296,7 +272,7 @@ async function captureTarget(page, target, manifest) {
   ) {
     if (target.before) await target.before(page)
     manifest.files.push({ slug: target.slug, path: target.path })
-    console.log(`[demo-capture] ✓ ${target.slug} (toast)`)
+    console.log(`[demo-capture] ✓ ${target.slug} (aperçu / toast)`)
     return
   }
 

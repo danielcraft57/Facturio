@@ -33,6 +33,9 @@ import {
 } from '../../../components/finance/editableProductLinesUtils'
 import { FinanceClientAutocomplete, type FinanceClientOption } from '../../../components/finance/FinanceClientAutocomplete'
 import { useToast } from '../../../components/useToast'
+import { blockDemoPersistIfNeeded } from '../../../utils/demoCreateGuard'
+import { getDemoSubmitLabel } from '../../../hooks/useDemoMode'
+import { trackDemoFormPreviewOpened } from '../../../utils/demoAnalytics'
 import {
   clientQueryDraft,
   guessClientNameFromQuery,
@@ -89,6 +92,7 @@ export function CreateQuoteDialog({
 
   useEffect(() => {
     if (!open) return
+    trackDemoFormPreviewOpened('quote')
     submitInFlightRef.current = false
     setSubmitInFlight(false)
     setAdvancedMode(false)
@@ -269,6 +273,7 @@ export function CreateQuoteDialog({
 
   const handleSubmit = async () => {
     if (submitInFlightRef.current || submitting) return
+    if (blockDemoPersistIfNeeded('quote')) return
     submitInFlightRef.current = true
     setSubmitInFlight(true)
     try {
@@ -416,7 +421,7 @@ export function CreateQuoteDialog({
               submitBusy ? <CircularProgress size={18} color="inherit" /> : undefined
             }
           >
-            {submitBusy ? 'Création…' : 'Créer le devis'}
+            {submitBusy ? 'Création…' : getDemoSubmitLabel('Créer le devis')}
           </Button>
         </>
       }

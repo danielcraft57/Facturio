@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { blockDemoCreateIfNeeded } from '../utils/demoCreateGuard'
 
 function stripCreateFromBrowserUrl() {
   const url = new URL(window.location.href)
@@ -13,7 +12,7 @@ function stripCreateFromBrowserUrl() {
 
 /**
  * Ouvre la modale si `?create=1`.
- * Le paramètre est retiré de la barre d’adresse via replaceState (pas setSearchParams)
+ * Le paramètre est retiré de la barre d'adresse via replaceState (pas setSearchParams)
  * pour éviter un rechargement de la liste à la fermeture.
  */
 export function useDocumentFolderCreateDialog() {
@@ -28,10 +27,6 @@ export function useDocumentFolderCreateDialog() {
     }
     if (createConsumedRef.current) return
     createConsumedRef.current = true
-    if (blockDemoCreateIfNeeded()) {
-      stripCreateFromBrowserUrl()
-      return
-    }
     setOpen(true)
     stripCreateFromBrowserUrl()
   }, [searchParams])
@@ -42,7 +37,6 @@ export function useDocumentFolderCreateDialog() {
   }, [])
 
   const openDialog = useCallback(() => {
-    if (blockDemoCreateIfNeeded()) return
     setOpen(true)
   }, [])
 

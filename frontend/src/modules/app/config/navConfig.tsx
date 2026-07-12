@@ -81,7 +81,7 @@ export const navGroups: NavGroup[] = [
       to: '/factures/inbox?create=1',
       cta: 'Nouvelle facture',
       icon: <AddCircleOutlineIcon />,
-      accent: 'navy',
+      accent: 'emerald',
     },
     items: [
       {

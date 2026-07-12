@@ -35,11 +35,12 @@ export async function runDemoSeed(prisma: PrismaClient): Promise<void> {
 	});
 
 	if (existing) {
-		const [clients, invoices] = await Promise.all([
+		const [clients, invoices, quotes] = await Promise.all([
 			prisma.client.count({ where: { organizationId: existing.id } }),
 			prisma.invoice.count({ where: { organizationId: existing.id } }),
+			prisma.quote.count({ where: { organizationId: existing.id } }),
 		]);
-		if (clients > 0 && invoices > 0) {
+		if (clients > 0 && invoices > 0 && quotes > 0) {
 			return;
 		}
 	}

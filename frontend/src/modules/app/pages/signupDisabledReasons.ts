@@ -1,4 +1,4 @@
-import { isSignupPasswordConfirmed, isSignupPasswordValid } from '../../utils/signupPasswordRules'
+import { isSignupPasswordConfirmed, isSignupPasswordValid } from '../../../utils/signupPasswordRules'
 
 /**
  * Raisons pour lesquelles le bouton « Créer mon compte » reste désactivé.

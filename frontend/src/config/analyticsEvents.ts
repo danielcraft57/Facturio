@@ -18,6 +18,8 @@ export const GA_EVENTS = {
   SIGNUP_COMPLETED: 'signup_completed',
   DEMO_QUEST_COMPLETED: 'demo_quest_completed',
   DEMO_QUEST_STEP: 'demo_quest_step',
+  DEMO_FORM_PREVIEW: 'demo_form_preview',
+  DEMO_PERSIST_BLOCKED: 'demo_persist_blocked',
   SIGNUP_FROM_DEMO: 'signup_from_demo',
   FIRST_INVOICE_CREATED: 'first_invoice_created',
   FIRST_PDF_DOWNLOADED: 'first_pdf_downloaded',

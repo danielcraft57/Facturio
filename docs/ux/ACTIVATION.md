@@ -11,7 +11,9 @@ Objectif mesurable : un visiteur devient **client actif** quand il a émis au mo
 | `onboarding_skipped` | Bouton « Configurer plus tard » sur `/installation` |
 | `demo_quest_step` | Étape quête démo validée (optionnel) |
 | `demo_quest_completed` | 3/3 quêtes démo |
-| `signup_from_demo` | Inscription depuis CTA post-démo (à brancher sur liens `/signup?from=demo`) |
+| `demo_form_preview` | Ouverture aperçu formulaire (démo) |
+| `demo_persist_blocked` | Tentative d'enregistrement bloquée (démo) |
+| `signup_from_demo` | Inscription depuis CTA post-démo (`/signup?from=demo`) |
 | `activation_quest_step` | Étape checklist compte réel (optionnel) |
 | `activation_quest_completed` | 3/3 premiers pas dashboard |
 | `first_invoice_created` | Première facture créée sur le compte |

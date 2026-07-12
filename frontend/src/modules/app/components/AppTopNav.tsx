@@ -6,7 +6,6 @@ import { useBillingUsage } from '../../../hooks/useBillingUsage'
 import { settingsNavFilterFromUsage } from '../../account/settingsNav'
 import { AppMegaMenu } from './AppMegaMenu'
 import { topNavItemSx } from './topNavItemStyles'
-import { blockDemoCreateIfNeeded } from '../../../utils/demoCreateGuard'
 
 function NavTextLink({ to, label, active }: { to: string; label: string; active: boolean }) {
   const theme = useTheme()
@@ -59,7 +58,6 @@ export function AppTopNav() {
         size="small"
         startIcon={<AddIcon sx={{ fontSize: 18 }} />}
         onClick={() => {
-          if (blockDemoCreateIfNeeded()) return
           navigate('/factures/inbox?create=1')
         }}
         sx={{

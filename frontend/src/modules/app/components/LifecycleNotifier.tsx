@@ -41,7 +41,7 @@ export function LifecycleNotifier() {
         detail?.code === 'DEMO_EMAIL_BLOCKED'
           ? 'Envoi désactivé en démo'
           : detail?.code === 'DEMO_READ_ONLY'
-            ? 'Création réservée à votre compte'
+            ? 'Enregistrement réservé à votre compte'
             : 'Mode démo'
 
       toast.info(message, {

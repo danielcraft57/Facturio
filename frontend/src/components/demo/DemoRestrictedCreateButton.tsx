@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { Button, Tooltip, type ButtonProps } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { DEMO_CREATE_HINT, useDemoMode } from '../../hooks/useDemoMode'
-import { blockDemoCreateIfNeeded } from '../../utils/demoCreateGuard'
 
 type DemoRestrictedCreateButtonProps = Omit<ButtonProps, 'onClick'> & {
   label: string
@@ -13,7 +12,7 @@ type DemoRestrictedCreateButtonProps = Omit<ButtonProps, 'onClick'> & {
 }
 
 /**
- * Bouton « Nouveau … » : en mode démo, aperçu du libellé mais action bloquée avec explication.
+ * Bouton « Nouveau … » : en démo ouvre l'aperçu interactif (enregistrement bloqué au submit).
  */
 export function DemoRestrictedCreateButton({
   label,
@@ -25,14 +24,11 @@ export function DemoRestrictedCreateButton({
   const isDemo = useDemoMode()
 
   const handleClick = () => {
-    if (isDemo) {
-      blockDemoCreateIfNeeded()
-      onAfterClick?.()
-      return
-    }
     onCreate()
     onAfterClick?.()
   }
+
+  const displayLabel = isDemo ? `Aperçu : ${label.replace(/^Nouveau /i, '')}` : label
 
   const button = (
     <Button
@@ -41,19 +37,8 @@ export function DemoRestrictedCreateButton({
       startIcon={startIcon}
       onClick={handleClick}
       {...buttonProps}
-      sx={{
-        ...(isDemo
-          ? {
-              opacity: 0.92,
-              borderStyle: 'dashed',
-              borderWidth: 1,
-              borderColor: 'primary.light',
-            }
-          : {}),
-        ...buttonProps.sx,
-      }}
     >
-      {label}
+      {displayLabel}
     </Button>
   )
 

@@ -20,6 +20,10 @@ import {
   ListItemText,
   CircularProgress,
 } from '@mui/material';
+import { DemoFormPreviewNotice } from '../../../components/demo/DemoFormPreviewNotice';
+import { getDemoSubmitLabel } from '../../../hooks/useDemoMode';
+import { trackDemoFormPreviewOpened } from '../../../utils/demoAnalytics';
+import { blockDemoPersistIfNeeded } from '../../../utils/demoCreateGuard';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowLeft,
@@ -105,6 +109,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
 
   useEffect(() => {
     if (!open) return;
+    trackDemoFormPreviewOpened('product');
     setActiveStep(0);
     setSlideIn(true);
     setSkuTouched(false);
@@ -275,6 +280,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
 
   const handleSave = async () => {
     if (!isFormValid) return;
+    if (blockDemoPersistIfNeeded('product')) return;
     await onSave(product ? buildPayload() : (buildPayload() as CreateProductData));
   };
 
@@ -465,6 +471,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
       </DialogTitle>
 
       <DialogContent dividers sx={{ minHeight: 380 }}>
+        <DemoFormPreviewNotice />
         <Stepper
           activeStep={activeStep}
           nonLinear
@@ -575,7 +582,7 @@ export function EditProductDialog({ open, product, onClose, onSave, isSaving }: 
                 )
               }
             >
-              {isSaving ? 'Enregistrement…' : 'Enregistrer'}
+              {isSaving ? 'Enregistrement…' : getDemoSubmitLabel('Enregistrer')}
             </Button>
           )}
         </Box>

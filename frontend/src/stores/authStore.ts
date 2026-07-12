@@ -142,6 +142,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         return response as DeviceVerificationResponse
       }
       const auth = response as { user: User }
+      const { demoService } = await import('../services/demoService')
+      demoService.syncDemoSessionFlag(auth.user)
       set({
         user: auth.user,
         isAuthenticated: true,
@@ -166,6 +168,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoading: true })
     try {
       const user = await authService.getCurrentUser()
+      const { demoService } = await import('../services/demoService')
+      demoService.syncDemoSessionFlag(user)
       set({
         user,
         isAuthenticated: true,
@@ -194,6 +198,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
    * Définit manuellement l'utilisateur
    */
   setUser: (user: User | null) => {
+    void import('../services/demoService').then(({ demoService }) => {
+      demoService.syncDemoSessionFlag(user)
+    })
     set({
       user,
       isAuthenticated: !!user,

@@ -398,83 +398,109 @@ export async function marketingApiHeaders(page) {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+/** Dossiers factures à parcourir si la boîte inbox est vide. */
+const INVOICE_LIST_FOLDERS = ['inbox', 'envoyes', 'brouillons', 'nouveau', 'suivi', 'important']
+
+/** Dossiers devis à parcourir si la boîte inbox est vide. */
+const QUOTE_LIST_FOLDERS = ['inbox', 'envoyes', 'brouillons', 'nouveau', 'suivi', 'important']
+
+/**
+ * Récupère l'ID du premier document via l'API (essaye plusieurs dossiers).
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} apiBase
+ * @param {Record<string, string>} headers
+ * @param {'facture' | 'devis'} kind
+ * @returns {Promise<string | null>}
+ */
+async function fetchFirstFinanceDocumentId(page, apiBase, headers, kind) {
+  const folders = kind === 'facture' ? INVOICE_LIST_FOLDERS : QUOTE_LIST_FOLDERS
+  const path = kind === 'facture' ? 'factures' : 'devis'
+  const key = kind === 'facture' ? 'invoices' : 'quotes'
+  for (const folder of folders) {
+    const res = await page.context().request.get(`${apiBase}/${path}?folder=${folder}&page=1&limit=5`, {
+      headers,
+    })
+    if (!res.ok()) continue
+    const payload = unwrapApiBody(await res.json())
+    const doc = payload?.[key]?.[0]
+    if (doc?.id) return String(doc.id)
+  }
+  return null
+}
+
+/**
+ * Ouvre une fiche facture/devis depuis la liste (menu « Voir » — pas de clic ligne).
+ *
+ * @param {import('playwright').Page} page
+ * @param {'facture' | 'devis'} kind
+ */
+async function openFinanceDocumentFromListUi(page, kind, baseUrl = envBaseUrl()) {
+  const inboxPath = kind === 'facture' ? '/factures/inbox' : '/devis/inbox'
+  await gotoDemoReady(page, inboxPath, baseUrl)
+  await dismissDemoWelcomeDialog(page)
+  const viewPattern = kind === 'facture' ? /voir la facture|voir/i : /voir le devis|voir/i
+  const menuBtn = page.getByRole('button', { name: /actions|plus d'actions|menu/i }).first()
+  if (await menuBtn.isVisible().catch(() => false)) {
+    await menuBtn.click()
+    await page.getByRole('menuitem', { name: viewPattern }).first().click({ timeout: 8_000 }).catch(() => {})
+  }
+  const detailPath = kind === 'facture' ? /\/factures\/voir\// : /\/devis\/voir\//
+  const detailPage = await page.context().waitForEvent('page', { timeout: 12_000 }).catch(() => null)
+  if (detailPage) {
+    await detailPage.waitForURL(detailPath, { timeout: 20_000 })
+    await detailPage.bringToFront()
+    return detailPage
+  }
+  await page.waitForURL(detailPath, { timeout: 20_000 }).catch(() => {})
+  return page
+}
+
 /** Ouvre la fiche première facture / devis (pas de lien dans le tableau desktop). */
 export async function navigateToFirstInvoiceDetail(page, baseUrl = envBaseUrl()) {
   const apiBase = envApiBase(baseUrl)
   const headers = await marketingApiHeaders(page)
-  const res = await page.context().request.get(`${apiBase}/factures?folder=inbox&page=1&limit=5`, {
-    headers,
-  })
-  if (!res.ok()) {
-    await gotoReadyVideo(page, '/factures/inbox', baseUrl)
-    const link = page.locator('a[href*="/factures/voir/"]').first()
-    if (await link.isVisible().catch(() => false)) {
-      await link.click()
-    } else {
-      const row = page.locator('table tbody tr').first()
-      await row.waitFor({ timeout: 12_000 })
-      await row.click()
-    }
-    await page.waitForURL(/\/factures\/voir\//, { timeout: 20_000 }).catch(() => {})
-    await waitForPageReadyVideo(page)
+  const id = await fetchFirstFinanceDocumentId(page, apiBase, headers, 'facture')
+  if (id) {
+    await gotoDemoReady(page, `/factures/voir/${encodeURIComponent(id)}`, baseUrl)
+    await waitForFinanceDocumentDetail(page, 'facture')
     return
   }
-  const payload = unwrapApiBody(await res.json())
-  const inv = payload?.invoices?.[0]
-  if (!inv?.id) {
-    await gotoReadyVideo(page, '/factures/inbox', baseUrl)
-    const link = page.locator('a[href*="/factures/voir/"]').first()
-    if (await link.isVisible().catch(() => false)) {
-      await link.click()
-    } else {
-      const row = page.locator('table tbody tr').first()
-      await row.waitFor({ timeout: 12_000 })
-      await row.click()
-    }
-    await page.waitForURL(/\/factures\/voir\//, { timeout: 20_000 })
-    await waitForPageReadyVideo(page)
-    return
+  const detailPage = await openFinanceDocumentFromListUi(page, 'facture', baseUrl)
+  await waitForFinanceDocumentDetail(detailPage, 'facture')
+}
+
+/**
+ * Attend le rendu d'une fiche facture ou devis (après navigation directe ou clic liste).
+ *
+ * @param {import('playwright').Page} page
+ * @param {'facture' | 'devis'} kind
+ */
+export async function waitForFinanceDocumentDetail(page, kind = 'facture') {
+  await dismissDemoWelcomeDialog(page)
+  const urlPattern = kind === 'facture' ? /\/factures\/voir\// : /\/devis\/voir\//
+  await page.waitForURL(urlPattern, { timeout: 20_000 }).catch(() => {})
+  await page.locator('main').waitFor({ state: 'visible', timeout: 15_000 })
+  const breadcrumb = page.getByRole('navigation', { name: /fil d'ariane|breadcrumb/i }).or(
+    page.locator('nav[aria-label*="breadcrumb" i]'),
+  )
+  if (await breadcrumb.first().isVisible().catch(() => false)) {
+    await breadcrumb.first().waitFor({ state: 'visible', timeout: 8_000 }).catch(() => {})
   }
-  await gotoReadyVideo(page, `/factures/voir/${encodeURIComponent(String(inv.id))}`, baseUrl)
+  await page.waitForTimeout(500)
 }
 
 export async function navigateToFirstQuoteDetail(page, baseUrl = envBaseUrl()) {
   const apiBase = envApiBase(baseUrl)
   const headers = await marketingApiHeaders(page)
-  const res = await page.context().request.get(`${apiBase}/devis?folder=inbox&page=1&limit=5`, {
-    headers,
-  })
-  if (!res.ok()) {
-    await gotoReadyVideo(page, '/devis/inbox', baseUrl)
-    const link = page.locator('a[href*="/devis/voir/"]').first()
-    if (await link.isVisible().catch(() => false)) {
-      await link.click()
-    } else {
-      const row = page.locator('table tbody tr').first()
-      await row.waitFor({ timeout: 12_000 })
-      await row.click()
-    }
-    await page.waitForURL(/\/devis\/voir\//, { timeout: 20_000 }).catch(() => {})
-    await waitForPageReadyVideo(page)
+  const id = await fetchFirstFinanceDocumentId(page, apiBase, headers, 'devis')
+  if (id) {
+    await gotoDemoReady(page, `/devis/voir/${encodeURIComponent(id)}`, baseUrl)
+    await waitForFinanceDocumentDetail(page, 'devis')
     return
   }
-  const payload = unwrapApiBody(await res.json())
-  const quote = payload?.quotes?.[0]
-  if (!quote?.id) {
-    await gotoReadyVideo(page, '/devis/inbox', baseUrl)
-    const link = page.locator('a[href*="/devis/voir/"]').first()
-    if (await link.isVisible().catch(() => false)) {
-      await link.click()
-    } else {
-      const row = page.locator('table tbody tr').first()
-      await row.waitFor({ timeout: 12_000 })
-      await row.click()
-    }
-    await page.waitForURL(/\/devis\/voir\//, { timeout: 20_000 })
-    await waitForPageReadyVideo(page)
-    return
-  }
-  await gotoReadyVideo(page, `/devis/voir/${encodeURIComponent(String(quote.id))}`, baseUrl)
+  const detailPage = await openFinanceDocumentFromListUi(page, 'devis', baseUrl)
+  await waitForFinanceDocumentDetail(detailPage, 'devis')
 }
 
 /** Connexion via API (cookie + localStorage) — fiable pour scripts headless. */
