@@ -176,7 +176,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
               ) : (
                 <>
                   <NavLink to="/essayer" compact active={location.pathname === '/essayer'}>
-                    Essayer la démo
+                    Démo 2 min
                   </NavLink>
                   <NavLink to="/login" compact active={location.pathname === '/login'}>
                     Connexion
@@ -265,7 +265,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                   sx={{ borderRadius: 2, py: 1.1 }}
                 >
                   <PlayCircleOutlineIcon fontSize="small" sx={{ mr: 1.5, color: 'primary.main' }} />
-                  <ListItemText primary="Essayer la démo" />
+                  <ListItemText primary="Démo guidée (2 min)" />
                 </ListItemButton>
               </ListItem>
               <ListItem disablePadding>

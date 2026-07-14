@@ -130,11 +130,11 @@ export function DemoWelcomeDialog() {
           />
         </Stack>
         <DialogTitle sx={{ p: 0, fontWeight: 800, color: 'inherit', fontSize: '1.35rem' }}>
-          Bienvenue dans l&apos;espace démo
+          The game has changed — bienvenue sur la grille
         </DialogTitle>
         <Typography variant="body2" sx={{ mt: 0.5, opacity: 0.92, lineHeight: 1.65 }}>
-          Factures, devis et score conformité déjà remplis. En moins de 2 minutes, voyez ce que
-          Facturio change pour votre facturation — sans configurer votre entreprise.
+          Factures, devis et score conformité déjà remplis. En moins de 2 minutes, voyez une facture
+          prête à envoyer — sans configurer votre entreprise.
         </Typography>
       </Box>
 

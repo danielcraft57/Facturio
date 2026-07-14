@@ -23,6 +23,7 @@ import {
   markActivationWelcomeSeen,
 } from '../../utils/accountActivationStorage'
 import { isWelcomeCampaignActive } from '../../config/welcomeCampaign'
+import { questProgressBarSx } from '../demo/demoTheme'
 
 const fadeInUp = keyframes`
   from { opacity: 0; transform: translateY(12px); }
@@ -30,9 +31,9 @@ const fadeInUp = keyframes`
 `
 
 const STEPS = [
-  'Complétez les infos de votre entreprise',
-  'Créez votre première facture',
-  'Ajoutez un client si besoin',
+  'Créer votre première facture (PDF en quelques clics)',
+  'Compléter les infos entreprise si besoin',
+  'Ajouter un client depuis le carnet',
 ] as const
 
 /**
@@ -111,9 +112,13 @@ export function ActivationWelcomeDialog() {
               Bienvenue, {firstName} !
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-              Votre espace est prêt. Trois petites étapes pour émettre votre première facture.
+              Première victoire : une facture PDF. Trois étapes courtes, sans config inutile.
             </Typography>
-            <LinearProgress variant="determinate" value={0} sx={{ height: 6, borderRadius: 3, mt: 1 }} />
+            <LinearProgress
+              variant="determinate"
+              value={0}
+              sx={{ height: 6, borderRadius: 3, mt: 1, ...questProgressBarSx() }}
+            />
           </Stack>
 
           <Stack component="ul" spacing={1} sx={{ m: 0, p: 0, listStyle: 'none' }}>

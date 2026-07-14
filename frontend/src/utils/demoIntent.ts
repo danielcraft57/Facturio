@@ -64,7 +64,7 @@ export const DEMO_INTENT_OPTIONS: Array<{
   {
     id: 'invoice',
     title: 'Je facture déjà',
-    subtitle: 'Voir une facture conforme et son PDF en 30 secondes',
+    subtitle: 'Facture conforme + PDF — résultat en 30 secondes',
   },
   {
     id: 'start',
@@ -74,6 +74,6 @@ export const DEMO_INTENT_OPTIONS: Array<{
   {
     id: 'compliance',
     title: 'Conformité 2026 d\'abord',
-    subtitle: 'Score e-facture sans configurer l\'entreprise',
+    subtitle: 'Score e-facture sans formulaire entreprise',
   },
 ]

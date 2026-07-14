@@ -65,9 +65,9 @@ const APP_ROUTES: Record<string, RouteSeo> = {
       'Créez votre compte en quelques minutes : catalogue de prestations, devis et factures. Essai gratuit sans carte bancaire.',
   },
   '/essayer': {
-    title: 'Essayer la démo',
+    title: 'Démo guidée — facture exemple en 2 min',
     description:
-      'Explorez Facturio sans inscription : espace prérempli avec clients, devis et factures.',
+      'Voyez une facture conforme déjà remplie, sans compte. Parcours devis, clients et score e-facture 2026.',
   },
   '/mot-de-passe-oublie': {
     title: 'Mot de passe oublié',

@@ -2,25 +2,29 @@ import { alpha, keyframes } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material/styles'
 
 /**
- * Palette inspirée de Tron : L'héritage — vide sombre, néons cyan, accent ambre (Clu).
- * @see https://en.wikipedia.org/wiki/Tron:_Legacy
+ * Palette extraite de l'affiche Tron: Legacy (2010) — void noir, néon cyan, ambre cycles.
+ * @see docs/ux/tron-legacy/PALETTE.md
  */
 export const DEMO_HERO_GRADIENT =
-  'linear-gradient(135deg, #020617 0%, #002a45 42%, #006494 78%, #00d4ff 100%)'
+  'linear-gradient(135deg, #000000 0%, #001A24 40%, #004040 78%, #00E5FF 100%)'
 
 export const DEMO_HERO_COLORS = {
-  /** Fond grille / void */
-  deep: '#020617',
+  /** Void affiche (noir pur) */
+  deep: '#000000',
+  /** Brume teal mid-ground */
+  void: '#001A24',
   /** Néon cyan principal */
-  main: '#00D4FF',
-  /** Reflet bord lumineux */
-  bright: '#5CE1FF',
-  /** Ambre Clu — badges, alertes chaudes */
-  accent: '#FF9F1C',
-  glow: 'rgba(0, 212, 255, 0.55)',
+  main: '#00E5FF',
+  /** Bloom / reflet bord lumineux */
+  bright: '#7DF9FF',
+  /** Ambre light cycles (affiche) */
+  accent: '#FFB703',
+  /** Orange Clu — hover et accents chauds */
+  accentHot: '#FF8500',
+  glow: 'rgba(0, 229, 255, 0.55)',
   text: '#E8FAFF',
   /** Texte lisible sur fond clair (app MUI light) */
-  ink: '#00455A',
+  ink: '#003B4D',
 } as const
 
 /** Quêtes compte réel — teal produit (distinct de l'esthétique Tron démo). */
@@ -40,15 +44,15 @@ export const QUEST_GRADIENT =
 export const QUEST_NEON_GRADIENT =
   'linear-gradient(135deg, #0f766e 0%, #14b8a6 50%, #5eead4 100%)'
 
-/** Dégradé boutons / pastilles actives (cyan pur). */
+/** Dégradé boutons / pastilles actives (cyan affiche). */
 export const DEMO_NEON_GRADIENT =
-  'linear-gradient(135deg, #0077b6 0%, #00b4d8 45%, #48cae4 100%)'
+  'linear-gradient(135deg, #004040 0%, #0096B8 45%, #00E5FF 100%)'
 
 /** Pop micro-animation quand une étape de quête est validée. */
 export const questStepPop = keyframes`
-  0% { transform: scale(0.92); opacity: 0.6; box-shadow: 0 0 0 rgba(0, 212, 255, 0); }
-  55% { transform: scale(1.04); opacity: 1; box-shadow: 0 0 20px rgba(0, 212, 255, 0.35); }
-  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 8px rgba(0, 212, 255, 0.2); }
+  0% { transform: scale(0.92); opacity: 0.6; box-shadow: 0 0 0 rgba(0, 229, 255, 0); }
+  55% { transform: scale(1.04); opacity: 1; box-shadow: 0 0 20px rgba(0, 229, 255, 0.35); }
+  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 8px rgba(0, 229, 255, 0.2); }
 `
 
 /** Entrée « mission accomplie » (dialogs, bandeaux). */
@@ -62,7 +66,7 @@ export function demoHudSurfaceSx(mode: 'light' | 'dark' = 'light') {
   const isDark = mode === 'dark'
   return {
     background: isDark
-      ? `linear-gradient(145deg, ${alpha(DEMO_HERO_COLORS.deep, 0.92)} 0%, ${alpha('#003049', 0.88)} 100%)`
+      ? `linear-gradient(145deg, ${alpha(DEMO_HERO_COLORS.deep, 0.96)} 0%, ${alpha(DEMO_HERO_COLORS.void, 0.9)} 100%)`
       : `linear-gradient(145deg, ${alpha(DEMO_HERO_COLORS.deep, 0.04)} 0%, ${alpha(DEMO_HERO_COLORS.main, 0.06)} 100%)`,
     border: '1px solid',
     borderColor: alpha(DEMO_HERO_COLORS.main, isDark ? 0.5 : 0.35),
@@ -96,7 +100,7 @@ export function demoBannerSurfaceSx(): SxProps<Theme> {
   return {
     alignItems: 'center',
     color: DEMO_HERO_COLORS.text,
-    background: `linear-gradient(90deg, ${alpha(DEMO_HERO_COLORS.deep, 0.96)} 0%, ${alpha('#003049', 0.92)} 55%, ${alpha(DEMO_HERO_COLORS.main, 0.12)} 100%)`,
+    background: `linear-gradient(90deg, ${alpha(DEMO_HERO_COLORS.deep, 0.98)} 0%, ${alpha(DEMO_HERO_COLORS.void, 0.94)} 55%, ${alpha(DEMO_HERO_COLORS.main, 0.14)} 100%)`,
     border: `1px solid ${alpha(DEMO_HERO_COLORS.main, 0.42)}`,
     boxShadow: `0 0 24px ${alpha(DEMO_HERO_COLORS.main, 0.14)}`,
     '& .MuiAlert-icon': { color: DEMO_HERO_COLORS.main },
@@ -349,4 +353,40 @@ export function demoBannerButtonSx(): SxProps<Theme> {
 /** Alias sémantique pour les CTA dialogs démo. */
 export function demoPrimaryButtonSx(): SxProps<Theme> {
   return demoBannerButtonSx()
+}
+
+/**
+ * Fond pleine page public démo (`/essayer`) — grille Tron sur void noir.
+ */
+export function demoPublicPageSx(): SxProps<Theme> {
+  const grid = alpha(DEMO_HERO_COLORS.main, 0.07)
+  return {
+    minHeight: '100vh',
+    color: DEMO_HERO_COLORS.text,
+    backgroundColor: DEMO_HERO_COLORS.deep,
+    backgroundImage: `
+      linear-gradient(${grid} 1px, transparent 1px),
+      linear-gradient(90deg, ${grid} 1px, transparent 1px),
+      radial-gradient(ellipse 80% 60% at 50% 0%, ${alpha(DEMO_HERO_COLORS.main, 0.12)} 0%, transparent 70%),
+      ${DEMO_HERO_GRADIENT}
+    `,
+    backgroundSize: '48px 48px, 48px 48px, auto, cover',
+    backgroundAttachment: 'fixed',
+  }
+}
+
+/**
+ * Carte glass HUD pour preview `/essayer`.
+ */
+export function demoPublicCardSx(): SxProps<Theme> {
+  return {
+    width: '100%',
+    borderRadius: 3,
+    overflow: 'hidden',
+    color: DEMO_HERO_COLORS.text,
+    bgcolor: alpha(DEMO_HERO_COLORS.void, 0.72),
+    border: `1px solid ${alpha(DEMO_HERO_COLORS.main, 0.42)}`,
+    boxShadow: `0 24px 64px ${alpha(DEMO_HERO_COLORS.deep, 0.65)}, 0 0 32px ${alpha(DEMO_HERO_COLORS.main, 0.12)}`,
+    backdropFilter: 'blur(12px)',
+  }
 }

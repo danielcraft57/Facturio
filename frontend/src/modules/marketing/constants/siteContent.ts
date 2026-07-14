@@ -10,7 +10,7 @@ export const LANDING_HERO = {
   badge: 'Freelance dev · Micro-agence web',
   title: 'Devis et factures pour vos missions techniques',
   subtitle:
-    'Catalogue prestations dev déjà là, PDF en un clic, score conformité 2026. Compte gratuit ou démo guidée en 2 minutes — sans usine à gaz.',
+    'Catalogue prestations dev déjà là, PDF en un clic, score conformité 2026. Démo guidée : une facture conforme en 2 min — ou compte gratuit.',
 } as const
 
 /** Chiffres affichés sur la landing — uniquement des faits produit (pas de vanity metrics). */
@@ -83,9 +83,9 @@ export const PRICING_SECTION = {
 export const MARKETING_CTA = {
   defaultTitle: 'Prêt à facturer vos missions sereinement ?',
   defaultSubtitle: `Ouvrez un compte en quelques minutes. ${FREE_PLAN_SUMMARY}.`,
-  landingTitle: 'Votre premier devis en 10 minutes',
+  landingTitle: 'Votre premier devis — ou une facture exemple en 2 min',
   landingSubtitle:
-    'Compte gratuit, exemples de prestations déjà dedans. Passez Pro quand vous en avez besoin ou quand vous dépassez les limites du gratuit.',
+    'Pas prêt à vous inscrire ? La démo vous montre une facture conforme déjà remplie. Le compte gratuit reste là quand vous voulez passer en vrai.',
   pricingTitle: 'Commencez gratuit — montez en gamme quand ça accélère',
   pricingSubtitle: `Le gratuit (${FREE_PLAN_SUMMARY}) suffit pour tester. Pro dès que vous voulez l'export comptable ou des volumes plus larges.`,
 } as const
@@ -479,7 +479,7 @@ export const PRICING_FAQ = [
 /** Libellés CTA réutilisables */
 export const CTA = {
   signupFree: { label: 'Commencer gratuitement', to: '/signup', gaEvent: 'cta_signup' },
-  tryDemo: { label: 'Essayer la démo', to: '/essayer', gaEvent: 'cta_demo' as const },
+  tryDemo: { label: 'Voir une facture exemple (2 min)', to: '/essayer', gaEvent: 'cta_demo' as const },
   betaSignup: { label: "S'inscrire avec un code beta", to: '/signup', gaEvent: 'cta_beta' },
   signupPro: { label: 'Passer Pro', to: '/parametres/abonnement', gaEvent: 'cta_pricing' },
   efacture2026: {

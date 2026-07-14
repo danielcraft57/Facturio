@@ -557,7 +557,7 @@ export function SignupPage() {
             to="/essayer"
             sx={{ mb: 3, py: 1 }}
           >
-            Essayer la démo sans compte
+            Voir une facture exemple sans compte (2 min)
           </Button>
 
           <Box sx={{ textAlign: 'center' }}>
