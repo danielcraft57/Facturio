@@ -19,7 +19,7 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { demoService } from '../../services/demoService'
-import { hasSeenDemoWelcome, markDemoWelcomeSeen, demoExploreProgress } from '../../utils/demoExploreStorage'
+import { hasSeenDemoWelcome, markDemoWelcomeSeen, markDemoWelcomeSkipped, demoExploreProgress } from '../../utils/demoExploreStorage'
 import { getDemoWelcomePrimaryCta } from '../../utils/demoHeroPaths'
 import { DEMO_HERO_COLORS, DEMO_HERO_GRADIENT, DEMO_NEON_GRADIENT, demoModeChipSx, demoPrimaryButtonSx, demoProgressBarSx } from './demoTheme'
 
@@ -69,6 +69,11 @@ export function DemoWelcomeDialog() {
   const close = () => {
     markDemoWelcomeSeen()
     setOpen(false)
+  }
+
+  const skipExplore = () => {
+    markDemoWelcomeSkipped()
+    close()
   }
 
   const go = (path: string) => {
@@ -209,7 +214,7 @@ export function DemoWelcomeDialog() {
         >
           {primaryCta.label}
         </Button>
-        <Button onClick={close} color="inherit">
+        <Button onClick={skipExplore} color="inherit">
           Explorer seul
         </Button>
         <Button component={RouterLink} to="/signup" onClick={close} sx={{ ml: 'auto' }}>

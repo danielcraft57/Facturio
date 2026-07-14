@@ -1,36 +1,123 @@
 {
-  "capturedAt": "2026-07-12T18:15:00.000Z",
+  "capturedAt": "2026-07-12T20:23:13.734Z",
   "baseUrl": "http://localhost:5173",
   "mode": "demo",
   "files": [
-    { "slug": "public-landing", "path": "/" },
-    { "slug": "public-login-demo-link", "path": "/login" },
-    { "slug": "public-essayer", "path": "/essayer" },
-    { "slug": "demo-welcome-dialog", "path": "/dashboard" },
-    { "slug": "demo-banner-dashboard", "path": "/dashboard" },
-    { "slug": "demo-explore-checklist", "path": "/dashboard" },
-    { "slug": "demo-menu-commercial", "path": "/dashboard" },
-    { "slug": "demo-menu-finance", "path": "/dashboard" },
-    { "slug": "demo-clients-inbox", "path": "/clients/inbox" },
-    { "slug": "demo-clients-prospects", "path": "/clients/prospects" },
-    { "slug": "demo-produits-catalogue", "path": "/produits" },
-    { "slug": "demo-produits-liste", "path": "/produits" },
-    { "slug": "demo-factures-inbox", "path": "/factures/inbox" },
-    { "slug": "demo-factures-brouillons", "path": "/factures/brouillons" },
-    { "slug": "demo-devis-inbox", "path": "/devis/inbox" },
-    { "slug": "demo-devis-brouillons", "path": "/devis/brouillons" },
-    { "slug": "demo-devis-create-vitrine", "path": "/devis/inbox" },
-    { "slug": "demo-factures-create-vitrine", "path": "/factures/inbox" },
-    { "slug": "demo-produits-modifier-modal", "path": "/produits" },
-    { "slug": "demo-facture-detail", "path": "/factures/voir" },
-    { "slug": "demo-devis-detail", "path": "/devis/voir" },
-    { "slug": "demo-command-palette", "path": "/dashboard" },
-    { "slug": "demo-quest-complete-dialog", "path": "/dashboard" },
-    { "slug": "demo-toast-creation-bloquee", "path": "/factures/inbox" },
-    { "slug": "demo-comptabilite", "path": "/comptabilite" },
-    { "slug": "demo-parametres", "path": "/parametres" },
-    { "slug": "demo-parametres-entreprise", "path": "/parametres/entreprise" },
-    { "slug": "demo-parametres-efacture", "path": "/parametres/facturation-electronique" },
-    { "slug": "demo-tarifs-public", "path": "/tarifs" }
+    {
+      "slug": "public-landing",
+      "path": "/"
+    },
+    {
+      "slug": "public-login-demo-link",
+      "path": "/login"
+    },
+    {
+      "slug": "public-essayer",
+      "path": "/essayer"
+    },
+    {
+      "slug": "demo-welcome-dialog",
+      "path": "/dashboard"
+    },
+    {
+      "slug": "demo-banner-dashboard",
+      "path": "/dashboard"
+    },
+    {
+      "slug": "demo-explore-checklist",
+      "path": "/dashboard"
+    },
+    {
+      "slug": "demo-menu-commercial",
+      "path": "/dashboard"
+    },
+    {
+      "slug": "demo-menu-finance",
+      "path": "/dashboard"
+    },
+    {
+      "slug": "demo-clients-inbox",
+      "path": "/clients/inbox"
+    },
+    {
+      "slug": "demo-clients-prospects",
+      "path": "/clients/prospects"
+    },
+    {
+      "slug": "demo-produits-catalogue",
+      "path": "/produits"
+    },
+    {
+      "slug": "demo-produits-liste",
+      "path": "/produits"
+    },
+    {
+      "slug": "demo-factures-inbox",
+      "path": "/factures/inbox"
+    },
+    {
+      "slug": "demo-factures-brouillons",
+      "path": "/factures/brouillons"
+    },
+    {
+      "slug": "demo-devis-inbox",
+      "path": "/devis/inbox"
+    },
+    {
+      "slug": "demo-devis-brouillons",
+      "path": "/devis/brouillons"
+    },
+    {
+      "slug": "demo-devis-create-vitrine",
+      "path": "/devis/inbox"
+    },
+    {
+      "slug": "demo-factures-create-vitrine",
+      "path": "/factures/inbox"
+    },
+    {
+      "slug": "demo-produits-modifier-modal",
+      "path": "/produits"
+    },
+    {
+      "slug": "demo-facture-detail",
+      "path": "/factures/voir"
+    },
+    {
+      "slug": "demo-devis-detail",
+      "path": "/devis/voir"
+    },
+    {
+      "slug": "demo-command-palette",
+      "path": "/dashboard"
+    },
+    {
+      "slug": "demo-quest-complete-dialog",
+      "path": "/dashboard"
+    },
+    {
+      "slug": "demo-toast-creation-bloquee",
+      "path": "/factures/inbox"
+    },
+    {
+      "slug": "demo-comptabilite",
+      "path": "/comptabilite"
+    },
+    {
+      "slug": "demo-parametres",
+      "path": "/parametres"
+    },
+    {
+      "slug": "demo-parametres-entreprise",
+      "path": "/parametres/entreprise"
+    },
+    {
+      "slug": "demo-parametres-efacture",
+      "path": "/parametres/facturation-electronique"
+    },
+    {
+      "slug": "demo-tarifs-public",
+      "path": "/tarifs"
+    }
   ]
 }

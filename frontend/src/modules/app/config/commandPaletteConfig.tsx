@@ -3,6 +3,9 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import DescriptionIcon from '@mui/icons-material/Description'
 import PeopleIcon from '@mui/icons-material/People'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
+import type { DemoExploreStepId } from '../../../utils/demoExploreStorage'
+import { isDemoExploreStepDone } from '../../../utils/demoExploreStorage'
+import { isDemoInvoiceDetailPath } from '../../../utils/demoHeroPaths'
 import {
   navDashboard,
   type NavGroup,
@@ -182,6 +185,102 @@ export function buildCommandPaletteItems(options: {
   }
 
   return dedupePaletteItems(raw)
+}
+
+/**
+ * Fusionne des listes palette en évitant les doublons de destination.
+ *
+ * @param lists - Listes à fusionner (ordre = priorité)
+ */
+export function mergeCommandPaletteItems(...lists: CommandPaletteItem[][]): CommandPaletteItem[] {
+  return dedupePaletteItems(lists.flat())
+}
+
+const QUEST_NEXT_STEPS: Array<{
+  step: DemoExploreStepId
+  label: string
+  description: string
+  to: string
+}> = [
+  {
+    step: 'see-invoice',
+    label: 'Première victoire : ouvrir une facture',
+    description: 'PDF et lignes déjà remplies',
+    to: '/factures/inbox',
+  },
+  {
+    step: 'see-quote',
+    label: 'Voir un devis exemple',
+    description: 'Du brouillon à l\'accepté',
+    to: '/devis/inbox',
+  },
+  {
+    step: 'see-efacture',
+    label: 'Score conformité e-facture',
+    description: 'Prêt pour septembre 2026',
+    to: '/parametres/facturation-electronique',
+  },
+]
+
+/**
+ * Suggestions contextuelles affichées sans requête (groupe « Suite logique »).
+ *
+ * @param pathname - Page courante
+ * @param options.isDemo - Session démo active
+ */
+export function buildContextualPaletteItems(
+  pathname: string,
+  options?: { isDemo?: boolean },
+): CommandPaletteItem[] {
+  const items: CommandPaletteItem[] = []
+  const isDemo = options?.isDemo === true
+
+  if (isDemo) {
+    for (const quest of QUEST_NEXT_STEPS) {
+      if (!isDemoExploreStepDone(quest.step)) {
+        items.push({
+          id: `context-quest-${quest.step}`,
+          label: quest.label,
+          description: quest.description,
+          to: quest.to,
+          kind: 'action',
+          groupLabel: 'Suite logique',
+        })
+        break
+      }
+    }
+  }
+
+  if (isDemoInvoiceDetailPath(pathname)) {
+    items.push({
+      id: 'context-efacture-from-invoice',
+      label: 'Score conformité de cette facture',
+      description: 'Descendre sur la page pour le détail Factur-X',
+      to: pathname,
+      kind: 'action',
+      groupLabel: 'Suite logique',
+    })
+  } else if (/^\/devis\//.test(pathname)) {
+    items.push({
+      id: 'context-invoices-from-quote',
+      label: 'Passer aux factures',
+      description: 'Voir le cycle devis → facture',
+      to: '/factures/inbox',
+      kind: 'action',
+      groupLabel: 'Suite logique',
+    })
+  } else if (pathname.startsWith('/parametres/facturation-electronique')) {
+    items.push({
+      id: 'context-signup-after-compliance',
+      label: 'Créer mon compte gratuit',
+      description: 'Reprendre ce score sur vos vraies factures',
+      to: '/signup',
+      kind: 'account',
+      groupLabel: 'Suite logique',
+    })
+  }
+
+  return dedupePaletteItems(items)
 }
 
 /**

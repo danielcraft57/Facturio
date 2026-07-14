@@ -65,6 +65,11 @@ class DemoService {
     if (payload?.access_token) {
       resetDemoExploreState()
       resetDemoAnalyticsSession()
+      try {
+        sessionStorage.removeItem('facturio_demo_efacture_hint_seen')
+      } catch {
+        /* ignore */
+      }
       localStorage.setItem('auth_token', payload.access_token)
       localStorage.setItem('user', JSON.stringify(payload.user))
       localStorage.setItem('demo_mode', '1')

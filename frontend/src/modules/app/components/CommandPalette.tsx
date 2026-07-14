@@ -16,9 +16,11 @@ import {
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useBillingUsage } from '../../../hooks/useBillingUsage'
 import { useCommandPaletteShortcut } from '../../../hooks/useCommandPaletteShortcut'
+import { useCommandPaletteEntitySearch } from '../../../hooks/useCommandPaletteEntitySearch'
+import { demoService } from '../../../services/demoService'
 import { trackGoogleAnalyticsEvent } from '../../../utils/googleAnalytics'
 import { GA_EVENTS } from '../../../config/analyticsEvents'
 import {
@@ -30,9 +32,11 @@ import {
 import { settingsNavFilterFromUsage } from '../../account/settingsNav'
 import {
   buildCommandPaletteItems,
+  buildContextualPaletteItems,
   COMMAND_PALETTE_ZERO_RESULT_SUGGESTIONS,
   filterCommandPaletteItems,
   groupCommandPaletteItems,
+  mergeCommandPaletteItems,
   sortCommandPaletteItemsForDisplay,
   type CommandPaletteItem,
 } from '../config/commandPaletteConfig'
@@ -51,6 +55,7 @@ export function CommandPalette({ open: controlledOpen, onClose: controlledOnClos
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
   const navigate = useNavigate()
+  const location = useLocation()
   const { usage } = useBillingUsage()
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
@@ -71,13 +76,34 @@ export function CommandPalette({ open: controlledOpen, onClose: controlledOnClos
     [visibleNavGroups, settingsGroup],
   )
 
+  const contextualItems = useMemo(
+    () =>
+      buildContextualPaletteItems(location.pathname, {
+        isDemo: demoService.isDemoSession(),
+      }),
+    [location.pathname],
+  )
+
+  const { items: entityItems, loading: entityLoading } = useCommandPaletteEntitySearch(query, open)
+
   const filteredItems = useMemo(() => {
-    const base = filterCommandPaletteItems(allItems, query)
-    if (query.trim() && base.length === 0) return COMMAND_PALETTE_ZERO_RESULT_SUGGESTIONS
-    return sortCommandPaletteItemsForDisplay(base, query)
-  }, [allItems, query])
+    const trimmed = query.trim()
+    if (!trimmed) {
+      const sorted = sortCommandPaletteItemsForDisplay(allItems, query)
+      const contextualTos = new Set(contextualItems.map((item) => item.to))
+      return [...contextualItems, ...sorted.filter((item) => !contextualTos.has(item.to))]
+    }
+
+    const merged = mergeCommandPaletteItems(entityItems, allItems)
+    const base = filterCommandPaletteItems(merged, query)
+    if (base.length === 0) return COMMAND_PALETTE_ZERO_RESULT_SUGGESTIONS
+    return base
+  }, [allItems, contextualItems, entityItems, query])
+
   const groupedItems = useMemo(() => groupCommandPaletteItems(filteredItems), [filteredItems])
-  const isZeroResultFallback = query.trim().length > 0 && filterCommandPaletteItems(allItems, query).length === 0
+  const isZeroResultFallback =
+    query.trim().length > 0 &&
+    filterCommandPaletteItems(mergeCommandPaletteItems(entityItems, allItems), query).length === 0
 
   const handleClose = useCallback(() => {
     if (isControlled) {
@@ -223,6 +249,11 @@ export function CommandPalette({ open: controlledOpen, onClose: controlledOnClos
           {isZeroResultFallback ? (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 2.5, pt: 1.5, pb: 0.5 }}>
               Aucun résultat pour « {query.trim()} » — suggestions :
+            </Typography>
+          ) : null}
+          {entityLoading && query.trim().length >= 2 ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 2.5, pt: 1, pb: 0.5 }}>
+              Recherche factures et clients…
             </Typography>
           ) : null}
           {filteredItems.length === 0 ? (

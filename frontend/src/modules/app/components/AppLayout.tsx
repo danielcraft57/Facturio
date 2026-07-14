@@ -38,6 +38,7 @@ import { NotificationCenter } from './NotificationCenter'
 import { BillingQuotaStrip } from './BillingQuotaStrip'
 import { DemoModeBanner } from '../../../components/demo/DemoModeBanner'
 import { DemoEntryMessageNotifier } from '../../../components/demo/DemoEntryMessageNotifier'
+import { DemoContextualHints } from '../../../components/demo/DemoContextualHints'
 import { DemoEntryNotice } from '../../../components/demo/DemoEntryNotice'
 import { demoService } from '../../../services/demoService'
 import { LifecycleNotifier } from './LifecycleNotifier'
@@ -314,6 +315,7 @@ export function AppLayout({ children, mode, onToggleMode, onOpenSettings }: AppL
         <DemoEntryNotice />
         <DemoModeBanner />
         <DemoEntryMessageNotifier />
+        <DemoContextualHints />
         <LifecycleNotifier />
         <PageTransition>{children}</PageTransition>
       </Box>

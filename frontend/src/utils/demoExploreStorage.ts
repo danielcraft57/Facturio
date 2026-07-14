@@ -61,6 +61,8 @@ export function demoExploreProgress(): { done: number; total: number; steps: Dem
 }
 
 const WELCOME_KEY = `${PREFIX}welcome_seen`
+const WELCOME_SKIPPED_KEY = `${PREFIX}welcome_skipped`
+const CMDK_HINT_KEY = `${PREFIX}cmdk_hint_seen`
 
 /** Popin de bienvenue démo déjà affichée ? */
 export function hasSeenDemoWelcome(): boolean {
@@ -94,6 +96,44 @@ export function resetDemoExploreState(): void {
 export function markDemoWelcomeSeen(): void {
   try {
     localStorage.setItem(WELCOME_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Marque que l'utilisateur a choisi « Explorer seul » (filet contextuel ensuite).
+ */
+export function markDemoWelcomeSkipped(): void {
+  try {
+    localStorage.setItem(WELCOME_SKIPPED_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+/** L'utilisateur a passé la welcome sans suivre le CTA principal ? */
+export function hasSkippedDemoWelcome(): boolean {
+  try {
+    return localStorage.getItem(WELCOME_SKIPPED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Astuce Cmd+K déjà affichée après skip welcome ? */
+export function hasSeenDemoCmdkHint(): boolean {
+  try {
+    return localStorage.getItem(CMDK_HINT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Enregistre l'astuce Cmd+K comme vue. */
+export function markDemoCmdkHintSeen(): void {
+  try {
+    localStorage.setItem(CMDK_HINT_KEY, '1')
   } catch {
     /* ignore */
   }

@@ -2,7 +2,7 @@
 
 Synthèse des transcripts `Videos/tiktokUX/transcripts` appliquée à l'espace démo, aux popins et à la palette Cmd+K.
 
-## Priorité haute (implémenté ou en cours)
+## Priorité haute (implémenté)
 
 | Principe | Source transcript | Action Facturio |
 |----------|-------------------|-----------------|
@@ -18,17 +18,24 @@ Synthèse des transcripts `Videos/tiktokUX/transcripts` appliquée à l'espace d
 | Erreur qui guide | Blocage sans explication | Toasts démo + guards avec lien signup |
 | Aha moment Factur-X | Onboarding s'arrête à l'inscription | Quêtes démo → facture + score conformité |
 
+## Priorité moyenne (implémenté)
+
+| Principe | Action Facturio |
+|----------|-----------------|
+| Onboarding adaptatif par profil | `/essayer` : 3 parcours (`demoIntent.ts` + cartes sur `DemoEnterPage`) |
+| Tooltips contextuels après skip welcome | `DemoContextualHints` (Cmd+K, score conformité sur facture) |
+| Toast succès avec prochaine étape | `DemoEntryMessageNotifier` CTA selon intent / landing |
+| Recherche proactive Cmd+K | `useCommandPaletteEntitySearch` (n° facture, nom client) |
+| Suite logique Cmd+K | `buildContextualPaletteItems` (quête démo + page courante) |
+
 ## Priorité moyenne (backlog)
 
-- Onboarding adaptatif par profil (freelance déjà client / démarre / conformité seule)
-- Tooltips contextuels après skip welcome (Cmd+K, score conformité)
-- Toast succès avec prochaine étape systématique (facture → envoyer PDF)
 - Fil d'Ariane émotionnel sur quêtes activation compte réel
-- Recherche proactive Cmd+K (clients, factures par numéro)
 
 ## Priorité basse
 
 - Micro-feedback abandon modale création (« qu'est-ce qui t'a bloqué ? »)
+- Vitrine Pro dans Cmd+K pour items `planLocked`
 
 ## Captures marketing
 
