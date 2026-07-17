@@ -93,6 +93,7 @@ export class AccountingService {
 		date?: Date | string;
 		reference?: string;
 		memo?: string;
+		organizationId?: number | null;
 		lines: Array<{ accountCode: string; description?: string; debit?: number; credit?: number }>;
 	}) {
 		let journal = await this.prisma.journal.findUnique({ where: { code: input.journalCode } });
@@ -122,6 +123,7 @@ export class AccountingService {
 			const entry = await tx.journalEntry.create({
 				data: {
 					journalId: journal.id,
+					organizationId: input.organizationId ?? undefined,
 					date: input.date ? new Date(input.date) : undefined,
 					reference: input.reference,
 					memo: input.memo,
@@ -135,20 +137,27 @@ export class AccountingService {
 			let acc = await tx.account.findUnique({ where: { code: l.accountCode } });
 			if (!acc) {
 				const defaultAccountMeta: Record<string, { name: string; type: string }> = {
-					'512': { name: 'Banque', type: 'BANK' },
-					'706': { name: 'Prestations de services', type: 'REVENUE' },
-					'707': { name: 'Ventes de marchandises', type: 'REVENUE' },
-					'44571': { name: 'TVA collectée', type: 'TAX' },
-					'44566': { name: 'TVA déductible', type: 'TAX' },
-					'411': { name: 'Clients', type: 'CUSTOMER' },
+					'101': { name: 'Capital social', type: 'EQUITY' },
+					'164': { name: 'Emprunts auprès des établissements de crédit', type: 'LIABILITY' },
+					'211': { name: 'Immobilisations incorporelles', type: 'ASSET' },
+					'218': { name: 'Autres immobilisations corporelles', type: 'ASSET' },
+					'281': { name: 'Amortissements des immobilisations', type: 'ASSET' },
 					'401': { name: 'Fournisseurs', type: 'SUPPLIER' },
-					'622': { name: 'Rémunérations et honoraires', type: 'EXPENSE' },
-					'641': { name: 'Rémunérations du personnel', type: 'EXPENSE' },
-					'645': { name: 'Charges sociales', type: 'EXPENSE' },
+					'411': { name: 'Clients', type: 'CUSTOMER' },
 					'421': { name: 'Salaires à payer', type: 'LIABILITY' },
 					'431': { name: 'URSSAF', type: 'LIABILITY' },
 					'447': { name: 'Autres impôts et taxes à payer', type: 'LIABILITY' },
-					'635': { name: 'Autres impôts et taxes', type: 'EXPENSE' }
+					'512': { name: 'Banque', type: 'BANK' },
+					'53': { name: 'Caisse', type: 'BANK' },
+					'622': { name: 'Rémunérations et honoraires', type: 'EXPENSE' },
+					'635': { name: 'Autres impôts et taxes', type: 'EXPENSE' },
+					'641': { name: 'Rémunérations du personnel', type: 'EXPENSE' },
+					'645': { name: 'Charges sociales', type: 'EXPENSE' },
+					'681': { name: 'Dotations aux amortissements', type: 'EXPENSE' },
+					'706': { name: 'Prestations de services', type: 'REVENUE' },
+					'707': { name: 'Ventes de marchandises', type: 'REVENUE' },
+					'44566': { name: 'TVA déductible', type: 'TAX' },
+					'44571': { name: 'TVA collectée', type: 'TAX' },
 				};
 				const meta = defaultAccountMeta[l.accountCode];
 				if (!meta) throw new BadRequestException(`Compte introuvable: ${l.accountCode}`);
@@ -191,23 +200,29 @@ export class AccountingService {
 	 * Format conforme à la norme FEC (arrêté du 29 juillet 2013).
 	 * Format pipe-delimited (|) avec en-tête.
 	 * 
-	 * @param params - Dates de début et fin (optionnel)
+	 * @param params - Dates de début et fin, organisation (optionnel)
 	 * @returns Fichier FEC au format texte
 	 * 
 	 * @example
 	 * ```typescript
 	 * const fec = await accountingService.exportFEC({
 	 *   start: '2024-01-01',
-	 *   end: '2024-12-31'
+	 *   end: '2024-12-31',
+	 *   organizationId: 1
 	 * });
 	 * // Sauvegarder dans un fichier .txt
 	 * ```
 	 */
-	async exportFEC(params: { start?: string; end?: string }): Promise<string> {
+	async exportFEC(params: { start?: string; end?: string; organizationId?: number }): Promise<string> {
 		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
 		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
+		const where: { date: { gte: Date; lte: Date }; status: 'POSTED'; organizationId?: number } = {
+			date: { gte: start, lte: end },
+			status: 'POSTED',
+		};
+		if (params.organizationId != null) where.organizationId = params.organizationId;
 		const entries = await this.prisma.journalEntry.findMany({
-			where: { date: { gte: start, lte: end }, status: 'POSTED' },
+			where,
 			include: { journal: true, lines: { include: { account: true } } },
 			orderBy: [{ date: 'asc' }, { id: 'asc' }]
 		});
@@ -264,15 +279,20 @@ export class AccountingService {
 	 * - Total crédit
 	 * - Solde (débit - crédit)
 	 * 
-	 * @param params - Dates de début et fin (optionnel)
+	 * @param params - Dates de début et fin, organisation (optionnel)
 	 * @returns Balance triée par code de compte
 	 */
-	async getTrialBalance(params: { start?: string; end?: string }) {
+	async getTrialBalance(params: { start?: string; end?: string; organizationId?: number }) {
 		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
 		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
+		const entryWhere: { date: { gte: Date; lte: Date }; status: 'POSTED'; organizationId?: number } = {
+			date: { gte: start, lte: end },
+			status: 'POSTED',
+		};
+		if (params.organizationId != null) entryWhere.organizationId = params.organizationId;
 		const grouped = await this.prisma.journalLine.groupBy({
 			by: ['accountId'],
-			where: { entry: { date: { gte: start, lte: end }, status: 'POSTED' } },
+			where: { entry: entryWhere },
 			_sum: { debit: true, credit: true }
 		});
 		const accountIds = grouped.map(g => g.accountId);
@@ -299,21 +319,26 @@ export class AccountingService {
 	 * Pour chaque compte (ou un compte spécifique), liste toutes les écritures
 	 * avec totaux débit/crédit.
 	 * 
-	 * @param params - Dates et code de compte optionnel
+	 * @param params - Dates, code de compte et organisation optionnels
 	 * @returns Grand livre trié par code de compte
 	 * @throws {BadRequestException} Si le code de compte n'existe pas
 	 */
-	async getGeneralLedger(params: { start?: string; end?: string; accountCode?: string }) {
+	async getGeneralLedger(params: { start?: string; end?: string; accountCode?: string; organizationId?: number }) {
 		const start = params.start ? new Date(params.start) : new Date('1970-01-01');
 		const end = params.end ? new Date(params.end) : new Date('2999-12-31');
-		let accountFilter: any = {};
+		let accountFilter: { accountId?: number } = {};
 		if (params.accountCode) {
 			const acc = await this.prisma.account.findFirst({ where: { code: params.accountCode } });
 			if (!acc) throw new BadRequestException('Compte introuvable');
 			accountFilter = { accountId: acc.id };
 		}
+		const entryWhere: { date: { gte: Date; lte: Date }; status: 'POSTED'; organizationId?: number } = {
+			date: { gte: start, lte: end },
+			status: 'POSTED',
+		};
+		if (params.organizationId != null) entryWhere.organizationId = params.organizationId;
 		const lines = await this.prisma.journalLine.findMany({
-			where: { ...accountFilter, entry: { date: { gte: start, lte: end }, status: 'POSTED' } },
+			where: { ...accountFilter, entry: entryWhere },
 			include: { account: true, entry: { include: { journal: true } } },
 			orderBy: [{ entry: { date: 'asc' } }, { id: 'asc' }]
 		});
@@ -382,10 +407,13 @@ export class AccountingService {
 		return `ANNUL SOLDE VENTE ${invoiceNumber}`;
 	}
 
-	private async entryExists(reference: string): Promise<boolean> {
-		const found = await this.prisma.journalEntry.findFirst({
-			where: { reference, status: 'POSTED' }
-		});
+	private async entryExists(reference: string, organizationId?: number | null): Promise<boolean> {
+		const where: { reference: string; status: 'POSTED'; organizationId?: number } = {
+			reference,
+			status: 'POSTED',
+		};
+		if (organizationId != null) where.organizationId = organizationId;
+		const found = await this.prisma.journalEntry.findFirst({ where });
 		return !!found;
 	}
 
@@ -393,9 +421,11 @@ export class AccountingService {
 	 * Retrouve les écritures postées par leurs références (ex. VENTE FAC-001, PAIEMENT FAC-001#12).
 	 *
 	 * @param references - Références uniques à rechercher
+	 * @param organizationId - Organisation (filtre multi-tenant)
 	 */
 	async findPostedEntriesByReferences(
 		references: string[],
+		organizationId?: number,
 	): Promise<
 		Map<
 			string,
@@ -409,8 +439,14 @@ export class AccountingService {
 		>();
 		if (!unique.length) return map;
 
+		const where: { reference: { in: string[] }; status: 'POSTED'; organizationId?: number } = {
+			reference: { in: unique },
+			status: 'POSTED',
+		};
+		if (organizationId != null) where.organizationId = organizationId;
+
 		const entries = await this.prisma.journalEntry.findMany({
-			where: { reference: { in: unique }, status: 'POSTED' },
+			where,
 			include: { journal: true },
 		});
 		for (const entry of entries) {
@@ -436,20 +472,14 @@ export class AccountingService {
 			end.setHours(23, 59, 59, 999);
 		}
 
-		const orgInvoiceNumbers =
-			params.organizationId != null
-				? new Set(
-						(
-							await this.prisma.invoice.findMany({
-								where: { organizationId: params.organizationId },
-								select: { number: true }
-							})
-						).map(i => i.number)
-					)
-				: null;
+		const entryWhere: { date: { gte: Date; lte: Date }; status: 'POSTED'; organizationId?: number } = {
+			date: { gte: start, lte: end },
+			status: 'POSTED',
+		};
+		if (params.organizationId != null) entryWhere.organizationId = params.organizationId;
 
 		const lines = await this.prisma.journalLine.findMany({
-			where: { entry: { date: { gte: start, lte: end }, status: 'POSTED' } },
+			where: { entry: entryWhere },
 			include: { account: true, entry: { include: { journal: true } } },
 			orderBy: [{ entry: { date: 'desc' } }, { entry: { id: 'desc' } }, { id: 'asc' }]
 		});
@@ -462,13 +492,6 @@ export class AccountingService {
 			return null;
 		};
 
-		const belongsToOrg = (reference: string | null | undefined): boolean => {
-			if (!orgInvoiceNumbers || !reference) return true;
-			const num = invoiceNumberFromReference(reference);
-			if (num) return orgInvoiceNumbers.has(num);
-			return true;
-		};
-
 		const movementKindFromReference = (reference: string | null | undefined): string => {
 			if (!reference) return 'other';
 			if (reference.startsWith('VENTE ')) return 'sale';
@@ -478,9 +501,7 @@ export class AccountingService {
 			return 'other';
 		};
 
-		const filtered = lines.filter(l => belongsToOrg(l.entry.reference));
-
-		return filtered.map(l => ({
+		return lines.map(l => ({
 			lineId: l.id,
 			entryId: l.entryId,
 			date: l.entry.date,
@@ -571,9 +592,10 @@ export class AccountingService {
 		const result = { salesCreated: 0, paymentsCreated: 0, refundsCreated: 0, skipped: 0, errors: [] as string[] };
 
 		for (const invoice of invoices) {
+			const orgId = invoice.organizationId ?? organizationId;
 			const saleRef = this.saleReference(invoice.number);
 			try {
-				if (!(await this.entryExists(saleRef))) {
+				if (!(await this.entryExists(saleRef, orgId))) {
 					await this.postInvoiceSale({
 						invoiceId: invoice.id,
 						date: invoice.date
@@ -588,8 +610,8 @@ export class AccountingService {
 				const payRef = this.paymentReference(invoice.number, payment.id);
 				const legacyRef = this.paymentReference(invoice.number);
 				const exists =
-					(await this.entryExists(payRef)) ||
-					(invoice.payments.length === 1 && (await this.entryExists(legacyRef)));
+					(await this.entryExists(payRef, orgId)) ||
+					(invoice.payments.length === 1 && (await this.entryExists(legacyRef, orgId)));
 				if (exists) {
 					result.skipped++;
 					continue;
@@ -609,7 +631,7 @@ export class AccountingService {
 
 			for (const refund of invoice.refunds ?? []) {
 				const refundRef = this.refundReference(invoice.number, refund.id);
-				if (await this.entryExists(refundRef)) {
+				if (await this.entryExists(refundRef, orgId)) {
 					result.skipped++;
 					continue;
 				}
@@ -640,7 +662,8 @@ export class AccountingService {
 	}) {
 		const invoice = await this.prisma.invoice.findUnique({ where: { id: params.invoiceId } });
 		if (!invoice) throw new BadRequestException('Facture introuvable');
-		if (await this.entryExists(this.saleReference(invoice.number))) {
+		const orgId = invoice.organizationId ?? undefined;
+		if (await this.entryExists(this.saleReference(invoice.number), orgId)) {
 			return null;
 		}
 		const subtotal = Number((invoice.subtotal as any)?.toNumber?.() ?? invoice.subtotal);
@@ -677,6 +700,7 @@ export class AccountingService {
 			date: params.date ?? invoice.date,
 			reference: this.saleReference(invoice.number),
 			memo,
+			organizationId: orgId,
 			lines,
 		});
 	}
@@ -710,6 +734,7 @@ export class AccountingService {
 			date: params.date,
 			reference: this.paymentReference(invoice.number, params.paymentId),
 			memo: `Encaissement facture ${invoice.number}`,
+			organizationId: invoice.organizationId,
 			lines
 		});
 	}
@@ -742,6 +767,7 @@ export class AccountingService {
 			date: params.date,
 			reference: this.refundReference(invoice.number, params.refundId),
 			memo: `Remboursement facture ${invoice.number}`,
+			organizationId: invoice.organizationId,
 			lines,
 		});
 	}
@@ -757,6 +783,7 @@ export class AccountingService {
 		journalCode?: string; // défaut OD
 		date?: string | Date;
 		memo?: string;
+		organizationId?: number | null;
 	}) {
 		const rate = params.taxRate ?? 0.2;
 		const base = Number(params.amountExclTax || 0);
@@ -772,6 +799,7 @@ export class AccountingService {
 			date: params.date as any,
 			reference: params.reference,
 			memo: params.memo,
+			organizationId: params.organizationId,
 			lines
 		});
 	}
@@ -784,6 +812,7 @@ export class AccountingService {
 		reference?: string;
 		date?: string | Date;
 		memo?: string;
+		organizationId?: number | null;
 	}) {
 		const lines = [
 			{ accountCode: params.vendorAccountCode ?? '401', description: params.memo, debit: params.amount },
@@ -794,6 +823,7 @@ export class AccountingService {
 			date: params.date as any,
 			reference: params.reference,
 			memo: params.memo,
+			organizationId: params.organizationId,
 			lines
 		});
 	}
@@ -812,7 +842,7 @@ export class AccountingService {
 		if (!debt) throw new BadRequestException('Dette introuvable');
 
 		const reference = this.payableDebtPurchaseReference(debt.id);
-		if (await this.entryExists(reference)) return null;
+		if (await this.entryExists(reference, debt.organizationId)) return null;
 
 		const total = Number((debt.totalAmount as any)?.toNumber?.() ?? debt.totalAmount);
 		const rate = params.taxRate ?? 0;
@@ -826,6 +856,7 @@ export class AccountingService {
 			taxRate: rate,
 			date: params.date ?? debt.sentAt ?? debt.createdAt,
 			memo,
+			organizationId: debt.organizationId,
 		});
 	}
 
@@ -843,28 +874,34 @@ export class AccountingService {
 		if (!debt) throw new BadRequestException('Dette introuvable');
 
 		const reference = this.payableDebtPaymentReference(debt.id, params.paymentId);
-		if (await this.entryExists(reference)) return null;
+		if (await this.entryExists(reference, debt.organizationId)) return null;
 
 		return this.postServicePayment({
 			reference,
 			amount: params.amount,
 			date: params.date,
 			memo: `Paiement dette — ${debt.label}`,
+			organizationId: debt.organizationId,
 		});
 	}
 
 	/** Contre-passation de l'achat dette (annulation sans paiement enregistré). */
 	async contraPayableDebtPurchase(debtId: number): Promise<void> {
+		const debt = await this.prisma.payableDebt.findUnique({ where: { id: debtId } });
 		const purchaseRef = this.payableDebtPurchaseReference(debtId);
 		const entry = await this.prisma.journalEntry.findFirst({
-			where: { reference: purchaseRef, status: 'POSTED' },
+			where: {
+				reference: purchaseRef,
+				status: 'POSTED',
+				...(debt?.organizationId != null ? { organizationId: debt.organizationId } : {}),
+			},
 			include: { lines: { include: { account: true } } },
 			orderBy: { id: 'desc' },
 		});
 		if (!entry) return;
 
 		const cancelRef = this.payableDebtCancelReference(debtId);
-		if (await this.entryExists(cancelRef)) return;
+		if (await this.entryExists(cancelRef, debt?.organizationId)) return;
 
 		const lines = entry.lines.map((l) => ({
 			accountCode: l.account.code,
@@ -877,6 +914,7 @@ export class AccountingService {
 			journalCode: 'OD',
 			reference: cancelRef,
 			memo: 'Contre-passation dette annulée',
+			organizationId: debt?.organizationId ?? entry.organizationId,
 			lines,
 		});
 	}
@@ -895,13 +933,14 @@ export class AccountingService {
 		if (remaining <= 0.01) return;
 
 		const reference = this.payableDebtCancelRemainingReference(debtId);
-		if (await this.entryExists(reference)) return;
+		if (await this.entryExists(reference, debt.organizationId)) return;
 
 		const memo = `Annulation solde dette — ${debt.label} (${debt.creditor.name})`;
 		await this.postEntry({
 			journalCode: 'OD',
 			reference,
 			memo,
+			organizationId: debt.organizationId,
 			lines: [
 				{ accountCode: '401', description: memo, debit: remaining },
 				{ accountCode: '622', description: memo, credit: remaining },
@@ -916,14 +955,18 @@ export class AccountingService {
 
 		const saleRef = this.saleReference(invoice.number);
 		const entry = await this.prisma.journalEntry.findFirst({
-			where: { reference: saleRef, status: 'POSTED' },
+			where: {
+				reference: saleRef,
+				status: 'POSTED',
+				...(invoice.organizationId != null ? { organizationId: invoice.organizationId } : {}),
+			},
 			include: { lines: { include: { account: true } } },
 			orderBy: { id: 'desc' },
 		});
 		if (!entry) return;
 
 		const cancelRef = this.invoiceSaleCancelReference(invoice.number);
-		if (await this.entryExists(cancelRef)) return;
+		if (await this.entryExists(cancelRef, invoice.organizationId)) return;
 
 		const lines = entry.lines.map((l) => ({
 			accountCode: l.account.code,
@@ -936,6 +979,7 @@ export class AccountingService {
 			journalCode: 'VE',
 			reference: cancelRef,
 			memo: `Contre-passation facture ${invoice.number}`,
+			organizationId: invoice.organizationId,
 			lines,
 		});
 	}
@@ -949,7 +993,7 @@ export class AccountingService {
 		if (balance <= 0.01) return;
 
 		const reference = this.invoiceReceivableCancelRemainingReference(invoice.number);
-		if (await this.entryExists(reference)) return;
+		if (await this.entryExists(reference, invoice.organizationId)) return;
 
 		const total = Number((invoice.total as any)?.toNumber?.() ?? invoice.total);
 		const subtotal = Number((invoice.subtotal as any)?.toNumber?.() ?? invoice.subtotal);
@@ -973,6 +1017,7 @@ export class AccountingService {
 			journalCode: 'VE',
 			reference,
 			memo,
+			organizationId: invoice.organizationId,
 			lines,
 		});
 	}
@@ -986,6 +1031,7 @@ export class AccountingService {
 		date?: string | Date;
 		reference?: string;
 		memo?: string;
+		organizationId?: number | null;
 		salaryExpenseAccountCode?: string; // 641
 		employerContribExpenseAccountCode?: string; // 645
 		salaryPayableAccountCode?: string; // 421
@@ -1007,12 +1053,21 @@ export class AccountingService {
 			date: params.date as any,
 			reference: params.reference,
 			memo: params.memo ?? 'Écriture de paie',
+			organizationId: params.organizationId,
 			lines
 		});
 	}
 
 	// Paiement salaires: 421/512
-	async postSalaryPayment(params: { amount: number; bankAccountCode?: string; salaryPayableAccountCode?: string; date?: string | Date; reference?: string; memo?: string }) {
+	async postSalaryPayment(params: {
+		amount: number;
+		bankAccountCode?: string;
+		salaryPayableAccountCode?: string;
+		date?: string | Date;
+		reference?: string;
+		memo?: string;
+		organizationId?: number | null;
+	}) {
 		const lines = [
 			{ accountCode: params.salaryPayableAccountCode ?? '421', description: params.memo, debit: params.amount },
 			{ accountCode: params.bankAccountCode ?? '512', description: 'Paiement salaires', credit: params.amount }
@@ -1022,12 +1077,21 @@ export class AccountingService {
 			date: params.date as any,
 			reference: params.reference,
 			memo: params.memo,
+			organizationId: params.organizationId,
 			lines
 		});
 	}
 
 	// Paiement URSSAF: 431/512
-	async postUrssafPayment(params: { amount: number; bankAccountCode?: string; urssafLiabilityAccountCode?: string; date?: string | Date; reference?: string; memo?: string }) {
+	async postUrssafPayment(params: {
+		amount: number;
+		bankAccountCode?: string;
+		urssafLiabilityAccountCode?: string;
+		date?: string | Date;
+		reference?: string;
+		memo?: string;
+		organizationId?: number | null;
+	}) {
 		const lines = [
 			{ accountCode: params.urssafLiabilityAccountCode ?? '431', description: params.memo ?? 'URSSAF', debit: params.amount },
 			{ accountCode: params.bankAccountCode ?? '512', description: 'Paiement URSSAF', credit: params.amount }
@@ -1037,6 +1101,7 @@ export class AccountingService {
 			date: params.date as any,
 			reference: params.reference,
 			memo: params.memo,
+			organizationId: params.organizationId,
 			lines
 		});
 	}
@@ -1051,24 +1116,56 @@ export class AccountingService {
 	 * @returns Écriture créée
 	 */
 	// Micro-social (auto-entrepreneur): calcul d'une cotisation sur CA
-	async postMicroSocialContribution(params: { periodStart: string; periodEnd: string; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string }) {
+	async postMicroSocialContribution(params: {
+		periodStart: string;
+		periodEnd: string;
+		rate: number;
+		expenseAccountCode?: string;
+		liabilityAccountCode?: string;
+		reference?: string;
+		memo?: string;
+		organizationId?: number | null;
+	}) {
 		const start = new Date(params.periodStart);
 		const end = new Date(params.periodEnd);
-		const invoices = await this.prisma.invoice.findMany({ where: { date: { gte: start, lte: end } } });
+		const invoiceWhere: { date: { gte: Date; lte: Date }; organizationId?: number } = {
+			date: { gte: start, lte: end },
+		};
+		if (params.organizationId != null) invoiceWhere.organizationId = params.organizationId;
+		const invoices = await this.prisma.invoice.findMany({ where: invoiceWhere });
 		const ca = invoices.reduce((sum, inv) => sum + Number(inv.total), 0);
 		const amount = Number((ca * params.rate).toFixed(2));
 		const lines = [
 			{ accountCode: params.expenseAccountCode ?? '645', description: params.memo ?? 'Micro-social', debit: amount },
 			{ accountCode: params.liabilityAccountCode ?? '431', description: 'URSSAF', credit: amount }
 		];
-		return this.postEntry({ journalCode: 'OD', reference: params.reference ?? 'MICRO-SOCIAL', memo: params.memo, lines });
+		return this.postEntry({
+			journalCode: 'OD',
+			reference: params.reference ?? 'MICRO-SOCIAL',
+			memo: params.memo,
+			organizationId: params.organizationId,
+			lines,
+		});
 	}
 
 	// C3S: contribution assise sur CA si seuil dépassé
-	async postC3SContribution(params: { year: number; threshold: number; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string }) {
+	async postC3SContribution(params: {
+		year: number;
+		threshold: number;
+		rate: number;
+		expenseAccountCode?: string;
+		liabilityAccountCode?: string;
+		reference?: string;
+		memo?: string;
+		organizationId?: number | null;
+	}) {
 		const start = new Date(params.year, 0, 1);
 		const end = new Date(params.year, 11, 31, 23, 59, 59);
-		const invoices = await this.prisma.invoice.findMany({ where: { date: { gte: start, lte: end } } });
+		const invoiceWhere: { date: { gte: Date; lte: Date }; organizationId?: number } = {
+			date: { gte: start, lte: end },
+		};
+		if (params.organizationId != null) invoiceWhere.organizationId = params.organizationId;
+		const invoices = await this.prisma.invoice.findMany({ where: invoiceWhere });
 		const ca = invoices.reduce((sum, inv) => sum + Number(inv.total), 0);
 		if (ca < params.threshold) return { skipped: true, reason: 'threshold-not-met', ca } as any;
 		const amount = Number((ca * params.rate).toFixed(2));
@@ -1076,7 +1173,13 @@ export class AccountingService {
 			{ accountCode: params.expenseAccountCode ?? '635', description: params.memo ?? 'C3S', debit: amount },
 			{ accountCode: params.liabilityAccountCode ?? '447', description: 'C3S à payer', credit: amount }
 		];
-		return this.postEntry({ journalCode: 'OD', reference: params.reference ?? `C3S-${params.year}`, memo: params.memo, lines });
+		return this.postEntry({
+			journalCode: 'OD',
+			reference: params.reference ?? `C3S-${params.year}`,
+			memo: params.memo,
+			organizationId: params.organizationId,
+			lines,
+		});
 	}
 }
 

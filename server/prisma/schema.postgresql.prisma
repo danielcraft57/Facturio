@@ -193,6 +193,8 @@ model Organization {
   taxCredits     TaxCredit[]
   taxSimulations TaxSimulation[]
   apiAccessTokens ApiAccessToken[]
+  journalEntries JournalEntry[]
+  filings        Filing[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -769,20 +771,24 @@ enum FilingStatus {
 }
 
 model Filing {
-  id          Int                @id @default(autoincrement())
-  type        FilingType
-  authority   AuthorityType
-  periodStart DateTime
-  periodEnd   DateTime
-  dueDate     DateTime
-  status      FilingStatus       @default(DRAFT)
-  notes       String?
-  lines       FilingLine[]
-  amountDue   Decimal            @default(0)
-  amountPaid  Decimal            @default(0)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  payments    AuthorityPayment[]
+  id             Int                @id @default(autoincrement())
+  organizationId Int?
+  type           FilingType
+  authority      AuthorityType
+  periodStart    DateTime
+  periodEnd      DateTime
+  dueDate        DateTime
+  status         FilingStatus       @default(DRAFT)
+  notes          String?
+  lines          FilingLine[]
+  amountDue      Decimal            @default(0)
+  amountPaid     Decimal            @default(0)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization?      @relation(fields: [organizationId], references: [id])
+  payments       AuthorityPayment[]
+
+  @@index([organizationId])
 }
 
 model FilingLine {
@@ -943,18 +949,23 @@ enum EntryStatus {
 }
 
 model JournalEntry {
-  id          Int           @id @default(autoincrement())
-  journalId   Int
-  journal     Journal       @relation(fields: [journalId], references: [id])
-  date        DateTime      @default(now())
-  reference   String?
-  memo        String?
-  status      EntryStatus   @default(DRAFT)
-  totalDebit  Decimal       @default(0)
-  totalCredit Decimal       @default(0)
-  avoirs Avoir[]
-  createdAt   DateTime      @default(now())
-  lines       JournalLine[]
+  id             Int           @id @default(autoincrement())
+  journalId      Int
+  organizationId Int?
+  journal        Journal       @relation(fields: [journalId], references: [id])
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  date           DateTime      @default(now())
+  reference      String?
+  memo           String?
+  status         EntryStatus   @default(DRAFT)
+  totalDebit     Decimal       @default(0)
+  totalCredit    Decimal       @default(0)
+  avoirs         Avoir[]
+  createdAt      DateTime      @default(now())
+  lines          JournalLine[]
+
+  @@index([organizationId])
+  @@index([organizationId, reference])
 }
 
 model JournalLine {

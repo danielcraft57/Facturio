@@ -13,6 +13,12 @@ import BusinessIcon from '@mui/icons-material/Business'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import CreditScoreIcon from '@mui/icons-material/CreditScore'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
+import StorefrontIcon from '@mui/icons-material/Storefront'
+import SavingsIcon from '@mui/icons-material/Savings'
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import DepreciationIcon from '@mui/icons-material/Timelapse'
+import GroupsIcon from '@mui/icons-material/Groups'
 import { CREANCES_PATH, DETTES_INBOX } from './encoursPaths'
 import { filterSettingsNavItems, settingsNavItems, type SettingsNavFilter } from '../../account/settingsNav'
 import type { BillingUsage } from '../../../services/billing'
@@ -133,7 +139,7 @@ export const navGroups: NavGroup[] = [
   {
     id: 'finance',
     label: 'Finance',
-    overview: 'Obligations fiscales et comptabilité.',
+    overview: 'Obligations fiscales, trésorerie et comptabilité.',
     overviewCta: { label: 'Comptabilité', to: '/comptabilite' },
     featured: {
       title: 'Comptabilité',
@@ -144,6 +150,41 @@ export const navGroups: NavGroup[] = [
       accent: 'emerald',
     },
     items: [
+      {
+        to: '/tresorerie',
+        label: 'Trésorerie',
+        description: 'Prévision 30 / 90 / 180 jours',
+        icon: <SavingsIcon fontSize="small" />,
+        requiresFeature: 'accounting',
+      },
+      {
+        to: '/caisse',
+        label: 'Caisse',
+        description: 'Fond de caisse et mouvements',
+        icon: <PointOfSaleIcon fontSize="small" />,
+        requiresFeature: 'financeModule',
+      },
+      {
+        to: '/fournisseurs',
+        label: 'Fournisseurs',
+        description: 'Référentiel SIRET / TVA',
+        icon: <StorefrontIcon fontSize="small" />,
+        requiresFeature: 'financeModule',
+      },
+      {
+        to: '/investissements',
+        label: 'Investissements',
+        description: 'Apports, prêts, subventions',
+        icon: <TrendingUpIcon fontSize="small" />,
+        requiresFeature: 'accounting',
+      },
+      {
+        to: '/amortissements',
+        label: 'Amortissements',
+        description: 'Immobilisations et dotations',
+        icon: <DepreciationIcon fontSize="small" />,
+        requiresFeature: 'accounting',
+      },
       {
         to: '/taxes',
         label: 'Taxes',
@@ -161,8 +202,15 @@ export const navGroups: NavGroup[] = [
       {
         to: '/declarations',
         label: 'Déclarations',
-        description: 'Déclarations légales',
+        description: 'TVA, URSSAF, IS, CFE',
         icon: <GavelIcon fontSize="small" />,
+        requiresFeature: 'accounting',
+      },
+      {
+        to: '/urssaf',
+        label: 'URSSAF',
+        description: 'Cotisations micro / AE',
+        icon: <GroupsIcon fontSize="small" />,
         requiresFeature: 'accounting',
       },
       {

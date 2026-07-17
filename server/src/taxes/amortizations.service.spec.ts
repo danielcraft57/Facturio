@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AmortizationsService } from './amortizations.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AccountingService } from '../accounting/accounting.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 /**
  * Tests unitaires pour AmortizationsService
- * 
+ *
  * Teste :
  * - Création d'amortissements
  * - Calcul linéaire
@@ -24,6 +25,13 @@ describe('AmortizationsService', () => {
 			findFirst: jest.fn(),
 			delete: jest.fn(),
 		},
+		journalEntry: {
+			findFirst: jest.fn(),
+		},
+	};
+
+	const mockAccountingService = {
+		postEntry: jest.fn(),
 	};
 
 	beforeEach(async () => {
@@ -33,6 +41,10 @@ describe('AmortizationsService', () => {
 				{
 					provide: PrismaService,
 					useValue: mockPrismaService,
+				},
+				{
+					provide: AccountingService,
+					useValue: mockAccountingService,
 				},
 			],
 		}).compile();

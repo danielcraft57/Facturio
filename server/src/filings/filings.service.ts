@@ -1,262 +1,292 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { AuthorityType, FilingStatus, FilingType, Prisma } from '@prisma/client';
+import { FilingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { FilingCalculatorRegistry } from './calculators/filing-calculator.registry';
+import type { FilingCalculateOptions } from './calculators/filing-calculation.types';
 
 /**
  * Données de création de déclaration fiscale
  */
 export interface CreateFilingDto {
-	/** Type de déclaration (VAT_CA3, VAT_CA12, URSSAF_MONTHLY, etc.) */
+	/** Type de déclaration (VAT_CA3, VAT_CA12, URSSAF_MONTHLY, IS, CFE…) */
 	type: string;
 	/** Autorité (URSSAF, DGFIP, etc.) */
 	authority?: string;
-	/** Période formatée (ex: "2024-Q1" pour trimestriel) */
+	/**
+	 * Période formatée :
+	 * - Trimestre : "2026-Q1"
+	 * - Année (IS/CFE) : "2026" ou "2026-Y"
+	 * - Mois : "2026-M01"
+	 */
 	period?: string;
-	/** Date de début de période */
 	periodStart?: string | Date;
-	/** Date de fin de période */
 	periodEnd?: string | Date;
-	/** Date d'échéance */
 	dueDate?: string | Date;
-	/** Notes */
 	notes?: string;
+	organizationId?: number;
 }
 
 /**
  * Données de mise à jour de déclaration
  */
 export interface UpdateFilingDto {
-	/** Statut de la déclaration */
 	status?: FilingStatus;
-	/** Notes */
 	notes?: string;
 }
 
 /**
- * Service de gestion des déclarations fiscales
- * 
- * Gère :
- * - La création de déclarations (TVA, URSSAF, IS, CFE)
- * - Le calcul automatique des montants (TVA CA3/CA12)
- * - Le suivi des paiements
- * - Le statut des déclarations (DRAFT, CALCULATED, FILED, PAID)
- * 
- * @see FilingsController pour les endpoints API
+ * Service de gestion des déclarations fiscales.
+ *
+ * Le calcul délégué à FilingCalculatorRegistry (TVA, IS, CFE).
+ * URSSAF reste sur le module dédié `/urssaf`.
  */
 @Injectable()
 export class FilingsService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly calculators: FilingCalculatorRegistry,
+	) {}
 
 	/**
-	 * Crée une nouvelle déclaration fiscale
-	 * 
-	 * Supporte deux formats :
-	 * - Période formatée : "YYYY-QN" (ex: "2024-Q1")
-	 * - Dates directes : periodStart, periodEnd, dueDate
-	 * 
-	 * @param data - Données de la déclaration
-	 * @returns Déclaration créée
-	 * @throws {BadRequestException} Si format de période invalide
-	 * 
-	 * @example
-	 * ```typescript
-	 * const filing = await filingsService.create({
-	 *   type: 'VAT_CA3',
-	 *   authority: 'DGFIP',
-	 *   period: '2024-Q1'
-	 * });
-	 * ```
+	 * Parse une période textuelle en dates.
+	 * @param period - "2026-Q1" | "2026" | "2026-Y" | "2026-M01"
+	 */
+	private parsePeriod(period: string): { periodStart: Date; periodEnd: Date; dueDate: Date } {
+		const yearOnly = period.match(/^(\d{4})(?:-Y)?$/);
+		if (yearOnly) {
+			const year = parseInt(yearOnly[1], 10);
+			return {
+				periodStart: new Date(year, 0, 1),
+				periodEnd: new Date(year, 11, 31),
+				dueDate: new Date(year + 1, 4, 15), // 15 mai N+1 (approx IS)
+			};
+		}
+
+		const month = period.match(/^(\d{4})-M(\d{2})$/);
+		if (month) {
+			const year = parseInt(month[1], 10);
+			const m = parseInt(month[2], 10) - 1;
+			if (m < 0 || m > 11) throw new BadRequestException('Mois invalide');
+			return {
+				periodStart: new Date(year, m, 1),
+				periodEnd: new Date(year, m + 1, 0),
+				dueDate: new Date(year, m + 2, 0),
+			};
+		}
+
+		const quarter = period.match(/^(\d{4})-Q(\d)$/);
+		if (quarter) {
+			const year = parseInt(quarter[1], 10);
+			const q = parseInt(quarter[2], 10);
+			if (q < 1 || q > 4) throw new BadRequestException('Trimestre invalide (1-4)');
+			const monthStart = (q - 1) * 3;
+			return {
+				periodStart: new Date(year, monthStart, 1),
+				periodEnd: new Date(year, monthStart + 3, 0),
+				dueDate: new Date(year, monthStart + 3, 0),
+			};
+		}
+
+		throw new BadRequestException(
+			'Format de période invalide. Utilisez YYYY, YYYY-Y, YYYY-QN ou YYYY-MNN',
+		);
+	}
+
+	/**
+	 * Crée une nouvelle déclaration fiscale.
+	 * @param data - Données de création
 	 */
 	create(data: CreateFilingDto) {
-		// Parser la période si elle est fournie
 		let periodStart: Date;
 		let periodEnd: Date;
 		let dueDate: Date;
 
 		if (data.period) {
-			// Format: "2024-Q1", "2024-Q2", etc.
-			const match = data.period.match(/^(\d{4})-Q(\d)$/);
-			if (!match) {
-				throw new BadRequestException('Format de période invalide. Utilisez YYYY-QN (ex: 2024-Q1)');
-			}
-			
-			const year = parseInt(match[1]);
-			const quarter = parseInt(match[2]);
-			
-			if (quarter < 1 || quarter > 4) {
-				throw new BadRequestException('Trimestre invalide. Doit être entre 1 et 4.');
-			}
-			
-			// Calculer les dates du trimestre
-			const monthStart = (quarter - 1) * 3;
-			periodStart = new Date(year, monthStart, 1);
-			periodEnd = new Date(year, monthStart + 3, 0); // Dernier jour du mois
-			
-			// Date d'échéance : fin du mois suivant la fin du trimestre
-			dueDate = new Date(year, monthStart + 3, 0);
+			const parsed = this.parsePeriod(data.period);
+			periodStart = parsed.periodStart;
+			periodEnd = parsed.periodEnd;
+			dueDate = parsed.dueDate;
 		} else {
-			// Utiliser les dates fournies directement
 			if (!data.periodStart || !data.periodEnd || !data.dueDate) {
-				throw new BadRequestException('Les dates periodStart, periodEnd et dueDate sont requises si period n\'est pas fourni');
+				throw new BadRequestException(
+					'periodStart, periodEnd et dueDate requis si period absent',
+				);
 			}
 			periodStart = new Date(data.periodStart);
 			periodEnd = new Date(data.periodEnd);
 			dueDate = new Date(data.dueDate);
 		}
 
-		let typeValue: any = data.type ?? 'VAT_CA3';
+		let typeValue: string = data.type ?? 'VAT_CA3';
 		if (typeValue === 'VAT') typeValue = 'VAT_CA3';
-		const authorityValue: any = (data.authority as any) ?? 'DGFIP';
+
+		// Autorité par défaut selon le type
+		let authorityValue = data.authority;
+		if (!authorityValue) {
+			authorityValue =
+				typeValue.startsWith('URSSAF') ? 'URSSAF' : 'DGFIP';
+		}
+
 		return this.prisma.filing.create({
 			data: {
-				type: typeValue,
-				authority: authorityValue,
+				type: typeValue as any,
+				authority: authorityValue as any,
 				periodStart,
 				periodEnd,
 				dueDate,
 				notes: data.notes,
-				// Garder une trace lisible de la periode
-				// Prisma schema n'a pas de champ period string, mais les tests attendent filing.period
-				// On peut ajouter un champ calculé via select custom dans le controller, ou renvoyer ici une valeur additionnelle.
-			}
+				organizationId: data.organizationId,
+			},
 		});
 	}
 
 	/**
-	 * Liste toutes les déclarations
-	 * 
-	 * @returns Liste des déclarations avec lignes et paiements, triées par date décroissante
+	 * Liste les déclarations d'une organisation.
+	 * @param organizationId - Filtre multi-tenant
 	 */
-	findAll() {
-		return this.prisma.filing.findMany({ orderBy: { createdAt: 'desc' }, include: { lines: true, payments: true } });
+	findAll(organizationId?: number) {
+		const where = organizationId != null ? { organizationId } : {};
+		return this.prisma.filing.findMany({
+			where,
+			orderBy: { createdAt: 'desc' },
+			include: { lines: true, payments: true },
+		});
 	}
 
 	/**
-	 * Récupère une déclaration par ID
-	 * 
-	 * @param id - ID de la déclaration
-	 * @returns Déclaration avec lignes et paiements
-	 * @throws {NotFoundException} Si déclaration non trouvée
+	 * Récupère une déclaration par ID.
+	 * @param id - Identifiant
+	 * @param organizationId - Organisation attendue
 	 */
-	async findOne(id: number) {
-		const f = await this.prisma.filing.findUnique({ where: { id }, include: { lines: true, payments: true } });
+	async findOne(id: number, organizationId?: number) {
+		const where: { id: number; organizationId?: number } = { id };
+		if (organizationId != null) where.organizationId = organizationId;
+		const f = await this.prisma.filing.findFirst({
+			where,
+			include: { lines: true, payments: true },
+		});
 		if (!f) throw new NotFoundException('Declaration introuvable');
 		return f;
 	}
 
 	/**
-	 * Met à jour une déclaration
-	 * 
-	 * @param id - ID de la déclaration
-	 * @param data - Données de mise à jour
-	 * @returns Déclaration mise à jour
+	 * Met à jour une déclaration.
 	 */
-	update(id: number, data: UpdateFilingDto) {
+	async update(id: number, data: UpdateFilingDto, organizationId?: number) {
+		await this.findOne(id, organizationId);
 		return this.prisma.filing.update({ where: { id }, data });
 	}
 
 	/**
-	 * Supprime une déclaration
-	 * 
-	 * @param id - ID de la déclaration
-	 * @returns Confirmation de suppression
-	 * @throws {NotFoundException} Si déclaration non trouvée
+	 * Supprime une déclaration.
 	 */
-	async remove(id: number) {
-		await this.findOne(id);
+	async remove(id: number, organizationId?: number) {
+		await this.findOne(id, organizationId);
 		await this.prisma.filing.delete({ where: { id } });
 		return { success: true };
 	}
 
 	/**
-	 * Calcule une déclaration TVA (CA3 ou CA12)
-	 * 
-	 * Calcule automatiquement :
-	 * - La base taxable (HT des factures)
-	 * - Le montant de TVA
-	 * - Met à jour le statut à CALCULATED
-	 * 
-	 * @param id - ID de la déclaration
-	 * @returns Déclaration calculée avec montants
-	 * @throws {NotFoundException} Si déclaration non trouvée ou type non TVA
-	 * 
-	 * @example
-	 * ```typescript
-	 * const result = await filingsService.calculateVatReturn(1);
-	 * // result.vatAmount = montant TVA à payer
-	 * // result.invoiceCount = nombre de factures
-	 * ```
+	 * Calcule une déclaration via le registre (TVA, IS, CFE).
+	 * @param id - Identifiant déclaration
+	 * @param organizationId - Organisation
+	 * @param options - Surcharges optionnelles
 	 */
-	// Calcul CA3/CA12 simplifie a partir des factures de la periode
-	async calculateVatReturn(id: number) {
-		const filing = await this.findOne(id);
-		if (!(filing.type === 'VAT_CA3' || filing.type === 'VAT_CA12')) {
-			throw new NotFoundException('Type de declaration non TVA');
+	async calculate(
+		id: number,
+		organizationId?: number,
+		options?: FilingCalculateOptions,
+	) {
+		const filing = await this.findOne(id, organizationId);
+		const orgId = organizationId ?? filing.organizationId;
+		if (orgId == null) {
+			throw new BadRequestException('Organisation requise pour calculer');
 		}
-		const start = new Date(filing.periodStart);
-		const end = new Date(filing.periodEnd);
-		const invoices = await this.prisma.invoice.findMany({ include: { lines: true, client: true } });
-		let taxableBase = 0;
-		let taxAmount = 0;
-		for (const inv of invoices) {
-			// on suppose toutes les factures taxables FR pour v1
-			taxableBase += (inv.subtotal as unknown as Prisma.Decimal)?.toNumber?.() ?? Number(inv.subtotal);
-			taxAmount += (inv.tax as unknown as Prisma.Decimal)?.toNumber?.() ?? Number(inv.tax);
-		}
-		const amountDue = taxAmount; // simplifie: pas de credit reporté ni acomptes
+
+		const calculator = this.calculators.get(filing.type);
+		const result = await calculator.calculate({
+			filingId: id,
+			organizationId: orgId,
+			type: filing.type,
+			periodStart: new Date(filing.periodStart),
+			periodEnd: new Date(filing.periodEnd),
+			options,
+		});
+
 		await this.prisma.filing.update({
 			where: { id },
 			data: {
 				status: 'CALCULATED' as FilingStatus,
-				lines: { deleteMany: {}, create: [{ taxRate: 0 as any, taxableBase, taxAmount }] },
-				amountDue
-			}
+				amountDue: result.amountDue,
+				notes: result.notes,
+				calculationSnapshot: result.snapshot as any,
+				lines: {
+					deleteMany: {},
+					create: result.lines.map((l) => ({
+						taxRate: l.taxRate as any,
+						taxableBase: l.taxableBase as any,
+						taxAmount: l.taxAmount as any,
+					})),
+				},
+			},
 		});
-		const updated = await this.findOne(id);
+
+		const updated = await this.findOne(id, organizationId);
 		return {
 			...updated,
-			vatAmount: (updated.amountDue as any)?.toNumber?.() ?? Number(updated.amountDue),
-			invoiceCount: invoices.length,
-			totalAmount: taxableBase
-		} as any;
+			...result.snapshot,
+			amountDue: result.amountDue,
+		};
 	}
 
 	/**
-	 * Ajoute un paiement à une déclaration
-	 * 
-	 * Met à jour automatiquement :
-	 * - Le montant payé total
-	 * - Le statut (PAID si montant payé >= montant dû)
-	 * 
-	 * @param id - ID de la déclaration
-	 * @param amount - Montant du paiement
-	 * @param date - Date du paiement (optionnel)
-	 * @param reference - Référence du paiement (optionnel)
-	 * @param notes - Notes (optionnel)
-	 * @returns Paiement créé
-	 * @throws {BadRequestException} Si montant invalide
-	 * @throws {NotFoundException} Si déclaration non trouvée
+	 * @deprecated Utiliser calculate() - conservé pour compat.
 	 */
-	async addAuthorityPayment(id: number, amount: number, date?: string | Date, reference?: string, notes?: string) {
-		await this.findOne(id);
+	async calculateVatReturn(id: number, organizationId?: number) {
+		return this.calculate(id, organizationId);
+	}
+
+	/**
+	 * Ajoute un paiement autorité.
+	 */
+	async addAuthorityPayment(
+		id: number,
+		amount: number,
+		date?: string | Date,
+		reference?: string,
+		notes?: string,
+		organizationId?: number,
+	) {
+		await this.findOne(id, organizationId);
 		if (amount < 0) throw new BadRequestException('Montant invalide');
+		const filing = await this.findOne(id, organizationId);
 		const created = await this.prisma.authorityPayment.create({
 			data: {
 				filingId: id,
-				authority: 'DGFIP',
+				authority: filing.authority,
 				amount,
 				date: date ? new Date(date) : undefined,
 				reference,
-				notes
-			}
+				notes,
+			},
 		});
-		const agg = await this.prisma.authorityPayment.aggregate({ where: { filingId: id }, _sum: { amount: true } });
-		const paid = agg?._sum?.amount ? (agg._sum.amount as any).toNumber?.() ?? Number(agg._sum.amount) : 0;
-		const filing = await this.findOne(id);
-		const newStatus: FilingStatus = paid >= ((filing.amountDue as any as number) ?? 0) ? 'PAID' as FilingStatus : filing.status as FilingStatus;
-		await this.prisma.filing.update({ where: { id }, data: { amountPaid: paid, status: newStatus } });
-		return { ...created, amount: (created.amount as any)?.toNumber?.() ?? Number(created.amount) } as any;
+		const agg = await this.prisma.authorityPayment.aggregate({
+			where: { filingId: id },
+			_sum: { amount: true },
+		});
+		const paid = agg?._sum?.amount
+			? (agg._sum.amount as any).toNumber?.() ?? Number(agg._sum.amount)
+			: 0;
+		const due = (filing.amountDue as any)?.toNumber?.() ?? Number(filing.amountDue);
+		const newStatus: FilingStatus =
+			paid >= due ? ('PAID' as FilingStatus) : (filing.status as FilingStatus);
+		await this.prisma.filing.update({
+			where: { id },
+			data: { amountPaid: paid, status: newStatus },
+		});
+		return {
+			...created,
+			amount: (created.amount as any)?.toNumber?.() ?? Number(created.amount),
+		} as any;
 	}
 }
-
-

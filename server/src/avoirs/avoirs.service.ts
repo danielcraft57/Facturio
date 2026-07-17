@@ -575,6 +575,7 @@ export class AvoirsService {
 			date: avoir.date,
 			reference: avoir.number,
 			memo: `Avoir ${avoir.number} - ${avoir.client.name}`,
+			organizationId: avoir.organizationId,
 			lines: [
 				{
 					accountCode: '411',

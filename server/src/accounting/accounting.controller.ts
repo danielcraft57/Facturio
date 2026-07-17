@@ -33,9 +33,10 @@ export class AccountingController {
 			reference?: string;
 			memo?: string;
 			lines: Array<{ accountCode: string; description?: string; debit?: number; credit?: number }>;
-		}
+		},
+		@CurrentUser() user: { organizationId?: number }
 	) {
-		return this.accounting.postEntry(body);
+		return this.accounting.postEntry({ ...body, organizationId: user?.organizationId });
 	}
 
 	@Post('purchases/service')
@@ -51,9 +52,10 @@ export class AccountingController {
 			journalCode?: string;
 			date?: string;
 			memo?: string;
-		}
+		},
+		@CurrentUser() user: { organizationId?: number }
 	) {
-		return this.accounting.postServicePurchase(body);
+		return this.accounting.postServicePurchase({ ...body, organizationId: user?.organizationId });
 	}
 
 	@Post('payments/service')
@@ -66,9 +68,10 @@ export class AccountingController {
 			reference?: string;
 			date?: string;
 			memo?: string;
-		}
+		},
+		@CurrentUser() user: { organizationId?: number }
 	) {
-		return this.accounting.postServicePayment(body);
+		return this.accounting.postServicePayment({ ...body, organizationId: user?.organizationId });
 	}
 
 	@Post('payroll/post')
@@ -86,35 +89,53 @@ export class AccountingController {
 			employerContribExpenseAccountCode?: string;
 			salaryPayableAccountCode?: string;
 			urssafLiabilityAccountCode?: string;
-		}
+		},
+		@CurrentUser() user: { organizationId?: number }
 	) {
-		return this.accounting.postPayroll(body as any);
+		return this.accounting.postPayroll({ ...body, organizationId: user?.organizationId } as any);
 	}
 
 	@Post('payments/salary')
-	postSalaryPayment(@Body() body: { amount: number; bankAccountCode?: string; salaryPayableAccountCode?: string; date?: string; reference?: string; memo?: string }) {
-		return this.accounting.postSalaryPayment(body as any);
+	postSalaryPayment(
+		@Body() body: { amount: number; bankAccountCode?: string; salaryPayableAccountCode?: string; date?: string; reference?: string; memo?: string },
+		@CurrentUser() user: { organizationId?: number }
+	) {
+		return this.accounting.postSalaryPayment({ ...body, organizationId: user?.organizationId } as any);
 	}
 
 	@Post('payments/urssaf')
-	postUrssafPayment(@Body() body: { amount: number; bankAccountCode?: string; urssafLiabilityAccountCode?: string; date?: string; reference?: string; memo?: string }) {
-		return this.accounting.postUrssafPayment(body as any);
+	postUrssafPayment(
+		@Body() body: { amount: number; bankAccountCode?: string; urssafLiabilityAccountCode?: string; date?: string; reference?: string; memo?: string },
+		@CurrentUser() user: { organizationId?: number }
+	) {
+		return this.accounting.postUrssafPayment({ ...body, organizationId: user?.organizationId } as any);
 	}
 
 	@Post('contrib/micro-social')
-	postMicroSocial(@Body() body: { periodStart: string; periodEnd: string; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string }) {
-		return this.accounting.postMicroSocialContribution(body);
+	postMicroSocial(
+		@Body() body: { periodStart: string; periodEnd: string; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string },
+		@CurrentUser() user: { organizationId?: number }
+	) {
+		return this.accounting.postMicroSocialContribution({ ...body, organizationId: user?.organizationId });
 	}
 
 	@Post('contrib/c3s')
-	postC3S(@Body() body: { year: number; threshold: number; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string }) {
-		return this.accounting.postC3SContribution(body);
+	postC3S(
+		@Body() body: { year: number; threshold: number; rate: number; expenseAccountCode?: string; liabilityAccountCode?: string; reference?: string; memo?: string },
+		@CurrentUser() user: { organizationId?: number }
+	) {
+		return this.accounting.postC3SContribution({ ...body, organizationId: user?.organizationId });
 	}
 
 	// Rapports & exports
 	@Get('exports/fec')
-	async exportFEC(@Query('start') start: string, @Query('end') end: string, @Res({ passthrough: true }) res: Response) {
-		const content = await this.accounting.exportFEC({ start, end });
+	async exportFEC(
+		@Query('start') start: string,
+		@Query('end') end: string,
+		@Res({ passthrough: true }) res: Response,
+		@CurrentUser() user: { organizationId?: number }
+	) {
+		const content = await this.accounting.exportFEC({ start, end, organizationId: user?.organizationId });
 		const safeStart = start ? start.split('T')[0] : '1970-01-01';
 		const safeEnd = end ? end.split('T')[0] : '2999-12-31';
 		res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -123,13 +144,22 @@ export class AccountingController {
 	}
 
 	@Get('reports/balance')
-	getTrialBalance(@Query('start') start: string, @Query('end') end: string) {
-		return this.accounting.getTrialBalance({ start, end });
+	getTrialBalance(
+		@Query('start') start: string,
+		@Query('end') end: string,
+		@CurrentUser() user: { organizationId?: number }
+	) {
+		return this.accounting.getTrialBalance({ start, end, organizationId: user?.organizationId });
 	}
 
 	@Get('reports/general-ledger')
-	getGeneralLedger(@Query('start') start: string, @Query('end') end: string, @Query('account') accountCode?: string) {
-		return this.accounting.getGeneralLedger({ start, end, accountCode });
+	getGeneralLedger(
+		@Query('start') start: string,
+		@Query('end') end: string,
+		@Query('account') accountCode: string | undefined,
+		@CurrentUser() user: { organizationId?: number }
+	) {
+		return this.accounting.getGeneralLedger({ start, end, accountCode, organizationId: user?.organizationId });
 	}
 
 	@Get('movements')
@@ -155,5 +185,3 @@ export class AccountingController {
 		return this.accounting.syncFromInvoices(user?.organizationId);
 	}
 }
-
-

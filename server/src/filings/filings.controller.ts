@@ -1,82 +1,150 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	Get,
+	HttpCode,
+	Param,
+	ParseIntPipe,
+	Patch,
+	Post,
+	Query,
+	UseGuards,
+} from '@nestjs/common';
 import { FilingsService } from './filings.service';
-import { AuthorityType, FilingStatus, FilingType } from '@prisma/client';
-import { Request } from 'express';
+import { FilingStatus } from '@prisma/client';
 import { AccountingPlanGuard } from '../billing/guards/accounting-plan.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { FilingCalculateOptions } from './calculators/filing-calculation.types';
+
+/**
+ * Formate une période lisible selon le type de déclaration.
+ */
+function formatPeriodLabel(type: string, periodStart: Date): string {
+	const y = periodStart.getFullYear();
+	if (type === 'IS' || type === 'CFE') return `${y}`;
+	if (type.startsWith('URSSAF_MONTHLY')) {
+		const m = String(periodStart.getMonth() + 1).padStart(2, '0');
+		return `${y}-M${m}`;
+	}
+	const q = Math.floor(periodStart.getMonth() / 3) + 1;
+	return `${y}-Q${q}`;
+}
 
 @UseGuards(AccountingPlanGuard)
 @Controller('filings')
 export class FilingsController {
 	constructor(private readonly filings: FilingsService) {}
 
+	/**
+	 * Crée une déclaration (TVA, IS, CFE, URSSAF…).
+	 * Pour IS/CFE préférer period="2026".
+	 */
 	@Post()
-	create(@Body() body: any) {
+	create(@Body() body: any, @CurrentUser() user: { organizationId?: number }) {
 		const mapped: any = { ...body };
-		if (body?.type === 'VAT') {
-			mapped.type = 'VAT_CA3';
-		}
+		if (body?.type === 'VAT') mapped.type = 'VAT_CA3';
 		if (!mapped.authority) {
-			mapped.authority = 'DGFIP';
+			mapped.authority = String(mapped.type || '').startsWith('URSSAF')
+				? 'URSSAF'
+				: 'DGFIP';
 		}
-		const allowed = ['VAT_CA3','VAT_CA12','URSSAF_MONTHLY','URSSAF_QUARTERLY','IS','CFE'];
+		const allowed = [
+			'VAT_CA3',
+			'VAT_CA12',
+			'URSSAF_MONTHLY',
+			'URSSAF_QUARTERLY',
+			'IS',
+			'CFE',
+		];
 		if (mapped.type && !allowed.includes(mapped.type)) {
 			throw new BadRequestException('Type de declaration invalide');
 		}
-		return this.filings.create(mapped).then((f: any) => ({ ...f, period: body?.period, status: String(f.status).toLowerCase() }));
+		// Année par défaut pour IS / CFE si pas de période
+		if ((mapped.type === 'IS' || mapped.type === 'CFE') && !mapped.period && !mapped.periodStart) {
+			mapped.period = String(new Date().getFullYear() - 1);
+		}
+		mapped.organizationId = user?.organizationId;
+		return this.filings.create(mapped).then((f: any) => ({
+			...f,
+			period: formatPeriodLabel(f.type, new Date(f.periodStart)),
+			status: String(f.status).toLowerCase(),
+		}));
 	}
 
 	@Get()
-	findAll(@Query() query: any) {
-		return this.filings.findAll().then((items: any[]) => {
-			// Ajouter period derivee
-			const withPeriod = items.map((f: any) => {
-				const start = new Date(f.periodStart);
-				const y = start.getFullYear();
-				const q = Math.floor(start.getMonth() / 3) + 1;
-				return { ...f, period: `${y}-Q${q}`, status: String(f.status).toLowerCase() };
-			});
-			let filtered = withPeriod;
+	findAll(@Query() query: any, @CurrentUser() user: { organizationId?: number }) {
+		return this.filings.findAll(user?.organizationId).then((items: any[]) => {
+			let filtered = items.map((f: any) => ({
+				...f,
+				period: formatPeriodLabel(f.type, new Date(f.periodStart)),
+				status: String(f.status).toLowerCase(),
+			}));
 			if (query?.period) {
-				filtered = filtered.filter(f => f.period === String(query.period));
+				filtered = filtered.filter((f) => f.period === String(query.period));
 			}
 			if (query?.status) {
 				const s = String(query.status).toLowerCase();
-				filtered = filtered.filter(f => String(f.status).toLowerCase() === s);
+				filtered = filtered.filter((f) => String(f.status).toLowerCase() === s);
 			}
-			// dedupe par periode: garder le plus recent, meme quand period filtree
-			const map = new Map<string, any>();
-			for (const f of filtered) {
-				const key = f.period;
-				const prev = map.get(key);
-				if (!prev || new Date(f.createdAt).getTime() > new Date(prev.createdAt).getTime()) {
-					map.set(key, f);
-				}
+			if (query?.type) {
+				filtered = filtered.filter((f) => f.type === String(query.type));
 			}
-			filtered = Array.from(map.values());
 			return filtered;
 		});
 	}
 
 	@Get(':id')
-	findOne(@Param('id', ParseIntPipe) id: number) {
-		return this.filings.findOne(id).then((f: any) => ({ ...f, status: String(f.status).toLowerCase() }));
+	findOne(
+		@Param('id', ParseIntPipe) id: number,
+		@CurrentUser() user: { organizationId?: number },
+	) {
+		return this.filings.findOne(id, user?.organizationId).then((f: any) => ({
+			...f,
+			period: formatPeriodLabel(f.type, new Date(f.periodStart)),
+			status: String(f.status).toLowerCase(),
+		}));
 	}
 
 	@Patch(':id')
-	update(@Param('id', ParseIntPipe) id: number, @Body() body: { status?: FilingStatus; notes?: string }) {
-		return this.filings.update(id, body);
+	update(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() body: { status?: FilingStatus; notes?: string },
+		@CurrentUser() user: { organizationId?: number },
+	) {
+		return this.filings.update(id, body, user?.organizationId);
 	}
 
+	/**
+	 * Calcule TVA / IS / CFE selon le type.
+	 * Body optionnel pour surcharger prefs (isPME, propertyValue…).
+	 */
 	@Post(':id/calculate')
 	@HttpCode(200)
-	calculateVat(@Param('id', ParseIntPipe) id: number) {
-		return this.filings.calculateVatReturn(id).then((f: any) => ({ ...f, status: String(f.status).toLowerCase() }));
+	calculate(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() body: FilingCalculateOptions,
+		@CurrentUser() user: { organizationId?: number },
+	) {
+		return this.filings.calculate(id, user?.organizationId, body || undefined).then((f: any) => ({
+			...f,
+			status: String(f.status).toLowerCase(),
+		}));
 	}
 
 	@Post(':id/payments')
-	addPayment(@Param('id', ParseIntPipe) id: number, @Body() body: { amount: number; date?: string | Date; reference?: string; notes?: string }) {
-		return this.filings.addAuthorityPayment(id, body.amount, body.date, body.reference, body.notes);
+	addPayment(
+		@Param('id', ParseIntPipe) id: number,
+		@Body() body: { amount: number; date?: string | Date; reference?: string; notes?: string },
+		@CurrentUser() user: { organizationId?: number },
+	) {
+		return this.filings.addAuthorityPayment(
+			id,
+			body.amount,
+			body.date,
+			body.reference,
+			body.notes,
+			user?.organizationId,
+		);
 	}
 }
-
-

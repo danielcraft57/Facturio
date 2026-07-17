@@ -41,6 +41,16 @@ model Organization {
   urssafFiscalOption          Boolean                   @default(false)
   urssafDeclarationFrequency  String?
   urssafThreshold             Decimal?
+  /// Valeur locative CFE (si connue) - sinon forfait sur CA.
+  cfePropertyValue            Decimal?
+  /// Taux communal CFE en % (ex. 1.2).
+  cfeCommunalRate             Decimal?
+  /// SERVICE | COMMERCE | INDUSTRIE | ARTISANAT
+  cfeActivity                 String?
+  /// Éligibilité réduction IS PME (défaut true pour TPE).
+  isPmeEligible               Boolean                   @default(true)
+  /// % capital détenu par des personnes physiques (réduction IS PME).
+  capitalHeldByIndividuals    Decimal?
   logo                        String?
   signature                   String?
   defaultCurrency             String                    @default("EUR")
@@ -99,6 +109,13 @@ model Organization {
   users                       User[]
   payableCreditors            PayableCreditor[]
   payableDebts                PayableDebt[]
+  journalEntries              JournalEntry[]
+  filings                     Filing[]
+  suppliers                   Supplier[]
+  cashRegisters               CashRegister[]
+  cashMovements               CashMovement[]
+  investors                   Investor[]
+  investments                 Investment[]
 
   @@index([siret])
   @@index([siren])
@@ -633,20 +650,27 @@ model Subscription {
 }
 
 model Filing {
-  id          Int                @id @default(autoincrement())
-  type        FilingType
-  authority   AuthorityType
-  periodStart DateTime
-  periodEnd   DateTime
-  dueDate     DateTime
-  status      FilingStatus       @default(DRAFT)
-  notes       String?
-  amountDue   Decimal            @default(0)
-  amountPaid  Decimal            @default(0)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  payments    AuthorityPayment[]
-  lines       FilingLine[]
+  id                   Int                @id @default(autoincrement())
+  organizationId       Int?
+  type                 FilingType
+  authority            AuthorityType
+  periodStart          DateTime
+  periodEnd            DateTime
+  dueDate              DateTime
+  status               FilingStatus       @default(DRAFT)
+  notes                String?
+  amountDue            Decimal            @default(0)
+  amountPaid           Decimal            @default(0)
+  /// Snapshot JSON du dernier calcul (détail TVA / IS / CFE) pour audit et UI.
+  calculationSnapshot  Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  organization         Organization?      @relation(fields: [organizationId], references: [id])
+  payments             AuthorityPayment[]
+  lines                FilingLine[]
+
+  @@index([organizationId])
+  @@index([organizationId, type, periodStart])
 }
 
 model FilingLine {
@@ -725,12 +749,124 @@ model PayableCreditor {
   name           String
   email          String?
   notes          String?
+  /// Lien optionnel vers le référentiel fournisseurs.
+  supplierId     Int?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier       Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   debts          PayableDebt[]
 
   @@index([organizationId])
+  @@index([supplierId])
+}
+
+/// Référentiel fournisseur (SIRET, TVA, conditions de paiement).
+model Supplier {
+  id               Int               @id @default(autoincrement())
+  organizationId   Int
+  name             String
+  legalName        String?
+  siret            String?
+  vatNumber        String?
+  email            String?
+  phone            String?
+  address          String?
+  city             String?
+  zipCode          String?
+  country          String            @default("FR")
+  paymentTermsDays Int               @default(30)
+  iban             String?
+  bic              String?
+  notes            String?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creditors        PayableCreditor[]
+
+  @@index([organizationId])
+  @@index([organizationId, name])
+  @@index([organizationId, siret])
+}
+
+/// Caisse espèces (fond de caisse).
+model CashRegister {
+  id              Int            @id @default(autoincrement())
+  organizationId  Int
+  name            String
+  currency        String         @default("EUR")
+  openingBalance  Decimal        @default(0)
+  currentBalance  Decimal        @default(0)
+  isActive        Boolean        @default(true)
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  movements       CashMovement[]
+
+  @@index([organizationId])
+}
+
+/// Mouvement de caisse (entrée, sortie, ajustement).
+model CashMovement {
+  id             Int              @id @default(autoincrement())
+  organizationId Int
+  cashRegisterId Int
+  type           CashMovementType
+  amount         Decimal
+  date           DateTime         @default(now())
+  label          String
+  category       String?
+  reference      String?
+  notes          String?
+  createdAt      DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cashRegister   CashRegister     @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, date])
+  @@index([cashRegisterId, date])
+}
+
+/// Investisseur (personne, société, fonds).
+model Investor {
+  id             Int          @id @default(autoincrement())
+  organizationId Int
+  name           String
+  email          String?
+  phone          String?
+  type           InvestorType @default(INDIVIDUAL)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  investments    Investment[]
+
+  @@index([organizationId])
+}
+
+/// Apport, prêt, subvention ou autre investissement.
+model Investment {
+  id                    Int              @id @default(autoincrement())
+  organizationId        Int
+  investorId            Int?
+  label                 String
+  type                  InvestmentType   @default(CAPITAL_CONTRIBUTION)
+  amount                Decimal
+  date                  DateTime
+  ownershipPercent      Decimal?
+  expectedReturnPercent Decimal?
+  maturityDate          DateTime?
+  status                InvestmentStatus @default(ACTIVE)
+  notes                 String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  organization          Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  investor              Investor?        @relation(fields: [investorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([investorId])
+  @@index([organizationId, status])
 }
 
 /// Dette à régler (montant initial + solde restant).
@@ -864,18 +1000,23 @@ model Journal {
 }
 
 model JournalEntry {
-  id          Int           @id @default(autoincrement())
-  journalId   Int
-  date        DateTime      @default(now())
-  reference   String?
-  memo        String?
-  status      EntryStatus   @default(DRAFT)
-  totalDebit  Decimal       @default(0)
-  totalCredit Decimal       @default(0)
-  createdAt   DateTime      @default(now())
-  avoirs      Avoir[]
-  journal     Journal       @relation(fields: [journalId], references: [id])
-  lines       JournalLine[]
+  id             Int           @id @default(autoincrement())
+  journalId      Int
+  organizationId Int?
+  date           DateTime      @default(now())
+  reference      String?
+  memo           String?
+  status         EntryStatus   @default(DRAFT)
+  totalDebit     Decimal       @default(0)
+  totalCredit    Decimal       @default(0)
+  createdAt      DateTime      @default(now())
+  avoirs         Avoir[]
+  journal        Journal       @relation(fields: [journalId], references: [id])
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  lines          JournalLine[]
+
+  @@index([organizationId])
+  @@index([organizationId, reference])
 }
 
 model JournalLine {
@@ -1201,4 +1342,29 @@ enum TaxSimulationScenario {
   CURRENT
   OPTIMIZED
   CUSTOM
+}
+
+enum CashMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+enum InvestorType {
+  INDIVIDUAL
+  COMPANY
+  FUND
+}
+
+enum InvestmentType {
+  CAPITAL_CONTRIBUTION
+  LOAN
+  GRANT
+  OTHER
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  CLOSED
+  CONVERTED
 }

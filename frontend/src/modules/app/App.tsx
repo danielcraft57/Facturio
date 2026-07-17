@@ -102,6 +102,24 @@ const PayablesPage = lazy(() =>
 const PayablesArchivePage = lazy(() =>
   import('../finance/PayablesArchivePage').then((m) => ({ default: m.PayablesArchivePage })),
 )
+const SuppliersPage = lazy(() =>
+  import('../finance/SuppliersPage').then((m) => ({ default: m.SuppliersPage })),
+)
+const TreasuryPage = lazy(() =>
+  import('../finance/TreasuryPage').then((m) => ({ default: m.TreasuryPage })),
+)
+const CashPage = lazy(() =>
+  import('../finance/CashPage').then((m) => ({ default: m.CashPage })),
+)
+const InvestmentsPage = lazy(() =>
+  import('../finance/InvestmentsPage').then((m) => ({ default: m.InvestmentsPage })),
+)
+const AmortizationsPage = lazy(() =>
+  import('../finance/AmortizationsPage').then((m) => ({ default: m.AmortizationsPage })),
+)
+const UrssafPage = lazy(() =>
+  import('../finance/UrssafPage').then((m) => ({ default: m.UrssafPage })),
+)
 const SettingsLayout = lazy(() => import('../account/SettingsLayout').then(m => ({ default: m.SettingsLayout })))
 const SettingsIndexPage = lazy(() =>
   import('../account/pages/SettingsIndexPage').then(m => ({ default: m.SettingsIndexPage })),
@@ -493,6 +511,66 @@ export function App() {
                 element={
                   <PrivateRouteWrapper>
                     <AccountingPage />
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/tresorerie"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={null}>
+                      <TreasuryPage />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/caisse"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={null}>
+                      <CashPage />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/fournisseurs"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={null}>
+                      <SuppliersPage />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/investissements"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={null}>
+                      <InvestmentsPage />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/amortissements"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={null}>
+                      <AmortizationsPage />
+                    </Suspense>
+                  </PrivateRouteWrapper>
+                }
+              />
+              <Route
+                path="/urssaf"
+                element={
+                  <PrivateRouteWrapper>
+                    <Suspense fallback={null}>
+                      <UrssafPage />
+                    </Suspense>
                   </PrivateRouteWrapper>
                 }
               />

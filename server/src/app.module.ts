@@ -37,6 +37,10 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { MobileNotificationsModule } from './mobile-notifications/mobile-notifications.module';
 import { ReceivablesModule } from './receivables/receivables.module';
 import { PayablesModule } from './payables/payables.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { TreasuryModule } from './treasury/treasury.module';
+import { CashModule } from './cash/cash.module';
+import { InvestmentsModule } from './investments/investments.module';
 import { SecurityHeadersMiddleware } from './common/security-headers.middleware';
 
 @Module({
@@ -73,6 +77,10 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
 		MobileNotificationsModule,
 		ReceivablesModule,
 		PayablesModule,
+		SuppliersModule,
+		TreasuryModule,
+		CashModule,
+		InvestmentsModule,
 	],
 	controllers: [WebhooksController],
 	providers: [

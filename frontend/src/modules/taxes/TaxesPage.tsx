@@ -15,16 +15,37 @@ import { BillingFeatureGate } from '../../components/billing/BillingFeatureGate'
 const shortcuts = [
   {
     title: 'Déclarations',
-    description: 'TVA, obligations légales et échéances fiscales',
+    description: 'TVA, URSSAF, IS, CFE et échéances fiscales',
     to: '/declarations',
     icon: <GavelIcon />,
     accent: financeKpiGradients.unpaid,
   },
   {
-    title: 'Comptabilité',
-    description: 'Plan comptable, balance et grand livre',
-    to: '/comptabilite',
+    title: 'IS & CFE',
+    description: 'Impôt sociétés et cotisation foncière - calcul auto',
+    to: '/declarations',
     icon: <AccountBalanceIcon />,
+    accent: financeKpiGradients.unpaid,
+  },
+  {
+    title: 'URSSAF',
+    description: 'Cotisations micro / auto-entrepreneur',
+    to: '/urssaf',
+    icon: <GavelIcon />,
+    accent: financeKpiGradients.conversion,
+  },
+  {
+    title: 'Amortissements',
+    description: 'Immobilisations et dotations déductibles',
+    to: '/amortissements',
+    icon: <AccountBalanceIcon />,
+    accent: financeKpiGradients.clients,
+  },
+  {
+    title: 'Trésorerie',
+    description: 'Prévision encaissements / décaissements',
+    to: '/tresorerie',
+    icon: <LocalAtmIcon />,
     accent: financeKpiGradients.revenue,
   },
 ] as const

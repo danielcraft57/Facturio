@@ -911,6 +911,7 @@ export class QuotesService {
 			journalCode: 'OD',
 			reference: `ANNUL DEV ${quoteNumber}`,
 			memo: 'Contre-passation devis (rejet/expiration)',
+			organizationId: entry.organizationId,
 			lines
 		});
 	}
@@ -1435,6 +1436,7 @@ export class QuotesService {
 				journalCode: 'OD',
 				reference: `DEV ${updated.number}`,
 				memo: 'Devis envoyé (hors-bilan)',
+				organizationId: organizationId ?? updated.organizationId,
 				lines: [
 					{ accountCode: '706', credit: Number(updated.subtotal as any) },
 					{ accountCode: '44571', credit: Number(updated.tax as any) },
@@ -2268,6 +2270,7 @@ export class QuotesService {
 				journalCode: 'OD',
 				reference: `DEV ${updated.number}`,
 				memo: 'Devis envoyé (hors-bilan)',
+				organizationId: organizationId ?? updated.organizationId,
 				lines: [
 					{ accountCode: '706', credit: Number(updated.subtotal as any) },
 					{ accountCode: '44571', credit: Number(updated.tax as any) },

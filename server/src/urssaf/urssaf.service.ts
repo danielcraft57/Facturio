@@ -270,6 +270,7 @@ export class UrssafService {
 			periodEnd: periodEnd.toISOString(),
 			dueDate: dueDate.toISOString(),
 			notes: `Cotisation URSSAF ${dto.period} - ${calculation.activity}`,
+			organizationId: dto.organizationId,
 		});
 
 		// Ajouter les lignes de calcul
@@ -295,6 +296,7 @@ export class UrssafService {
 			rate: calculation.rate,
 			reference: `URSSAF-${dto.period}`,
 			memo: `Cotisation URSSAF ${dto.period} - ${calculation.activity}`,
+			organizationId: dto.organizationId,
 		});
 
 		return {
@@ -325,6 +327,7 @@ export class UrssafService {
 		const filings = await this.prisma.filing.findMany({
 			where: {
 				authority: 'URSSAF',
+				organizationId,
 				lines: {
 					some: {},
 				},
@@ -336,8 +339,6 @@ export class UrssafService {
 			orderBy: { periodStart: 'desc' },
 		});
 
-		// Filtrer par organisation (via les factures utilisées pour le calcul)
-		// Note: Dans une vraie implémentation, on devrait lier Filing à Organization
 		return filings.map((filing) => ({
 			id: filing.id,
 			type: filing.type,
