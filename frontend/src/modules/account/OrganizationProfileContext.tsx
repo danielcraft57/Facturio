@@ -42,7 +42,7 @@ type OrganizationProfileContextValue = {
   success: boolean
   setSuccess: (v: boolean) => void
   handleChange: (field: keyof UpdateOrganizationProfile) => (e: React.ChangeEvent<HTMLInputElement>) => void
-  setField: (field: keyof UpdateOrganizationProfile, value: string) => void
+  setField: (field: keyof UpdateOrganizationProfile, value: string | number | boolean | null) => void
   applyRegistryLookup: (data: SireneLookupResult, options?: { onlyEmpty?: boolean }) => void
   lookupFromRegistry: (siretOrSiren: string, options?: { onlyEmpty?: boolean }) => Promise<void>
   registryLookupMessage: string | null
@@ -82,6 +82,11 @@ function profileToForm(data: OrganizationProfile): UpdateOrganizationProfile {
     privacyPolicyUrl: data.privacyPolicyUrl ?? '',
     dataControllerEmail: data.dataControllerEmail ?? '',
     signature: data.signature ?? '',
+    cfePropertyValue: data.cfePropertyValue ?? '',
+    cfeCommunalRate: data.cfeCommunalRate ?? '',
+    cfeActivity: data.cfeActivity ?? 'SERVICE',
+    isPmeEligible: data.isPmeEligible !== false,
+    capitalHeldByIndividuals: data.capitalHeldByIndividuals ?? 100,
   }
 }
 
@@ -146,11 +151,11 @@ export function OrganizationProfileProvider({ children }: { children: ReactNode 
     }
   }, [])
 
-  const setField = useCallback((field: keyof UpdateOrganizationProfile, value: string) => {
+  const setField = useCallback((field: keyof UpdateOrganizationProfile, value: string | number | boolean | null) => {
     if (field === 'siret' || field === 'siren') {
       lastRegistryLookupRef.current = ''
     }
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => ({ ...prev, [field]: value as never }))
     setError(null)
     setSuccess(false)
     setAutoSaveStatus('pending')

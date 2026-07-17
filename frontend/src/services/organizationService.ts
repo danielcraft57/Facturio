@@ -43,6 +43,12 @@ export interface OrganizationProfile {
 	invoiceStripeConfiguredAt?: string | null;
 	privacyPolicyUrl?: string | null;
 	dataControllerEmail?: string | null;
+	/** Prefs fiscales IS / CFE (déclarations auto) */
+	cfePropertyValue?: number | string | null;
+	cfeCommunalRate?: number | string | null;
+	cfeActivity?: string | null;
+	isPmeEligible?: boolean | null;
+	capitalHeldByIndividuals?: number | string | null;
 }
 
 export type UpdateInvoiceStripe = {

@@ -106,6 +106,19 @@ export function buildSanitizedProfilePayload(
   const dpo = trim(form.dataControllerEmail, MAX.email)
   set('dataControllerEmail', dpo ? dpo.toLowerCase() : null)
 
+  const numOrNull = (v: unknown): number | null => {
+    if (v == null || v === '') return null
+    const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'))
+    return Number.isFinite(n) ? n : null
+  }
+
+  ;(payload as Record<string, unknown>).cfePropertyValue = numOrNull(form.cfePropertyValue)
+  ;(payload as Record<string, unknown>).cfeCommunalRate = numOrNull(form.cfeCommunalRate)
+  const activity = trim(form.cfeActivity, 20)
+  set('cfeActivity', activity && ['SERVICE', 'COMMERCE', 'INDUSTRIE', 'ARTISANAT'].includes(activity) ? activity : 'SERVICE')
+  ;(payload as Record<string, unknown>).isPmeEligible = form.isPmeEligible !== false
+  ;(payload as Record<string, unknown>).capitalHeldByIndividuals = numOrNull(form.capitalHeldByIndividuals) ?? 100
+
   const sig = form.signature ?? ''
   if (sig.startsWith('data:image') && sig.length <= MAX.signatureChars) {
     set('signature', sig)

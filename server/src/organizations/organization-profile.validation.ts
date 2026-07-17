@@ -78,5 +78,28 @@ export function sanitizeOrganizationProfileUpdate(
 		out.apeLabel = trimMax(out.apeLabel, 200);
 	}
 
+	if ('cfeActivity' in out && out.cfeActivity != null) {
+		const a = String(out.cfeActivity).toUpperCase().trim();
+		out.cfeActivity = ['SERVICE', 'COMMERCE', 'INDUSTRIE', 'ARTISANAT'].includes(a)
+			? a
+			: 'SERVICE';
+	}
+	if ('cfePropertyValue' in out && out.cfePropertyValue != null && out.cfePropertyValue !== '') {
+		const n = Number(out.cfePropertyValue);
+		out.cfePropertyValue = Number.isFinite(n) && n >= 0 ? n : null;
+	}
+	if ('cfeCommunalRate' in out && out.cfeCommunalRate != null && out.cfeCommunalRate !== '') {
+		const n = Number(out.cfeCommunalRate);
+		out.cfeCommunalRate = Number.isFinite(n) && n >= 0 ? n : null;
+	}
+	if ('capitalHeldByIndividuals' in out && out.capitalHeldByIndividuals != null && out.capitalHeldByIndividuals !== '') {
+		const n = Number(out.capitalHeldByIndividuals);
+		out.capitalHeldByIndividuals =
+			Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : null;
+	}
+	if ('isPmeEligible' in out) {
+		out.isPmeEligible = out.isPmeEligible === true || out.isPmeEligible === 'true';
+	}
+
 	return out as Prisma.OrganizationUpdateInput;
 }
