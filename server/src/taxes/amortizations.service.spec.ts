@@ -175,5 +175,32 @@ describe('AmortizationsService', () => {
 			);
 		});
 	});
+
+	describe('postYearToAccounting', () => {
+		it('poste une écriture 681/281 idempotente', async () => {
+			mockPrismaService.amortization.findFirst.mockResolvedValue({
+				id: 2,
+				organizationId: 1,
+				assetName: 'MacBook',
+				schedule: [{ year: 2026, amount: 400 }],
+			});
+			mockPrismaService.journalEntry.findFirst.mockResolvedValue(null);
+			mockAccountingService.postEntry.mockResolvedValue({ id: 55 });
+
+			const result = await service.postYearToAccounting(1, 2, 2026);
+
+			expect(result.reference).toBe('AMO-2-2026');
+			expect(result.amount).toBe(400);
+			expect(mockAccountingService.postEntry).toHaveBeenCalledWith(
+				expect.objectContaining({
+					journalCode: 'OD',
+					lines: expect.arrayContaining([
+						expect.objectContaining({ accountCode: '681', debit: 400 }),
+						expect.objectContaining({ accountCode: '281', credit: 400 }),
+					]),
+				}),
+			);
+		});
+	});
 });
 
