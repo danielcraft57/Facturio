@@ -1,8 +1,9 @@
-import { IsBoolean, IsDateString, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateRefundDto {
 	@IsNumber()
 	@Min(0.01)
+	@Max(1_000_000)
 	amount!: number;
 
 	@IsOptional()
@@ -15,14 +16,17 @@ export class CreateRefundDto {
 
 	@IsOptional()
 	@IsString()
+	@MaxLength(64)
 	method?: string;
 
 	@IsOptional()
 	@IsString()
+	@MaxLength(500)
 	reason?: string;
 
 	@IsOptional()
 	@IsString()
+	@MaxLength(1000)
 	notes?: string;
 
 	/** Tente un remboursement Stripe si le paiement source est `stripe:{paymentIntentId}`. */
@@ -34,6 +38,7 @@ export class CreateRefundDto {
 export class CancelDepositDto {
 	@IsOptional()
 	@IsString()
+	@MaxLength(500)
 	reason?: string;
 
 	@IsOptional()

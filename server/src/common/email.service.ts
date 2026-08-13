@@ -12,8 +12,9 @@ import {
 	emailButton,
 	emailButtonRow,
 	emailParagraph,
-	renderFacturioEmailLayout,
-	renderSimpleFacturioEmail,
+	escapeHtml,
+	renderPrestaFactureEmailLayout,
+	renderSimplePrestaFactureEmail,
 } from './email-layout';
 import { prepareBrandedEmailForDelivery } from './email-inline-assets';
 import { getPlatformBrandName } from './email-brand';
@@ -594,20 +595,24 @@ export class EmailService implements OnModuleInit {
 		const legalFooter = buildEmailLegalFooter(options.organization);
 		const subject = `Remboursement effectué — Facture ${options.invoiceNumber}`;
 		const reasonBlock = options.refundReason?.trim()
-			? emailParagraph(`<strong>Motif :</strong> ${options.refundReason}`)
+			? emailParagraph(
+					`<strong>Motif :</strong> ${escapeHtml(options.refundReason.trim())}`,
+				)
 			: '';
-		const html = renderSimpleFacturioEmail({
+		const html = renderSimplePrestaFactureEmail({
 			title: subject,
 			headline: 'Remboursement effectué',
 			headerVariant: 'danger',
 			footerHtml: `<p>${legalFooter}</p>`,
 			bodyHtml:
-				emailParagraph(`Bonjour ${options.clientName},`) +
+				emailParagraph(`Bonjour ${escapeHtml(options.clientName)},`) +
 				emailParagraph(
-					`Nous vous confirmons que <strong>${this.formatCurrency(options.refundedAmount)}</strong> a été remboursé(e) pour la facture <strong>${options.invoiceNumber}</strong> (du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')}).`,
+					`Nous vous confirmons que <strong>${this.formatCurrency(options.refundedAmount)}</strong> a été remboursé(e) pour la facture <strong>${escapeHtml(options.invoiceNumber)}</strong> (du ${new Date(options.invoiceDate).toLocaleDateString('fr-FR')}).`,
 				) +
 				reasonBlock +
-				emailParagraph(`Cordialement,<br><strong>${options.issuerName}</strong>`),
+				emailParagraph(
+					`Cordialement,<br><strong>${escapeHtml(options.issuerName)}</strong>`,
+				),
 		});
 
 		const text =
@@ -642,7 +647,7 @@ export class EmailService implements OnModuleInit {
 		const reasonBlock = options.reason?.trim()
 			? emailParagraph(`<strong>Motif :</strong> ${options.reason}`)
 			: '';
-		const html = renderSimpleFacturioEmail({
+		const html = renderSimplePrestaFactureEmail({
 			title: subject,
 			headline: 'Crédit client',
 			headerVariant: 'default',
@@ -706,7 +711,7 @@ export class EmailService implements OnModuleInit {
 			? emailButton(options.viewUrl, 'Voir le détail', 'primary')
 			: '';
 		const legalBlock = buildPayableDebtEmailLegalHtml(options.organization);
-		const html = renderSimpleFacturioEmail({
+		const html = renderSimplePrestaFactureEmail({
 			title: subject,
 			headline: 'Reconnaissance de dette',
 			headerVariant: 'default',
@@ -779,7 +784,7 @@ export class EmailService implements OnModuleInit {
 			? emailButton(options.viewUrl, 'Voir le détail', 'primary')
 			: '';
 		const legalBlock = buildPayableDebtEmailLegalHtml(options.organization);
-		const html = renderSimpleFacturioEmail({
+		const html = renderSimplePrestaFactureEmail({
 			title: subject,
 			headline: subject,
 			headerVariant: 'default',
@@ -907,7 +912,7 @@ export class EmailService implements OnModuleInit {
 				)
 			: emailAmountHighlight(`Montant total : ${this.formatCurrency(data.total)}`);
 
-		return renderFacturioEmailLayout({
+		return renderPrestaFactureEmailLayout({
 			title: `Facture ${data.invoiceNumber}`,
 			headline: `Facture ${data.invoiceNumber}`,
 			headerVariant: 'default',
@@ -990,7 +995,7 @@ export class EmailService implements OnModuleInit {
 					)
 				: '';
 
-		return renderFacturioEmailLayout({
+		return renderPrestaFactureEmailLayout({
 			title: `Paiement reçu — ${data.invoiceNumber}`,
 			headline: 'Paiement reçu',
 			headerVariant: 'success',
@@ -1018,7 +1023,7 @@ export class EmailService implements OnModuleInit {
 		appInvoiceUrl: string;
 		legalFooter: string;
 	}): string {
-		return renderFacturioEmailLayout({
+		return renderPrestaFactureEmailLayout({
 			title: `Facture payée — ${data.invoiceNumber}`,
 			headline: 'Facture payée',
 			headerVariant: 'success',
@@ -1083,7 +1088,7 @@ export class EmailService implements OnModuleInit {
 			? `Copie du devis <strong>${data.quoteNumber}</strong> du ${dateStr} (client : ${data.clientName}).`
 			: `Veuillez trouver ci-joint le devis <strong>${data.quoteNumber}</strong> du ${dateStr}.`;
 
-		return renderFacturioEmailLayout({
+		return renderPrestaFactureEmailLayout({
 			title: `Devis ${data.quoteNumber}`,
 			headline: `Devis ${data.quoteNumber}`,
 			headerVariant: 'quote',
@@ -1123,7 +1128,7 @@ export class EmailService implements OnModuleInit {
 			? emailButton(data.paymentUrl, 'Voir la facture et payer en ligne', 'primary')
 			: '';
 
-		return renderFacturioEmailLayout({
+		return renderPrestaFactureEmailLayout({
 			title: `Rappel — Facture ${data.invoiceNumber}`,
 			headline: `Rappel — Facture ${data.invoiceNumber}`,
 			headerVariant: 'warning',
@@ -1312,7 +1317,7 @@ export class EmailService implements OnModuleInit {
 		content: string;
 		legalFooter?: string;
 	}): string {
-		return renderFacturioEmailLayout({
+		return renderPrestaFactureEmailLayout({
 			title: data.title,
 			headline: data.headline ?? data.title,
 			headerVariant: 'default',

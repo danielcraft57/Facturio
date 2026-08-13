@@ -105,7 +105,11 @@ export function RefundPaymentDialog({
             type="number"
             fullWidth
             value={amount}
-            onChange={(e) => setAmount(Math.min(maxAmount, Math.max(0, Number(e.target.value))))}
+            onChange={(e) => {
+              const raw = Number(e.target.value)
+              const rounded = Math.round(Math.min(maxAmount, Math.max(0, raw)) * 100) / 100
+              setAmount(rounded)
+            }}
             inputProps={{ min: 0.01, max: maxAmount, step: 0.01 }}
             disabled={loading}
           />
@@ -115,7 +119,8 @@ export function RefundPaymentDialog({
             multiline
             minRows={2}
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => setReason(e.target.value.slice(0, 500))}
+            inputProps={{ maxLength: 500 }}
             disabled={loading}
           />
           {isStripe && (
