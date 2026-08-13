@@ -74,9 +74,12 @@ export type EmailLayoutOptions = {
 };
 
 /**
- * Enveloppe HTML commune : bandeau WebP, logo, carte blanche, pied de page.
+ * Enveloppe HTML commune PrestaFacture : bandeau WebP, logo, carte blanche, pied de page.
+ *
+ * @param options - Titre, contenu HTML, pied de page et options d'en-tête
+ * @returns HTML complet prêt à l'envoi
  */
-export function renderFacturioEmailLayout(options: EmailLayoutOptions): string {
+export function renderPrestaFactureEmailLayout(options: EmailLayoutOptions): string {
 	const headline = options.headline ?? options.title;
 	const headerUrl = getEmailHeaderUrl(options.headerVariant ?? 'default');
 	const iconUrl = getEmailIconUrl(48);
@@ -180,8 +183,13 @@ export function escapeHtml(value: string): string {
 		.replace(/"/g, '&quot;');
 }
 
-/** Styles inline pour emails simples (remboursement, crédit) sans bandeau complet */
-export function renderSimpleFacturioEmail(options: {
+/**
+ * Email simple PrestaFacture (remboursement, crédit) via le layout commun.
+ *
+ * @param options - Titre, accroche, corps HTML et pied de page optionnel
+ * @returns HTML complet prêt à l'envoi
+ */
+export function renderSimplePrestaFactureEmail(options: {
 	title: string;
 	headline: string;
 	headerVariant?: EmailHeaderVariant;
@@ -189,7 +197,7 @@ export function renderSimpleFacturioEmail(options: {
 	footerHtml?: string;
 	trackPixel?: string;
 }): string {
-	return renderFacturioEmailLayout({
+	return renderPrestaFactureEmailLayout({
 		title: options.title,
 		headline: options.headline,
 		headerVariant: options.headerVariant ?? 'default',
@@ -198,5 +206,10 @@ export function renderSimpleFacturioEmail(options: {
 		trackPixel: options.trackPixel,
 	});
 }
+
+/** Alias rétrocompat (anciens imports Facturio). */
+export const renderFacturioEmailLayout = renderPrestaFactureEmailLayout;
+/** Alias rétrocompat (anciens imports Facturio). */
+export const renderSimpleFacturioEmail = renderSimplePrestaFactureEmail;
 
 export { EMAIL_BRAND, EMAIL_GRADIENT_CSS };
