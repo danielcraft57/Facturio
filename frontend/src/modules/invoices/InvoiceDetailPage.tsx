@@ -898,6 +898,23 @@ export function InvoiceDetailPage() {
                       Créer un avoir
                     </Button>
                   )}
+                  {payments.some((p) => (p.refundableAmount ?? p.amount) > 0.01) &&
+                    !depositRefunded &&
+                    !isCancelled && (
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        color="warning"
+                        startIcon={<MoneyOff />}
+                        onClick={() => {
+                          const payment =
+                            payments.find((p) => (p.refundableAmount ?? p.amount) > 0.01) ?? null
+                          if (payment) setRefundDialog(payment)
+                        }}
+                      >
+                        Rembourser (Stripe / manuel)
+                      </Button>
+                    )}
                   {!depositRefunded && !isCancelled && (
                     <Button
                       fullWidth
@@ -1059,16 +1076,23 @@ export function InvoiceDetailPage() {
           maxAmount={refundDialog.refundableAmount ?? refundDialog.amount}
           isStripe={refundDialog.notes?.startsWith('stripe:')}
           onSubmit={async (payload) => {
-            const result = await refundsService.createOnPayment(refundDialog.id, {
-              ...payload,
-              paymentId: refundDialog.id,
-            })
-            toast.success(
-              result.alreadyRefundedOnStripe
-                ? 'Déjà remboursé sur Stripe — solde local synchronisé'
-                : 'Remboursement enregistré',
-            )
-            await loadInvoice({ silent: true })
+            try {
+              const result = await refundsService.createOnPayment(refundDialog.id, {
+                ...payload,
+                paymentId: refundDialog.id,
+              })
+              toast.success(
+                result.alreadyRefundedOnStripe
+                  ? 'Déjà remboursé sur Stripe — solde local synchronisé'
+                  : 'Remboursement enregistré',
+              )
+              await loadInvoice({ silent: true })
+            } catch (err: unknown) {
+              const msg =
+                err instanceof Error ? err.message : 'Remboursement impossible'
+              toast.error(msg)
+              throw err
+            }
           }}
         />
       )}

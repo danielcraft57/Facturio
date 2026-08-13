@@ -17,6 +17,39 @@ export interface ApiError {
 // En prod : `/api` (même domaine + Nginx) sauf VITE_API_URL explicite et valide
 const API_BASE_URL = resolveApiBaseUrl()
 
+/**
+ * Normalise le message Nest/Axios (string, tableau de validation, objet).
+ *
+ * @param message - Corps `message` de la réponse d'erreur
+ * @param fallback - Texte si rien d'exploitable
+ * @returns Message lisible pour toast / Alert
+ */
+export function normalizeApiErrorMessage(message: unknown, fallback = 'Erreur API'): string {
+  if (typeof message === 'string' && message.trim()) return message.trim()
+  if (Array.isArray(message)) {
+    const parts = message.map((m) => (typeof m === 'string' ? m : String(m))).filter(Boolean)
+    if (parts.length) return parts.join(' · ')
+  }
+  if (message && typeof message === 'object' && 'message' in message) {
+    return normalizeApiErrorMessage((message as { message: unknown }).message, fallback)
+  }
+  return fallback
+}
+
+/**
+ * Extrait un message utilisateur depuis une erreur catchée.
+ *
+ * @param err - Erreur inconnue (ApiError, Error, …)
+ * @param fallback - Texte de repli
+ */
+export function getErrorMessage(err: unknown, fallback = 'Une erreur est survenue'): string {
+  if (err instanceof ApiError) {
+    return normalizeApiErrorMessage(err.message, fallback)
+  }
+  if (err instanceof Error && err.message.trim()) return err.message.trim()
+  return fallback
+}
+
 // Classe pour gérer les erreurs API
 export class ApiError extends Error {
   status: number
@@ -154,13 +187,16 @@ class ApiClient {
           }
         }
 
-        // Créer une erreur API standardisée
+        // Créer une erreur API standardisée (message Nest souvent string ou string[])
         const apiError = new ApiError(
           response?.status || 0,
           response?.data?.code,
           response?.data?.details
         )
-        apiError.message = response?.data?.message || error.message
+        apiError.message = normalizeApiErrorMessage(
+          response?.data?.message,
+          error.message || `Erreur API ${response?.status || 0}`,
+        )
 
         return Promise.reject(apiError)
       }
