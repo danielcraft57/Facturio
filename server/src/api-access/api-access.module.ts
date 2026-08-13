@@ -11,9 +11,21 @@ import { QuotesModule } from '../quotes/quotes.module';
 import { CommonModule } from '../common/common.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { BillingModule } from '../billing/billing.module';
+import { RefundsModule } from '../refunds/refunds.module';
+import { StripeModule } from '../stripe/stripe.module';
 
 @Module({
-	imports: [ClientsModule, ProductsModule, InvoicesModule, QuotesModule, CommonModule, OrganizationsModule, BillingModule],
+	imports: [
+		ClientsModule,
+		ProductsModule,
+		InvoicesModule,
+		QuotesModule,
+		CommonModule,
+		OrganizationsModule,
+		BillingModule,
+		RefundsModule,
+		StripeModule,
+	],
 	controllers: [ApiAccessTokenController, PublicApiController],
 	providers: [ApiAccessTokenService, ApiBearerGuard, PublicApiDispatchService],
 	exports: [ApiAccessTokenService],

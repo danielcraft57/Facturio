@@ -1059,11 +1059,15 @@ export function InvoiceDetailPage() {
           maxAmount={refundDialog.refundableAmount ?? refundDialog.amount}
           isStripe={refundDialog.notes?.startsWith('stripe:')}
           onSubmit={async (payload) => {
-            await refundsService.createOnPayment(refundDialog.id, {
+            const result = await refundsService.createOnPayment(refundDialog.id, {
               ...payload,
               paymentId: refundDialog.id,
             })
-            toast.success('Remboursement enregistré')
+            toast.success(
+              result.alreadyRefundedOnStripe
+                ? 'Déjà remboursé sur Stripe — solde local synchronisé'
+                : 'Remboursement enregistré',
+            )
             await loadInvoice({ silent: true })
           }}
         />

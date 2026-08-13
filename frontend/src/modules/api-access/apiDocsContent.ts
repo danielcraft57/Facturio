@@ -58,6 +58,7 @@ export const API_SCOPES_REFERENCE = [
   { id: 'factures.read', label: 'Lister et consulter les factures', resource: 'Factures' },
   { id: 'factures.write', label: 'Créer et modifier des factures', resource: 'Factures' },
   { id: 'factures.send', label: 'Envoyer une facture par email (PDF)', resource: 'Factures' },
+  { id: 'factures.refund', label: 'Rembourser une facture (Stripe ou manuel)', resource: 'Factures' },
   { id: 'devis.read', label: 'Lister et consulter les devis', resource: 'Devis' },
   { id: 'devis.write', label: 'Créer et modifier des devis', resource: 'Devis' },
   { id: 'devis.send', label: 'Envoyer un devis par email', resource: 'Devis' },
@@ -68,6 +69,7 @@ export const API_ERROR_CODES = [
   { status: 403, meaning: 'Jeton valide mais scope insuffisant (ex. factures.send manquant)' },
   { status: 400, meaning: 'Corps JSON invalide ou règle métier (email manquant, lignes vides…)' },
   { status: 404, meaning: 'Ressource introuvable ou hors de votre organisation' },
+  { status: 409, meaning: 'Conflit (ex. paiement déjà remboursé côté Stripe)' },
   { status: 429, meaning: 'Trop de requêtes (rate limit routes publiques)' },
 ] as const
 
@@ -89,6 +91,29 @@ export const API_WORKFLOWS = [
     steps: [
       'POST /api/public/factures — clientId ou clientEmail + lines[] (sans paidExternally).',
       'POST /api/public/factures/:id/send — le client reçoit le PDF ; lien Stripe si configuré.',
+    ],
+  },
+  {
+    id: 'stripe-pay-later',
+    title: 'Créer une facture puis encaisser avec Stripe (API)',
+    steps: [
+      'Jeton avec factures.write (+ factures.read recommandé). Clés Stripe prestataire configurées dans Paramètres.',
+      'POST /api/public/factures — clientEmail + lines[] (sans paidExternally) → facture DRAFT / solde dû.',
+      'POST /api/public/factures/:id/payment-intent → clientSecret, stripePublishableKey, paymentIntentId.',
+      'Côté client : Stripe.js / Payment Element avec le clientSecret.',
+      'Après succès : POST /api/public/factures/:id/confirm-payment — { "paymentIntentId": "pi_…" } (ou laisser le webhook Stripe enregistrer le paiement).',
+      'Alternative sans Stripe.js : POST …/send pour envoyer le lien de paiement au client.',
+    ],
+  },
+  {
+    id: 'invoice-refund',
+    title: 'Rembourser une facture payée (Stripe)',
+    steps: [
+      'Jeton avec factures.refund (et factures.read pour lister).',
+      'GET /api/public/factures/:id — repérer le paymentId (notes stripe:pi_…).',
+      'POST /api/public/factures/:id/refunds — { "amount": 120, "paymentId": 42 } (refundViaStripe true par défaut si paiement Stripe).',
+      'L’API vérifie d’abord sur Stripe si le remboursement existe déjà (pas de double refund).',
+      'Réponse : id remboursement, stripeRefundId ; alreadyRefundedOnStripe true si déjà fait côté Stripe.',
     ],
   },
   {
@@ -150,6 +175,8 @@ export const API_DOC_SECTION_COLORS: Record<string, string> = {
   overview: '#64748b',
   auth: '#6366f1',
   'paid-externe': '#059669',
+  'stripe-pay': '#0d9488',
+  refunds: '#e11d48',
   pagination: '#8b5cf6',
   clients: '#0ea5e9',
   produits: '#f59e0b',
@@ -249,6 +276,94 @@ Sous Windows, préférez un fichier JSON avec curl.exe -d @fichier.json ou Power
       },
     },
     workflow: API_WORKFLOWS[0],
+  },
+  {
+    id: 'stripe-pay',
+    title: 'Paiement Stripe différé (API)',
+    scopes: ['factures.read', 'factures.write'],
+    body: `Créer une facture impayée puis encaisser plus tard avec Stripe.js (Payment Element), sans passer par l’email client.
+
+Prérequis : clés Stripe prestataire dans Paramètres → Paiements.
+
+Le webhook Stripe (ou confirm-payment) enregistre le paiement localement. Ne pas utiliser paidExternally si vous voulez encaisser via Stripe.`,
+    endpoints: [
+      {
+        method: 'POST',
+        path: '/public/factures',
+        scope: 'factures.write',
+        desc: 'Créer facture à encaisser',
+        requestBody: 'clientEmail, lines[] (sans paidExternally)',
+      },
+      {
+        method: 'POST',
+        path: '/public/factures/:id/payment-intent',
+        scope: 'factures.write',
+        desc: 'Créer le PaymentIntent Stripe',
+        responseHint: 'clientSecret, stripePublishableKey, paymentIntentId, amount',
+      },
+      {
+        method: 'POST',
+        path: '/public/factures/:id/confirm-payment',
+        scope: 'factures.write',
+        desc: 'Confirmer après succès Stripe.js',
+        requestBody: '{ "paymentIntentId": "pi_…" }',
+        responseHint: '{ ok: true, invoiceId }',
+      },
+    ],
+    exampleBody: `{
+  "clientEmail": "client@exemple.com",
+  "clientName": "Client Exemple",
+  "lines": [
+    { "description": "Prestation", "quantity": 1, "unitPrice": 100, "taxRate": 0.2 }
+  ]
+}`,
+    exampleCurl: {
+      method: 'POST',
+      path: '/public/factures',
+      sendExample: {
+        path: '/public/factures/:id/payment-intent',
+        body: '{}',
+      },
+    },
+    workflow: API_WORKFLOWS.find((w) => w.id === 'stripe-pay-later'),
+  },
+  {
+    id: 'refunds',
+    title: 'Remboursements',
+    scopes: ['factures.read', 'factures.refund'],
+    body: `Rembourse une facture déjà encaissée. Pour un paiement Stripe (notes stripe:pi_…), l’API interroge Stripe avant de créer un nouveau refund : si c’est déjà fait, réponse avec alreadyRefundedOnStripe: true (pas de double mouvement).
+
+Dans l’app web : détail facture → Rembourser sur un paiement (case « via Stripe »).
+
+Scope factures.refund obligatoire pour POST.`,
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/public/factures/:id/refunds',
+        scope: 'factures.read',
+        desc: 'Lister les remboursements',
+      },
+      {
+        method: 'POST',
+        path: '/public/factures/:id/refunds',
+        scope: 'factures.refund',
+        desc: 'Créer un remboursement',
+        requestBody:
+          '{ "amount": 120, "paymentId": 42, "reason": "…", "refundViaStripe": true }',
+        responseHint: 'id, stripeRefundId, alreadyRefundedOnStripe?',
+      },
+    ],
+    exampleBody: `{
+  "amount": 120,
+  "paymentId": 42,
+  "reason": "Annulation partielle",
+  "refundViaStripe": true
+}`,
+    exampleCurl: {
+      method: 'POST',
+      path: '/public/factures/:id/refunds',
+    },
+    workflow: API_WORKFLOWS.find((w) => w.id === 'invoice-refund'),
   },
   {
     id: 'pagination',
@@ -385,10 +500,13 @@ Les livrables structurés alimentent aussi la répartition du prix sur le PDF de
   {
     id: 'factures',
     title: 'Factures',
-    scopes: ['factures.read', 'factures.write', 'factures.send'],
+    scopes: ['factures.read', 'factures.write', 'factures.send', 'factures.refund'],
     body: `clientId ou clientEmail (crée la fiche si besoin). paidExternally: true → PAID, solde 0.
 
-Voir aussi la section « Paiement externe + envoi email » pour le parcours complet en deux requêtes.`,
+Paiement Stripe différé : POST …/payment-intent puis confirm-payment (voir section dédiée).
+Remboursements : POST …/refunds (scope factures.refund) — vérif Stripe anti-doublon.
+
+Voir aussi « Paiement externe + envoi email » pour le parcours paidExternally.`,
     endpoints: [
       {
         method: 'GET',
@@ -431,6 +549,33 @@ Voir aussi la section « Paiement externe + envoi email » pour le parcours comp
         desc: 'Envoyer par email',
         requestBody: '{ "email", "updateClientEmail": true }',
         responseHint: '{ emailSent, sentTo, alreadyPaid }',
+      },
+      {
+        method: 'POST',
+        path: '/public/factures/:id/payment-intent',
+        scope: 'factures.write',
+        desc: 'PaymentIntent Stripe (encaisser plus tard)',
+        responseHint: 'clientSecret, stripePublishableKey, paymentIntentId',
+      },
+      {
+        method: 'POST',
+        path: '/public/factures/:id/confirm-payment',
+        scope: 'factures.write',
+        desc: 'Confirmer un PaymentIntent réussi',
+        requestBody: '{ "paymentIntentId": "pi_…" }',
+      },
+      {
+        method: 'GET',
+        path: '/public/factures/:id/refunds',
+        scope: 'factures.read',
+        desc: 'Lister les remboursements',
+      },
+      {
+        method: 'POST',
+        path: '/public/factures/:id/refunds',
+        scope: 'factures.refund',
+        desc: 'Rembourser (vérif Stripe si paiement Stripe)',
+        requestBody: '{ "amount", "paymentId?", "refundViaStripe?", "reason?" }',
       },
     ],
     exampleBody: `{

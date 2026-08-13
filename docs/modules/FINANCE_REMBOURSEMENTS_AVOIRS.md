@@ -41,8 +41,22 @@ Réponse `GET …/finance` : `balances`, `taxes`, `movements[]`, `avoirs[]`, `op
 ## Remboursements
 
 - Module `server/src/refunds/` : création, Stripe, compta.
+- **App (JWT)** : détail facture → Rembourser (case « via Stripe ») ; `POST /api/invoices/:id/refunds` ou `POST /api/refunds/payments/:paymentId`.
+- **API publique (Bearer)** : `GET|POST /api/public/factures/:id/refunds` (scope `factures.refund` pour POST).
+  - Paiement Stripe (`notes` = `stripe:pi_…`) : l'API liste d'abord les refunds Stripe ; si déjà fait → `alreadyRefundedOnStripe: true` (pas de double mouvement).
 - **Annulation acompte** : `POST /api/invoices/:id/cancel-deposit` — si solde déjà payé → 2 avoirs (ACO + SOL).
 - Recalcul solde : `TTC − (paiements − remboursements) − avoirs imputés`.
+
+## Paiement Stripe différé (API publique)
+
+Créer une facture puis encaisser plus tard :
+
+1. `POST /api/public/factures` (sans `paidExternally`)
+2. `POST /api/public/factures/:id/payment-intent` → `clientSecret` + `stripePublishableKey`
+3. Stripe.js / Payment Element côté intégrateur
+4. `POST /api/public/factures/:id/confirm-payment` `{ "paymentIntentId": "pi_…" }` (ou webhook)
+
+Doc interactive : Paramètres → API → Documentation (`/api-docs`).
 
 ## Avoirs
 

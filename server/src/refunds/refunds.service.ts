@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ConflictException,
 	Injectable,
 	Logger,
 	NotFoundException,
@@ -19,6 +20,11 @@ import {
 } from '../invoices/invoice-deposit.util';
 import { CreateRefundDto } from './dto/create-refund.dto';
 
+/** Clé d'idempotence Stripe stable pour un montant en euros. */
+function amountCentsKey(amountEur: number): number {
+	return Math.round(amountEur * 100);
+}
+
 export interface RefundSummary {
 	id: number;
 	invoiceId: string;
@@ -31,6 +37,8 @@ export interface RefundSummary {
 	stripeRefundId: string | null;
 	status: string;
 	createdAt: Date;
+	/** true si le refund Stripe existait déjà (pas de double mouvement). */
+	alreadyRefundedOnStripe?: boolean;
 }
 
 @Injectable()
@@ -174,6 +182,13 @@ export class RefundsService {
 
 		let stripeRefundId: string | null = null;
 		let status: 'PENDING' | 'COMPLETED' | 'FAILED' = 'COMPLETED';
+		let alreadyRefundedOnStripe = false;
+
+		if (dto.refundViaStripe && !payment) {
+			throw new BadRequestException(
+				'paymentId requis pour un remboursement via Stripe (indiquez le paiement stripe:pi_…).',
+			);
+		}
 
 		if (dto.refundViaStripe && payment) {
 			const piId = this.parseStripePaymentIntentId(payment.notes);
@@ -182,9 +197,53 @@ export class RefundsService {
 					'Ce paiement n\'est pas lié à Stripe — désactivez refundViaStripe ou remboursez manuellement.',
 				);
 			}
+
+			const existingLocal = await this.prisma.refund.findFirst({
+				where: {
+					paymentId: payment.id,
+					status: 'COMPLETED',
+					stripeRefundId: { not: null },
+					amount,
+				},
+				orderBy: { createdAt: 'desc' },
+			});
+			if (existingLocal?.stripeRefundId) {
+				const refundable = await this.getRefundableOnPayment(payment.id);
+				if (refundable < amount - 0.01) {
+					return {
+						...this.formatRefund(existingLocal),
+						alreadyRefundedOnStripe: true,
+					};
+				}
+			}
+
 			try {
-				stripeRefundId = await this.stripe.refundPaymentIntent(organizationId, piId, amount);
+				const stripeResult = await this.stripe.refundPaymentIntent(
+					organizationId,
+					piId,
+					amount,
+					{
+						idempotencyKey: `pf-refund-${payment.id}-${amountCentsKey(amount)}`,
+					},
+				);
+				stripeRefundId = stripeResult.refundId;
+				alreadyRefundedOnStripe = stripeResult.alreadyRefunded;
+
+				if (alreadyRefundedOnStripe) {
+					const byStripeId = await this.prisma.refund.findFirst({
+						where: { stripeRefundId, status: 'COMPLETED' },
+					});
+					if (byStripeId) {
+						return {
+							...this.formatRefund(byStripeId),
+							alreadyRefundedOnStripe: true,
+						};
+					}
+				}
 			} catch (err) {
+				if (err instanceof ConflictException || err instanceof BadRequestException) {
+					throw err;
+				}
 				this.logger.warn(`Stripe refund failed: ${(err as Error).message}`);
 				throw new ServiceUnavailableException(
 					`Remboursement Stripe impossible : ${(err as Error).message}`,
@@ -268,7 +327,10 @@ export class RefundsService {
 			status: invoiceStatus,
 		});
 
-		return this.formatRefund(refund);
+		return {
+			...this.formatRefund(refund),
+			...(alreadyRefundedOnStripe ? { alreadyRefundedOnStripe: true } : {}),
+		};
 	}
 
 	async createForPayment(

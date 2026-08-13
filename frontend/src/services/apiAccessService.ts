@@ -8,6 +8,7 @@ export type ApiScope =
   | 'factures.read'
   | 'factures.write'
   | 'factures.send'
+  | 'factures.refund'
   | 'devis.read'
   | 'devis.write'
   | 'devis.send'

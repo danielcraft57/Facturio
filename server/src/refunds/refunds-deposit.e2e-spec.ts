@@ -14,7 +14,10 @@ const mockStripeService = {
 	createPaymentIntentForInvoice: jest.fn(),
 	handleOrgWebhook: jest.fn().mockResolvedValue({ received: true }),
 	fulfillPaymentIntent: jest.fn(),
-	refundPaymentIntent: jest.fn().mockResolvedValue('re_test_refund'),
+	refundPaymentIntent: jest.fn().mockResolvedValue({
+		refundId: 're_test_refund',
+		alreadyRefunded: false,
+	}),
 };
 
 describe('Refunds deposit e2e', () => {
@@ -66,8 +69,8 @@ describe('Refunds deposit e2e', () => {
 		await prisma.organization.update({
 			where: { id: testUser.organizationId },
 			data: {
-				invoiceStripeSecretKey: 'sk_test_e2e_facturio',
-				invoiceStripePublishableKey: 'pk_test_e2e_facturio',
+				invoiceStripeSecretKey: 'sk_test_e2e_prestafacture',
+				invoiceStripePublishableKey: 'pk_test_e2e_prestafacture',
 			},
 		});
 

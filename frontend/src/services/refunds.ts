@@ -13,6 +13,8 @@ export interface Refund {
   stripeRefundId?: string | null
   status: string
   createdAt: string
+  /** true si le refund existait déjà côté Stripe (pas de double mouvement). */
+  alreadyRefundedOnStripe?: boolean
 }
 
 export interface PaymentWithRefundInfo {

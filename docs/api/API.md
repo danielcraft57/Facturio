@@ -116,6 +116,29 @@ Content-Type: application/json
 
 Voir aussi [Finance, avoirs & remboursements](../modules/FINANCE_REMBOURSEMENTS_AVOIRS.md).
 
+### API publique — paiement Stripe différé et remboursements
+
+Doc interactive : `/api-docs` (Paramètres → API). Endpoints Bearer :
+
+```http
+POST /public/factures
+POST /public/factures/:id/payment-intent
+POST /public/factures/:id/confirm-payment
+Content-Type: application/json
+
+{ "paymentIntentId": "pi_…" }
+```
+
+```http
+GET  /public/factures/:id/refunds
+POST /public/factures/:id/refunds
+Content-Type: application/json
+
+{ "amount": 120, "paymentId": 42, "refundViaStripe": true }
+```
+
+Scope `factures.refund` pour POST remboursements. L'API vérifie d'abord sur Stripe si le refund existe déjà (`alreadyRefundedOnStripe`).
+
 ## Factures
 
 ### Créer une facture

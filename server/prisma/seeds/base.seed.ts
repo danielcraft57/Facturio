@@ -107,10 +107,10 @@ export async function seedDefaultUser(prisma: PrismaClient): Promise<void> {
 			phone: process.env.COMPANY_PHONE || null,
 		},
 	});
-	const hashedPassword = await bcrypt.hash('facturio', 12);
+	const hashedPassword = await bcrypt.hash('prestafacture', 12); // compte local admin@prestafacture.local
 	await prisma.user.create({
 		data: {
-			email: 'admin@facturio.local',
+			email: 'admin@prestafacture.local',
 			password: hashedPassword,
 			firstName: 'Admin',
 			lastName: 'PrestaFacture',
@@ -146,6 +146,7 @@ export async function seedApiAccessToken(prisma: PrismaClient, organizationId: n
 				'factures.read',
 				'factures.write',
 				'factures.send',
+				'factures.refund',
 				'devis.read',
 				'devis.write',
 				'devis.send',

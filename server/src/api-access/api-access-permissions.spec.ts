@@ -20,6 +20,7 @@ describe('api-access-permissions', () => {
 
 	it('expose tous les scopes métier', () => {
 		expect(API_ACCESS_SCOPES).toContain('devis.send');
-		expect(API_ACCESS_SCOPES.length).toBe(10);
+		expect(API_ACCESS_SCOPES).toContain('factures.refund');
+		expect(API_ACCESS_SCOPES.length).toBe(11);
 	});
 });

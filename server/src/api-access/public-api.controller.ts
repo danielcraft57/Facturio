@@ -1,10 +1,12 @@
 import {
+	BadRequestException,
 	Body,
 	Controller,
 	Delete,
 	Get,
 	NotFoundException,
 	Param,
+	ParseIntPipe,
 	Patch,
 	Post,
 	Query,
@@ -28,8 +30,11 @@ import { ListQueryDto } from '../common/dto/list-query.dto';
 import { ListProductsQueryDto } from '../products/dto/list-products-query.dto';
 import { PublicApiDispatchService } from './public-api-dispatch.service';
 import { ParseEntityIdPipe } from '../common/pipes/parse-entity-id.pipe';
-import { ParseIntPipe } from '@nestjs/common';
 import { SendPublicInvoiceDto } from './dto/send-public-invoice.dto';
+import { ConfirmPublicPaymentDto } from './dto/confirm-public-payment.dto';
+import { CreateRefundDto } from '../refunds/dto/create-refund.dto';
+import { RefundsService } from '../refunds/refunds.service';
+import { StripeService } from '../stripe/stripe.service';
 
 /**
  * API REST publique PrestaFacture (Bearer token).
@@ -45,6 +50,8 @@ export class PublicApiController {
 		private readonly invoices: InvoicesService,
 		private readonly quotes: QuotesService,
 		private readonly dispatch: PublicApiDispatchService,
+		private readonly refunds: RefundsService,
+		private readonly stripe: StripeService,
 	) {}
 
 	@Get()
@@ -55,6 +62,11 @@ export class PublicApiController {
 			resources: ['clients', 'produits', 'factures', 'devis'],
 			authentication: 'Authorization: Bearer <token>',
 			documentation: '/api-docs',
+			facturesExtras: [
+				'POST /public/factures/:id/payment-intent',
+				'POST /public/factures/:id/confirm-payment',
+				'GET|POST /public/factures/:id/refunds',
+			],
 		};
 	}
 
@@ -185,6 +197,107 @@ export class PublicApiController {
 		@ApiOrganizationId() orgId: number,
 	) {
 		return this.dispatch.sendInvoiceByEmail(id, orgId, body);
+	}
+
+	/**
+	 * Crée un PaymentIntent Stripe pour encaisser la facture plus tard (Stripe.js / Payment Element).
+	 * Prérequis : clés Stripe prestataire configurées dans Paramètres.
+	 *
+	 * @param id - ID de la facture
+	 * @param orgId - Organisation du jeton
+	 */
+	@Post('factures/:id/payment-intent')
+	@RequireApiScopes('factures.write')
+	createInvoicePaymentIntent(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@ApiOrganizationId() orgId: number,
+	) {
+		return this.stripe.createPaymentIntentForInvoiceId(id, orgId);
+	}
+
+	/**
+	 * Confirme un PaymentIntent réussi et enregistre le paiement local
+	 * (si le webhook n'a pas déjà passé).
+	 *
+	 * @param id - ID de la facture
+	 * @param body - Contient paymentIntentId (`pi_…`)
+	 * @param orgId - Organisation du jeton
+	 */
+	@Post('factures/:id/confirm-payment')
+	@RequireApiScopes('factures.write')
+	confirmInvoicePayment(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Body() body: ConfirmPublicPaymentDto,
+		@ApiOrganizationId() orgId: number,
+	) {
+		return this.stripe.confirmPaymentIntentForInvoiceId(id, orgId, body.paymentIntentId);
+	}
+
+	/**
+	 * Liste les remboursements d'une facture.
+	 *
+	 * @param id - ID de la facture
+	 * @param orgId - Organisation du jeton
+	 */
+	@Get('factures/:id/refunds')
+	@RequireApiScopes('factures.read')
+	listInvoiceRefunds(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@ApiOrganizationId() orgId: number,
+	) {
+		return this.refunds.findByInvoice(id, orgId);
+	}
+
+	/**
+	 * Rembourse une facture (manuel ou Stripe).
+	 * Si le paiement est lié Stripe (`notes` = `stripe:pi_…`) et `refundViaStripe`
+	 * (défaut true pour ces paiements), vérifie d'abord sur Stripe qu'un remboursement
+	 * n'existe pas déjà.
+	 *
+	 * @param id - ID de la facture
+	 * @param body - Montant, paymentId optionnel, refundViaStripe
+	 * @param orgId - Organisation du jeton
+	 */
+	@Post('factures/:id/refunds')
+	@RequireApiScopes('factures.refund')
+	async createInvoiceRefund(
+		@Param('id', ParseEntityIdPipe) id: string,
+		@Body() body: CreateRefundDto,
+		@ApiOrganizationId() orgId: number,
+	) {
+		const invoice = await this.invoices.findOne(id, orgId);
+
+		let paymentId = body.paymentId;
+		let refundViaStripe = body.refundViaStripe;
+		const payments = (
+			invoice as { payments?: { id: number; notes: string | null }[] }
+		).payments;
+
+		if (paymentId == null) {
+			const stripePayments = (payments ?? []).filter((p) =>
+				p.notes?.trim().startsWith('stripe:'),
+			);
+			if (stripePayments.length === 1) {
+				paymentId = stripePayments[0].id;
+			} else if (stripePayments.length > 1 && body.refundViaStripe !== false) {
+				throw new BadRequestException(
+					'Plusieurs paiements Stripe sur cette facture : précisez paymentId.',
+				);
+			}
+		}
+
+		if (refundViaStripe === undefined && paymentId != null) {
+			const payment = (payments ?? []).find((p) => p.id === paymentId);
+			if (payment?.notes?.trim().startsWith('stripe:')) {
+				refundViaStripe = true;
+			}
+		}
+
+		return this.refunds.createForInvoice(
+			id,
+			{ ...body, paymentId, refundViaStripe },
+			orgId,
+		);
 	}
 
 	@Post('factures/:id/archive')

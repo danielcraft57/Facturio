@@ -28,7 +28,17 @@ describe('apiDocsContent', () => {
   it('référence les scopes factures', () => {
     const scopes = API_SCOPES_REFERENCE.map((s) => s.id)
     expect(scopes).toContain('factures.send')
+    expect(scopes).toContain('factures.refund')
     expect(scopes).toContain('devis.write')
+  })
+
+  it('documente paiement Stripe différé et remboursements', () => {
+    const ids = API_DOC_SECTIONS.map((s) => s.id)
+    expect(ids).toContain('stripe-pay')
+    expect(ids).toContain('refunds')
+    const factures = API_DOC_SECTIONS.find((s) => s.id === 'factures')
+    expect(factures?.endpoints?.some((e) => e.path.includes('payment-intent'))).toBe(true)
+    expect(factures?.endpoints?.some((e) => e.path.includes('refunds'))).toBe(true)
   })
 
   it('documente les parcours devis productSku et import catalogue', () => {
@@ -43,9 +53,9 @@ describe('apiDocsContent', () => {
   })
 
   it('normalise une base /v1 vers /api', () => {
-    expect(normalizeApiBaseUrl('https://api.facturio.com/v1')).toBe('https://api.facturio.com/api')
-    expect(formatDocUrl('https://api.facturio.com/v1', '/public/clients')).toBe(
-      'https://api.facturio.com/api/public/clients',
+    expect(normalizeApiBaseUrl('https://api.prestafacture.com/v1')).toBe('https://api.prestafacture.com/api')
+    expect(formatDocUrl('https://api.prestafacture.com/v1', '/public/clients')).toBe(
+      'https://api.prestafacture.com/api/public/clients',
     )
   })
 
@@ -56,6 +66,8 @@ describe('apiDocsContent', () => {
       factures: '/public/factures',
       devis: '/public/devis',
       'paid-externe': '/public/factures',
+      'stripe-pay': '/public/factures',
+      refunds: '/public/factures/:id/refunds',
     }
     for (const section of API_DOC_SECTIONS) {
       if (!section.exampleBody || !section.exampleCurl) continue
